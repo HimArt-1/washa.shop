@@ -1,11 +1,15 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { ArrowDown, Sparkles } from "lucide-react";
+import { useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { ArrowDown } from "lucide-react";
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const [curtainLifted, setCurtainLifted] = useState(false);
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"],
@@ -16,14 +20,123 @@ export function Hero() {
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
   const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
 
+  // Handle video ready state
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const onCanPlay = () => setVideoReady(true);
+
+    // If already loaded (cached)
+    if (video.readyState >= 3) {
+      setVideoReady(true);
+    } else {
+      video.addEventListener("canplay", onCanPlay);
+    }
+
+    // Safety timeout — lift curtain after 4s no matter what
+    const fallback = setTimeout(() => setVideoReady(true), 4000);
+
+    return () => {
+      video.removeEventListener("canplay", onCanPlay);
+      clearTimeout(fallback);
+    };
+  }, []);
+
+  // Lift curtain 600ms after video is ready (let animation breathe)
+  useEffect(() => {
+    if (!videoReady) return;
+    const timer = setTimeout(() => setCurtainLifted(true), 600);
+    return () => clearTimeout(timer);
+  }, [videoReady]);
+
   return (
     <section
       ref={containerRef}
       className="relative min-h-screen min-h-[100dvh] flex items-center justify-center overflow-hidden px-2 sm:px-0"
     >
+      {/* ═══ Loading Curtain ═══ */}
+      <AnimatePresence>
+        {!curtainLifted && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#080808]"
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {/* Animated Logo */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="relative"
+            >
+              <motion.h2
+                className="text-6xl sm:text-7xl md:text-8xl font-bold text-gradient"
+                animate={{
+                  filter: videoReady ? "blur(0px)" : ["blur(0px)", "blur(2px)", "blur(0px)"],
+                }}
+                transition={{ duration: 2, repeat: videoReady ? 0 : Infinity, ease: "easeInOut" }}
+              >
+                وشّى
+              </motion.h2>
+
+              {/* Gold shimmer line under logo */}
+              <motion.div
+                className="h-0.5 bg-gradient-to-r from-transparent via-gold to-transparent mt-4 mx-auto"
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: "100%", opacity: 1 }}
+                transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
+              />
+            </motion.div>
+
+            {/* Loading indicator */}
+            <motion.div
+              className="mt-8 flex items-center gap-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              {/* Three pulsing dots */}
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-gold/60"
+                  animate={{
+                    opacity: videoReady ? 0 : [0.3, 1, 0.3],
+                    scale: videoReady ? 0 : [1, 1.3, 1],
+                  }}
+                  transition={{
+                    duration: 1,
+                    repeat: videoReady ? 0 : Infinity,
+                    delay: i * 0.2,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+            </motion.div>
+
+            {/* Ready checkmark flash */}
+            <AnimatePresence>
+              {videoReady && (
+                <motion.span
+                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  فنٌ يرتدى
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ═══ Video Background ═══ */}
       <motion.div className="absolute inset-0 z-0" style={{ scale: videoScale }}>
         <video
+          ref={videoRef}
           autoPlay
           muted
           loop
@@ -78,8 +191,8 @@ export function Hero() {
         <motion.h1
           className="text-6xl sm:text-7xl md:text-9xl lg:text-[11rem] font-bold leading-none mb-4 sm:mb-6"
           initial={{ opacity: 0, y: 60, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 1.2, delay: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          animate={curtainLifted ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
+          transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
           <span className="text-gradient">وشّى</span>
         </motion.h1>
@@ -88,8 +201,8 @@ export function Hero() {
         <motion.p
           className="text-lg sm:text-xl md:text-2xl text-white/70 max-w-2xl mx-auto mb-10 sm:mb-14 font-light"
           initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.0 }}
+          animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.5 }}
         >
           فنٌ يرتدى
         </motion.p>
@@ -98,8 +211,8 @@ export function Hero() {
         <motion.div
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
           initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.4 }}
+          animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8, delay: 0.8 }}
         >
           <motion.button
             className="btn-gold group relative overflow-hidden"
@@ -125,16 +238,14 @@ export function Hero() {
             انضم معنا
           </motion.button>
         </motion.div>
-
-
       </motion.div>
 
       {/* Scroll Indicator */}
       <motion.div
         className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 hidden sm:block"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2.5 }}
+        animate={curtainLifted ? { opacity: 1 } : {}}
+        transition={{ delay: 1.5 }}
       >
         <motion.div
           className="flex flex-col items-center gap-2 text-white/30"
@@ -150,14 +261,14 @@ export function Hero() {
       <motion.div
         className="absolute top-1/4 right-10 w-px h-32 bg-gradient-to-b from-transparent via-gold/20 to-transparent hidden lg:block z-10"
         initial={{ scaleY: 0 }}
-        animate={{ scaleY: 1 }}
-        transition={{ duration: 1.5, delay: 2 }}
+        animate={curtainLifted ? { scaleY: 1 } : {}}
+        transition={{ duration: 1.5, delay: 1.2 }}
       />
       <motion.div
         className="absolute top-1/3 left-10 w-px h-24 bg-gradient-to-b from-transparent via-gold/10 to-transparent hidden lg:block z-10"
         initial={{ scaleY: 0 }}
-        animate={{ scaleY: 1 }}
-        transition={{ duration: 1.5, delay: 2.3 }}
+        animate={curtainLifted ? { scaleY: 1 } : {}}
+        transition={{ duration: 1.5, delay: 1.5 }}
       />
     </section>
   );
