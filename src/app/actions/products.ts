@@ -1,12 +1,13 @@
 // ═══════════════════════════════════════════════════════════
 //  وشّى | WUSHA — Products Actions
-//  Server Actions لجلب المنتجات للمتجر
+//  Server Actions لجلب وإدارة المنتجات
 // ═══════════════════════════════════════════════════════════
 
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { unstable_noStore as noStore } from "next/cache";
+import { unstable_noStore as noStore, revalidatePath } from "next/cache";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function getProducts(
     page = 1,
@@ -60,4 +61,58 @@ export async function getProductById(id: string) {
 
     if (error) return null;
     return data;
+}
+
+// ─── WRITE ACTIONS ───────────────────────────────────────────
+
+interface CreateProductInput {
+    artwork_id: string;
+    title: string;
+    description: string;
+    type: string;
+    price: number;
+    image_url: string; // The generated product mockup image
+    sizes: string[];
+}
+
+export async function createProduct(input: CreateProductInput) {
+    const user = await currentUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const supabase = getSupabaseServerClient();
+
+    // Get profile id
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+    const profileData = profile as any;
+
+    if (!profileData) return { success: false, error: "Profile not found" };
+
+    const { error } = await supabase.from("products").insert({
+        artist_id: profileData.id,
+        artwork_id: input.artwork_id,
+        title: input.title,
+        description: input.description,
+        type: input.type,
+        price: input.price,
+        image_url: input.image_url, // In a real app, we'd upload the mockup first
+        sizes: input.sizes,
+        in_stock: true,
+        stock_quantity: 100, // Unlimited for POD
+        is_featured: false,
+        currency: "SAR",
+    } as any);
+
+    if (error) {
+        console.error("Error creating product:", error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath("/store");
+    revalidatePath("/studio");
+    return { success: true };
 }

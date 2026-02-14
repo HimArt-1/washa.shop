@@ -1,12 +1,15 @@
 // ═══════════════════════════════════════════════════════════
 //  وشّى | WUSHA — Artworks Actions
-//  Server Actions لجلب الأعمال الفنية
+//  Server Actions لجلب وإدارة الأعمال الفنية
 // ═══════════════════════════════════════════════════════════
 
 "use server";
 
 import { getSupabaseServerClient } from "@/lib/supabase";
-import { unstable_noStore as noStore } from "next/cache";
+import { unstable_noStore as noStore, revalidatePath } from "next/cache";
+import { currentUser } from "@clerk/nextjs/server";
+
+// ─── READ ACTIONS ────────────────────────────────────────────
 
 export async function getFeaturedArtworks() {
     noStore();
@@ -52,18 +55,13 @@ export async function getArtworks(
 
     // Filter by category
     if (category !== "all") {
-        // We need to join categories to filter by slug
-        // But since we store category_id, we'd need a subquery or join.
-        // For simplicity, let's assume we pass the category SLUG and find its ID first
-        // Or simpler: Fetch category text from relation.
-        // Efficient way:
         const { data } = await supabase
             .from("categories")
             .select("id")
             .eq("slug", category)
             .single();
 
-        const catData = data as { id: string } | null;
+        const catData = data as any;
 
         if (catData) {
             query = query.eq("category_id", catData.id);
@@ -105,4 +103,122 @@ export async function getArtworkById(id: string) {
 
     if (error) return null;
     return data;
+}
+
+export async function getArtistArtworks(page = 1) {
+    noStore();
+    const user = await currentUser();
+    if (!user) return { data: [], count: 0 };
+
+    const supabase = getSupabaseServerClient();
+
+    // Get profile id first
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+    const profileData = profile as any;
+
+    if (!profileData) return { data: [], count: 0 };
+
+    const itemsPerPage = 12;
+    const from = (page - 1) * itemsPerPage;
+    const to = from + itemsPerPage - 1;
+
+    const { data, count, error } = await supabase
+        .from("artworks")
+        .select("*", { count: "exact" })
+        .eq("artist_id", profileData.id)
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+    if (error) {
+        console.error("Error fetching artist artworks:", error);
+        return { data: [], count: 0 };
+    }
+
+    return { data, count: count || 0 };
+}
+
+// ─── WRITE ACTIONS ───────────────────────────────────────────
+
+export async function createArtwork(formData: any) {
+    const user = await currentUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const supabase = getSupabaseServerClient();
+
+    // Get profile id
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+    const profileData = profile as any;
+
+    if (!profileData) return { success: false, error: "Profile not found" };
+
+    // Insert artwork
+    const { error } = await supabase.from("artworks").insert({
+        artist_id: profileData.id,
+        title: formData.title,
+        description: formData.description,
+        category_id: formData.category_id,
+        image_url: formData.image_url,
+        status: "published", // Auto-publish for now
+        tags: formData.tags || [],
+    } as any);
+
+    if (error) {
+        console.error("Error creating artwork:", error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath("/studio/artworks");
+    revalidatePath("/studio");
+    return { success: true };
+}
+
+export async function deleteArtwork(id: string, imageUrl: string) {
+    const user = await currentUser();
+    if (!user) return { success: false, error: "Unauthorized" };
+
+    const supabase = getSupabaseServerClient();
+
+    // Verify ownership
+    const { data: artwork } = await supabase
+        .from("artworks")
+        .select("artist_id")
+        .eq("id", id)
+        .single();
+
+    const artworkData = artwork as any;
+
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .single();
+
+    const profileData = profile as any;
+
+    if (!artworkData || !profileData || artworkData.artist_id !== profileData.id) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    // Delete from DB
+    const { error } = await supabase.from("artworks").delete().eq("id", id);
+    if (error) return { success: false, error: error.message };
+
+    // Delete from Storage
+    const path = imageUrl.split("/artworks/").pop();
+    if (path) {
+        await supabase.storage.from("artworks").remove([path]);
+    }
+
+    revalidatePath("/studio/artworks");
+    return { success: true };
 }
