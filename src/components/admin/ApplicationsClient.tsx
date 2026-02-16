@@ -14,6 +14,7 @@ import {
     Instagram,
     Clock,
     Palette,
+    Phone,
 } from "lucide-react";
 
 interface ApplicationsClientProps {
@@ -64,8 +65,8 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                         key={s.value}
                         onClick={() => navigate(s.value)}
                         className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${currentStatus === s.value
-                                ? "bg-gold/10 text-gold"
-                                : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
+                            ? "bg-gold/10 text-gold"
+                            : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
                             }`}
                     >
                         {s.label}
@@ -88,6 +89,12 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                             <div>
                                 <h3 className="font-bold text-fg text-lg">{app.full_name}</h3>
                                 <p className="text-fg/40 text-sm mt-0.5">{app.email}</p>
+                                {app.phone && (
+                                    <p className="text-fg/40 text-sm mt-0.5 flex items-center gap-1.5">
+                                        <Phone className="w-3.5 h-3.5" />
+                                        <span dir="ltr">{app.phone}</span>
+                                    </p>
+                                )}
                             </div>
                             <StatusBadge status={app.status} type="application" />
                         </div>
