@@ -15,6 +15,10 @@ import {
     Sparkles,
     Menu,
     X,
+    Tag,
+    Package,
+    Mail,
+    Settings,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -36,6 +40,10 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
         { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders" },
         { icon: FileText, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
         { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks" },
+        { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
+        { icon: Package, label: "المنتجات", href: "/dashboard/products" },
+        { icon: Mail, label: "المشتركون", href: "/dashboard/newsletter" },
+        { icon: Settings, label: "الإعدادات", href: "/dashboard/settings" },
     ];
 
     const sidebarContent = (
