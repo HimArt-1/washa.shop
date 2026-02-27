@@ -20,6 +20,7 @@ import {
     Package,
     Mail,
     Settings,
+    Palette,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -44,6 +45,7 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
         { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks" },
         { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
         { icon: Package, label: "المنتجات", href: "/dashboard/products" },
+        { icon: Palette, label: "تصاميم وشّى الحصرية", href: "/dashboard/exclusive-designs" },
         { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter" },
         { icon: Settings, label: "الإعدادات", href: "/dashboard/settings" },
     ];

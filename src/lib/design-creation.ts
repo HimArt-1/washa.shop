@@ -10,6 +10,7 @@ export const CREATION_GARMENTS = [
     id: "tshirt",
     label: "تيشيرت",
     icon: "👕",
+    priceKey: "tshirt" as const,
     mockupSrc: "/mockups/tshirt-front.png",
     mockupFront: "/mockups/tshirt-front.png",
     mockupBack: "/mockups/tshirt-back.png",
@@ -18,6 +19,7 @@ export const CREATION_GARMENTS = [
     id: "hoodie",
     label: "هودي",
     icon: "🧥",
+    priceKey: "hoodie" as const,
     mockupSrc: "/mockups/hoodie-front.png",
     mockupFront: "/mockups/hoodie-front.png",
     mockupBack: "/mockups/hoodie-back.png",
@@ -26,13 +28,30 @@ export const CREATION_GARMENTS = [
     id: "pullover",
     label: "بلوفر",
     icon: "👔",
+    priceKey: "pullover" as const,
     mockupSrc: "/mockups/pullover-front.png",
     mockupFront: "/mockups/pullover-front.png",
     mockupBack: "/mockups/pullover-back.png",
   },
 ] as const;
 
+/** المقاسات المتاحة للقطع */
+export const CREATION_SIZES = ["S", "M", "L", "XL", "XXL"] as const;
+export type CreationSizeId = (typeof CREATION_SIZES)[number];
+
 export type CreationGarmentId = (typeof CREATION_GARMENTS)[number]["id"];
+
+/** الأسعار الافتراضية (تُستبدل من إعدادات الموقع) */
+export const DEFAULT_CREATION_PRICES = { tshirt: 89, hoodie: 149, pullover: 129 } as const;
+
+export function getGarmentPrice(
+  garmentId: CreationGarmentId,
+  prices: { tshirt: number; hoodie: number; pullover: number }
+): number {
+  const g = CREATION_GARMENTS.find((x) => x.id === garmentId);
+  if (!g || !("priceKey" in g)) return DEFAULT_CREATION_PRICES.tshirt;
+  return prices[g.priceKey] ?? DEFAULT_CREATION_PRICES[g.priceKey];
+}
 
 // ─── لوحة الألوان (هوية سعودية معاصرة) ────────────────────
 
@@ -54,6 +73,12 @@ export type CreationColorId = (typeof CREATION_COLORS)[number]["id"];
 // ─── طرق التصميم (5 خيارات) ───────────────────────────────
 
 export const CREATION_DESIGN_METHODS = [
+  {
+    id: "exclusive_wusha",
+    label: "تصاميم وشّى الحصرية",
+    description: "مطبوعات حصرية من تصاميم وشّى الخاصة",
+    icon: "👑",
+  },
   {
     id: "ready_text",
     label: "كتابة جاهزة",
@@ -119,10 +144,13 @@ export interface DesignCreationState {
   colorId: CreationColorId | null;
   method: CreationDesignMethodId | null;
   position: CreationPositionId | null;
+  size: CreationSizeId | null;
   // ready_text
   readyTextId: string | null;
   // from_studio
   studioDesignId: string | null;
+  // exclusive_wusha
+  exclusiveDesignId: string | null;
   // from_text
   textPrompt: string;
   // from_image
@@ -142,8 +170,10 @@ export const INITIAL_CREATION_STATE: DesignCreationState = {
   colorId: null,
   method: null,
   position: null,
+  size: null,
   readyTextId: null,
   studioDesignId: null,
+  exclusiveDesignId: null,
   textPrompt: "",
   ideaText: "",
   styleId: null,

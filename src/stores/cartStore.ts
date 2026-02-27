@@ -2,15 +2,19 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface CartItem {
-    id: string; // Product ID
+    id: string; // Product ID أو custom-{garment}-{timestamp}
     title: string;
     price: number;
     image_url: string;
     artist_name: string;
     quantity: number;
     size?: string | null;
-    type: "product" | "artwork";
+    type: "product" | "artwork" | "custom_design";
     maxQuantity?: number; // Stock limit
+    // للتصاميم المخصصة فقط
+    customDesignUrl?: string;
+    customGarment?: string;
+    customPosition?: string;
 }
 
 interface CartState {

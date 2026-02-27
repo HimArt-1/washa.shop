@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 // ─── Status Config ──────────────────────────────────────────
 const statusConfig: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
     pending: { label: "بانتظار المعالجة", icon: Clock, color: "text-amber-400", bgColor: "bg-amber-400/10" },
+    confirmed: { label: "مؤكد", icon: CheckCircle2, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
     processing: { label: "قيد المعالجة", icon: Package, color: "text-blue-400", bgColor: "bg-blue-400/10" },
     shipped: { label: "تم الشحن", icon: Truck, color: "text-purple-400", bgColor: "bg-purple-400/10" },
     delivered: { label: "تم التوصيل", icon: CheckCircle2, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
@@ -21,7 +22,7 @@ const statusConfig: Record<string, { label: string; icon: any; color: string; bg
 };
 
 // ─── Progress Steps ─────────────────────────────────────────
-const progressSteps = ["pending", "processing", "shipped", "delivered"];
+const progressSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 
 function OrderProgressBar({ status }: { status: string }) {
     const currentIdx = progressSteps.indexOf(status);
@@ -104,32 +105,35 @@ export default async function OrdersPage() {
                                     {/* Order Items */}
                                     {order.items && order.items.length > 0 && (
                                         <div className="mt-4 space-y-3">
-                                            {order.items.map((item: any) => (
-                                                <div key={item.id} className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/[0.04] bg-white/[0.02] shrink-0">
-                                                        {item.product?.image_url && (
-                                                            <Image
-                                                                src={item.product.image_url}
-                                                                alt={item.product?.title || ""}
-                                                                width={48}
-                                                                height={48}
-                                                                className="object-cover w-full h-full"
-                                                            />
-                                                        )}
+                                            {order.items.map((item: any) => {
+                                                const isCustom = !!item.custom_design_url;
+                                                const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
+                                                const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
+                                                return (
+                                                    <div key={item.id} className="flex items-center gap-3">
+                                                        <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/[0.04] bg-white/[0.02] shrink-0">
+                                                            {imageUrl && (
+                                                                <Image
+                                                                    src={imageUrl}
+                                                                    alt={title}
+                                                                    width={48}
+                                                                    height={48}
+                                                                    className="object-cover w-full h-full"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-fg truncate">{title}</p>
+                                                            <p className="text-[10px] text-fg/20">
+                                                                {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
+                                                            </p>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-fg/40">
+                                                            {Number(item.total_price).toLocaleString()} ر.س
+                                                        </span>
                                                     </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-fg truncate">
-                                                            {item.product?.title || "منتج"}
-                                                        </p>
-                                                        <p className="text-[10px] text-fg/20">
-                                                            {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
-                                                        </p>
-                                                    </div>
-                                                    <span className="text-xs font-bold text-fg/40">
-                                                        {Number(item.total_price).toLocaleString()} ر.س
-                                                    </span>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
 

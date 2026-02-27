@@ -36,6 +36,7 @@ interface CreationStepInputProps {
     value: DesignCreationState[K]
   ) => void;
   studioArtworks?: Array<{ id: string; image_url: string; title?: string }>;
+  exclusiveDesigns?: Array<{ id: string; title: string; description: string | null; image_url: string }>;
   onBack: () => void;
   onNext: () => void;
   onImageChange: (file: File | null, previewUrl: string | null) => void;
@@ -46,6 +47,7 @@ export function CreationStepInput({
   state,
   set,
   studioArtworks = [],
+  exclusiveDesigns = [],
   onBack,
   onNext,
   onImageChange,
@@ -152,6 +154,77 @@ export function CreationStepInput({
     },
     [set, state.position, onNext]
   );
+
+  const handleExclusiveSelect = useCallback(
+    (design: { id: string; image_url: string }) => {
+      set("exclusiveDesignId", design.id);
+      set("designImageUrl", design.image_url);
+      set("position", state.position ?? "chest");
+      onNext();
+    },
+    [set, state.position, onNext]
+  );
+
+  // exclusive_wusha — تصاميم وشّى الحصرية
+  if (method === "exclusive_wusha") {
+    const designs = exclusiveDesigns;
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        className="space-y-8"
+      >
+        <div>
+          <h2 className="text-2xl font-bold text-fg mb-1">تصاميم وشّى الحصرية</h2>
+          <p className="text-fg/60 text-sm">مطبوعات حصرية من تصاميم وشّى الخاصة — اختر التصميم الذي يعجبك</p>
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+          <div className="flex gap-2 mb-4">
+            {CREATION_POSITIONS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => set("position", p.id)}
+                className={`px-4 py-2 rounded-xl border-2 text-sm ${
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {designs.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-h-80 overflow-y-auto">
+            {designs.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => handleExclusiveSelect(d)}
+                className="relative aspect-square rounded-xl overflow-hidden border-2 border-white/10 hover:border-gold/40 transition-colors group"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={d.image_url} alt={d.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-xs font-bold text-white truncate">{d.title}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 rounded-2xl bg-white/5 border border-white/10 text-center">
+            <span className="text-4xl">👑</span>
+            <p className="mt-4 text-fg/60">لا توجد تصاميم حصرية متاحة حالياً. جرّب طريقة أخرى.</p>
+          </div>
+        )}
+        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border border-white/20">
+          رجوع
+        </button>
+      </motion.div>
+    );
+  }
 
   // ready_text
   if (method === "ready_text") {

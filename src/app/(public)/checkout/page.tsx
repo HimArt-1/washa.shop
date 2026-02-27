@@ -80,12 +80,14 @@ function CheckoutContent() {
                 <p className="text-white/40 mb-8 max-w-md">
                     لم تقم بإضافة أي منتجات للسلة بعد. تصفح المتجر واكتشف منتجاتنا الحصرية.
                 </p>
-                <Link
-                    href="/#store"
-                    className="btn-gold px-8 py-3 rounded-xl"
-                >
-                    تصفح المتجر
-                </Link>
+                <div className="flex flex-wrap gap-3 justify-center">
+                    <Link href="/store" className="btn-gold px-8 py-3 rounded-xl">
+                        تصفح المتجر
+                    </Link>
+                    <Link href="/design" className="px-8 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
+                        صمّم قطعتك
+                    </Link>
+                </div>
             </div>
         );
     }
@@ -99,12 +101,25 @@ function CheckoutContent() {
         setIsSubmitting(true);
         setError(null);
 
-        const orderItems = items.map((item) => ({
-            product_id: item.id,
-            quantity: item.quantity,
-            size: item.size || null,
-            unit_price: item.price,
-        }));
+        const orderItems = items.map((item) => {
+            if (item.type === "custom_design") {
+                return {
+                    product_id: null,
+                    quantity: item.quantity,
+                    size: item.size || null,
+                    unit_price: item.price,
+                    custom_design_url: item.customDesignUrl ?? undefined,
+                    custom_garment: item.customGarment ?? undefined,
+                    custom_title: item.title,
+                };
+            }
+            return {
+                product_id: item.id,
+                quantity: item.quantity,
+                size: item.size || null,
+                unit_price: item.price,
+            };
+        });
 
         const address = { ...data, state: "" };
         const result = await createOrder(orderItems, address, {

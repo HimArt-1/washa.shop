@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-    Eye, EyeOff, Globe, Truck, Save, Loader2,
+    Eye, EyeOff, Globe, Truck, Save, Loader2, Tag,
     Instagram, Twitter, Mail, Phone, type LucideIcon,
 } from "lucide-react";
 import { updateSiteSetting } from "@/app/actions/settings";
@@ -20,6 +20,7 @@ interface SettingsProps {
         };
         site_info: Record<string, string>;
         shipping: Record<string, number>;
+        creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
     };
 }
 
@@ -105,6 +106,11 @@ export function SettingsClient({ settings }: SettingsProps) {
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
+    const [creationPrices, setCreationPrices] = useState({
+        tshirt: settings.creation_prices?.tshirt ?? 89,
+        hoodie: settings.creation_prices?.hoodie ?? 149,
+        pullover: settings.creation_prices?.pullover ?? 129,
+    });
 
     const [saving, setSaving] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
@@ -289,6 +295,42 @@ export function SettingsClient({ settings }: SettingsProps) {
                 >
                     {saving === "shipping" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     حفظ إعدادات الشحن
+                </button>
+            </SettingsCard>
+
+            {/* ─── 4. أسعار القطع (صمّم قطعتك) ─── */}
+            <SettingsCard title="أسعار القطع — صمّم قطعتك" icon={Tag}>
+                <p className="text-fg/50 text-sm mb-4">أسعار التيشيرت والهودي والبلوفر في مسار التصميم المخصص</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <Field
+                        label="تيشيرت (ر.س)"
+                        value={String(creationPrices.tshirt)}
+                        onChange={(v) => setCreationPrices({ ...creationPrices, tshirt: Number(v) || 0 })}
+                        type="number"
+                        dir="ltr"
+                    />
+                    <Field
+                        label="هودي (ر.س)"
+                        value={String(creationPrices.hoodie)}
+                        onChange={(v) => setCreationPrices({ ...creationPrices, hoodie: Number(v) || 0 })}
+                        type="number"
+                        dir="ltr"
+                    />
+                    <Field
+                        label="بلوفر (ر.س)"
+                        value={String(creationPrices.pullover)}
+                        onChange={(v) => setCreationPrices({ ...creationPrices, pullover: Number(v) || 0 })}
+                        type="number"
+                        dir="ltr"
+                    />
+                </div>
+                <button
+                    onClick={() => handleSave("creation_prices", creationPrices)}
+                    disabled={saving === "creation_prices"}
+                    className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {saving === "creation_prices" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    حفظ الأسعار
                 </button>
             </SettingsCard>
         </div>

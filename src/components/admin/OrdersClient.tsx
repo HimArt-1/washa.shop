@@ -12,6 +12,7 @@ import {
     Loader2,
     Package,
 } from "lucide-react";
+import Image from "next/image";
 
 interface OrdersClientProps {
     orders: any[];
@@ -112,73 +113,124 @@ export function OrdersClient({
                             {orders.map((order, i) => {
                                 const isExpanded = expandedOrder === order.id;
                                 const available = nextStatuses[order.status] || [];
+                                const items = order.order_items || [];
 
                                 return (
-                                    <motion.tr
-                                        key={order.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: i * 0.03 }}
-                                        className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
-                                    >
-                                        <td className="px-3 py-3.5">
-                                            {order.order_items?.length > 0 && (
-                                                <button
-                                                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                                                    className="p-1 rounded hover:bg-white/5 text-fg/30 transition-colors"
-                                                >
-                                                    <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                                                </button>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3.5 font-mono text-xs text-gold">{order.order_number}</td>
-                                        <td className="px-4 py-3.5">
-                                            <div>
-                                                <span className="text-fg font-medium">{order.buyer?.display_name || "—"}</span>
-                                                {order.buyer?.username && (
-                                                    <span className="text-fg/30 text-xs block">@{order.buyer.username}</span>
+                                    <AnimatePresence key={order.id}>
+                                        <motion.tr
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ delay: i * 0.03 }}
+                                            className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
+                                        >
+                                            <td className="px-3 py-3.5">
+                                                {items.length > 0 && (
+                                                    <button
+                                                        onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                                                        className="p-1 rounded hover:bg-white/5 text-fg/30 transition-colors"
+                                                    >
+                                                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                                    </button>
                                                 )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3.5 font-bold text-fg">{Number(order.total).toLocaleString()} ر.س</td>
-                                        <td className="px-4 py-3.5"><StatusBadge status={order.status} type="order" /></td>
-                                        <td className="px-4 py-3.5">
-                                            <span className={`text-xs font-bold ${order.payment_status === "paid" ? "text-forest" : "text-amber-400"
-                                                }`}>
-                                                {order.payment_status === "paid" ? "مدفوع" :
-                                                    order.payment_status === "failed" ? "فشل" :
-                                                        order.payment_status === "refunded" ? "مسترجع" : "معلق"}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3.5 text-fg/30 text-xs" dir="ltr">
-                                            {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
-                                        </td>
-                                        <td className="px-6 py-3.5">
-                                            {available.length > 0 ? (
-                                                <div className="flex gap-1">
-                                                    {available.map((s) => (
-                                                        <button
-                                                            key={s}
-                                                            onClick={() => handleStatusChange(order.id, s)}
-                                                            disabled={updatingOrder === order.id}
-                                                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all disabled:opacity-50 ${s === "cancelled"
-                                                                    ? "border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                                                    : "border-gold/20 text-gold hover:bg-gold/10"
-                                                                }`}
-                                                        >
-                                                            {s === "confirmed" ? "تأكيد" :
-                                                                s === "processing" ? "معالجة" :
-                                                                    s === "shipped" ? "شحن" :
-                                                                        s === "delivered" ? "تسليم" :
-                                                                            s === "cancelled" ? "إلغاء" : s}
-                                                        </button>
-                                                    ))}
+                                            </td>
+                                            <td className="px-4 py-3.5 font-mono text-xs text-gold">{order.order_number}</td>
+                                            <td className="px-4 py-3.5">
+                                                <div>
+                                                    <span className="text-fg font-medium">{order.buyer?.display_name || "—"}</span>
+                                                    {order.buyer?.username && (
+                                                        <span className="text-fg/30 text-xs block">@{order.buyer.username}</span>
+                                                    )}
                                                 </div>
-                                            ) : (
-                                                <span className="text-fg/20 text-xs">—</span>
-                                            )}
-                                        </td>
-                                    </motion.tr>
+                                            </td>
+                                            <td className="px-4 py-3.5 font-bold text-fg">{Number(order.total).toLocaleString()} ر.س</td>
+                                            <td className="px-4 py-3.5"><StatusBadge status={order.status} type="order" /></td>
+                                            <td className="px-4 py-3.5">
+                                                <span className={`text-xs font-bold ${order.payment_status === "paid" ? "text-forest" : "text-amber-400"
+                                                    }`}>
+                                                    {order.payment_status === "paid" ? "مدفوع" :
+                                                        order.payment_status === "failed" ? "فشل" :
+                                                            order.payment_status === "refunded" ? "مسترجع" : "معلق"}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3.5 text-fg/30 text-xs" dir="ltr">
+                                                {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+                                            </td>
+                                            <td className="px-6 py-3.5">
+                                                {available.length > 0 ? (
+                                                    <div className="flex gap-1">
+                                                        {available.map((s) => (
+                                                            <button
+                                                                key={s}
+                                                                onClick={() => handleStatusChange(order.id, s)}
+                                                                disabled={updatingOrder === order.id}
+                                                                className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all disabled:opacity-50 ${s === "cancelled"
+                                                                        ? "border-red-500/20 text-red-400 hover:bg-red-500/10"
+                                                                        : "border-gold/20 text-gold hover:bg-gold/10"
+                                                                    }`}
+                                                            >
+                                                                {s === "confirmed" ? "تأكيد" :
+                                                                    s === "processing" ? "معالجة" :
+                                                                        s === "shipped" ? "شحن" :
+                                                                            s === "delivered" ? "تسليم" :
+                                                                                s === "cancelled" ? "إلغاء" : s}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-fg/20 text-xs">—</span>
+                                                )}
+                                            </td>
+                                        </motion.tr>
+                                        {isExpanded && items.length > 0 && (
+                                            <motion.tr
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: "auto" }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                className="border-b border-white/[0.03] bg-white/[0.02]"
+                                            >
+                                                <td colSpan={8} className="px-6 py-4">
+                                                    <div className="space-y-3">
+                                                        <p className="text-xs font-bold text-fg/50 mb-2">عناصر الطلب</p>
+                                                        <div className="flex flex-wrap gap-4">
+                                                            {items.map((item: any) => {
+                                                                const isCustom = !!item.custom_design_url;
+                                                                const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
+                                                                const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
+                                                                const subtitle = isCustom
+                                                                    ? `${item.custom_garment || ""} · مقاس ${item.size || "—"}`
+                                                                    : item.size ? `مقاس ${item.size}` : "";
+                                                                return (
+                                                                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] min-w-[280px]">
+                                                                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                                                                            {imageUrl && (
+                                                                                <Image
+                                                                                    src={imageUrl}
+                                                                                    alt={title}
+                                                                                    width={56}
+                                                                                    height={56}
+                                                                                    className="object-cover w-full h-full"
+                                                                                />
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-sm font-medium text-fg truncate">{title}</p>
+                                                                            <p className="text-xs text-fg/40">{subtitle}</p>
+                                                                            <p className="text-xs text-fg/50 mt-0.5">
+                                                                                {item.quantity} × {Number(item.unit_price).toLocaleString()} ر.س
+                                                                            </p>
+                                                                        </div>
+                                                                        <span className="text-sm font-bold text-gold">
+                                                                            {Number(item.total_price).toLocaleString()} ر.س
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </motion.tr>
+                                        )}
+                                    </AnimatePresence>
                                 );
                             })}
                             {orders.length === 0 && (

@@ -3,6 +3,7 @@ import { DesignCreationWizard } from "@/components/design-creation/DesignCreatio
 import { DesignAccessDenied } from "@/components/design-creation/DesignAccessDenied";
 import { getFeaturedArtworks } from "@/app/actions/artworks";
 import { canAccessDesignPiece } from "@/app/actions/design-piece";
+import { getCreationPrices, getActiveExclusiveDesigns } from "@/app/actions/settings";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -21,7 +22,11 @@ export default async function DesignPage() {
     return <DesignAccessDenied />;
   }
 
-  const featuredArtworks = await getFeaturedArtworks();
+  const [featuredArtworks, creationPrices, exclusiveDesigns] = await Promise.all([
+    getFeaturedArtworks(),
+    getCreationPrices(),
+    getActiveExclusiveDesigns(),
+  ]);
   const studioArtworks = (featuredArtworks ?? []).map((a: any) => ({
     id: a.id,
     image_url: a.image_url,
@@ -38,7 +43,11 @@ export default async function DesignPage() {
         </p>
       </div>
 
-      <DesignCreationWizard studioArtworks={studioArtworks} />
+      <DesignCreationWizard
+        studioArtworks={studioArtworks}
+        creationPrices={creationPrices}
+        exclusiveDesigns={exclusiveDesigns}
+      />
     </div>
   );
 }

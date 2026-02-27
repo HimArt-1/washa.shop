@@ -18,10 +18,13 @@ function getAdminClient() {
 }
 
 interface OrderItemInput {
-    product_id: string;
+    product_id: string | null;
     quantity: number;
     size: string | null;
     unit_price: number;
+    custom_design_url?: string;
+    custom_garment?: string;
+    custom_title?: string;
 }
 
 interface ShippingAddressInput {
@@ -112,14 +115,19 @@ export async function createOrder(
         return { success: false, error: "فشل في إنشاء الطلب" };
     }
 
-    // 5. Create order items
+    // 5. Create order items (منتجات عادية أو تصاميم مخصصة)
     const orderItems = items.map((item) => ({
         order_id: order.id,
-        product_id: item.product_id,
+        product_id: item.product_id ?? null,
         quantity: item.quantity,
         size: item.size,
         unit_price: item.unit_price,
         total_price: item.unit_price * item.quantity,
+        ...(item.product_id == null && item.custom_design_url && {
+            custom_design_url: item.custom_design_url,
+            custom_garment: item.custom_garment ?? null,
+            custom_title: item.custom_title ?? null,
+        }),
     }));
 
     const { error: itemsError } = await supabase
@@ -208,7 +216,7 @@ export async function getUserOrders() {
 
     if (!profile) return { data: [], count: 0 };
 
-    // Fetch orders
+    // Fetch orders (منتجات عادية + تصاميم مخصصة)
     const { data, error, count } = await supabase
         .from("orders")
         .select(`

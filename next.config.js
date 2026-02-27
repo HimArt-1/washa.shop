@@ -10,6 +10,8 @@ const nextConfig = {
       'plus.unsplash.com',
       'placeholder.com',
       'img.clerk.com',
+      'replicate.delivery',
+      'pbxt.replicate.delivery',
       ...(supabaseHost ? [supabaseHost] : []),
     ],
   },

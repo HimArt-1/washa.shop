@@ -6,6 +6,7 @@ import {
   DesignCreationState,
   INITIAL_CREATION_STATE,
   CREATION_STEPS_COUNT,
+  DEFAULT_CREATION_PRICES,
   type CreationGarmentId,
   type CreationColorId,
   type CreationDesignMethodId,
@@ -20,9 +21,11 @@ import { CreationProductPreview } from "./CreationProductPreview";
 
 interface DesignCreationWizardProps {
   studioArtworks?: Array<{ id: string; image_url: string; title?: string }>;
+  exclusiveDesigns?: Array<{ id: string; title: string; description: string | null; image_url: string }>;
+  creationPrices?: { tshirt: number; hoodie: number; pullover: number };
 }
 
-export function DesignCreationWizard({ studioArtworks = [] }: DesignCreationWizardProps) {
+export function DesignCreationWizard({ studioArtworks = [], exclusiveDesigns = [], creationPrices }: DesignCreationWizardProps) {
   const [state, setState] = useState<DesignCreationState>(INITIAL_CREATION_STATE);
 
   const set = useCallback(
@@ -89,6 +92,7 @@ export function DesignCreationWizard({ studioArtworks = [] }: DesignCreationWiza
                 state={state}
                 set={set}
                 studioArtworks={studioArtworks}
+                exclusiveDesigns={exclusiveDesigns}
                 onBack={goBack}
                 onNext={goNext}
                 onImageChange={handleImageChange}
@@ -98,8 +102,10 @@ export function DesignCreationWizard({ studioArtworks = [] }: DesignCreationWiza
               <CreationStepPreview
                 key="step5"
                 state={state}
+                creationPrices={creationPrices ?? DEFAULT_CREATION_PRICES}
                 onBack={goBack}
                 onOrder={goNext}
+                set={set}
               />
             )}
           </AnimatePresence>

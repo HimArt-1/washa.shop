@@ -617,7 +617,11 @@ export async function getAdminOrders(page = 1, status = "all") {
         const selectQuery = `
             *,
             buyer:profiles(id, display_name, username, avatar_url),
-            order_items(id, product_id, quantity, size, unit_price, total_price)
+            order_items(
+                id, product_id, quantity, size, unit_price, total_price,
+                custom_design_url, custom_garment, custom_title,
+                product:products(id, title, image_url)
+            )
         `;
 
         let query = supabase

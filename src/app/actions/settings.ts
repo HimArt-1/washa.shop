@@ -44,6 +44,7 @@ export async function getSiteSettings() {
             visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true },
             site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
+            creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
         };
     }
 
@@ -53,6 +54,7 @@ export async function getSiteSettings() {
     }
 
     const v = settings.visibility || {};
+    const cp = settings.creation_prices || {};
     return {
         visibility: {
             gallery: v.gallery ?? false,
@@ -64,6 +66,29 @@ export async function getSiteSettings() {
         },
         site_info: settings.site_info || { name: "وشّى", description: "", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
         shipping: settings.shipping || { flat_rate: 30, free_above: 500, tax_rate: 15 },
+        creation_prices: {
+            tshirt: cp.tshirt ?? 89,
+            hoodie: cp.hoodie ?? 149,
+            pullover: cp.pullover ?? 129,
+        },
+    };
+}
+
+// ─── أسعار القطع (للتصميم — بدون صلاحية أدمن) ───
+
+export async function getCreationPrices() {
+    const supabase = getAdminSupabase();
+    const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "creation_prices")
+        .maybeSingle();
+
+    const p = (data as { value?: Record<string, number> } | null)?.value;
+    return {
+        tshirt: p?.tshirt ?? 89,
+        hoodie: p?.hoodie ?? 149,
+        pullover: p?.pullover ?? 129,
     };
 }
 
@@ -375,6 +400,125 @@ export async function getNewsletterSubscribers() {
         .order("subscribed_at", { ascending: false });
 
     return { data: data || [], error: error?.message };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXCLUSIVE DESIGNS — تصاميم وشّى الحصرية
+// ═══════════════════════════════════════════════════════════
+
+export async function getExclusiveDesigns() {
+    const supabase = getAdminSupabase();
+    const { data, error } = await supabase
+        .from("exclusive_designs")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+    if (error) {
+        console.error("[getExclusiveDesigns]", error);
+        return [];
+    }
+    return (data || []) as { id: string; title: string; description: string | null; image_url: string; sort_order: number; is_active: boolean }[];
+}
+
+export async function getActiveExclusiveDesigns() {
+    const supabase = getAdminSupabase();
+    const { data, error } = await supabase
+        .from("exclusive_designs")
+        .select("id, title, description, image_url")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+    if (error) return [];
+    return (data || []) as { id: string; title: string; description: string | null; image_url: string }[];
+}
+
+export async function createExclusiveDesign(formData: {
+    title: string;
+    description?: string;
+    image_url: string;
+    sort_order?: number;
+}) {
+    await requireAdmin();
+    const supabase = getAdminSupabase();
+
+    const { error } = await supabase.from("exclusive_designs").insert({
+        title: formData.title.trim(),
+        description: formData.description?.trim() || null,
+        image_url: formData.image_url.trim(),
+        sort_order: formData.sort_order ?? 0,
+        is_active: true,
+    });
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/dashboard/exclusive-designs");
+    revalidatePath("/design");
+    return { success: true };
+}
+
+export async function updateExclusiveDesign(id: string, formData: Partial<{
+    title: string;
+    description: string;
+    image_url: string;
+    sort_order: number;
+    is_active: boolean;
+}>) {
+    await requireAdmin();
+    const supabase = getAdminSupabase();
+
+    const { error } = await supabase
+        .from("exclusive_designs")
+        .update(formData)
+        .eq("id", id);
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/dashboard/exclusive-designs");
+    revalidatePath("/design");
+    return { success: true };
+}
+
+export async function deleteExclusiveDesign(id: string) {
+    await requireAdmin();
+    const supabase = getAdminSupabase();
+
+    const { error } = await supabase.from("exclusive_designs").delete().eq("id", id);
+
+    if (error) return { success: false, error: error.message };
+    revalidatePath("/dashboard/exclusive-designs");
+    revalidatePath("/design");
+    return { success: true };
+}
+
+export async function uploadExclusiveDesignImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+    await requireAdmin();
+    const file = formData.get("file") as File | null;
+    if (!file || !(file instanceof File)) {
+        return { success: false, error: "لم يتم اختيار ملف" };
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        return { success: false, error: "حجم الملف يجب أن لا يتجاوز 5 ميجابايت" };
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+        return { success: false, error: "نوع الملف غير مدعوم" };
+    }
+
+    const supabase = getAdminSupabase();
+    const ext = file.name.split(".").pop() || "jpg";
+    const fileName = `exclusive-designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { data, error } = await supabase.storage
+        .from("products")
+        .upload(fileName, buffer, { cacheControl: "3600", upsert: false, contentType: file.type });
+
+    if (error) {
+        console.error("[uploadExclusiveDesignImage]", error);
+        return { success: false, error: error.message };
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(data.path);
+    return { success: true, url: publicUrl };
 }
 
 export async function deleteSubscriber(id: string) {
