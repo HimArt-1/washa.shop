@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard,
+    BarChart3,
     Users,
     UserCheck,
     ShoppingCart,
@@ -43,7 +44,10 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
 
     const navGroups: NavGroup[] = [
         {
-            items: [{ icon: LayoutDashboard, label: "نظرة عامة", href: "/dashboard" }],
+            items: [
+                { icon: LayoutDashboard, label: "نظرة عامة", href: "/dashboard" },
+                { icon: BarChart3, label: "التحليلات", href: "/dashboard/analytics" },
+            ],
         },
         {
             title: "المستخدمون والطلبات",

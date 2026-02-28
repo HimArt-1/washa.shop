@@ -2,13 +2,18 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, LogIn, UserPlus } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JoinModal } from "@/components/ui/JoinModal";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 
-export function Hero() {
+interface HeroProps {
+  showAuthButtons?: boolean;
+}
+
+export function Hero({ showAuthButtons = true }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -237,46 +242,74 @@ export function Hero() {
           فنٌ يرتدى
         </motion.p>
 
-        {/* CTA Buttons */}
-        <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          initial={{ opacity: 0, y: 30 }}
-          animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.8 }}
-        >
-          <SignedIn>
-            <motion.button
-              type="button"
-              className="btn-gold group relative overflow-hidden"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push("/store")}
-              suppressHydrationWarning
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                المتجر
-                <motion.span
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
+        {/* CTA Buttons — تظهر فقط عند تفعيلها من الإعدادات */}
+        {showAuthButtons && (
+          <motion.div
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
+            initial={{ opacity: 0, y: 30 }}
+            animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.8 }}
+          >
+            <SignedIn>
+              <motion.button
+                type="button"
+                className="group relative px-8 py-4 font-bold rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                style={{
+                  background: "linear-gradient(135deg, #ceae7f 0%, #b8964f 50%, #ceae7f 100%)",
+                  color: "#0a0a0a",
+                  boxShadow: "0 4px 24px rgba(206, 174, 127, 0.25)",
+                }}
+                whileHover={{ boxShadow: "0 8px 40px rgba(206, 174, 127, 0.4)" }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push("/store")}
+                suppressHydrationWarning
+              >
+                <span className="relative z-10 flex items-center gap-2">
+                  المتجر
+                  <motion.span
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    ←
+                  </motion.span>
+                </span>
+              </motion.button>
+            </SignedIn>
+            <SignedOut>
+              <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+                  <Link
+                    href="/sign-up"
+                    className="group flex items-center justify-center gap-2.5 px-8 py-4 font-bold rounded-2xl transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] w-full sm:w-auto min-w-[160px]"
+                    style={{
+                      background: "linear-gradient(135deg, #ceae7f 0%, #b8964f 50%, #ceae7f 100%)",
+                      color: "#0a0a0a",
+                      boxShadow: "0 4px 24px rgba(206, 174, 127, 0.25)",
+                    }}
+                  >
+                    <UserPlus className="w-4 h-4 opacity-80" />
+                    إنشاء حساب
+                  </Link>
+                  <Link
+                    href="/sign-in"
+                    className="flex items-center justify-center gap-2.5 px-8 py-4 font-medium rounded-2xl border border-white/30 bg-white/5 backdrop-blur-md text-white/90 transition-all duration-300 hover:bg-white/10 hover:border-gold/40 w-full sm:w-auto min-w-[160px]"
+                  >
+                    <LogIn className="w-4 h-4 opacity-70" />
+                    تسجيل الدخول
+                  </Link>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setJoinOpen(true)}
+                  className="text-white/50 hover:text-gold text-sm font-medium transition-colors underline-offset-4 hover:underline"
+                  suppressHydrationWarning
                 >
-                  ←
-                </motion.span>
-              </span>
-            </motion.button>
-          </SignedIn>
-          <SignedOut>
-            <motion.button
-              type="button"
-              className="btn-secondary backdrop-blur-sm"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setJoinOpen(true)}
-              suppressHydrationWarning
-            >
-              انضم معنا
-            </motion.button>
-          </SignedOut>
-        </motion.div>
+                  انضم كفنان إلى المنصة
+                </button>
+              </div>
+            </SignedOut>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Join Modal */}

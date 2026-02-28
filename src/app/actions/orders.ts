@@ -8,6 +8,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { createAdminNotification } from "@/app/actions/notifications";
 
 function getAdminClient() {
     return createClient(
@@ -153,6 +154,14 @@ export async function createOrder(
         }
     }
 
+    createAdminNotification({
+        type: "order_new",
+        title: "طلب جديد",
+        message: `طلب #${order.order_number} — ${total.toLocaleString()} ر.س`,
+        link: `/dashboard/orders`,
+        metadata: { order_id: order.id, order_number: order.order_number, total },
+    }).catch(() => {});
+
     return {
         success: true,
         order_number: order.order_number,
@@ -190,6 +199,15 @@ export async function confirmOrderPayment(
     }
 
     const ord = order as { order_number: string; total: number; shipping_address?: { name?: string } } | null;
+    if (ord) {
+        createAdminNotification({
+            type: "payment_received",
+            title: "تم استلام الدفع",
+            message: `طلب #${ord.order_number} — ${ord.total.toLocaleString()} ر.س`,
+            link: "/dashboard/orders",
+            metadata: { order_id: orderId },
+        }).catch(() => {});
+    }
     const email = options?.customerEmail;
     if (ord && email) {
         const name = ord.shipping_address?.name || "عميل";

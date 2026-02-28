@@ -41,7 +41,7 @@ export async function getSiteSettings() {
     if (error || !data) {
         // Return defaults if table doesn't exist yet
         return {
-            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true },
+            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true },
             site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -63,6 +63,7 @@ export async function getSiteSettings() {
             join: v.join ?? true,
             join_artist: v.join_artist ?? true,
             ai_section: v.ai_section ?? true,
+            hero_auth_buttons: v.hero_auth_buttons ?? true,
         },
         site_info: settings.site_info || { name: "وشّى", description: "", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
         shipping: settings.shipping || { flat_rate: 30, free_above: 500, tax_rate: 15 },
@@ -110,6 +111,7 @@ export async function getPublicVisibility() {
         join: visibility?.join ?? true,
         join_artist: visibility?.join_artist ?? true,
         ai_section: visibility?.ai_section ?? true,
+        hero_auth_buttons: visibility?.hero_auth_buttons ?? true,
     };
 }
 

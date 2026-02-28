@@ -17,6 +17,7 @@ interface SettingsProps {
             join?: boolean;
             join_artist?: boolean;
             ai_section?: boolean;
+            hero_auth_buttons?: boolean;
         };
         site_info: Record<string, string>;
         shipping: Record<string, number>;
@@ -103,6 +104,7 @@ export function SettingsClient({ settings }: SettingsProps) {
         join: settings.visibility.join ?? true,
         join_artist: settings.visibility.join_artist ?? true,
         ai_section: settings.visibility.ai_section ?? true,
+        hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -177,6 +179,11 @@ export function SettingsClient({ settings }: SettingsProps) {
                         label="قسم الذكاء الاصطناعي (AI)"
                         checked={visibility.ai_section}
                         onChange={(v) => setVisibility({ ...visibility, ai_section: v })}
+                    />
+                    <Toggle
+                        label="أزرار تسجيل الدخول/اشتراك في الهيرو"
+                        checked={visibility.hero_auth_buttons ?? true}
+                        onChange={(v) => setVisibility({ ...visibility, hero_auth_buttons: v })}
                     />
                 </div>
                 <button

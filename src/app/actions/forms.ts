@@ -3,6 +3,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { applicationSchema, newsletterSchema } from "@/lib/validations";
+import { createAdminNotification } from "@/app/actions/notifications";
 // import type { Database } from "@/types/database"; // Not strictly needed if we cast
 
 export type ActionResponse = {
@@ -59,6 +60,14 @@ export async function submitApplication(formData: FormData): Promise<ActionRespo
             message: "حدث خطأ أثناء إرسال الطلب، الرجاء المحاولة لاحقاً",
         };
     }
+
+    createAdminNotification({
+        type: "application_new",
+        title: "طلب انضمام جديد",
+        message: `${validated.data.full_name} — ${validated.data.art_style}`,
+        link: "/dashboard/applications",
+        metadata: { email: validated.data.email },
+    }).catch(() => {});
 
     revalidatePath("/"); // Revalidate cache for relevant paths
     return { success: true, message: "تم استلام طلبك بنجاح! سنقوم بمراجعته والتواصل معك قريباً." };

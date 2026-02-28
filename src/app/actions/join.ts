@@ -6,6 +6,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { createAdminNotification } from "@/app/actions/notifications";
 
 function getClient() {
     return createClient(
@@ -52,6 +53,13 @@ export async function submitJoinForm(data: JoinFormData) {
             console.error("[Join] Insert error:", error.message);
             return { success: false, message: "حدث خطأ، حاول مرة أخرى" };
         }
+
+        createAdminNotification({
+            type: "application_new",
+            title: "طلب انضمام جديد",
+            message: `${data.name} — ${data.email}`,
+            link: "/dashboard/applications",
+        }).catch(() => {});
 
         return { success: true, message: "تم التسجيل بنجاح!" };
     } catch (error) {

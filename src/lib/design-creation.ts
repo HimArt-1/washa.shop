@@ -158,6 +158,11 @@ export interface DesignCreationState {
   styleId: string | null;
   imageFile: File | null;
   imagePreviewUrl: string | null;
+  // combine
+  combineTextId: string | null;
+  combineTextCustom: string;
+  combineImageSource: "studio" | "upload" | null;
+  combineStudioId: string | null;
   // نتيجة
   designImageUrl: string | null;
   isGenerating: boolean;
@@ -179,6 +184,10 @@ export const INITIAL_CREATION_STATE: DesignCreationState = {
   styleId: null,
   imageFile: null,
   imagePreviewUrl: null,
+  combineTextId: null,
+  combineTextCustom: "",
+  combineImageSource: null,
+  combineStudioId: null,
   designImageUrl: null,
   isGenerating: false,
   error: null,

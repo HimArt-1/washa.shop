@@ -119,7 +119,46 @@ export function CreationStepInput({
         imageUrl = result.success ? result.imageUrl ?? null : null;
         if (!result.success) set("error", result.error ?? "فشل التوليد");
       } else if (method === "combine") {
-        set("error", "هذه الميزة قيد التطوير — قريباً");
+        const text = state.combineTextId
+          ? (READY_TEXTS.find((r) => r.id === state.combineTextId)?.text ?? state.combineTextCustom)
+          : state.combineTextCustom.trim();
+        if (!text || text.length < 2 || !state.styleId) {
+          set("error", "اختر نصاً ونمطاً على الأقل");
+          return;
+        }
+        let imageBase64: string | undefined;
+        if (state.combineImageSource === "upload" && state.imageFile) {
+          imageBase64 = await fileToBase64(state.imageFile);
+        } else if (state.combineImageSource === "studio" && state.combineStudioId) {
+          const art = studioArtworks.find((a) => a.id === state.combineStudioId);
+          if (art?.image_url) {
+            try {
+              const res = await fetch(art.image_url);
+              const blob = await res.blob();
+              const reader = new FileReader();
+              imageBase64 = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(String(reader.result));
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            } catch {
+              set("error", "فشل تحميل الصورة");
+              return;
+            }
+          }
+        }
+        const style = DESIGN_STYLES.find((s) => s.id === state.styleId);
+        const prompt = imageBase64
+          ? `دمج النص العربي "${text}" مع هذه الصورة في تصميم طباعة متناسق. ${style?.prompt ?? ""}`
+          : `Arabic typography design combining text: "${text}". ${style?.prompt ?? ""} Print-ready, elegant.`;
+        const result = await generateDesignForPrint({
+          method: imageBase64 ? "from_image" : "from_text",
+          prompt,
+          styleId: state.styleId,
+          imageBase64: imageBase64 ?? undefined,
+        });
+        imageUrl = result.success ? result.imageUrl ?? null : null;
+        if (!result.success) set("error", result.error ?? "فشل التوليد");
       }
 
       if (imageUrl) {
@@ -136,7 +175,7 @@ export function CreationStepInput({
     } finally {
       set("isGenerating", false);
     }
-  }, [method, state, set, onNext]);
+  }, [method, state, set, onNext, studioArtworks]);
 
   const handleReadyTextSelect = useCallback(
     (id: string) => {
@@ -547,7 +586,10 @@ export function CreationStepInput({
     );
   }
 
-  // combine — قريباً
+  // combine — دمج نص + صورة
+  const canCombine =
+    ((state.combineTextId || state.combineTextCustom.trim().length >= 2) && state.styleId && !state.isGenerating);
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -557,15 +599,172 @@ export function CreationStepInput({
     >
       <div>
         <h2 className="text-2xl font-bold text-fg mb-1">دمج عناصر</h2>
-        <p className="text-fg/60 text-sm">هذه الميزة قيد التطوير — قريباً</p>
+        <p className="text-fg/60 text-sm">اجمع نصاً مع صورة لصناعة طباعة فريدة</p>
       </div>
-      <div className="p-8 rounded-2xl bg-white/5 border border-white/10 text-center">
-        <span className="text-4xl">🔀</span>
-        <p className="mt-4 text-fg/60">ستتمكن قريباً من دمج عناصر متعددة لصناعة طباعة فريدة</p>
+
+      <div>
+        <label className="block text-sm font-bold text-fg/80 mb-2">النص</label>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {READY_TEXTS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => set("combineTextId", state.combineTextId === r.id ? null : r.id)}
+              className={`p-3 rounded-xl border-2 text-sm text-center ${
+                state.combineTextId === r.id ? "border-gold bg-gold/10" : "border-white/10"
+              }`}
+            >
+              <span className="font-arabic block">{r.text}</span>
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={state.combineTextCustom}
+          onChange={(e) => set("combineTextCustom", e.target.value)}
+          placeholder="أو اكتب نصك..."
+          className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-fg"
+          dir="rtl"
+        />
       </div>
-      <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border border-white/20">
-        رجوع
-      </button>
+
+      <div>
+        <label className="block text-sm font-bold text-fg/80 mb-2">صورة (اختياري)</label>
+        <div className="flex gap-3 mb-3">
+          <button
+            type="button"
+            onClick={() => set("combineImageSource", state.combineImageSource === "upload" ? null : "upload")}
+            className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 ${
+              state.combineImageSource === "upload" ? "border-gold bg-gold/10" : "border-white/10"
+            }`}
+          >
+            <Upload className="w-8 h-8 text-fg/40" />
+            <span className="text-xs">رفع صورة</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => set("combineImageSource", state.combineImageSource === "studio" ? null : "studio")}
+            className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 ${
+              state.combineImageSource === "studio" ? "border-gold bg-gold/10" : "border-white/10"
+            }`}
+          >
+            <ImageIcon className="w-8 h-8 text-fg/40" />
+            <span className="text-xs">من الاستوديو</span>
+          </button>
+        </div>
+        {state.combineImageSource === "upload" && (
+          <>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full p-4 rounded-xl border-2 border-dashed border-white/20 hover:border-gold/40"
+            >
+              {state.imagePreviewUrl ? (
+                <div className="relative inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={state.imagePreviewUrl} alt="" className="h-24 w-auto rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onImageChange(null, null);
+                    }}
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ) : (
+                "اضغط لاختيار صورة"
+              )}
+            </button>
+          </>
+        )}
+        {state.combineImageSource === "studio" && (
+          studioArtworks.length > 0 ? (
+          <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+            {studioArtworks.map((art) => (
+              <button
+                key={art.id}
+                type="button"
+                onClick={() => set("combineStudioId", state.combineStudioId === art.id ? null : art.id)}
+                className={`aspect-square rounded-lg overflow-hidden border-2 ${
+                  state.combineStudioId === art.id ? "border-gold" : "border-white/10"
+                }`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={art.image_url} alt="" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+          ) : (
+            <p className="text-fg/50 text-sm py-4">لا توجد أعمال في الاستوديو — اختر رفع صورة أو تخطّ الصورة</p>
+          )
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-fg/80 mb-2">النمط</label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {DESIGN_STYLES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => set("styleId", s.id)}
+              className={`px-4 py-3 rounded-xl border-2 text-sm ${
+                state.styleId === s.id ? "border-gold bg-gold/10" : "border-white/10"
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+        <div className="flex gap-2">
+          {CREATION_POSITIONS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => set("position", p.id)}
+              className={`px-4 py-2 rounded-xl border-2 text-sm ${
+                state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {state.error && <p className="text-red-400 text-sm">{state.error}</p>}
+      <div className="flex gap-3">
+        <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border border-white/20">
+          رجوع
+        </button>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={!canCombine}
+          className="btn-gold disabled:opacity-50 inline-flex items-center gap-2"
+        >
+          {state.isGenerating ? (
+            <>
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-5 h-5 border-2 border-bg border-t-current rounded-full"
+              />
+              جاري الدمج...
+            </>
+          ) : (
+            "دمج وتوليد التصميم"
+          )}
+        </button>
+      </div>
     </motion.div>
   );
 }

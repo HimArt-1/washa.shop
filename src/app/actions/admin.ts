@@ -181,6 +181,131 @@ export async function getAdminOverview() {
 }
 
 // ═══════════════════════════════════════════════════════════
+//  1b. ANALYTICS — لوحة التحليلات
+// ═══════════════════════════════════════════════════════════
+
+export type AnalyticsPeriod = "7d" | "30d" | "90d";
+
+export interface AnalyticsData {
+    revenueByDay: { date: string; revenue: number; orders: number }[];
+    topProducts: { productId: string; title: string; quantity: number; revenue: number }[];
+    usersByDay: { date: string; count: number }[];
+    summary: { totalRevenue: number; totalOrders: number; totalUsers: number; avgOrderValue: number };
+}
+
+export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promise<AnalyticsData> {
+    noStore();
+    try {
+        const { supabase } = await requireAdmin();
+
+        const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startIso = startDate.toISOString();
+
+        // 1. Orders (paid) with created_at for revenue/orders by day
+        const { data: ordersData } = await supabase
+            .from("orders")
+            .select("id, total, created_at")
+            .gte("created_at", startIso)
+            .in("payment_status", ["paid"]);
+
+        const orders = (ordersData as { id: string; total: number; created_at: string }[]) || [];
+        const totalRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+
+        // Group by date
+        const revenueByDayMap = new Map<string, { revenue: number; orders: number }>();
+        for (let i = 0; i < days; i++) {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + i);
+            const key = d.toISOString().slice(0, 10);
+            revenueByDayMap.set(key, { revenue: 0, orders: 0 });
+        }
+        for (const o of orders) {
+            const key = o.created_at.slice(0, 10);
+            const curr = revenueByDayMap.get(key) ?? { revenue: 0, orders: 0 };
+            curr.revenue += Number(o.total) || 0;
+            curr.orders += 1;
+            revenueByDayMap.set(key, curr);
+        }
+        const revenueByDay = Array.from(revenueByDayMap.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([date, v]) => ({ date, revenue: v.revenue, orders: v.orders }));
+
+        // 2. Top products from order_items
+        const orderIds = orders.map((o) => o.id);
+        let topProducts: { productId: string; title: string; quantity: number; revenue: number }[] = [];
+
+        if (orderIds.length > 0) {
+            const { data: itemsData } = await supabase
+                .from("order_items")
+                .select("product_id, quantity, total_price, product:products(title)")
+                .in("order_id", orderIds);
+
+            const items = (itemsData as any[]) || [];
+            const byProduct = new Map<string, { title: string; quantity: number; revenue: number }>();
+
+            for (const it of items) {
+                const pid = it.product_id || "custom";
+                const title = it.product?.title ?? "تصميم مخصص";
+                const qty = Number(it.quantity) || 0;
+                const rev = Number(it.total_price) || 0;
+                const curr = byProduct.get(pid) ?? { title, quantity: 0, revenue: 0 };
+                curr.quantity += qty;
+                curr.revenue += rev;
+                byProduct.set(pid, curr);
+            }
+            topProducts = Array.from(byProduct.entries())
+                .map(([productId, v]) => ({ productId, title: v.title, quantity: v.quantity, revenue: v.revenue }))
+                .sort((a, b) => b.quantity - a.quantity)
+                .slice(0, 10);
+        }
+
+        // 3. Users by day (profiles created_at)
+        const { data: profilesData } = await supabase
+            .from("profiles")
+            .select("created_at")
+            .gte("created_at", startIso);
+
+        const profiles = (profilesData as { created_at: string }[]) || [];
+        const usersByDayMap = new Map<string, number>();
+        for (let i = 0; i < days; i++) {
+            const d = new Date(startDate);
+            d.setDate(d.getDate() + i);
+            const key = d.toISOString().slice(0, 10);
+            usersByDayMap.set(key, 0);
+        }
+        for (const p of profiles) {
+            const key = p.created_at.slice(0, 10);
+            usersByDayMap.set(key, (usersByDayMap.get(key) ?? 0) + 1);
+        }
+        const usersByDay = Array.from(usersByDayMap.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([date, count]) => ({ date, count }));
+
+        return {
+            revenueByDay,
+            topProducts,
+            usersByDay,
+            summary: {
+                totalRevenue,
+                totalOrders: orders.length,
+                totalUsers: profiles.length,
+                avgOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
+            },
+        };
+    } catch (err) {
+        console.error("getAdminAnalytics error:", err);
+        return {
+            revenueByDay: [],
+            topProducts: [],
+            usersByDay: [],
+            summary: { totalRevenue: 0, totalOrders: 0, totalUsers: 0, avgOrderValue: 0 },
+        };
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
 //  2. USERS — إدارة المستخدمين
 // ═══════════════════════════════════════════════════════════
 

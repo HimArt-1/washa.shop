@@ -7,6 +7,7 @@ import { ChevronLeft, Home, Zap } from "lucide-react";
 
 const ROUTES: Record<string, { label: string; parent?: string }> = {
     "/dashboard": { label: "نظرة عامة" },
+    "/dashboard/analytics": { label: "التحليلات", parent: "/dashboard" },
     "/dashboard/users-clerk": { label: "مستخدمي Clerk", parent: "/dashboard" },
     "/dashboard/users": { label: "المستخدمون", parent: "/dashboard" },
     "/dashboard/orders": { label: "الطلبات", parent: "/dashboard" },

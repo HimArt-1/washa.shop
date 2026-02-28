@@ -16,9 +16,18 @@ import {
     Palette,
     Settings,
     Sparkles,
+    Check,
+    CheckCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import {
+    getAdminNotifications,
+    getUnreadNotificationsCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+    type AdminNotification,
+} from "@/app/actions/notifications";
 
 const COMMAND_ITEMS = [
     { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
@@ -39,6 +48,27 @@ export function AdminTopBar() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const fetchNotifications = useCallback(async () => {
+        const [list, count] = await Promise.all([
+            getAdminNotifications(15),
+            getUnreadNotificationsCount(),
+        ]);
+        setNotifications(list);
+        setUnreadCount(count);
+    }, []);
+
+    useEffect(() => {
+        if (notificationsOpen) fetchNotifications();
+    }, [notificationsOpen, fetchNotifications]);
+
+    useEffect(() => {
+        getUnreadNotificationsCount().then(setUnreadCount);
+        const interval = setInterval(() => getUnreadNotificationsCount().then(setUnreadCount), 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const filtered = query.trim()
         ? COMMAND_ITEMS.filter((i) =>
@@ -96,7 +126,11 @@ export function AdminTopBar() {
                             aria-label="الإشعارات"
                         >
                             <Bell className="w-5 h-5" />
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-gold/80" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-gold text-bg text-[10px] font-bold flex items-center justify-center px-1">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
+                            )}
                         </button>
                         <div className="[&_.cl-userButtonBox]:flex [&_.cl-userButtonTrigger]:rounded-xl">
                             <UserButton
@@ -179,7 +213,7 @@ export function AdminTopBar() {
                 )}
             </AnimatePresence>
 
-            {/* Notifications Dropdown (placeholder) */}
+            {/* Notifications Dropdown */}
             <AnimatePresence>
                 {notificationsOpen && (
                     <>
@@ -194,19 +228,68 @@ export function AdminTopBar() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="fixed top-16 left-4 right-4 sm:left-auto sm:right-8 sm:w-96 z-50 rounded-2xl border border-white/[0.08] bg-surface/95 backdrop-blur-2xl shadow-2xl p-4"
+                            className="fixed top-16 left-4 right-4 sm:left-auto sm:right-8 sm:w-[400px] z-50 rounded-2xl border border-white/[0.08] bg-surface/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
                         >
-                            <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
                                 <h3 className="font-bold text-fg">الإشعارات</h3>
-                                <button
-                                    onClick={() => setNotificationsOpen(false)}
-                                    className="text-fg/40 hover:text-fg text-sm"
-                                >
-                                    إغلاق
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={async () => {
+                                                await markAllNotificationsRead();
+                                                fetchNotifications();
+                                            }}
+                                            className="text-xs text-gold hover:text-gold-light flex items-center gap-1"
+                                        >
+                                            <CheckCheck className="w-3.5 h-3.5" />
+                                            تعليم الكل كمقروء
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setNotificationsOpen(false)}
+                                        className="text-fg/40 hover:text-fg text-sm"
+                                    >
+                                        إغلاق
+                                    </button>
+                                </div>
                             </div>
-                            <div className="text-center py-12 text-fg/40 text-sm">
-                                لا توجد إشعارات جديدة
+                            <div className="max-h-[360px] overflow-y-auto">
+                                {notifications.length > 0 ? (
+                                    notifications.map((n) => (
+                                        <Link
+                                            key={n.id}
+                                            href={n.link || "#"}
+                                            onClick={async () => {
+                                                if (!n.is_read) {
+                                                    await markNotificationRead(n.id);
+                                                    fetchNotifications();
+                                                }
+                                                setNotificationsOpen(false);
+                                            }}
+                                            className={`flex items-start gap-3 px-4 py-3 border-b border-white/[0.03] hover:bg-white/[0.04] transition-colors ${
+                                                !n.is_read ? "bg-gold/5" : ""
+                                            }`}
+                                        >
+                                            <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${!n.is_read ? "bg-gold" : "bg-transparent"}`} />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-fg text-sm">{n.title}</p>
+                                                {n.message && <p className="text-xs text-fg/50 mt-0.5">{n.message}</p>}
+                                                <p className="text-[10px] text-fg/30 mt-1" dir="ltr">
+                                                    {new Date(n.created_at).toLocaleString("ar-SA", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-16 text-fg/40 text-sm">
+                                        لا توجد إشعارات
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     </>
