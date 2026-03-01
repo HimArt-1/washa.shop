@@ -9,9 +9,11 @@ import {
     ChevronDown,
     ChevronLeft,
     ChevronRight,
+    FileDown,
     Loader2,
     Package,
 } from "lucide-react";
+import { openInvoicePrint } from "@/lib/invoice";
 import Image from "next/image";
 
 interface OrdersClientProps {
@@ -156,29 +158,39 @@ export function OrdersClient({
                                                 {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
                                             </td>
                                             <td className="px-6 py-3.5">
-                                                {available.length > 0 ? (
-                                                    <div className="flex gap-1">
-                                                        {available.map((s) => (
-                                                            <button
-                                                                key={s}
-                                                                onClick={() => handleStatusChange(order.id, s)}
-                                                                disabled={updatingOrder === order.id}
-                                                                className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all disabled:opacity-50 ${s === "cancelled"
-                                                                        ? "border-red-500/20 text-red-400 hover:bg-red-500/10"
-                                                                        : "border-gold/20 text-gold hover:bg-gold/10"
-                                                                    }`}
-                                                            >
-                                                                {s === "confirmed" ? "تأكيد" :
-                                                                    s === "processing" ? "معالجة" :
-                                                                        s === "shipped" ? "شحن" :
-                                                                            s === "delivered" ? "تسليم" :
-                                                                                s === "cancelled" ? "إلغاء" : s}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-fg/20 text-xs">—</span>
-                                                )}
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => openInvoicePrint(order)}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-white/10 text-fg/60 hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
+                                                        title="تصدير فاتورة"
+                                                    >
+                                                        <FileDown className="w-3.5 h-3.5" />
+                                                        فاتورة
+                                                    </button>
+                                                    {available.length > 0 ? (
+                                                        <div className="flex gap-1">
+                                                            {available.map((s) => (
+                                                                <button
+                                                                    key={s}
+                                                                    onClick={() => handleStatusChange(order.id, s)}
+                                                                    disabled={updatingOrder === order.id}
+                                                                    className={`px-3 py-1.5 text-[10px] font-bold rounded-lg border transition-all disabled:opacity-50 ${s === "cancelled"
+                                                                            ? "border-red-500/20 text-red-400 hover:bg-red-500/10"
+                                                                            : "border-gold/20 text-gold hover:bg-gold/10"
+                                                                        }`}
+                                                                >
+                                                                    {s === "confirmed" ? "تأكيد" :
+                                                                        s === "processing" ? "معالجة" :
+                                                                            s === "shipped" ? "شحن" :
+                                                                                s === "delivered" ? "تسليم" :
+                                                                                    s === "cancelled" ? "إلغاء" : s}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-fg/20 text-xs">—</span>
+                                                    )}
+                                                </div>
                                             </td>
                                         </motion.tr>
                                         {isExpanded && items.length > 0 && (

@@ -17,7 +17,15 @@ async function getProfileId(clerkId: string) {
     return data?.id;
 }
 
-export async function getProductReviews(productId: string) {
+type ReviewWithUser = { id: string; rating: number; comment: string | null; created_at: string; user: { display_name: string; avatar_url: string | null } };
+
+function normalizeReviewUser<T extends { user?: unknown }>(row: T): T & { user: { display_name: string; avatar_url: string | null } } {
+    const u = row.user;
+    const user = Array.isArray(u) ? (u[0] ?? { display_name: "", avatar_url: null }) : (u ?? { display_name: "", avatar_url: null });
+    return { ...row, user } as T & { user: { display_name: string; avatar_url: string | null } };
+}
+
+export async function getProductReviews(productId: string): Promise<ReviewWithUser[]> {
     const supabase = getAdminClient();
     const { data } = await supabase
         .from("product_reviews")
@@ -25,7 +33,7 @@ export async function getProductReviews(productId: string) {
         .eq("product_id", productId)
         .order("created_at", { ascending: false })
         .limit(50);
-    return (data || []) as { id: string; rating: number; comment: string | null; created_at: string; user: { display_name: string; avatar_url: string | null } }[];
+    return ((data || []) as Record<string, unknown>[]).map(normalizeReviewUser) as ReviewWithUser[];
 }
 
 export async function submitProductReview(productId: string, rating: number, comment?: string) {
@@ -69,7 +77,7 @@ async function updateProductRating(productId: string) {
         .eq("id", productId);
 }
 
-export async function getArtworkReviews(artworkId: string) {
+export async function getArtworkReviews(artworkId: string): Promise<ReviewWithUser[]> {
     const supabase = getAdminClient();
     const { data } = await supabase
         .from("artwork_reviews")
@@ -77,7 +85,7 @@ export async function getArtworkReviews(artworkId: string) {
         .eq("artwork_id", artworkId)
         .order("created_at", { ascending: false })
         .limit(50);
-    return (data || []) as { id: string; rating: number; comment: string | null; created_at: string; user: { display_name: string; avatar_url: string | null } }[];
+    return ((data || []) as Record<string, unknown>[]).map(normalizeReviewUser) as ReviewWithUser[];
 }
 
 export async function submitArtworkReview(artworkId: string, rating: number, comment?: string) {

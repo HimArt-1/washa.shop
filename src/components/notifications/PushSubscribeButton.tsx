@@ -40,7 +40,7 @@ export function PushSubscribeButton() {
             const sub = await reg.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-                    ? urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+                    ? (urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) as BufferSource)
                     : undefined,
             });
             const json = sub.toJSON();

@@ -207,8 +207,8 @@ export function AnalyticsClient({
                                     borderRadius: "12px",
                                 }}
                                 labelStyle={{ color: "#ceae7f" }}
-                                formatter={(value: number, name: string) =>
-                                    [name.includes("إيرادات") ? `${value.toLocaleString()} ر.س` : value, name]
+                                formatter={(value, name) =>
+                                    [String(name ?? "").includes("إيرادات") ? `${(value ?? 0).toLocaleString()} ر.س` : (value ?? 0), name ?? ""]
                                 }
                                 labelFormatter={(label) => `التاريخ: ${label}`}
                             />
