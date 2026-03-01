@@ -1,4 +1,5 @@
 import { getAdminArtworks } from "@/app/actions/admin";
+import { getCategories, getAdminArtistsForSelect } from "@/app/actions/settings";
 import { ArtworksClient } from "@/components/admin/ArtworksClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
@@ -11,13 +12,17 @@ export default async function AdminArtworksPage({ searchParams }: PageProps) {
     const page = Number(params.page) || 1;
     const status = params.status || "all";
 
-    const { data: artworks, count, totalPages } = await getAdminArtworks(page, status);
+    const [{ data: artworks, count, totalPages }, { data: categories }, artists] = await Promise.all([
+        getAdminArtworks(page, status),
+        getCategories(),
+        getAdminArtistsForSelect(),
+    ]);
 
     return (
         <div className="space-y-6">
             <AdminHeader
                 title="إدارة الأعمال الفنية"
-                subtitle="مراجعة ونشر وأرشفة الأعمال الفنية على المنصة."
+                subtitle="إضافة وتعديل وحذف ومراجعة الأعمال الفنية على المنصة."
             />
 
             <ArtworksClient
@@ -26,6 +31,8 @@ export default async function AdminArtworksPage({ searchParams }: PageProps) {
                 totalPages={totalPages}
                 currentPage={page}
                 currentStatus={status}
+                artists={artists}
+                categories={categories || []}
             />
         </div>
     );

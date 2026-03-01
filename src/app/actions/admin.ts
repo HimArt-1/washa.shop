@@ -1132,3 +1132,144 @@ export async function updateArtworkStatus(
     revalidatePath("/");
     return { success: true };
 }
+
+/** رفع صورة عمل فني (للأدمن) */
+export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+    const { supabase } = await requireAdmin();
+
+    const file = formData.get("file") as File | null;
+    if (!file || !(file instanceof File)) return { success: false, error: "لم يتم اختيار ملف" };
+    if (file.size > 5 * 1024 * 1024) return { success: false, error: "حجم الملف يجب أن لا يتجاوز 5 ميجابايت" };
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
+
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const { data, error } = await supabase.storage
+        .from("artworks")
+        .upload(path, buffer, { cacheControl: "3600", upsert: false, contentType: file.type });
+
+    if (error) {
+        console.error("[uploadArtworkImageAdmin]", error);
+        return { success: false, error: error.message };
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("artworks").getPublicUrl(data.path);
+    return { success: true, url: publicUrl };
+}
+
+/** إنشاء عمل فني (للأدمن) */
+export async function createArtworkAdmin(data: {
+    artist_id: string;
+    title: string;
+    description?: string | null;
+    category_id?: string | null;
+    image_url: string;
+    medium?: string | null;
+    dimensions?: string | null;
+    year?: number | null;
+    tags?: string[];
+    price?: number | null;
+    currency?: string;
+    status?: string;
+    is_featured?: boolean;
+}): Promise<{ success: true } | { success: false; error: string }> {
+    const { supabase } = await requireAdmin();
+
+    const insert: Record<string, unknown> = {
+        artist_id: data.artist_id,
+        title: data.title.trim(),
+        description: data.description?.trim() || null,
+        category_id: data.category_id || null,
+        image_url: data.image_url,
+        medium: data.medium?.trim() || null,
+        dimensions: data.dimensions?.trim() || null,
+        year: data.year ?? null,
+        tags: data.tags || [],
+        price: data.price ?? null,
+        currency: data.currency || "SAR",
+        status: data.status || "published",
+        is_featured: data.is_featured ?? false,
+    };
+
+    const { error } = await supabase.from("artworks").insert(insert);
+
+    if (error) {
+        console.error("[createArtworkAdmin]", error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath("/dashboard/artworks");
+    revalidatePath("/");
+    return { success: true };
+}
+
+/** تحديث عمل فني (للأدمن) */
+export async function updateArtworkAdmin(id: string, data: {
+    artist_id?: string;
+    title?: string;
+    description?: string | null;
+    category_id?: string | null;
+    image_url?: string;
+    medium?: string | null;
+    dimensions?: string | null;
+    year?: number | null;
+    tags?: string[];
+    price?: number | null;
+    currency?: string;
+    status?: string;
+    is_featured?: boolean;
+}): Promise<{ success: true } | { success: false; error: string }> {
+    const { supabase } = await requireAdmin();
+
+    const update: Record<string, unknown> = {};
+    if (data.artist_id !== undefined) update.artist_id = data.artist_id;
+    if (data.title !== undefined) update.title = data.title.trim();
+    if (data.description !== undefined) update.description = data.description?.trim() || null;
+    if (data.category_id !== undefined) update.category_id = data.category_id || null;
+    if (data.image_url !== undefined) update.image_url = data.image_url;
+    if (data.medium !== undefined) update.medium = data.medium?.trim() || null;
+    if (data.dimensions !== undefined) update.dimensions = data.dimensions?.trim() || null;
+    if (data.year !== undefined) update.year = data.year ?? null;
+    if (data.tags !== undefined) update.tags = data.tags;
+    if (data.price !== undefined) update.price = data.price ?? null;
+    if (data.currency !== undefined) update.currency = data.currency;
+    if (data.status !== undefined) update.status = data.status;
+    if (data.is_featured !== undefined) update.is_featured = data.is_featured;
+
+    const { error } = await supabase.from("artworks").update(update).eq("id", id);
+
+    if (error) {
+        console.error("[updateArtworkAdmin]", error);
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath("/dashboard/artworks");
+    revalidatePath("/");
+    return { success: true };
+}
+
+/** حذف عمل فني (للأدمن) */
+export async function deleteArtworkAdmin(id: string, imageUrl?: string | null): Promise<{ success: true } | { success: false; error: string }> {
+    const { supabase } = await requireAdmin();
+
+    const { error } = await supabase.from("artworks").delete().eq("id", id);
+
+    if (error) {
+        console.error("[deleteArtworkAdmin]", error);
+        return { success: false, error: error.message };
+    }
+
+    if (imageUrl && imageUrl.includes("/artworks/")) {
+        const path = imageUrl.split("/artworks/").pop();
+        if (path) await supabase.storage.from("artworks").remove([path]);
+    }
+
+    revalidatePath("/dashboard/artworks");
+    revalidatePath("/");
+    return { success: true };
+}
