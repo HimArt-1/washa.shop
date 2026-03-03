@@ -20,7 +20,7 @@ export async function sendPushToAll(title: string, body: string, url?: string) {
     if (!isPushEnabled()) return { sent: 0 };
     try {
         webpush.setVapidDetails(
-            "mailto:support@washa.stor",
+            "mailto:support@washa.shop",
             VAPID_PUBLIC!,
             VAPID_PRIVATE!
         );

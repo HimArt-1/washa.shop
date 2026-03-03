@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.stor";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
 function getSupabase() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

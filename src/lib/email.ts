@@ -65,7 +65,7 @@ export async function sendApplicationAcceptedEmail(to: string, name: string, tem
                 <h1 style="color: #ceae7f; font-size: 24px;">مبروك ${name}!</h1>
                 <p style="color: #333; line-height: 1.7;">تم قبول طلب انضمامك كفنان وشّاي. يمكنك الآن الدخول إلى الاستوديو ورفع أعمالك وبيعها.</p>
                 ${passwordNote}
-                <p style="color: #333; line-height: 1.7; margin-top: 24px;"><a href="${process.env.NEXT_PUBLIC_APP_URL || "https://washa.stor"}/studio" style="color: #ceae7f; font-weight: bold;">ادخل إلى الاستوديو ←</a></p>
+                <p style="color: #333; line-height: 1.7; margin-top: 24px;"><a href="${process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop"}/studio" style="color: #ceae7f; font-weight: bold;">ادخل إلى الاستوديو ←</a></p>
                 <p style="color: #666; margin-top: 32px;">— فريق ${SITE_NAME}</p>
             </div>
         `,
@@ -126,7 +126,7 @@ export async function sendAdminOrderNotificationEmail(
     const desc = type === "new_order"
         ? "تم إنشاء طلب جديد في المتجر."
         : "تم تأكيد الدفع لطلب عبر Stripe.";
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.stor";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
     return send({
         to: adminEmail,
         subject: `[${SITE_NAME}] ${subject}`,
@@ -155,7 +155,7 @@ export async function sendAdminApplicationNotificationEmail(
 ) {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail?.trim()) return { success: false };
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.stor";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
     return send({
         to: adminEmail,
         subject: `[${SITE_NAME}] طلب انضمام جديد — ${fullName}`,
