@@ -206,6 +206,76 @@ export interface NewsletterSubscriber {
     is_active: boolean;
 }
 
+// ─── Smart Store (صمم قطعتك) ─────────────────────────────
+
+export interface CustomDesignGarment {
+    id: string;
+    name: string;
+    slug: string;
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignColor {
+    id: string;
+    garment_id: string;
+    name: string;
+    hex_code: string;
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignSize {
+    id: string;
+    garment_id: string;
+    color_id: string | null;
+    name: string;
+    image_front_url: string | null;
+    image_back_url: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignStyle {
+    id: string;
+    name: string;
+    description: string | null;
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignArtStyle {
+    id: string;
+    name: string;
+    description: string | null;
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignColorPackage {
+    id: string;
+    name: string;
+    colors: { hex: string; name: string }[];
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── Database Schema (Supabase-compatible) ───────────────
 
 export interface Database {
@@ -256,6 +326,37 @@ export interface Database {
                 Insert: Omit<NewsletterSubscriber, "id" | "subscribed_at" | "is_active"> & { is_active?: boolean };
                 Update: Partial<Omit<NewsletterSubscriber, "id" | "subscribed_at">>;
             };
+            custom_design_garments: {
+                Row: CustomDesignGarment;
+                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignGarment, "id" | "created_at">>;
+            };
+            custom_design_colors: {
+                Row: CustomDesignColor;
+                Insert: Omit<CustomDesignColor, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignColor, "id" | "created_at">>;
+            };
+            custom_design_sizes: {
+                Row: CustomDesignSize;
+                Insert: Omit<CustomDesignSize, "id" | "created_at" | "updated_at" | "is_active"> & { is_active?: boolean };
+                Update: Partial<Omit<CustomDesignSize, "id" | "created_at">>;
+            };
+            custom_design_styles: {
+                Row: CustomDesignStyle;
+                Insert: Omit<CustomDesignStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignStyle, "id" | "created_at">>;
+            };
+            custom_design_art_styles: {
+                Row: CustomDesignArtStyle;
+                Insert: Omit<CustomDesignArtStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignArtStyle, "id" | "created_at">>;
+            };
+            custom_design_color_packages: {
+                Row: CustomDesignColorPackage;
+                Insert: Omit<CustomDesignColorPackage, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignColorPackage, "id" | "created_at">>;
+            };
         };
     };
 }
+

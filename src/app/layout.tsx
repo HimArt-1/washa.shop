@@ -100,33 +100,42 @@ export default function RootLayout({
           {/* Floating Join Button */}
           <FloatingJoinButton />
 
-          {/* Re:amaze — دعم فني (GoDaddy) */}
+          {/* Re:amaze — دعم فني */}
           <Script id="reamaze-config" strategy="beforeInteractive">{`
-            window._support = window._support || { 'ui': {}, 'user': {} };
-            window._support['account'] = 'e0b4e5a7-7c09-4071-882e-2477bd1f3d20';
-            window._support['ui']['contactMode'] = 'default';
-            window._support['ui']['enableKb'] = 'false';
-            window._support['ui']['mailbox'] = '77652573';
-            window._support['ui']['styles'] = { widgetColor: '#ceae7f' };
-            window._support['ui']['shoutboxFacesMode'] = 'brand-avatar';
-            window._support['ui']['widget'] = {
-              icon: 'webChat',
+            var _support = _support || { 'ui': {}, 'user': {} };
+            _support['account'] = 'e0b4e5a7-7c09-4071-882e-2477bd1f3d20';
+            _support['ui']['contactMode'] = 'mixed';
+            _support['ui']['enableKb'] = 'true';
+            _support['ui']['mailbox'] = '77652573';
+            _support['ui']['styles'] = {
+              widgetColor: '#8c3a08',
+              gradient: 'true'
+            };
+            _support['ui']['shoutboxFacesMode'] = '';
+            _support['ui']['widget'] = {
               allowBotProcessing: 'false',
-              slug: 'washa',
+              slug: 'wshw-fnun-yrtd',
               label: {
-                text: 'أهلاً وسهلاً..\\nحياك الله في وشّى ..\\nأكتب مشكلتك ..',
+                text: 'حياك الله في وشّى ..',
                 mode: 'notification',
-                delay: 10,
-                secondary: ''
+                delay: 3,
+                duration: 30,
+                primary: '',
+                secondary: '',
+                sound: 'true'
               },
               position: 'bottom-right'
             };
-            window._support['ui']['overrides'] = window._support['ui']['overrides'] || {};
-            window._support['ui']['overrides']['confirmationMessage'] = 'شكراً .. بيرد عليك موظفنا بس يخلص الشغله اللي عنده .. معليش اذا تأخرنا عليك 🤍🐢';
-            window._support['ui']['user'] = {"authpath":"/m/api/reamaze/v2/customers/auth?brand=38752227"};
+            _support['ui']['overrides'] = _support['ui']['overrides'] || {};
+            _support['ui']['overrides']['confirmationMessage'] = 'تم تلقي رسالتك .. موظفنا بس يخلص اللي في يده ويرد عليك .. معليش اذا تأخرنا عليك .. ';
+            _support['ui']['overrides']['uploadingAttachments'] = 'جاري رفع {{count}} مرفق...';
+            _support['apps'] = {
+              recentConversations: {},
+              faq: {"enabled":"true"}
+            };
           `}</Script>
           <Script
-            src="https://cdn.reamaze.com/assets/reamaze-godaddy-loader.js"
+            src="https://cdn.reamaze.com/assets/reamaze-loader.js"
             strategy="afterInteractive"
           />
         </body>

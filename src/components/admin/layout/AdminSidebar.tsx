@@ -24,6 +24,7 @@ import {
     Mail,
     Settings,
     Palette,
+    Wand2,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -74,6 +75,7 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
                 { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
                 { icon: Package, label: "المنتجات", href: "/dashboard/products" },
                 { icon: Palette, label: "تصاميم وشّى الحصرية", href: "/dashboard/exclusive-designs" },
+                { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store" },
             ],
         },
         {

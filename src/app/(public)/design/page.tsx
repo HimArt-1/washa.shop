@@ -1,9 +1,5 @@
-import { redirect } from "next/navigation";
-import { DesignCreationWizard } from "@/components/design-creation/DesignCreationWizard";
-import { DesignAccessDenied } from "@/components/design-creation/DesignAccessDenied";
-import { getFeaturedArtworks } from "@/app/actions/artworks";
-import { canAccessDesignPiece } from "@/app/actions/design-piece";
-import { getCreationPrices, getActiveExclusiveDesigns } from "@/app/actions/settings";
+import Link from "next/link";
+import { Construction, ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -12,42 +8,27 @@ export const metadata: Metadata = {
     "صمّم طباعتك على هودي أو تيشيرت — نصوص جاهزة، تصاميم من الاستوديو، أو توليد بالذكاء الاصطناعي. معاينة فورية وطلب سهل.",
 };
 
-export default async function DesignPage() {
-  const { allowed, reason } = await canAccessDesignPiece();
-
-  if (!allowed) {
-    if (reason === "not_signed_in") {
-      redirect("/sign-in?redirect_url=/design");
-    }
-    return <DesignAccessDenied />;
-  }
-
-  const [featuredArtworks, creationPrices, exclusiveDesigns] = await Promise.all([
-    getFeaturedArtworks(),
-    getCreationPrices(),
-    getActiveExclusiveDesigns(),
-  ]);
-  const studioArtworks = (featuredArtworks ?? []).map((a: any) => ({
-    id: a.id,
-    image_url: a.image_url,
-    title: a.title,
-  }));
-
+export default function DesignPage() {
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg">صمّم قطعتك</h1>
-        <p className="text-fg/60 mt-2 max-w-2xl">
-          اختر القطعة واللون، ثم صمّم طباعتك — نصوص جاهزة، من الاستوديو، أو بالذكاء الاصطناعي.
-          معاينة فورية وطلب سهل.
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="max-w-lg text-center space-y-6">
+        <div className="mx-auto w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center">
+          <Construction className="w-10 h-10 text-gold" />
+        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-fg">
+          تحت التطوير 🚧
+        </h1>
+        <p className="text-fg/50 leading-relaxed">
+          نعمل على تطوير هذه الصفحة لتقديم تجربة أفضل. في هذه الأثناء، جرّب واجهة التصميم الجديدة!
         </p>
+        <Link
+          href="/design-your-piece"
+          className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          صمّم قطعتك بنفسك
+        </Link>
       </div>
-
-      <DesignCreationWizard
-        studioArtworks={studioArtworks}
-        creationPrices={creationPrices}
-        exclusiveDesigns={exclusiveDesigns}
-      />
     </div>
   );
 }
