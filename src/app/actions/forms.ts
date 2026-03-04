@@ -69,7 +69,7 @@ export async function submitApplication(formData: FormData): Promise<ActionRespo
         message: `${validated.data.full_name} — ${validated.data.art_style}`,
         link: "/dashboard/applications",
         metadata: { email: validated.data.email },
-    }).catch(() => {});
+    }).catch(() => { });
 
     sendAdminApplicationNotificationEmail(
         validated.data.full_name,
@@ -77,7 +77,7 @@ export async function submitApplication(formData: FormData): Promise<ActionRespo
         validated.data.art_style
     ).catch(console.error);
 
-    sendPushToAll("طلب انضمام جديد", `${validated.data.full_name} — ${validated.data.art_style}`, "/dashboard/applications").catch(() => {});
+    sendPushToAll("طلب انضمام جديد", `${validated.data.full_name} — ${validated.data.art_style}`, "/dashboard/applications").catch(() => { });
 
     revalidatePath("/"); // Revalidate cache for relevant paths
     return { success: true, message: "تم استلام طلبك بنجاح! سنقوم بمراجعته والتواصل معك قريباً." };
@@ -100,12 +100,13 @@ export async function subscribeNewsletter(formData: FormData): Promise<ActionRes
 
     const supabase = getSupabaseServerClient();
 
-    // Using cast to any to allow .onConflict().ignore() chain which might lack types
+    // Use upsert with ignoreDuplicates to handle existing email silently
     const { error } = await (supabase as any)
         .from("newsletter_subscribers")
-        .insert([{ email: validated.data.email }])
-        .onConflict("email")
-        .ignore(); // If email exists, do nothing
+        .upsert([{ email: validated.data.email, is_active: true }], {
+            onConflict: "email",
+            ignoreDuplicates: true,
+        });
 
     if (error) {
         console.error("Newsletter error:", error);

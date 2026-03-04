@@ -22,6 +22,8 @@
 | 2 | `20240210_create_storage.sql` | bucket الأعمال الفنية (artworks) |
 | 3 | `20250126000000_create_designs_bucket.sql` | bucket التصاميم (للتوليد بالذكاء الاصطناعي) |
 | 4 | `20250222000000_create_products_bucket.sql` | bucket المنتجات |
+| ... | (باقي الترحيلات حسب التاريخ) | |
+| أخيراً | `20250227400000_tighten_social_rls.sql` | تشديد RLS للميزات الاجتماعية |
 
 ---
 

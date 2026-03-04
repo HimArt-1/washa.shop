@@ -51,6 +51,18 @@
 
 ---
 
+## حماية مسار Seed
+
+في الإنتاج، مسار `/api/seed` محمي. لتشغيله يدوياً:
+
+1. أضف `SEED_SECRET` إلى متغيرات البيئة (قيمة عشوائية طويلة)
+2. استدعِ: `GET /api/seed?secret=YOUR_SEED_SECRET`
+   أو: `Authorization: Bearer YOUR_SEED_SECRET`
+
+---
+
+---
+
 ## لماذا لا تظهر واجهة الإدارة؟
 
 واجهة الإدارة (**/dashboard**) تظهر **فقط** للمستخدمين الذين لديهم في قاعدة البيانات (Supabase) سجل في جدول **`profiles`** وقيمة **`role = 'admin'`**.
