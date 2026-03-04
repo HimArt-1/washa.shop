@@ -606,3 +606,25 @@ h6 {
       rgba(8, 8, 8, 0.95) 100%);
   z-index: 1;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Reamaze Chat — Hidden by default, shown via JS
+═══════════════════════════════════════════════════════════ */
+
+#reamaze-widget,
+.reamaze-widget-overlay,
+iframe[src*="reamaze"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.reamaze-active #reamaze-widget,
+body.reamaze-active .reamaze-widget-overlay,
+body.reamaze-active iframe[src*="reamaze"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}

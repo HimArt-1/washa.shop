@@ -120,19 +120,20 @@ export function OrderTracker({ orderId }: { orderId: string }) {
         window.location.reload();
     };
 
-    // Toggle Reamaze chat
+    // Toggle Reamaze chat visibility based on order status
     useEffect(() => {
         if (typeof window === "undefined") return;
-        const widget = document.getElementById("reamaze-widget");
-        const reamazeContainer = document.querySelector("[data-reamaze-embed]") as HTMLElement;
-        // Show/hide reamaze based on order status
         if (order && !["completed", "cancelled"].includes(order.status)) {
-            // Active order — show chat
-            document.querySelectorAll(".reamaze-widget-overlay, #reamaze-widget").forEach((el) => {
-                (el as HTMLElement).style.display = "";
-            });
+            // Active order — show Reamaze
+            document.body.classList.add("reamaze-active");
+        } else {
+            // No active order — hide Reamaze
+            document.body.classList.remove("reamaze-active");
         }
-    }, [order, showChat]);
+        return () => {
+            document.body.classList.remove("reamaze-active");
+        };
+    }, [order]);
 
     if (loading) {
         return (

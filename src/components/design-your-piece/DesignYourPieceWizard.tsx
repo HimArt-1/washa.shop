@@ -145,6 +145,8 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
     const handleSend = useCallback(async () => {
         setState((s) => ({ ...s, isSending: true }));
 
+        let orderNumber: number | undefined;
+
         // 1. Submit design order to database
         try {
             const { submitDesignOrder } = await import("@/app/actions/smart-store");
@@ -169,15 +171,16 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 console.error("Order creation error:", result.error);
             } else if (result.orderId) {
                 storeOrderId(result.orderId);
+                orderNumber = result.orderNumber;
                 setActiveOrderId(result.orderId);
             }
         } catch (err) {
             console.error("submitDesignOrder failed:", err);
         }
 
-        // 2. Build summary message in Arabic
+        // 2. Build summary message with order number
         const lines = [
-            "🎨 *طلب تصميم قطعة جديد*",
+            `🎨 *طلب تصميم قطعة جديد*${orderNumber ? ` — #${orderNumber}` : ""}`,
             "",
             `📦 القطعة: ${state.garment?.name ?? "—"}`,
             `🎨 اللون: ${state.color?.name ?? "—"} ${state.color?.hex_code ?? ""}`,
@@ -202,7 +205,8 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
 
         const summaryText = lines.join("\n");
 
-        // 3. Also send via Reamaze as backup
+        // 3. Enable Reamaze and send message
+        document.body.classList.add("reamaze-active");
         try {
             if (typeof window !== "undefined" && (window as any)._support) {
                 const reamazeWidget = document.querySelector("[data-reamaze-widget]") as HTMLElement;
