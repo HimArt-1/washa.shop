@@ -85,11 +85,11 @@ const STEP_INFO = [
     { num: 1, label: "القطعة", icon: Shirt },
     { num: 2, label: "اللون", icon: Palette },
     { num: 3, label: "المقاس", icon: Ruler },
-    { num: 4, label: "الطريقة", icon: Sparkles },
-    { num: 5, label: "النمط", icon: Paintbrush },
-    { num: 6, label: "الأسلوب", icon: SwatchBook },
-    { num: 7, label: "الألوان", icon: Palette },
-    { num: 8, label: "الطباعة", icon: MapPin },
+    { num: 4, label: "الطباعة", icon: MapPin },
+    { num: 5, label: "الطريقة", icon: Sparkles },
+    { num: 6, label: "النمط", icon: Paintbrush },
+    { num: 7, label: "الأسلوب", icon: SwatchBook },
+    { num: 8, label: "الألوان", icon: Palette },
     { num: 9, label: "الإرسال", icon: Send },
 ];
 
@@ -211,29 +211,40 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
         }
 
         // 2. Build summary message with order number
+        const printLocation = state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : state.printPosition === "shoulder_right" ? "الكتف الأيمن" : state.printPosition === "shoulder_left" ? "الكتف الأيسر" : "—";
+        const printSizeAr = state.printSize === "large" ? "مقاس كبير" : state.printSize === "small" ? "مقاس صغير" : "—";
+
         const lines = [
-            `🎨 *طلب تصميم قطعة جديد*${orderNumber ? ` — #${orderNumber}` : ""}`,
+            `مرحباً فريق وشّى 👋`,
+            `لقد انتهيت للتو من تصميم قطعتي الميزة عبر ميزة (صمم قطعتك) وأرغب بتأكيد الطلب! ✨`,
+            orderNumber ? `رقم الطلب المرجعي: #${orderNumber}` : "",
             "",
-            `📦 القطعة: ${state.garment?.name ?? "—"}`,
-            `🎨 اللون: ${state.color?.name ?? "—"} ${state.color?.hex_code ?? ""}`,
-            `📏 المقاس: ${state.size?.name ?? "—"}`,
-            `✍️ طريقة التصميم: ${state.method === "from_text" ? "من نص" : "من صورة"}`,
-            `🖌️ النمط: ${state.style?.name ?? "—"}`,
-            `🎭 الأسلوب: ${state.artStyle?.name ?? "—"}`,
+            `📌 **وهذه تفاصيل قطعتي:**`,
+            `📦 **القطعة:** ${state.garment?.name ?? "—"}`,
+            `🎨 **اللون:** ${state.color?.name ?? "—"} (${state.color?.hex_code ?? ""})`,
+            `📏 **المقاس:** ${state.size?.name ?? "—"}`,
+            `📍 **مكان وحجم الطباعة:** ${printLocation} (${printSizeAr})`,
+            `✍️ **طريقة التصميم:** ${state.method === "from_text" ? "من الوصف النصي" : "من صورة مرجعية"}`,
+            `🖌️ **نمط التصميم:** ${state.style?.name ?? "—"}`,
+            `🎭 **أسلوب الرسم:** ${state.artStyle?.name ?? "—"}`,
         ];
 
         if (state.colorPackage) {
-            lines.push(`🌈 باقة الألوان: ${state.colorPackage.name}`);
+            lines.push(`🌈 **الألوان المفضلة:** باقة ${state.colorPackage.name}`);
+        } else if (state.customColors.length > 0) {
+            lines.push(`🎨 **ألوان مخصصة:** ${state.customColors.join(" - ")}`);
+        } else {
+            lines.push(`🌈 **الألوان المفضلة:** حسب رؤية المصمم`);
         }
-        if (state.customColors.length > 0) {
-            lines.push(`🎨 ألوان مخصصة: ${state.customColors.join(", ")}`);
-        }
+
         if (state.textPrompt) {
-            lines.push("", `📝 وصف التصميم:`, state.textPrompt);
+            lines.push("", `📝 **ما أتخيله للتصميم:**`, `"${state.textPrompt}"`);
         }
         if (state.imagePreview) {
-            lines.push("", "📸 تم إرفاق صورة مرجعية");
+            lines.push("", "📸 لقد قمت بإرفاق صورة توضح الفكرة التي أريدها.");
         }
+
+        lines.push("", "بانتظار تواصلكم معي لتأكيد التفاصيل وتجهيز الطلب، شكراً لكم! 🤍");
 
         const summaryText = lines.join("\n");
 
@@ -347,6 +358,17 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                             <StepSize sizes={sizes} loading={loadingSizes} selected={state.size} onSelect={(sz) => setState((s) => ({ ...s, size: sz }))} onBack={goBack} onNext={goNext} />
                         )}
                         {state.step === 4 && (
+                            <StepPrintPlacement
+                                garment={state.garment}
+                                selectedPosition={state.printPosition}
+                                selectedSize={state.printSize}
+                                onSelectPosition={(p) => setState((s) => ({ ...s, printPosition: p }))}
+                                onSelectSize={(sz) => setState((s) => ({ ...s, printSize: sz }))}
+                                onBack={goBack}
+                                onNext={goNext}
+                            />
+                        )}
+                        {state.step === 5 && (
                             <StepMethod
                                 selected={state.method}
                                 onSelect={(m) => setState((s) => ({ ...s, method: m }))}
@@ -361,30 +383,19 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                                 onNext={goNext}
                             />
                         )}
-                        {state.step === 5 && (
+                        {state.step === 6 && (
                             <StepStyle items={styles} selected={state.style} onSelect={(s) => setState((st) => ({ ...st, style: s }))} onBack={goBack} onNext={goNext} />
                         )}
-                        {state.step === 6 && (
+                        {state.step === 7 && (
                             <StepArtStyle items={artStyles} selected={state.artStyle} onSelect={(a) => setState((s) => ({ ...s, artStyle: a }))} onBack={goBack} onNext={goNext} />
                         )}
-                        {state.step === 7 && (
+                        {state.step === 8 && (
                             <StepColorPalette
                                 packages={colorPackages}
                                 selectedPackage={state.colorPackage}
                                 onSelectPackage={(p) => setState((s) => ({ ...s, colorPackage: p }))}
                                 customColors={state.customColors}
                                 onCustomColorsChange={(c) => setState((s) => ({ ...s, customColors: c }))}
-                                onBack={goBack}
-                                onNext={goNext}
-                            />
-                        )}
-                        {state.step === 8 && (
-                            <StepPrintPlacement
-                                garment={state.garment}
-                                selectedPosition={state.printPosition}
-                                selectedSize={state.printSize}
-                                onSelectPosition={(p) => setState((s) => ({ ...s, printPosition: p }))}
-                                onSelectSize={(sz) => setState((s) => ({ ...s, printSize: sz }))}
                                 onBack={goBack}
                                 onNext={goNext}
                             />
@@ -1143,6 +1154,14 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 <SummaryRow label="القطعة" value={state.garment?.name} />
                 <SummaryRow label="اللون" value={state.color?.name} color={state.color?.hex_code} />
                 <SummaryRow label="المقاس" value={state.size?.name} />
+                <SummaryRow
+                    label="مكان وحجم الطباعة"
+                    value={
+                        (state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : state.printPosition === "shoulder_right" ? "الكتف الأيمن" : state.printPosition === "shoulder_left" ? "الكتف الأيسر" : "—")
+                        + " — " +
+                        (state.printSize === "large" ? "مقاس كبير" : state.printSize === "small" ? "مقاس صغير" : "—")
+                    }
+                />
                 <SummaryRow label="طريقة التصميم" value={state.method === "from_text" ? "من نص" : state.method === "from_image" ? "من صورة" : undefined} />
                 <SummaryRow label="النمط" value={state.style?.name} />
                 <SummaryRow label="الأسلوب" value={state.artStyle?.name} />
