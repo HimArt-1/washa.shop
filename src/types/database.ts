@@ -481,6 +481,14 @@ export interface Database {
                     updated_at?: string;
                 };
             };
+            design_order_messages: {
+                Row: DesignOrderMessage;
+                Insert: Omit<DesignOrderMessage, "id" | "created_at"> & {
+                    id?: string;
+                    created_at?: string;
+                };
+                Update: Partial<Omit<DesignOrderMessage, "id" | "created_at">>;
+            };
         };
     };
 }
@@ -492,6 +500,7 @@ export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" 
 export interface CustomDesignOrder {
     id: string;
     order_number: number;
+    user_id?: string | null;
 
     // Customer
     customer_name: string | null;
@@ -549,4 +558,12 @@ export interface CustomDesignSettings {
     id: string;
     ai_prompt_template: string;
     updated_at: string;
+}
+
+export interface DesignOrderMessage {
+    id: string;
+    order_id: string;
+    message: string;
+    is_admin_reply: boolean;
+    created_at: string;
 }

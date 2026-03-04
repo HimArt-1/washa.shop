@@ -6,6 +6,8 @@
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from "@supabase/supabase-js";
+import { currentUser } from "@clerk/nextjs/server";
+import { createUserNotification, createAdminNotification } from "./notifications";
 import type {
     CustomDesignGarment,
     CustomDesignColor,
@@ -467,6 +469,14 @@ export async function submitDesignOrder(orderData: {
         userPrompt = `[تصميم من ستيديو وشّى: ${orderData.text_prompt ?? "—"}]`;
     }
 
+    // Lookup authenticated user if they exist
+    let userId: string | null = null;
+    const user = await currentUser();
+    if (user) {
+        const { data: profile } = await sb.from("profiles").select("id").eq("clerk_id", user.id).single();
+        if (profile) userId = profile.id;
+    }
+
     // 4. Generate AI prompt
     const aiPrompt = generateAiPrompt(template, {
         garment_name: orderData.garment_name,
@@ -480,6 +490,7 @@ export async function submitDesignOrder(orderData: {
 
     // 5. Insert order
     const payload = {
+        user_id: userId,
         garment_name: orderData.garment_name,
         garment_image_url: orderData.garment_image_url || null,
         color_name: orderData.color_name,
@@ -549,8 +560,24 @@ export async function getDesignOrder(id: string): Promise<CustomDesignOrder | nu
 
 export async function updateDesignOrderStatus(id: string, status: CustomDesignOrderStatus) {
     const sb = getSmartStoreSb();
-    const { error } = await sb.from("custom_design_orders").update({ status }).eq("id", id);
+    const { error, data: order } = await sb.from("custom_design_orders")
+        .update({ status })
+        .eq("id", id)
+        .select("user_id, order_number")
+        .single();
     if (error) return { error: error.message };
+
+    // If awaiting_review and there's a user, notify them
+    if (status === "awaiting_review" && (order as any).user_id) {
+        await createUserNotification({
+            userId: (order as any).user_id,
+            title: "تصميم مخصص 🎨",
+            message: `تصميمك (الطلب #${(order as any).order_number}) جاهز الآن للمراجعة والتأكيد! يمكنك الاعتماد والتحويل للسلة أو طلب الإلغاء.`,
+            type: "order_update",
+            link: `/account/orders?design=${id}`, // Will jump to orders tab
+        });
+    }
+
     return { success: true };
 }
 
@@ -591,25 +618,65 @@ export async function getDesignOrderPublic(id: string): Promise<CustomDesignOrde
     return (data as CustomDesignOrder) ?? null;
 }
 
+export async function getUserDesignOrders(): Promise<CustomDesignOrder[]> {
+    const user = await currentUser();
+    if (!user) return [];
+
+    const sb = getSmartStoreSb();
+    const { data: profile } = await sb.from("profiles").select("id").eq("clerk_id", user.id).single();
+    if (!profile) return [];
+
+    const { data } = await sb.from("custom_design_orders")
+        .select("*")
+        .eq("user_id", profile.id)
+        .order("created_at", { ascending: false });
+
+    return (data as CustomDesignOrder[]) ?? [];
+}
+
 export async function approveDesignOrder(id: string) {
     const sb = getSmartStoreSb();
-    const { error } = await sb
+    const { error, data: order } = await sb
         .from("custom_design_orders")
         .update({ status: "completed" as any })
         .eq("id", id)
-        .in("status", ["awaiting_review"]);
+        .in("status", ["awaiting_review"])
+        .select("user_id, order_number")
+        .single();
     if (error) return { error: error.message };
+
+    if (order) {
+        await createAdminNotification({
+            title: "تأكيد تصميم مخصص ✅",
+            message: `قام العميل للتو بمراجعة وتأكيد التصميم للطلب #${(order as any).order_number}.`,
+            type: "system_alert",
+            link: "/dashboard/smart-store",
+        });
+    }
+
     return { success: true };
 }
 
 export async function cancelDesignOrderByCustomer(id: string) {
     const sb = getSmartStoreSb();
-    const { error } = await sb
+    const { error, data: order } = await sb
         .from("custom_design_orders")
         .update({ status: "cancelled" as any })
         .eq("id", id)
-        .in("status", ["new", "in_progress", "awaiting_review"]);
+        .in("status", ["new", "in_progress", "awaiting_review"])
+        .select("user_id, order_number")
+        .single();
     if (error) return { error: error.message };
+
+    if (order) {
+        await createAdminNotification({
+            title: "إلغاء تصميم مخصص ❌",
+            message: `قام العميل بإلغاء طلب التصميم المخصص #${(order as any).order_number}.`,
+            type: "order_alert",
+            link: "/dashboard/smart-store",
+        });
+    }
+
     return { success: true };
 }
 

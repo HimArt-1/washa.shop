@@ -608,23 +608,19 @@ h6 {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Reamaze Chat — Hidden by default, shown via JS
+   Reamaze Chat — Custom WUSHA Integration
 ═══════════════════════════════════════════════════════════ */
 
-#reamaze-widget,
-.reamaze-widget-overlay,
-iframe[src*="reamaze"] {
-  display: none !important;
-  visibility: hidden !important;
+/* Hide default Reamaze launcher button globally */
+[data-reamaze-widget] {
   opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
+  transform: scale(0) !important;
+  z-index: -100 !important;
 }
 
-body.reamaze-active #reamaze-widget,
-body.reamaze-active .reamaze-widget-overlay,
-body.reamaze-active iframe[src*="reamaze"] {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
+/* Ensure JS logic expecting these classes does not crash */
+body.reamaze-active [data-reamaze-widget] {
+  opacity: 0 !important;
 }

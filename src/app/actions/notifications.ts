@@ -11,7 +11,7 @@ function getSupabase() {
     );
 }
 
-export type NotificationType = "order_new" | "application_new" | "payment_received" | "order_status";
+export type NotificationType = "order_new" | "application_new" | "payment_received" | "order_status" | "order_alert" | "system_alert" | "order_update";
 
 export interface AdminNotification {
     id: string;
@@ -101,4 +101,26 @@ export async function markAllNotificationsRead() {
     const supabase = await requireAdmin();
     if (!supabase) return;
     await supabase.from("admin_notifications").update({ is_read: true }).eq("is_read", false);
+}
+
+// ─── User Notifications ─────────────────────────────────────
+
+export async function createUserNotification(data: {
+    userId: string;
+    type: string;
+    title: string;
+    message?: string;
+    link?: string;
+    metadata?: Record<string, unknown>;
+}) {
+    const supabase = getSupabase();
+    const { error } = await supabase.from("user_notifications").insert({
+        user_id: data.userId,
+        type: data.type,
+        title: data.title,
+        message: data.message ?? null,
+        link: data.link ?? null,
+        metadata: data.metadata ?? {},
+    });
+    if (error) console.error("[createUserNotification]", error);
 }

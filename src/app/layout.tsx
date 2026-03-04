@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
 import { FloatingJoinButton } from "@/components/ui/FloatingJoinButton";
+import { FloatingChatButton } from "@/components/ui/FloatingChatButton";
 import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerRegister";
 import Script from "next/script";
 import "./globals.css";
@@ -99,6 +100,8 @@ export default function RootLayout({
           <ServiceWorkerRegister />
           {/* Floating Join Button */}
           <FloatingJoinButton />
+          {/* Custom Floating Chat Button */}
+          <FloatingChatButton />
 
           {/* Re:amaze — دعم فني */}
           <Script id="reamaze-config" strategy="beforeInteractive">{`

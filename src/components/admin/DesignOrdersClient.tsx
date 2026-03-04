@@ -18,6 +18,7 @@ import {
     updateDesignPromptTemplate,
 } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
+import { DesignOrderAdminChat } from "./DesignOrderAdminChat";
 
 // ─── Storage Upload ──────────────────────────────────────
 
@@ -343,6 +344,11 @@ function OrderDetailModal({ order, onClose }: { order: CustomDesignOrder; onClos
                         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/40 resize-none" rows={2} placeholder="أضف ملاحظات..." />
                         <button onClick={handleSaveNotes} className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg/50 hover:text-fg text-xs self-end">حفظ</button>
                     </div>
+                </div>
+
+                {/* Customer Chat */}
+                <div className="mb-6">
+                    <DesignOrderAdminChat orderId={order.id} />
                 </div>
 
                 {/* Actions */}

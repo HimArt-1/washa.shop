@@ -1,34 +1,44 @@
-import Link from "next/link";
-import { Construction, ArrowLeft } from "lucide-react";
+import { DesignYourPieceWizard } from "@/components/design-your-piece/DesignYourPieceWizard";
+import {
+    getActiveGarments,
+    getDesignStyles,
+    getArtStyles,
+    getColorPackages,
+    getStudioItems,
+} from "@/app/actions/smart-store";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "صمّم قطعتك — وشّى",
-  description:
-    "صمّم طباعتك على هودي أو تيشيرت — نصوص جاهزة، تصاميم من الاستوديو، أو توليد بالذكاء الاصطناعي. معاينة فورية وطلب سهل.",
+    title: "صمّم قطعتك بنفسك — وشّى",
+    description:
+        "اختر قطعتك ولونها ومقاسها، حدد نمط التصميم وأسلوبه، ودعنا ننفذ طلبك. تجربة تصميم تفاعلية مميزة.",
 };
 
-export default function DesignPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="max-w-lg text-center space-y-6">
-        <div className="mx-auto w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center">
-          <Construction className="w-10 h-10 text-gold" />
+export default async function DesignYourPiecePage() {
+    const [garments, styles, artStyles, colorPackages, studioItems] = await Promise.all([
+        getActiveGarments(),
+        getDesignStyles(),
+        getArtStyles(),
+        getColorPackages(),
+        getStudioItems(),
+    ]);
+
+    return (
+        <div className="min-h-screen relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-gold/[0.03] rounded-full blur-[120px]" />
+                <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gold/[0.02] rounded-full blur-[150px]" />
+            </div>
+            <div className="relative z-10 py-8 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">
+                <DesignYourPieceWizard
+                    garments={garments}
+                    styles={styles}
+                    artStyles={artStyles}
+                    colorPackages={colorPackages}
+                    studioItems={studioItems}
+                />
+            </div>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-fg">
-          تحت التطوير 🚧
-        </h1>
-        <p className="text-fg/50 leading-relaxed">
-          نعمل على تطوير هذه الصفحة لتقديم تجربة أفضل. في هذه الأثناء، جرّب واجهة التصميم الجديدة!
-        </p>
-        <Link
-          href="/design-your-piece"
-          className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          صمّم قطعتك بنفسك
-        </Link>
-      </div>
-    </div>
-  );
+    );
 }

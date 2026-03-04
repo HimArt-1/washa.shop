@@ -24,6 +24,8 @@ import {
 } from "@/app/actions/smart-store";
 import { useCartStore } from "@/stores/cartStore";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
+import { DesignOrderChat } from "./DesignOrderChat";
+import { DesignResultsPopup } from "./DesignResultsPopup";
 
 // ─── localStorage Keys ──────────────────────────────────
 
@@ -83,7 +85,7 @@ const PROGRESS_STEPS = [
     { label: "مكتمل", status: "completed" as const },
 ];
 
-// ─── Print Positions ────────────────────────────────────
+// ─── Print Positions ──────────────────────────────────
 
 type PrintPosition = "chest" | "back" | "shoulder_right" | "shoulder_left";
 type PrintSize = "large" | "small";
@@ -147,17 +149,6 @@ export function OrderTracker({ orderId }: { orderId: string }) {
         clearOrderId();
         window.location.reload();
     };
-
-    // Toggle Reamaze chat visibility based on order status
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        if (order && !["completed", "cancelled"].includes(order.status)) {
-            document.body.classList.add("reamaze-active");
-        } else {
-            document.body.classList.remove("reamaze-active");
-        }
-        return () => { document.body.classList.remove("reamaze-active"); };
-    }, [order]);
 
     if (loading) {
         return (
@@ -291,316 +282,13 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                 </motion.div>
             )}
 
-            {/* Chat Button (active orders) */}
+            {/* Embedded Order Chat */}
             {!isTerminal && (
-                <div className="text-center">
-                    <button onClick={() => { const btn = document.querySelector("[data-reamaze-widget]") as HTMLElement; if (btn) btn.click(); }}
-                        className="flex items-center gap-2 mx-auto px-5 py-3 rounded-2xl border border-gold/20 text-gold text-sm font-medium hover:bg-gold/5 transition-colors">
-                        <MessageCircle className="w-4 h-4" /> تواصل معنا بخصوص الطلب
-                    </button>
+                <div className="mt-8">
+                    <DesignOrderChat orderId={order.id} />
                 </div>
             )}
         </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════
-//  🎨 Design Results Popup — نافذة النتائج المذهلة
-// ═══════════════════════════════════════════════════════════
-
-function DesignResultsPopup({ order, onClose, onConfirm, onCancel }: {
-    order: CustomDesignOrder;
-    onClose: () => void;
-    onConfirm: () => void;
-    onCancel: () => void;
-}) {
-    const [position, setPosition] = useState<PrintPosition | null>(null);
-    const [size, setSize] = useState<PrintSize | null>(null);
-    const [pricing, setPricing] = useState<any>(null);
-    const [loadingPricing, setLoadingPricing] = useState(true);
-    const [confirming, setConfirming] = useState(false);
-    const [activeImage, setActiveImage] = useState(0);
-    const addItem = useCartStore((s) => s.addItem);
-
-    const images = [order.result_design_url, order.result_mockup_url].filter(Boolean) as string[];
-
-    useEffect(() => {
-        getGarmentPricing(order.garment_name).then((p) => {
-            setPricing(p);
-            setLoadingPricing(false);
-        });
-    }, [order.garment_name]);
-
-    const currentPrice = position && size && pricing ? getPrice(pricing, position, size) : 0;
-
-    const handleConfirm = async () => {
-        if (!position || !size) return;
-        setConfirming(true);
-
-        await confirmDesignOrder(order.id, position, size, currentPrice);
-
-        // Add to cart
-        addItem({
-            id: `custom-${order.id}`,
-            title: `تصميم مخصص — ${order.garment_name}`,
-            price: currentPrice,
-            image_url: order.result_mockup_url || order.result_design_url || "",
-            artist_name: "وشّى",
-            size: order.size_name,
-            type: "custom_design",
-            maxQuantity: 1,
-            customDesignUrl: order.result_design_url ?? undefined,
-            customGarment: order.garment_name,
-            customPosition: `${POSITIONS.find(p => p.id === position)?.label} — ${SIZE_LABELS[size].label}`,
-        });
-
-        setConfirming(false);
-        onConfirm();
-    };
-
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
-        >
-            {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-xl" onClick={onClose} />
-
-            {/* Popup */}
-            <motion.div
-                initial={{ scale: 0.9, y: 40 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 40 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="relative z-10 w-full max-w-4xl rounded-3xl overflow-hidden"
-                style={{
-                    background: "linear-gradient(145deg, rgba(17,17,17,0.97) 0%, rgba(26,26,26,0.95) 100%)",
-                    border: "1px solid rgba(206,174,127,0.15)",
-                    boxShadow: "0 0 80px rgba(206,174,127,0.1), 0 40px 100px rgba(0,0,0,0.8)",
-                }}
-            >
-                {/* Glow Effects */}
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-1 bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
-                    <div className="absolute top-0 left-1/4 w-72 h-72 bg-purple-500/5 rounded-full blur-[100px]" />
-                    <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-gold/5 rounded-full blur-[100px]" />
-                </div>
-
-                <div className="relative p-5 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <motion.h2
-                                initial={{ x: 20, opacity: 0 }}
-                                animate={{ x: 0, opacity: 1 }}
-                                transition={{ delay: 0.1 }}
-                                className="text-2xl sm:text-3xl font-bold"
-                            >
-                                <span className="bg-gradient-to-l from-purple-400 via-pink-400 to-gold bg-clip-text text-transparent">
-                                    ✨ تصميمك جاهز
-                                </span>
-                            </motion.h2>
-                            <p className="text-fg/40 text-sm mt-1">طلب #{order.order_number} — {order.garment_name}</p>
-                        </div>
-                        <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-                            <X className="w-5 h-5 text-fg/40" />
-                        </button>
-                    </div>
-
-                    {/* Image Gallery */}
-                    {images.length > 0 && (
-                        <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
-                            className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-black/30"
-                        >
-                            <AnimatePresence mode="wait">
-                                <motion.img
-                                    key={activeImage}
-                                    initial={{ opacity: 0, scale: 1.05 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.4 }}
-                                    src={images[activeImage]}
-                                    alt="Design"
-                                    className="w-full aspect-[16/10] object-contain bg-black/50"
-                                />
-                            </AnimatePresence>
-                            {images.length > 1 && (
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                                    {images.map((_, i) => (
-                                        <button key={i} onClick={() => setActiveImage(i)}
-                                            className={`w-3 h-3 rounded-full transition-all ${i === activeImage ? "bg-gold scale-110" : "bg-white/20 hover:bg-white/40"}`} />
-                                    ))}
-                                </div>
-                            )}
-                            {images.length > 1 && (
-                                <>
-                                    <button onClick={() => setActiveImage((p) => (p + 1) % images.length)} className="absolute top-1/2 left-3 -translate-y-1/2 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white/70 hover:text-white transition-colors">
-                                        <ChevronRight className="w-5 h-5" />
-                                    </button>
-                                    <button onClick={() => setActiveImage((p) => (p - 1 + images.length) % images.length)} className="absolute top-1/2 right-3 -translate-y-1/2 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white/70 hover:text-white transition-colors">
-                                        <ChevronLeft className="w-5 h-5" />
-                                    </button>
-                                </>
-                            )}
-                        </motion.div>
-                    )}
-
-                    {/* PDF Download */}
-                    {order.result_pdf_url && (
-                        <a href={order.result_pdf_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg/70 text-sm hover:bg-white/[0.06] transition-colors w-fit">
-                            <FileText className="w-4 h-4" /> تحميل PDF <Download className="w-3.5 h-3.5" />
-                        </a>
-                    )}
-
-                    {/* ═══ Print Position Selector ═══ */}
-                    <motion.div
-                        initial={{ y: 20, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="space-y-4"
-                    >
-                        <h3 className="text-lg font-bold text-fg flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-gold" /> اختر موقع الطباعة
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {POSITIONS.map((pos) => {
-                                const isActive = position === pos.id;
-                                return (
-                                    <motion.button
-                                        key={pos.id}
-                                        whileHover={{ scale: 1.03 }}
-                                        whileTap={{ scale: 0.97 }}
-                                        onClick={() => setPosition(pos.id)}
-                                        className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
-                                            ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                            : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                            }`}
-                                    >
-                                        <div className="text-3xl mb-2">{pos.emoji}</div>
-                                        <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
-                                        <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
-                                        {isActive && (
-                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                <Check className="w-3.5 h-3.5 text-bg" />
-                                            </motion.div>
-                                        )}
-                                    </motion.button>
-                                );
-                            })}
-                        </div>
-                    </motion.div>
-
-                    {/* ═══ Print Size Selector ═══ */}
-                    <AnimatePresence>
-                        {position && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="space-y-4 overflow-hidden"
-                            >
-                                <h3 className="text-lg font-bold text-fg flex items-center gap-2">
-                                    <Maximize2 className="w-5 h-5 text-gold" /> اختر حجم الطباعة
-                                </h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {(["large", "small"] as PrintSize[]).map((sz) => {
-                                        const isActive = size === sz;
-                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
-                                        return (
-                                            <motion.button
-                                                key={sz}
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => setSize(sz)}
-                                                className={`relative p-5 rounded-2xl border-2 transition-all ${isActive
-                                                    ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                                    : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    {sz === "large"
-                                                        ? <Maximize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                        : <Minimize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                    }
-                                                    <div className="text-right">
-                                                        <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
-                                                        <p className="text-[10px] text-fg/35">{SIZE_LABELS[sz].desc}</p>
-                                                    </div>
-                                                </div>
-                                                {!loadingPricing && (
-                                                    <div className={`text-xl font-bold mt-2 ${isActive ? "text-gold" : "text-fg/60"}`}>
-                                                        {priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}
-                                                    </div>
-                                                )}
-                                                {isActive && (
-                                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                        className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                        <Check className="w-3.5 h-3.5 text-bg" />
-                                                    </motion.div>
-                                                )}
-                                            </motion.button>
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* ═══ Price Summary + Actions ═══ */}
-                    <AnimatePresence>
-                        {position && size && (
-                            <motion.div
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -20, opacity: 0 }}
-                                className="rounded-2xl p-5 border border-gold/20"
-                                style={{ background: "linear-gradient(135deg, rgba(206,174,127,0.08) 0%, rgba(206,174,127,0.02) 100%)" }}
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <p className="text-sm text-fg/50">ملخص الطلب</p>
-                                        <p className="text-xs text-fg/30 mt-1">
-                                            {order.garment_name} — {POSITIONS.find(p => p.id === position)?.label} — {SIZE_LABELS[size].label}
-                                        </p>
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-3xl font-bold text-gold">{currentPrice > 0 ? `${currentPrice}` : "مجاني"}</p>
-                                        {currentPrice > 0 && <p className="text-xs text-fg/40">ر.س</p>}
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={handleConfirm}
-                                        disabled={confirming}
-                                        className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all disabled:opacity-50"
-                                    >
-                                        {confirming
-                                            ? <Loader2 className="w-5 h-5 animate-spin" />
-                                            : <ShoppingCart className="w-5 h-5" />
-                                        }
-                                        {confirming ? "جاري التأكيد..." : "تأكيد وأضف للسلة 🛒"}
-                                    </button>
-                                    <button
-                                        onClick={onCancel}
-                                        disabled={confirming}
-                                        className="px-5 py-4 rounded-2xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-            </motion.div>
-        </motion.div>
     );
 }
 
