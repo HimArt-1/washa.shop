@@ -13,26 +13,26 @@ DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.object
 DROP POLICY IF EXISTS "Authenticated users can update avatars" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated users can delete avatars" ON storage.objects;
 
-CREATE POLICY "Public read avatars"
-  ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Public read avatars" ON storage.objects;
+CREATE POLICY "Public read avatars" ON storage.objects FOR SELECT
   USING ( bucket_id = 'avatars' );
 
-CREATE POLICY "Authenticated users can upload avatars"
-  ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
+CREATE POLICY "Authenticated users can upload avatars" ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'avatars'
     AND auth.role() = 'authenticated'
   );
 
-CREATE POLICY "Authenticated users can update avatars"
-  ON storage.objects FOR UPDATE
+DROP POLICY IF EXISTS "Authenticated users can update avatars" ON storage.objects;
+CREATE POLICY "Authenticated users can update avatars" ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'avatars'
     AND auth.role() = 'authenticated'
   );
 
-CREATE POLICY "Authenticated users can delete avatars"
-  ON storage.objects FOR DELETE
+DROP POLICY IF EXISTS "Authenticated users can delete avatars" ON storage.objects;
+CREATE POLICY "Authenticated users can delete avatars" ON storage.objects FOR DELETE
   USING (
     bucket_id = 'avatars'
     AND auth.role() = 'authenticated'

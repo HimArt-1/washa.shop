@@ -22,14 +22,14 @@ ALTER TABLE public.user_notifications ENABLE ROW LEVEL SECURITY;
 -- Policies
 
 -- 1. Users can view their own notifications
-CREATE POLICY "Users can view their own notifications"
-    ON public.user_notifications
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.user_notifications;
+CREATE POLICY "Users can view their own notifications" ON public.user_notifications
     FOR SELECT
     USING (auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = user_id LIMIT 1));
 
 -- 2. Users can mark their own notifications as read
-CREATE POLICY "Users can update their own notifications"
-    ON public.user_notifications
+DROP POLICY IF EXISTS "Users can update their own notifications" ON public.user_notifications;
+CREATE POLICY "Users can update their own notifications" ON public.user_notifications
     FOR UPDATE
     USING (auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = user_id LIMIT 1))
     WITH CHECK (auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = user_id LIMIT 1));
@@ -37,8 +37,8 @@ CREATE POLICY "Users can update their own notifications"
 -- 3. Only Service Role can insert/delete (handled automatically by bypassing RLS or explicit policies if needed)
 -- For Supabase, the generated service_role key bypasses RLS, so no explicit policy is strictly required
 -- But for admins, let's add an explicit policy if they act through the dashboard:
-CREATE POLICY "Admins can insert notifications"
-    ON public.user_notifications
+DROP POLICY IF EXISTS "Admins can insert notifications" ON public.user_notifications;
+CREATE POLICY "Admins can insert notifications" ON public.user_notifications
     FOR INSERT
     WITH CHECK (
         EXISTS (

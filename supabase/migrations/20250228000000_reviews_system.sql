@@ -36,25 +36,31 @@ ALTER TABLE artwork_reviews ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Product reviews readable by all" ON product_reviews;
 DROP POLICY IF EXISTS "Product reviews readable by all" ON product_reviews;
+DROP POLICY IF EXISTS "Product reviews readable by all" ON product_reviews;
 CREATE POLICY "Product reviews readable by all" ON product_reviews FOR SELECT USING (true);
 
 -- الإدراج والتحديث عبر Server Actions (Service Role يتجاوز RLS)
 DROP POLICY IF EXISTS "Product reviews insert by authenticated" ON product_reviews;
 DROP POLICY IF EXISTS "Product reviews insert" ON product_reviews;
+DROP POLICY IF EXISTS "Product reviews insert" ON product_reviews;
 CREATE POLICY "Product reviews insert" ON product_reviews FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Product reviews update own" ON product_reviews;
 DROP POLICY IF EXISTS "Product reviews update" ON product_reviews;
+DROP POLICY IF EXISTS "Product reviews update" ON product_reviews;
 CREATE POLICY "Product reviews update" ON product_reviews FOR UPDATE USING (true);
 
+DROP POLICY IF EXISTS "Artwork reviews readable by all" ON artwork_reviews;
 DROP POLICY IF EXISTS "Artwork reviews readable by all" ON artwork_reviews;
 DROP POLICY IF EXISTS "Artwork reviews readable by all" ON artwork_reviews;
 CREATE POLICY "Artwork reviews readable by all" ON artwork_reviews FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Artwork reviews insert by authenticated" ON artwork_reviews;
 DROP POLICY IF EXISTS "Artwork reviews insert" ON artwork_reviews;
+DROP POLICY IF EXISTS "Artwork reviews insert" ON artwork_reviews;
 CREATE POLICY "Artwork reviews insert" ON artwork_reviews FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Artwork reviews update own" ON artwork_reviews;
+DROP POLICY IF EXISTS "Artwork reviews update" ON artwork_reviews;
 DROP POLICY IF EXISTS "Artwork reviews update" ON artwork_reviews;
 CREATE POLICY "Artwork reviews update" ON artwork_reviews FOR UPDATE USING (true);

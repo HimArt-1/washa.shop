@@ -26,8 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_cd_studio_items_active ON custom_design_studio_it
 ALTER TABLE custom_design_studio_items ENABLE ROW LEVEL SECURITY;
 
 -- Public read for all active items
-CREATE POLICY "Smart store studio items public read" 
-ON custom_design_studio_items FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Smart store studio items public read" ON custom_design_studio_items;
+CREATE POLICY "Smart store studio items public read" ON custom_design_studio_items FOR SELECT USING (true);
 
 -- ═══════════════════════════════════════════════════════════
 --  Auto-update updated_at trigger

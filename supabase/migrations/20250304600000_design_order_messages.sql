@@ -20,10 +20,12 @@ ALTER TABLE public.design_order_messages ENABLE ROW LEVEL SECURITY;
 -- 1. All users (including anonymous) can read messages for a specific order
 -- We don't have user_id for design orders, so we rely on the client knowing the order_id (from localStorage)
 DROP POLICY IF EXISTS "Anyone can read messages" ON public.design_order_messages;
+DROP POLICY IF EXISTS "Anyone can read messages" ON public.design_order_messages;
 CREATE POLICY "Anyone can read messages" ON public.design_order_messages
     FOR SELECT USING (true);
 
 -- 2. Anonymous users can insert messages into orders (representing the customer)
+DROP POLICY IF EXISTS "Anyone can insert a message" ON public.design_order_messages;
 DROP POLICY IF EXISTS "Anyone can insert a message" ON public.design_order_messages;
 CREATE POLICY "Anyone can insert a message" ON public.design_order_messages
     FOR INSERT WITH CHECK (

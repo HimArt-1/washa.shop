@@ -14,28 +14,28 @@ DROP POLICY IF EXISTS "Authenticated users can update products" ON storage.objec
 DROP POLICY IF EXISTS "Authenticated users can delete products" ON storage.objects;
 
 -- القراءة عامة (لعرض صور المنتجات في المتجر)
-CREATE POLICY "Public read products"
-  ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Public read products" ON storage.objects;
+CREATE POLICY "Public read products" ON storage.objects FOR SELECT
   USING ( bucket_id = 'products' );
 
 -- المصادقون يمكنهم الرفع (للوحة الإدارة)
-CREATE POLICY "Authenticated users can upload products"
-  ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Authenticated users can upload products" ON storage.objects;
+CREATE POLICY "Authenticated users can upload products" ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'products'
     AND auth.role() = 'authenticated'
   );
 
 -- المصادقون يمكنهم التحديث والحذف
-CREATE POLICY "Authenticated users can update products"
-  ON storage.objects FOR UPDATE
+DROP POLICY IF EXISTS "Authenticated users can update products" ON storage.objects;
+CREATE POLICY "Authenticated users can update products" ON storage.objects FOR UPDATE
   USING (
     bucket_id = 'products'
     AND auth.role() = 'authenticated'
   );
 
-CREATE POLICY "Authenticated users can delete products"
-  ON storage.objects FOR DELETE
+DROP POLICY IF EXISTS "Authenticated users can delete products" ON storage.objects;
+CREATE POLICY "Authenticated users can delete products" ON storage.objects FOR DELETE
   USING (
     bucket_id = 'products'
     AND auth.role() = 'authenticated'

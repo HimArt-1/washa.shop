@@ -26,9 +26,11 @@ ALTER TABLE custom_design_orders ADD COLUMN IF NOT EXISTS final_price NUMERIC(10
 -- ─── سياسة: العميل يمكنه تحديث الطلب الخاص به ──────────
 
 DROP POLICY IF EXISTS "Anyone can update own design orders" ON custom_design_orders;
+DROP POLICY IF EXISTS "Anyone can update own design orders" ON custom_design_orders;
 CREATE POLICY "Anyone can update own design orders" ON custom_design_orders
     FOR UPDATE USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Anyone can read design orders" ON custom_design_orders;
 DROP POLICY IF EXISTS "Anyone can read design orders" ON custom_design_orders;
 CREATE POLICY "Anyone can read design orders" ON custom_design_orders
     FOR SELECT USING (true);

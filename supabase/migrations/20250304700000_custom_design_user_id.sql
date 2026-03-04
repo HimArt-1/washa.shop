@@ -19,6 +19,7 @@ BEGIN
         WHERE tablename = 'custom_design_orders' AND policyname = 'Users can view their own design orders'
     ) THEN
         DROP POLICY IF EXISTS "Users can view their own design orders" ON public.custom_design_orders;
+DROP POLICY IF EXISTS "Users can view their own design orders" ON public.custom_design_orders;
 CREATE POLICY "Users can view their own design orders" ON public.custom_design_orders
             FOR SELECT USING (auth.uid() = user_id);
     END IF;

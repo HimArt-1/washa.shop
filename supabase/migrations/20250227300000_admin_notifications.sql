@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_notifications_created ON admin_notification
 ALTER TABLE admin_notifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Admins read notifications" ON admin_notifications;
+DROP POLICY IF EXISTS "Admins read notifications" ON admin_notifications;
 CREATE POLICY "Admins read notifications" ON admin_notifications
   FOR SELECT USING (
     EXISTS (

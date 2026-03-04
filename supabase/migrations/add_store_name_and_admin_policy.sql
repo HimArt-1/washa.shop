@@ -8,6 +8,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS store_name TEXT;
 -- 2) سياسة RLS: الأدمن يملك صلاحية كاملة على المنتجات
 DROP POLICY IF EXISTS "Admin full access products" ON products;
 DROP POLICY IF EXISTS "Admin full access products" ON products;
+DROP POLICY IF EXISTS "Admin full access products" ON products;
 CREATE POLICY "Admin full access products" ON products FOR ALL
   USING (
     EXISTS (

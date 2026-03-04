@@ -128,20 +128,20 @@ ALTER TABLE custom_design_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE custom_design_settings ENABLE ROW LEVEL SECURITY;
 
 -- Public: anyone can insert (submit an order)
-CREATE POLICY "Anyone can submit design orders"
-    ON custom_design_orders FOR INSERT
+DROP POLICY IF EXISTS "Anyone can submit design orders" ON custom_design_orders;
+CREATE POLICY "Anyone can submit design orders" ON custom_design_orders FOR INSERT
     WITH CHECK (true);
 
 -- Public: read own orders by email (optional)
-CREATE POLICY "Service role full access to design orders"
-    ON custom_design_orders FOR ALL
+DROP POLICY IF EXISTS "Service role full access to design orders" ON custom_design_orders;
+CREATE POLICY "Service role full access to design orders" ON custom_design_orders FOR ALL
     USING (auth.role() = 'service_role');
 
-CREATE POLICY "Service role full access to design settings"
-    ON custom_design_settings FOR ALL
+DROP POLICY IF EXISTS "Service role full access to design settings" ON custom_design_settings;
+CREATE POLICY "Service role full access to design settings" ON custom_design_settings FOR ALL
     USING (auth.role() = 'service_role');
 
 -- Anon can read settings (for prompt template)
-CREATE POLICY "Anyone can read design settings"
-    ON custom_design_settings FOR SELECT
+DROP POLICY IF EXISTS "Anyone can read design settings" ON custom_design_settings;
+CREATE POLICY "Anyone can read design settings" ON custom_design_settings FOR SELECT
     USING (true);

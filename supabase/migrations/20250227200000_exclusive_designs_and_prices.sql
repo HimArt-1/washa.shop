@@ -22,10 +22,12 @@ ALTER TABLE exclusive_designs ENABLE ROW LEVEL SECURITY;
 
 -- الجميع يقرأ التصاميم النشطة
 DROP POLICY IF EXISTS "Exclusive designs viewable when active" ON exclusive_designs;
+DROP POLICY IF EXISTS "Exclusive designs viewable when active" ON exclusive_designs;
 CREATE POLICY "Exclusive designs viewable when active" ON exclusive_designs
   FOR SELECT USING (is_active = true);
 
 -- الأدمن فقط يدير
+DROP POLICY IF EXISTS "Admins manage exclusive designs" ON exclusive_designs;
 DROP POLICY IF EXISTS "Admins manage exclusive designs" ON exclusive_designs;
 CREATE POLICY "Admins manage exclusive designs" ON exclusive_designs
   FOR ALL USING (

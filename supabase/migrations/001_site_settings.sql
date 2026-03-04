@@ -22,6 +22,7 @@ ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Settings readable by everyone" ON site_settings;
 DROP POLICY IF EXISTS "Settings readable by everyone" ON site_settings;
+DROP POLICY IF EXISTS "Settings readable by everyone" ON site_settings;
 CREATE POLICY "Settings readable by everyone" ON site_settings FOR SELECT USING (true);
 
 -- Trigger for updated_at

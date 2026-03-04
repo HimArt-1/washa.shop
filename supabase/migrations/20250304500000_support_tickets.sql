@@ -29,29 +29,29 @@ ALTER TABLE public.support_tickets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
 
 -- Policies for Tickets
-CREATE POLICY "Users can view own tickets"
-    ON public.support_tickets FOR SELECT
+DROP POLICY IF EXISTS "Users can view own tickets" ON public.support_tickets;
+CREATE POLICY "Users can view own tickets" ON public.support_tickets FOR SELECT
     USING (auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = user_id LIMIT 1));
 
-CREATE POLICY "Users can insert own tickets"
-    ON public.support_tickets FOR INSERT
+DROP POLICY IF EXISTS "Users can insert own tickets" ON public.support_tickets;
+CREATE POLICY "Users can insert own tickets" ON public.support_tickets FOR INSERT
     WITH CHECK (auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = user_id LIMIT 1));
 
-CREATE POLICY "Admins can view and update all tickets"
-    ON public.support_tickets FOR ALL
+DROP POLICY IF EXISTS "Admins can view and update all tickets" ON public.support_tickets;
+CREATE POLICY "Admins can view and update all tickets" ON public.support_tickets FOR ALL
     USING (EXISTS (SELECT 1 FROM public.profiles WHERE clerk_id = auth.uid() AND role = 'admin'));
 
 -- Policies for Messages
-CREATE POLICY "Users can view messages for own tickets"
-    ON public.support_messages FOR SELECT
+DROP POLICY IF EXISTS "Users can view messages for own tickets" ON public.support_messages;
+CREATE POLICY "Users can view messages for own tickets" ON public.support_messages FOR SELECT
     USING (EXISTS (
         SELECT 1 FROM public.support_tickets t
         JOIN public.profiles p ON t.user_id = p.id
         WHERE t.id = ticket_id AND p.clerk_id = auth.uid()
     ));
 
-CREATE POLICY "Users can insert messages to own tickets"
-    ON public.support_messages FOR INSERT
+DROP POLICY IF EXISTS "Users can insert messages to own tickets" ON public.support_messages;
+CREATE POLICY "Users can insert messages to own tickets" ON public.support_messages FOR INSERT
     WITH CHECK (
         EXISTS (
             SELECT 1 FROM public.support_tickets t
@@ -61,6 +61,6 @@ CREATE POLICY "Users can insert messages to own tickets"
         auth.uid() = (SELECT clerk_id FROM public.profiles WHERE id = sender_id LIMIT 1)
     );
 
-CREATE POLICY "Admins can view and insert all messages"
-    ON public.support_messages FOR ALL
+DROP POLICY IF EXISTS "Admins can view and insert all messages" ON public.support_messages;
+CREATE POLICY "Admins can view and insert all messages" ON public.support_messages FOR ALL
     USING (EXISTS (SELECT 1 FROM public.profiles WHERE clerk_id = auth.uid() AND role = 'admin'));
