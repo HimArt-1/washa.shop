@@ -322,7 +322,27 @@ export async function getDesignPromptTemplate(): Promise<string> {
         .select("ai_prompt_template")
         .eq("id", "default")
         .single();
-    return (data as any)?.ai_prompt_template ?? "";
+    const template = (data as any)?.ai_prompt_template;
+    if (template && template.trim().length > 0) return template;
+
+    // Default fallback template
+    return `Create a professional design for a {{garment_name}} garment by WUSHA (وشّى).
+
+Garment: {{garment_name}}
+Base Color: {{color_name}} ({{color_hex}})
+Design Style: {{style_name}}
+Art Style: {{art_style_name}}
+Color Palette: {{colors}}
+
+Customer Description:
+{{user_prompt}}
+
+Requirements:
+- Maintain WUSHA brand identity (luxury Arabic streetwear)
+- High resolution, print-ready quality
+- Clean design suitable for garment printing
+- Incorporate the specified art style and color palette
+- Arabic calligraphy or motifs where appropriate`;
 }
 
 export async function updateDesignPromptTemplate(template: string) {

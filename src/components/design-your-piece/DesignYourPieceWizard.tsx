@@ -147,22 +147,43 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
 
         let orderNumber: number | undefined;
 
+        // 0. Upload reference image if exists
+        let referenceImageUrl: string | undefined;
+        if (state.imageFile) {
+            try {
+                const { createClient } = await import("@supabase/supabase-js");
+                const sb = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                );
+                const ext = state.imageFile.name.split(".").pop() ?? "png";
+                const fileName = `design-references/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+                const { error: uploadErr } = await sb.storage.from("smart-store").upload(fileName, state.imageFile, { cacheControl: "3600", upsert: false });
+                if (!uploadErr) {
+                    const { data: urlData } = sb.storage.from("smart-store").getPublicUrl(fileName);
+                    referenceImageUrl = urlData.publicUrl;
+                }
+            } catch (err) {
+                console.error("Image upload failed:", err);
+            }
+        }
+
         // 1. Submit design order to database
         try {
             const { submitDesignOrder } = await import("@/app/actions/smart-store");
             const result = await submitDesignOrder({
-                garment_name: state.garment?.name ?? "—",
+                garment_name: state.garment?.name ?? "\u2014",
                 garment_image_url: state.garment?.image_url ?? undefined,
-                color_name: state.color?.name ?? "—",
+                color_name: state.color?.name ?? "\u2014",
                 color_hex: state.color?.hex_code ?? "#000000",
                 color_image_url: state.color?.image_url ?? undefined,
-                size_name: state.size?.name ?? "—",
+                size_name: state.size?.name ?? "\u2014",
                 design_method: state.method ?? "from_text",
                 text_prompt: state.textPrompt || undefined,
-                reference_image_url: state.imagePreview ?? undefined,
-                style_name: state.style?.name ?? "—",
+                reference_image_url: referenceImageUrl,
+                style_name: state.style?.name ?? "\u2014",
                 style_image_url: state.style?.image_url ?? undefined,
-                art_style_name: state.artStyle?.name ?? "—",
+                art_style_name: state.artStyle?.name ?? "\u2014",
                 art_style_image_url: state.artStyle?.image_url ?? undefined,
                 color_package_name: state.colorPackage?.name ?? undefined,
                 custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
