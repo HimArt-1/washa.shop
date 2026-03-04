@@ -356,7 +356,77 @@ export interface Database {
                 Insert: Omit<CustomDesignColorPackage, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
                 Update: Partial<Omit<CustomDesignColorPackage, "id" | "created_at">>;
             };
+            custom_design_orders: {
+                Row: CustomDesignOrder;
+                Insert: Omit<CustomDesignOrder, "id" | "created_at" | "updated_at" | "order_number" | "status" | "skip_results"> & { status?: CustomDesignOrderStatus; skip_results?: boolean };
+                Update: Partial<Omit<CustomDesignOrder, "id" | "created_at" | "order_number">>;
+            };
+            custom_design_settings: {
+                Row: CustomDesignSettings;
+                Insert: Partial<CustomDesignSettings>;
+                Update: Partial<CustomDesignSettings>;
+            };
         };
     };
 }
 
+// ─── Design Order Types ──────────────────────────────────
+
+export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" | "completed" | "cancelled";
+
+export interface CustomDesignOrder {
+    id: string;
+    order_number: number;
+
+    // Customer
+    customer_name: string | null;
+    customer_email: string | null;
+    customer_phone: string | null;
+
+    // Selections
+    garment_name: string;
+    garment_image_url: string | null;
+    color_name: string;
+    color_hex: string;
+    color_image_url: string | null;
+    size_name: string;
+
+    // Design Method
+    design_method: "from_text" | "from_image";
+    text_prompt: string | null;
+    reference_image_url: string | null;
+
+    // Style
+    style_name: string;
+    style_image_url: string | null;
+    art_style_name: string;
+    art_style_image_url: string | null;
+
+    // Colors
+    color_package_name: string | null;
+    custom_colors: any[];
+
+    // AI Prompt
+    ai_prompt: string;
+
+    // Results
+    result_design_url: string | null;
+    result_mockup_url: string | null;
+    result_pdf_url: string | null;
+
+    // Workflow
+    status: CustomDesignOrderStatus;
+    skip_results: boolean;
+    admin_notes: string | null;
+    assigned_to: string | null;
+
+    // Timestamps
+    created_at: string;
+    updated_at: string;
+}
+
+export interface CustomDesignSettings {
+    id: string;
+    ai_prompt_template: string;
+    updated_at: string;
+}

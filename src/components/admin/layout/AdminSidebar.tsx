@@ -25,6 +25,7 @@ import {
     Settings,
     Palette,
     Wand2,
+    Brush,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -58,6 +59,7 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
                 { icon: UserCheck, label: "مستخدمي Clerk", href: "/dashboard/users-clerk" },
                 { icon: Users, label: "المستخدمون", href: "/dashboard/users" },
                 { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders" },
+                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders" },
                 { icon: FileText, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
             ],
         },

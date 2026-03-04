@@ -306,3 +306,192 @@ export async function deleteColorPackage(id: string) {
     if (error) return { error: error.message };
     return { success: true };
 }
+
+// ═══════════════════════════════════════════════════════════
+//  Design Orders — طلبات التصميم
+// ═══════════════════════════════════════════════════════════
+
+import type { CustomDesignOrder, CustomDesignOrderStatus, CustomDesignSettings } from "@/types/database";
+
+// ─── Get AI Prompt Template ─────────────────────────────
+
+export async function getDesignPromptTemplate(): Promise<string> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("custom_design_settings")
+        .select("ai_prompt_template")
+        .eq("id", "default")
+        .single();
+    return (data as any)?.ai_prompt_template ?? "";
+}
+
+export async function updateDesignPromptTemplate(template: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb
+        .from("custom_design_settings")
+        .update({ ai_prompt_template: template })
+        .eq("id", "default");
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// ─── Generate AI Prompt from Template ───────────────────
+
+function generateAiPrompt(template: string, data: Record<string, string>): string {
+    let prompt = template;
+    for (const [key, value] of Object.entries(data)) {
+        prompt = prompt.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "—");
+    }
+    return prompt;
+}
+
+// ─── Submit Design Order (Public) ───────────────────────
+
+export async function submitDesignOrder(orderData: {
+    garment_name: string;
+    garment_image_url?: string;
+    color_name: string;
+    color_hex: string;
+    color_image_url?: string;
+    size_name: string;
+    design_method: "from_text" | "from_image";
+    text_prompt?: string;
+    reference_image_url?: string;
+    style_name: string;
+    style_image_url?: string;
+    art_style_name: string;
+    art_style_image_url?: string;
+    color_package_name?: string;
+    custom_colors?: any[];
+    customer_name?: string;
+    customer_email?: string;
+    customer_phone?: string;
+}) {
+    const sb = getSmartStoreSb();
+
+    // 1. Get prompt template
+    const template = await getDesignPromptTemplate();
+
+    // 2. Build colors string
+    const colorsStr = orderData.color_package_name
+        ? orderData.color_package_name
+        : orderData.custom_colors && orderData.custom_colors.length > 0
+            ? orderData.custom_colors.join(", ")
+            : `${orderData.color_name} (${orderData.color_hex})`;
+
+    // 3. User prompt or image note
+    const userPrompt = orderData.design_method === "from_text"
+        ? (orderData.text_prompt ?? "")
+        : `[صورة مرجعية مرفقة: ${orderData.reference_image_url ?? "—"}]`;
+
+    // 4. Generate AI prompt
+    const aiPrompt = generateAiPrompt(template, {
+        garment_name: orderData.garment_name,
+        color_name: orderData.color_name,
+        color_hex: orderData.color_hex,
+        style_name: orderData.style_name,
+        art_style_name: orderData.art_style_name,
+        colors: colorsStr,
+        user_prompt: userPrompt,
+    });
+
+    // 5. Insert order
+    const payload = {
+        garment_name: orderData.garment_name,
+        garment_image_url: orderData.garment_image_url || null,
+        color_name: orderData.color_name,
+        color_hex: orderData.color_hex,
+        color_image_url: orderData.color_image_url || null,
+        size_name: orderData.size_name,
+        design_method: orderData.design_method,
+        text_prompt: orderData.text_prompt || null,
+        reference_image_url: orderData.reference_image_url || null,
+        style_name: orderData.style_name,
+        style_image_url: orderData.style_image_url || null,
+        art_style_name: orderData.art_style_name,
+        art_style_image_url: orderData.art_style_image_url || null,
+        color_package_name: orderData.color_package_name || null,
+        custom_colors: orderData.custom_colors ?? [],
+        ai_prompt: aiPrompt,
+        customer_name: orderData.customer_name || null,
+        customer_email: orderData.customer_email || null,
+        customer_phone: orderData.customer_phone || null,
+    };
+
+    const { data, error } = await sb
+        .from("custom_design_orders")
+        .insert(payload)
+        .select("id, order_number")
+        .single();
+
+    if (error) return { error: error.message };
+    return { success: true, orderId: (data as any)?.id, orderNumber: (data as any)?.order_number };
+}
+
+// ─── Admin: Get Design Orders ───────────────────────────
+
+export async function getDesignOrders(page = 1, status = "all") {
+    const sb = getSmartStoreSb();
+    const perPage = 20;
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+
+    let query = sb.from("custom_design_orders").select("*", { count: "exact" });
+    if (status !== "all") {
+        query = query.eq("status", status);
+    }
+    const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
+    if (error) {
+        console.error("getDesignOrders error:", error);
+        return { data: [], count: 0, totalPages: 0 };
+    }
+    return {
+        data: (data as CustomDesignOrder[]) ?? [],
+        count: count ?? 0,
+        totalPages: count ? Math.ceil(count / perPage) : 0,
+    };
+}
+
+// ─── Admin: Get Single Order ────────────────────────────
+
+export async function getDesignOrder(id: string): Promise<CustomDesignOrder | null> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb.from("custom_design_orders").select("*").eq("id", id).single();
+    return (data as CustomDesignOrder) ?? null;
+}
+
+// ─── Admin: Update Status ───────────────────────────────
+
+export async function updateDesignOrderStatus(id: string, status: CustomDesignOrderStatus) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb.from("custom_design_orders").update({ status }).eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// ─── Admin: Upload Results ──────────────────────────────
+
+export async function uploadDesignResult(id: string, field: "result_design_url" | "result_mockup_url" | "result_pdf_url", url: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb.from("custom_design_orders").update({ [field]: url }).eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// ─── Admin: Skip Results ────────────────────────────────
+
+export async function skipDesignResults(id: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb.from("custom_design_orders").update({ skip_results: true, status: "completed" as any }).eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// ─── Admin: Update Notes ────────────────────────────────
+
+export async function updateDesignOrderNotes(id: string, notes: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb.from("custom_design_orders").update({ admin_notes: notes }).eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}

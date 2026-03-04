@@ -2,6 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════
 //  وشّى | WUSHA — صمم قطعتك بنفسك
+//  includes auto-order creation via submitDesignOrder
 //  Design Your Piece — Interactive Multi-Step Wizard
 // ═══════════════════════════════════════════════════════════
 
@@ -125,7 +126,32 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
     const handleSend = useCallback(async () => {
         setState((s) => ({ ...s, isSending: true }));
 
-        // Build summary message in Arabic
+        // 1. Submit design order to database
+        try {
+            const { submitDesignOrder } = await import("@/app/actions/smart-store");
+            const result = await submitDesignOrder({
+                garment_name: state.garment?.name ?? "—",
+                garment_image_url: state.garment?.image_url ?? undefined,
+                color_name: state.color?.name ?? "—",
+                color_hex: state.color?.hex_code ?? "#000000",
+                color_image_url: state.color?.image_url ?? undefined,
+                size_name: state.size?.name ?? "—",
+                design_method: state.method ?? "from_text",
+                text_prompt: state.textPrompt || undefined,
+                reference_image_url: state.imagePreview ?? undefined,
+                style_name: state.style?.name ?? "—",
+                style_image_url: state.style?.image_url ?? undefined,
+                art_style_name: state.artStyle?.name ?? "—",
+                art_style_image_url: state.artStyle?.image_url ?? undefined,
+                color_package_name: state.colorPackage?.name ?? undefined,
+                custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
+            });
+            if (result.error) console.error("Order creation error:", result.error);
+        } catch (err) {
+            console.error("submitDesignOrder failed:", err);
+        }
+
+        // 2. Build summary message in Arabic
         const lines = [
             "🎨 *طلب تصميم قطعة جديد*",
             "",
@@ -152,20 +178,16 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
 
         const summaryText = lines.join("\n");
 
-        // Send via Reamaze API
+        // 3. Also send via Reamaze as backup
         try {
             if (typeof window !== "undefined" && (window as any)._support) {
-                // Open Reamaze chat widget with pre-filled message
                 const reamazeWidget = document.querySelector("[data-reamaze-widget]") as HTMLElement;
                 if (reamazeWidget) reamazeWidget.click();
-
-                // Try to use Reamaze's sendMessage API
                 setTimeout(() => {
                     const textarea = document.querySelector(".reamaze-widget textarea, .reamaze-shoutbox textarea") as HTMLTextAreaElement;
                     if (textarea) {
                         textarea.value = summaryText;
                         textarea.dispatchEvent(new Event("input", { bubbles: true }));
-                        // Auto-submit after a brief delay
                         setTimeout(() => {
                             const submitBtn = document.querySelector(".reamaze-widget button[type='submit'], .reamaze-shoutbox button[type='submit']") as HTMLButtonElement;
                             if (submitBtn) submitBtn.click();
@@ -174,7 +196,6 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 }, 1000);
             }
         } catch {
-            // Fallback: copy to clipboard
             await navigator.clipboard.writeText(summaryText).catch(() => { });
         }
 
