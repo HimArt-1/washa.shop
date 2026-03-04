@@ -495,3 +495,35 @@ export async function updateDesignOrderNotes(id: string, notes: string) {
     if (error) return { error: error.message };
     return { success: true };
 }
+
+// ═══════════════════════════════════════════════════════════
+//  Public Order Actions — تتبع الطلب
+// ═══════════════════════════════════════════════════════════
+
+export async function getDesignOrderPublic(id: string): Promise<CustomDesignOrder | null> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb.from("custom_design_orders").select("*").eq("id", id).single();
+    return (data as CustomDesignOrder) ?? null;
+}
+
+export async function approveDesignOrder(id: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({ status: "completed" as any })
+        .eq("id", id)
+        .in("status", ["awaiting_review"]);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function cancelDesignOrderByCustomer(id: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({ status: "cancelled" as any })
+        .eq("id", id)
+        .in("status", ["new", "in_progress", "awaiting_review"]);
+    if (error) return { error: error.message };
+    return { success: true };
+}

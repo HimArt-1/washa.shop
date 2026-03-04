@@ -93,12 +93,31 @@ interface Props {
 
 // ─── Main Wizard ────────────────────────────────────────
 
+import { OrderTracker, getStoredOrderId, storeOrderId, clearOrderId } from "./OrderTracker";
+import { getDesignOrderPublic } from "@/app/actions/smart-store";
+
 export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackages }: Props) {
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [colors, setColors] = useState<CustomDesignColor[]>([]);
     const [sizes, setSizes] = useState<CustomDesignSize[]>([]);
     const [loadingColors, setLoadingColors] = useState(false);
     const [loadingSizes, setLoadingSizes] = useState(false);
+    const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+    const [checkingOrder, setCheckingOrder] = useState(true);
+
+    // Check for existing active order on mount
+    useEffect(() => {
+        const storedId = getStoredOrderId();
+        if (!storedId) { setCheckingOrder(false); return; }
+        getDesignOrderPublic(storedId).then((order) => {
+            if (order && !['completed', 'cancelled'].includes(order.status)) {
+                setActiveOrderId(storedId);
+            } else {
+                clearOrderId();
+            }
+            setCheckingOrder(false);
+        }).catch(() => { clearOrderId(); setCheckingOrder(false); });
+    }, []);
 
     // Fetch colors when garment changes
     useEffect(() => {
@@ -146,7 +165,12 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 color_package_name: state.colorPackage?.name ?? undefined,
                 custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
             });
-            if (result.error) console.error("Order creation error:", result.error);
+            if (result.error) {
+                console.error("Order creation error:", result.error);
+            } else if (result.orderId) {
+                storeOrderId(result.orderId);
+                setActiveOrderId(result.orderId);
+            }
         } catch (err) {
             console.error("submitDesignOrder failed:", err);
         }
@@ -201,6 +225,19 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
 
         setState((s) => ({ ...s, isSending: false, sent: true }));
     }, [state]);
+
+    if (checkingOrder) {
+        return (
+            <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-10 h-10 border-2 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
+                <p className="text-fg/40 text-sm">جاري التحقق من الطلبات...</p>
+            </div>
+        );
+    }
+
+    if (activeOrderId) {
+        return <OrderTracker orderId={activeOrderId} />;
+    }
 
     return (
         <div className="space-y-8">
