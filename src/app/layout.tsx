@@ -88,8 +88,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={arSA} appearance={clerkAppearance} dynamic>
-      <html lang="ar" dir="rtl">
-        <body className="font-arabic bg-[#080808] text-[#f0ebe3]">
+      <html lang="ar" dir="rtl" suppressHydrationWarning>
+        <body className="font-arabic bg-[#080808] text-[#f0ebe3]" suppressHydrationWarning>
           {/* Noise Texture Overlay */}
           <div className="noise-overlay" aria-hidden="true" />
 
