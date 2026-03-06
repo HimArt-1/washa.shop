@@ -50,6 +50,11 @@ const templateStyles: Record<string, string> = {
     minimal: "bg-[#1a1a1a] border border-white/[0.1] text-white/80",
     alert: "bg-red-950 border border-red-500/30 text-red-200",
     promo: "bg-gradient-to-r from-emerald-700 to-teal-600 text-white",
+    neon: "bg-blue-950/80 border border-blue-400/20 text-blue-100 backdrop-blur-md shadow-[0_0_30px_rgba(59,130,246,0.2)]",
+    sunset: "bg-gradient-to-r from-amber-900/60 via-orange-900/60 to-rose-900/60 border border-amber-500/20 text-amber-50 backdrop-blur-sm",
+    frost: "bg-white/[0.06] border border-white/[0.15] text-white/90 backdrop-blur-xl shadow-[inset_0_1px_2px_rgba(255,255,255,0.1)]",
+    rose: "bg-gradient-to-r from-pink-950/70 via-rose-950/70 to-fuchsia-950/70 border border-pink-400/15 text-pink-100 backdrop-blur-sm",
+    aurora: "bg-gradient-to-r from-violet-950/60 via-cyan-950/60 to-emerald-950/60 border border-violet-400/15 text-cyan-50 backdrop-blur-md",
 };
 
 // ─── Banner Component ───────────────────────────────────

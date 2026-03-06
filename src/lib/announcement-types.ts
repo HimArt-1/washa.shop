@@ -22,7 +22,7 @@ export interface Announcement {
     title: string;
     body: string;
     type: "banner" | "popup" | "toast" | "marquee";
-    template: "gold" | "gradient" | "minimal" | "alert" | "promo";
+    template: "gold" | "gradient" | "minimal" | "alert" | "promo" | "neon" | "sunset" | "frost" | "rose" | "aurora";
     link?: string;
     linkText?: string;
     isActive: boolean;

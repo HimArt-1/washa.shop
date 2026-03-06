@@ -198,6 +198,22 @@ h6 {
   text-shadow: 0 0 20px var(--neon-gold), 0 0 40px rgba(206, 174, 127, 0.3);
 }
 
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
 @keyframes neonPulse {
 
   0%,

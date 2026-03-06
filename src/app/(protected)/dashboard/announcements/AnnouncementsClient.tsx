@@ -25,6 +25,12 @@ const templates = [
     { id: "minimal" as const, label: "بسيط أنيق", preview: "bg-white/[0.05] border border-white/[0.1] text-fg/80", icon: Eye },
     { id: "alert" as const, label: "تنبيه عاجل", preview: "bg-red-500/10 border border-red-500/30 text-red-400", icon: AlertTriangle },
     { id: "promo" as const, label: "عرض ترويجي", preview: "bg-gradient-to-r from-emerald-600 to-teal-500 text-white", icon: Gift },
+    // ── قوالب جديدة ──
+    { id: "neon" as const, label: "نيون زجاجي", preview: "bg-blue-500/[0.08] border border-blue-400/20 text-blue-200 backdrop-blur-md shadow-[0_0_20px_rgba(59,130,246,0.15)]", icon: Zap },
+    { id: "sunset" as const, label: "غروب دافئ", preview: "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border border-amber-400/15 text-amber-100 backdrop-blur-sm", icon: Sparkles },
+    { id: "frost" as const, label: "صقيع لامع", preview: "bg-white/[0.06] border border-white/[0.12] text-white/90 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]", icon: Eye },
+    { id: "rose" as const, label: "وردي ناعم", preview: "bg-gradient-to-r from-pink-500/10 via-rose-400/10 to-fuchsia-500/10 border border-pink-400/15 text-pink-200 backdrop-blur-sm", icon: Gift },
+    { id: "aurora" as const, label: "شفق قطبي", preview: "bg-gradient-to-r from-violet-600/15 via-cyan-500/15 to-emerald-500/15 border border-violet-400/15 text-cyan-100 backdrop-blur-md", icon: Sparkles },
 ];
 
 const typeLabels: Record<string, { label: string; icon: any }> = {
@@ -273,7 +279,7 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                             {/* Template Selection */}
                             <div>
                                 <label className="block text-xs font-medium text-fg/50 mb-2">القالب</label>
-                                <div className="grid grid-cols-5 gap-2">
+                                <div className="grid grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
                                     {templates.map((t) => (
                                         <button key={t.id}
                                             onClick={() => setForm({ ...form, template: t.id })}
