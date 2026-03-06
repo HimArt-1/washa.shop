@@ -253,6 +253,34 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                         </div>
                                         <span className="text-sm text-fg/80 select-none">إظهار العلامة المائية (Watermark)</span>
                                     </label>
+
+                                    <label className="flex items-center gap-3 cursor-pointer group">
+                                        <div className="relative flex items-center justify-center w-5 h-5 rounded border border-white/20 bg-black/20 group-hover:border-gold/50 transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={config.showTax}
+                                                onChange={(e) => updateConfig("showTax", e.target.checked)}
+                                                className="opacity-0 absolute inset-0 cursor-pointer"
+                                            />
+                                            {config.showTax && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
+                                        </div>
+                                        <span className="text-sm text-fg/80 select-none">إضافة ضريبة القيمة المضافة (VAT)</span>
+                                    </label>
+
+                                    {config.showTax && (
+                                        <div className="mr-8 mt-1">
+                                            <span className="text-xs text-fg/50 mb-1 block">نسبة الضريبة %</span>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                step={0.5}
+                                                value={config.taxRate}
+                                                onChange={(e) => updateConfig("taxRate", Number(e.target.value))}
+                                                className="w-28 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

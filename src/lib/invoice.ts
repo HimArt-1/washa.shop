@@ -50,6 +50,8 @@ export interface InvoiceConfig {
     fontFamily: string;
     notes: string;
     showWatermark: boolean;
+    showTax: boolean;
+    taxRate: number;
     hiddenColumns: {
         quantity: boolean;
         unitPrice: boolean;
@@ -68,6 +70,8 @@ export const defaultInvoiceConfig: InvoiceConfig = {
     fontFamily: "IBM Plex Sans Arabic",
     notes: "نشكركم على تسوقكم من وشّى. نأمل أن تكون قد حظيتم بتجربة مميزة.",
     showWatermark: true,
+    showTax: false,
+    taxRate: 15,
     hiddenColumns: {
         quantity: false,
         unitPrice: false,
@@ -155,6 +159,15 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
     const watermarkHtml = config.showWatermark ? `<div class="watermark">WUSHA</div>` : "";
     const logoHtml = config.showLogo ? `<img src="/logo.png" class="logo-img" alt="WUSHA Logo"/>` : `<div class="logo-text">${config.companyName}</div>`;
     const vatHtml = config.vatNumber ? `<p class="info-label">الرقم الضريبي:</p><p>${config.vatNumber}</p>` : "";
+    const invoiceTitle = config.showTax ? "فاتورة ضريبية" : "فاتورة";
+
+    // حساب الضريبة
+    const taxAmount = config.showTax
+        ? Math.round((order.subtotal * (config.taxRate / 100)) * 100) / 100
+        : 0;
+    const finalTotal = config.showTax
+        ? order.subtotal + (order.shipping_cost || 0) + taxAmount
+        : order.subtotal + (order.shipping_cost || 0);
 
     // ─── STYLES PER TEMPLATE ─────────────────────────────────
 
@@ -277,8 +290,8 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
                     <div class="tagline">${config.tagline}</div>
                 </div>
                 <div style="text-align: left;">
-                    <div class="document-title">فاتورة ضريبية</div>
-                    <div class="tagline">فاتورة #${order.order_number}</div>
+                    <div class="document-title">${invoiceTitle}</div>
+                    <div class="tagline">${invoiceTitle} #${order.order_number}</div>
                 </div>
             </div>
             <div class="meta-bar">
@@ -289,7 +302,7 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
         ` : config.template === "minimal" ? `
             <div class="header">
                 ${logoHtml}
-                <div class="document-title">فاتورة ضريبية</div>
+                <div class="document-title">${invoiceTitle}</div>
                 <div class="document-id">#${order.order_number}</div>
             </div>
         ` : `
@@ -299,8 +312,8 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
                     <div style="font-size: 12px; color: #777; margin-top: 8px;">${config.companyName}<br/>${config.tagline}</div>
                 </div>
                 <div style="text-align: left;">
-                    <div class="document-title">فاتورة إلكترونية</div>
-                    <div class="document-id">فاتورة #${order.order_number}</div>
+                    <div class="document-title">${invoiceTitle} إلكترونية</div>
+                    <div class="document-id">${invoiceTitle} #${order.order_number}</div>
                 </div>
             </div>
         `}
@@ -360,13 +373,13 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
                         <td>رسوم الشحن</td>
                         <td class="num">${Number(order.shipping_cost || 0).toLocaleString("ar-SA")} ر.س</td>
                     </tr>
-                    <tr>
-                        <td>مبلغ الضريبة</td>
-                        <td class="num">${Number(order.tax || 0).toLocaleString("ar-SA")} ر.س</td>
-                    </tr>
+                    ${config.showTax ? `<tr>
+                        <td>ضريبة القيمة المضافة (${config.taxRate}%)</td>
+                        <td class="num">${taxAmount.toLocaleString("ar-SA")} ر.س</td>
+                    </tr>` : ""}
                     <tr class="total-row">
                         <td>الإجمالي الكلي</td>
-                        <td class="num">${Number(order.total).toLocaleString("ar-SA")} ر.س</td>
+                        <td class="num">${finalTotal.toLocaleString("ar-SA")} ر.س</td>
                     </tr>
                 </table>
             </div>
