@@ -32,8 +32,8 @@ export default async function SettingsPage() {
     return (
         <div className="max-w-4xl mx-auto">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-ink">إعدادات الملف الشخصي</h1>
-                <p className="text-ink/60 mt-2">
+                <h1 className="text-3xl font-bold text-fg">إعدادات الملف الشخصي</h1>
+                <p className="text-fg/50 mt-2">
                     {profile.role === "wushsha"
                         ? "قم بتحديث بياناتك لتظهر بشكل احترافي في معرضك الخاص"
                         : "قم بتحديث بياناتك الشخصية وحساباتك لتخصيص تجربتك في المنصة"}

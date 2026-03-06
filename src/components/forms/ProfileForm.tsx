@@ -70,24 +70,24 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-3xl">
             {/* Success/Error Message */}
             {state.message && (
-                <div className={`p-4 rounded-xl text-sm font-medium ${state.success ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                <div className={`p-4 rounded-xl text-sm font-medium ${state.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
                     {state.message}
                 </div>
             )}
 
             {/* Avatar & Cover */}
-            <div className="bg-white p-6 rounded-2xl border border-ink/5 shadow-sm space-y-6">
-                <h3 className="text-lg font-bold border-b border-ink/5 pb-4">الصور</h3>
+            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-6">
+                <h3 className="text-lg font-bold text-fg border-b border-white/[0.06] pb-4">الصور</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-ink/80 mb-2">صورة الملف الشخصي</label>
+                        <label className="block text-sm font-medium text-fg/60 mb-2">صورة الملف الشخصي</label>
                         <div className="flex items-center gap-4">
-                            <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-ink/10 bg-sand/20 flex items-center justify-center shrink-0">
+                            <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-white/[0.03] flex items-center justify-center shrink-0">
                                 {avatarUrl ? (
                                     <Image src={avatarUrl} alt="" width={96} height={96} className="object-cover w-full h-full" />
                                 ) : (
-                                    <ImagePlus className="w-10 h-10 text-ink/30" />
+                                    <ImagePlus className="w-10 h-10 text-fg/20" />
                                 )}
                             </div>
                             <div className="flex flex-col gap-2">
@@ -118,7 +118,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                     <button
                                         type="button"
                                         onClick={() => setAvatarUrl("")}
-                                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
+                                        className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
                                     >
                                         <X className="w-3 h-3" /> إزالة
                                     </button>
@@ -128,13 +128,13 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-ink/80 mb-2">صورة الغلاف</label>
+                        <label className="block text-sm font-medium text-fg/60 mb-2">صورة الغلاف</label>
                         <div className="flex items-center gap-4">
-                            <div className="w-full max-w-[180px] h-24 rounded-2xl overflow-hidden border-2 border-ink/10 bg-sand/20 flex items-center justify-center shrink-0">
+                            <div className="w-full max-w-[180px] h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-white/[0.03] flex items-center justify-center shrink-0">
                                 {coverUrl ? (
                                     <Image src={coverUrl} alt="" width={180} height={96} className="object-cover w-full h-full" />
                                 ) : (
-                                    <ImagePlus className="w-10 h-10 text-ink/30" />
+                                    <ImagePlus className="w-10 h-10 text-fg/20" />
                                 )}
                             </div>
                             <div className="flex flex-col gap-2">
@@ -165,7 +165,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                     <button
                                         type="button"
                                         onClick={() => setCoverUrl("")}
-                                        className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
+                                        className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
                                     >
                                         <X className="w-3 h-3" /> إزالة
                                     </button>
@@ -177,27 +177,27 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             </div>
 
             {/* Basic Info */}
-            <div className="bg-white p-6 rounded-2xl border border-ink/5 shadow-sm space-y-6">
-                <h3 className="text-lg font-bold border-b border-ink/5 pb-4">البيانات الأساسية</h3>
+            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-6">
+                <h3 className="text-lg font-bold text-fg border-b border-white/[0.06] pb-4">البيانات الأساسية</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-ink/80 mb-2">الاسم المعروض</label>
+                        <label className="block text-sm font-medium text-fg/60 mb-2">الاسم المعروض</label>
                         <input
                             {...register("display_name")}
-                            className="w-full p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all"
+                            className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all"
                             placeholder={userRole === "wushsha" ? "اسمك الفني أو الحقيقي" : "أدخل اسمك"}
                         />
                         {errors.display_name && <p className="text-red-500 text-xs mt-1">{errors.display_name.message}</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-ink/80 mb-2">اسم المستخدم</label>
+                        <label className="block text-sm font-medium text-fg/60 mb-2">اسم المستخدم</label>
                         <div className="relative">
-                            <AtSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/40" />
+                            <AtSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/30" />
                             <input
                                 {...register("username")}
-                                className="w-full p-3 pr-10 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all dir-ltr text-right"
+                                className="w-full p-3 pr-10 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr text-right"
                                 placeholder="username"
                             />
                         </div>
@@ -207,10 +207,10 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-ink/80 mb-2">نبذة عنك (Bio)</label>
+                    <label className="block text-sm font-medium text-fg/60 mb-2">نبذة عنك (Bio)</label>
                     <textarea
                         {...register("bio")}
-                        className="w-full h-32 p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none transition-all"
+                        className="w-full h-32 p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none resize-none transition-all"
                         placeholder={userRole === "wushsha" ? "اخبرنا قليلاً عن نفسك وفنك..." : "نبذة قصيرة عنك..."}
                     />
                     {errors.bio && <p className="text-red-500 text-xs mt-1">{errors.bio.message}</p>}
@@ -219,51 +219,51 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
 
             {/* Social Links (Only for Wushsha & Admin) */}
             {(userRole === "wushsha" || userRole === "admin") && (
-                <div className="bg-white p-6 rounded-2xl border border-ink/5 shadow-sm space-y-6">
-                    <h3 className="text-lg font-bold border-b border-ink/5 pb-4">التواجد الرقمي</h3>
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-6">
+                    <h3 className="text-lg font-bold text-fg border-b border-white/[0.06] pb-4">التواجد الرقمي</h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="flex items-center gap-2 text-sm font-medium text-ink/80 mb-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-fg/60 mb-2">
                                 <Globe className="w-4 h-4" /> الموقع الشخصي
                             </label>
                             <input
                                 {...register("website")}
-                                className="w-full p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all dir-ltr"
+                                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
                                 placeholder="https://your-portfolio.com"
                             />
                             {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website.message}</p>}
                         </div>
 
                         <div>
-                            <label className="flex items-center gap-2 text-sm font-medium text-ink/80 mb-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-fg/60 mb-2">
                                 <Instagram className="w-4 h-4" /> انستجرام
                             </label>
                             <input
                                 {...register("social_links.instagram")}
-                                className="w-full p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all dir-ltr"
+                                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
 
                         <div>
-                            <label className="flex items-center gap-2 text-sm font-medium text-ink/80 mb-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-fg/60 mb-2">
                                 <Twitter className="w-4 h-4" /> تويتر / X
                             </label>
                             <input
                                 {...register("social_links.twitter")}
-                                className="w-full p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all dir-ltr"
+                                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
 
                         <div>
-                            <label className="flex items-center gap-2 text-sm font-medium text-ink/80 mb-2">
+                            <label className="flex items-center gap-2 text-sm font-medium text-fg/60 mb-2">
                                 <Dribbble className="w-4 h-4" /> Dribbble
                             </label>
                             <input
                                 {...register("social_links.dribbble")}
-                                className="w-full p-3 rounded-xl bg-sand/20 border border-ink/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none transition-all dir-ltr"
+                                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
