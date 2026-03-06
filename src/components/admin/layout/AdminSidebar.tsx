@@ -5,28 +5,11 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    LayoutDashboard,
-    BarChart3,
-    Users,
-    Warehouse,
-    TrendingUp,
-    UserCheck,
-    ShoppingCart,
-    FileText,
-    Image as ImageIcon,
-    ChevronRight,
-    Shield,
-    Sparkles,
-    Menu,
-    X,
-    Tag,
-    Package,
-    Mail,
-    Settings,
-    Palette,
-    Wand2,
-    Brush,
-    QrCode,
+    LayoutDashboard, BarChart3, Users, Warehouse, TrendingUp, UserCheck,
+    ShoppingCart, FileText, Image as ImageIcon, ChevronRight, Shield, Sparkles,
+    Menu, X, Tag, Package, Mail, Settings, Palette, Wand2, Brush, QrCode,
+    Bell, Activity, ClipboardList, Ticket, CreditCard, Store,
+    HeadphonesIcon, UserCog, History,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -38,7 +21,7 @@ interface NavItem {
 }
 
 interface NavGroup {
-    title?: string;
+    title: string;
     items: NavItem[];
 }
 
@@ -49,45 +32,57 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
 
     const navGroups: NavGroup[] = [
         {
+            title: "الرئيسية",
             items: [
-                { icon: LayoutDashboard, label: "نظرة عامة", href: "/dashboard" },
-                { icon: BarChart3, label: "التحليلات", href: "/dashboard/analytics" },
+                { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard" },
+                { icon: BarChart3, label: "التقارير والتحليلات", href: "/dashboard/analytics" },
             ],
         },
         {
-            title: "المستخدمون والطلبات",
+            title: "المنتجات والمخزون",
             items: [
-                { icon: UserCheck, label: "مستخدمي Clerk", href: "/dashboard/users-clerk" },
-                { icon: Users, label: "المستخدمون", href: "/dashboard/users" },
-                { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders" },
-                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders" },
-                { icon: FileText, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
-            ],
-        },
-        {
-            title: "المبيعات والمخزون",
-            items: [
-                { icon: TrendingUp, label: "إدارة المبيعات", href: "/dashboard/sales" },
+                { icon: Package, label: "إدارة المنتجات", href: "/dashboard/products" },
+                { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
                 { icon: Warehouse, label: "إدارة المخزون", href: "/dashboard/inventory" },
-                { icon: QrCode, label: "إعدادات الباركود (SKU)", href: "/dashboard/barcodes" },
-                { icon: Tag, label: "كوبونات الخصم", href: "/dashboard/coupons" },
+                { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales" },
+                { icon: Ticket, label: "كوبونات الخصم", href: "/dashboard/coupons" },
+            ],
+        },
+        {
+            title: "الطلبات",
+            items: [
+                { icon: ShoppingCart, label: "إدارة الطلبات", href: "/dashboard/orders" },
+                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders" },
+            ],
+        },
+        {
+            title: "العملاء والمستخدمون",
+            items: [
+                { icon: UserCheck, label: "المستخدمون", href: "/dashboard/users-clerk" },
+                { icon: Users, label: "الملفات الشخصية", href: "/dashboard/users" },
+                { icon: UserCog, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
             ],
         },
         {
             title: "المحتوى والتصاميم",
             items: [
                 { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks" },
-                { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
-                { icon: Package, label: "المنتجات", href: "/dashboard/products" },
-                { icon: Palette, label: "تصاميم وشّى الحصرية", href: "/dashboard/exclusive-designs" },
+                { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs" },
                 { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store" },
             ],
         },
         {
-            title: "التواصل والإعدادات",
+            title: "الإشعارات والتواصل",
             items: [
+                { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications" },
                 { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter" },
-                { icon: Settings, label: "الإعدادات", href: "/dashboard/settings" },
+            ],
+        },
+        {
+            title: "الإدارة والنظام",
+            items: [
+                { icon: History, label: "سجل العمليات", href: "/dashboard/activity-log" },
+                { icon: Settings, label: "الإعدادات العامة", href: "/dashboard/settings" },
             ],
         },
     ];
@@ -135,15 +130,18 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
             </div>
 
             {/* ─── Navigation ─── */}
-            <nav className="flex-1 py-4 px-3 flex flex-col gap-6 overflow-y-auto">
+            <nav className="flex-1 py-3 px-2.5 flex flex-col gap-4 overflow-y-auto styled-scrollbar">
                 {navGroups.map((group, gi) => (
-                    <div key={gi} className="space-y-1">
-                        {group.title && !isCollapsed && (
-                            <div className="px-3 mb-2">
-                                <span className="text-[10px] font-bold text-fg/30 uppercase tracking-wider">
+                    <div key={gi} className="space-y-0.5">
+                        {!isCollapsed && (
+                            <div className="px-3 mb-1.5">
+                                <span className="text-[10px] font-bold text-fg/25 uppercase tracking-wider">
                                     {group.title}
                                 </span>
                             </div>
+                        )}
+                        {isCollapsed && gi > 0 && (
+                            <div className="w-8 mx-auto my-1 border-t border-white/[0.06]" />
                         )}
                         {group.items.map((item) => {
                             const isActive = pathname === item.href ||
@@ -155,15 +153,16 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
                                     href={item.href}
                                     onClick={() => setIsMobileOpen(false)}
                                     className={`
-                                        relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+                                        relative flex items-center gap-3 px-3 py-2 rounded-xl
                                         transition-all duration-300 group
                                         ${isActive
                                             ? "bg-gold/10 text-gold"
                                             : "text-fg/40 hover:text-fg/70 hover:bg-white/[0.03]"
                                         }
                                     `}
+                                    title={isCollapsed ? item.label : undefined}
                                 >
-                                    <item.icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-gold" : "text-fg/40 group-hover:text-fg/60"
+                                    <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? "text-gold" : "text-fg/40 group-hover:text-fg/60"
                                         }`} />
 
                                     <AnimatePresence>
@@ -172,7 +171,7 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
                                                 initial={{ opacity: 0, x: -8 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: -8 }}
-                                                className="text-sm font-medium whitespace-nowrap flex-1"
+                                                className="text-[13px] font-medium whitespace-nowrap flex-1"
                                             >
                                                 {item.label}
                                             </motion.span>
