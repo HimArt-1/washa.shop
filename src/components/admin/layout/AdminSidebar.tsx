@@ -9,7 +9,7 @@ import {
     ShoppingCart, FileText, Image as ImageIcon, ChevronRight, Shield, Sparkles,
     Menu, X, Tag, Package, Mail, Settings, Palette, Wand2, Brush, QrCode,
     Bell, Activity, ClipboardList, Ticket, CreditCard, Store,
-    HeadphonesIcon, UserCog, History,
+    HeadphonesIcon, UserCog, History, Megaphone,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -75,6 +75,7 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
             title: "الإشعارات والتواصل",
             items: [
                 { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications" },
+                { icon: Megaphone, label: "الإعلانات والعروض", href: "/dashboard/announcements" },
                 { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support" },
                 { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter" },
             ],
