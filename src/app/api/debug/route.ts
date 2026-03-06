@@ -60,5 +60,72 @@ export async function GET() {
         diagnostics.footer_import = `❌ ${e.message}`;
     }
 
+    // Try getPublicVisibility
+    try {
+        const { getPublicVisibility } = await import("@/app/actions/settings");
+        const vis = await getPublicVisibility();
+        diagnostics.visibility = `✅ ${JSON.stringify(vis).slice(0, 100)}`;
+    } catch (e: any) {
+        diagnostics.visibility = `❌ ${e.message}`;
+    }
+
+    // Try CartSheet
+    try {
+        await import("@/components/store/CartSheet");
+        diagnostics.cart_sheet = "✅ OK";
+    } catch (e: any) {
+        diagnostics.cart_sheet = `❌ ${e.message}`;
+    }
+
+    // Try Hero
+    try {
+        await import("@/components/sections/Hero");
+        diagnostics.hero = "✅ OK";
+    } catch (e: any) {
+        diagnostics.hero = `❌ ${e.message}`;
+    }
+
+    // Try AISection
+    try {
+        await import("@/components/sections/AISection");
+        diagnostics.ai_section = "✅ OK";
+    } catch (e: any) {
+        diagnostics.ai_section = `❌ ${e.message}`;
+    }
+
+    // Try ServiceWorkerRegister
+    try {
+        await import("@/components/notifications/ServiceWorkerRegister");
+        diagnostics.sw_register = "✅ OK";
+    } catch (e: any) {
+        diagnostics.sw_register = `❌ ${e.message}`;
+    }
+
+    // Try FloatingJoinButton
+    try {
+        await import("@/components/ui/FloatingJoinButton");
+        diagnostics.floating_join = "✅ OK";
+    } catch (e: any) {
+        diagnostics.floating_join = `❌ ${e.message}`;
+    }
+
+    // Try FloatingChatButton
+    try {
+        await import("@/components/ui/FloatingChatButton");
+        diagnostics.floating_chat = "✅ OK";
+    } catch (e: any) {
+        diagnostics.floating_chat = `❌ ${e.message}`;
+    }
+
+    // Try React rendering
+    try {
+        const React = await import("react");
+        const ReactDOM = await import("react-dom/server");
+        const html = ReactDOM.renderToString(React.createElement("div", null, "test"));
+        diagnostics.react_render = `✅ ${html.length} chars`;
+    } catch (e: any) {
+        diagnostics.react_render = `❌ ${e.message}`;
+    }
+
     return NextResponse.json(diagnostics, { status: 200 });
 }
