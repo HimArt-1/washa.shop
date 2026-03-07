@@ -387,7 +387,7 @@ export function ProductsClient({
                                             {sku ? (
                                                 <button onClick={() => setBarcodeProductId(product.id)} className="group flex flex-col items-center gap-0.5" title="عرض الباركود">
                                                     <QrCode className="w-4 h-4 text-fg/30 group-hover:text-gold transition-colors" />
-                                                    <span className="text-[9px] font-mono text-fg/20 group-hover:text-gold/60 transition-colors">{sku.sku_code?.slice(0, 8)}</span>
+                                                    <span className="text-[9px] font-mono text-fg/20 group-hover:text-gold/60 transition-colors">{sku.sku?.slice(0, 8)}</span>
                                                 </button>
                                             ) : (
                                                 <button onClick={() => setBarcodeProductId(product.id)}
@@ -517,24 +517,29 @@ function BarcodeModal({ product, sku, onClose, onCreated }: {
     product: any; sku: any; onClose: () => void; onCreated: () => void;
 }) {
     const [loading, setLoading] = useState(false);
-    const [newSku, setNewSku] = useState(sku?.sku_code || "");
-    const [codeType, setCodeType] = useState<"barcode" | "qr">("barcode");
 
-    useEffect(() => {
-        if (!sku && product) {
-            // Auto-generate SKU
-            const prefix = (product.type || "GEN").slice(0, 3).toUpperCase();
-            const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-            setNewSku(`WSH-${prefix}-${rand}`);
-        }
-    }, [sku, product]);
+    // For manual creation
+    const [size, setSize] = useState("");
+    const [colorCode, setColorCode] = useState("");
+    const [customSku, setCustomSku] = useState("");
+
+    const generateSkuString = () => {
+        if (!product) return "";
+        const typeStr = product.type === 'apparel' ? 't' : product.type === 'print' ? 'p' : 'o';
+        const seq = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const sizeStr = size ? size.toUpperCase() : 'NA';
+        const colorStr = colorCode ? colorCode.toLowerCase() : 'na';
+        return `wsh-${typeStr}-${seq}-${sizeStr}-${colorStr}`;
+    };
 
     const handleCreate = async () => {
         setLoading(true);
+        const finalSku = customSku || generateSkuString();
         await createSKU({
             product_id: product.id,
-            sku_code: newSku,
-            barcode: newSku,
+            sku: finalSku,
+            size: size || null,
+            color_code: colorCode || null
         });
         setLoading(false);
         onCreated();
@@ -542,7 +547,7 @@ function BarcodeModal({ product, sku, onClose, onCreated }: {
     };
 
     const handlePrint = () => {
-        const code = sku?.sku_code || newSku;
+        const code = sku?.sku || "";
         const win = window.open("", "_blank", "width=400,height=300");
         if (!win) return;
         win.document.write(`
@@ -600,14 +605,47 @@ function BarcodeModal({ product, sku, onClose, onCreated }: {
                     </div>
                 </div>
 
-                {/* SKU Input */}
-                <div>
-                    <label className="block text-xs font-medium text-fg/50 mb-1.5">رمز SKU</label>
-                    <input type="text" value={sku?.sku_code || newSku}
-                        onChange={(e) => !sku && setNewSku(e.target.value)}
-                        readOnly={!!sku} dir="ltr"
-                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg font-mono tracking-wider focus:outline-none focus:border-gold/30 read-only:opacity-60" />
-                </div>
+                {/* SKU Generator Inputs (Only if no SKU yet) */}
+                {!sku ? (
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-fg/50 mb-1.5">المقاس (اختياري)</label>
+                                <input type="text" value={size} onChange={e => setSize(e.target.value)}
+                                    placeholder="مثال: XL"
+                                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-fg/50 mb-1.5">اللون (اختياري)</label>
+                                <input type="text" value={colorCode} onChange={e => setColorCode(e.target.value)}
+                                    placeholder="مثال: blu"
+                                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gold mb-1.5">الرقم التسلسلي (SKU)</label>
+                            <input type="text" value={customSku || generateSkuString()}
+                                onChange={(e) => setCustomSku(e.target.value)} dir="ltr"
+                                placeholder="سجل الكود المخصص هنا أو اترك المولد الآلي"
+                                className="w-full px-4 py-2.5 bg-gold/5 border border-gold/20 text-gold rounded-xl text-sm font-mono tracking-wider focus:outline-none placeholder:text-gold/30" />
+                            <p className="text-[10px] text-fg/40 mt-1.5 leading-relaxed">
+                                هذه الأداة تولّد سيريال المنتج وستربطه تلقائياً بالباركود لطباعته وإدارة المستودع.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-3 pt-2">
+                        <div>
+                            <label className="block text-xs font-medium text-fg/50 mb-1.5">رمز SKU الحالي</label>
+                            <input type="text" value={sku.sku} readOnly dir="ltr"
+                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg font-mono tracking-wider focus:outline-none opacity-60" />
+                        </div>
+                        <div className="flex gap-2">
+                            {sku.size && <span className="px-2 py-1 text-xs bg-white/5 rounded-md border border-white/10 text-fg/60">المقاس: {sku.size}</span>}
+                            {sku.color_code && <span className="px-2 py-1 text-xs bg-white/5 rounded-md border border-white/10 text-fg/60">اللون: {sku.color_code}</span>}
+                        </div>
+                    </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-2">
@@ -617,13 +655,13 @@ function BarcodeModal({ product, sku, onClose, onCreated }: {
                                 className="flex-1 py-2.5 rounded-xl bg-gold/10 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/20 transition-all text-sm">
                                 <Printer className="w-4 h-4" /> طباعة ملصق
                             </button>
-                            <button onClick={() => { navigator.clipboard.writeText(sku.sku_code); }}
+                            <button onClick={() => { navigator.clipboard.writeText(sku.sku); }}
                                 className="py-2.5 px-4 rounded-xl bg-white/5 text-fg/60 hover:bg-white/10 transition-all text-sm border border-white/[0.06]">
                                 نسخ
                             </button>
                         </>
                     ) : (
-                        <button onClick={handleCreate} disabled={loading || !newSku}
+                        <button onClick={handleCreate} disabled={loading}
                             className="flex-1 py-2.5 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/30 transition-all disabled:opacity-50 text-sm">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                             إنشاء SKU
