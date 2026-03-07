@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { FloatingJoinButton } from "@/components/ui/FloatingJoinButton";
 import { FloatingChatButton } from "@/components/ui/FloatingChatButton";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
@@ -20,13 +21,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "منصة وشّى | WUSHA — فنٌ يرتدى",
+    default: "منصة وشّى | WASHA — فنٌ يرتدى",
     template: "%s | وشّى",
   },
   description: "منصة فنية رقمية تجمع المبدعين العرب. معرض، بورتفوليو، متجر، وتصميم قطعك بالذكاء الاصطناعي.",
   keywords: ["فن", "معرض", "رقمي", "عربي", "بورتفوليو", "متجر فني", "وشّى", "wusha", "فن عربي"],
-  authors: [{ name: "WUSHA", url: SITE_URL }],
-  creator: "WUSHA",
+  authors: [{ name: "WASHA", url: SITE_URL }],
+  creator: "WASHA",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
     title: "وشّى",
   },
   openGraph: {
-    title: "منصة وشّى | WUSHA — فنٌ يرتدى",
+    title: "منصة وشّى | WASHA — فنٌ يرتدى",
     description: "منصة فنية رقمية تجمع المبدعين العرب. معرض، متجر، وتصميم قطعك بالذكاء الاصطناعي.",
     type: "website",
     locale: "ar_SA",
@@ -50,7 +51,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "منصة وشّى | WUSHA",
+    title: "منصة وشّى | WASHA",
     description: "منصة فنية رقمية تجمع المبدعين العرب",
   },
   robots: {
@@ -91,7 +92,14 @@ export default function RootLayout({
   return (
     <ClerkProvider localization={arSA} appearance={clerkAppearance} dynamic>
       <html lang="ar" dir="rtl" suppressHydrationWarning>
-        <body className="font-arabic bg-[#080808] text-[#f0ebe3]" suppressHydrationWarning>
+        <head>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var t=localStorage.getItem('wusha-theme');var p=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t||p);})();`,
+            }}
+          />
+        </head>
+        <body className="font-arabic" style={{ backgroundColor: "var(--wusha-bg)", color: "var(--wusha-text)" }} suppressHydrationWarning>
           {/* Noise Texture Overlay */}
           <div className="noise-overlay" aria-hidden="true" />
 
@@ -101,7 +109,9 @@ export default function RootLayout({
           </Suspense>
 
           {/* Main Content */}
-          {children}
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
 
           {/* Service Worker للـ PWA و Web Push */}
           <ServiceWorkerRegister />

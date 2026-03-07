@@ -1,5 +1,6 @@
 import { getProfile } from "@/app/actions/profile";
 import { ProfileForm } from "@/components/forms/ProfileForm";
+import { SettingsThemeSection } from "@/components/account/SettingsThemeSection";
 import { type ProfileFormData } from "@/lib/validations";
 
 export default async function SettingsPage() {
@@ -40,7 +41,10 @@ export default async function SettingsPage() {
                 </p>
             </div>
 
-            <ProfileForm initialData={initialData} userRole={profile.role} />
+            <div className="space-y-8">
+                <SettingsThemeSection />
+                <ProfileForm initialData={initialData} userRole={profile.role} />
+            </div>
         </div>
     );
 }

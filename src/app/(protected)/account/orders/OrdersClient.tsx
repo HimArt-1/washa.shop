@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2 } from "lucide-react";
+import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2, FileText } from "lucide-react";
 import { DesignResultsPopup } from "@/components/design-your-piece/DesignResultsPopup";
+import { openInvoicePrint } from "@/lib/invoice";
 import type { CustomDesignOrder } from "@/types/database";
 import { cancelDesignOrderByCustomer } from "@/app/actions/smart-store";
 
@@ -121,21 +122,60 @@ export function OrdersClient({
                                     {/* Action Buttons */}
                                     <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.04]">
                                         {isAwaiting ? (
-                                            <button
-                                                onClick={() => setSelectedDesignOrder(dOrder)}
-                                                className={`flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600" : "bg-gold hover:bg-gold-light"} text-bg py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg ${dOrder.is_sent_to_customer ? "shadow-emerald-500/20" : ""}`}
-                                            >
-                                                {dOrder.is_sent_to_customer ? (
-                                                    <>
-                                                        <CheckCircle2 className="w-4 h-4" /> دفع وإضافة للسلة · {dOrder.final_price} ر.س
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Search className="w-4 h-4" /> معاينة واعتماد النتيجة
-                                                    </>
-                                                )}
-                                            </button>
-                                        ) : dOrder.status !== "completed" && dOrder.status !== "cancelled" ? (
+                                            <>
+                                                <button
+                                                    onClick={() => setSelectedDesignOrder(dOrder)}
+                                                    className={`flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600" : "bg-gold hover:bg-gold-light"} text-bg py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg ${dOrder.is_sent_to_customer ? "shadow-emerald-500/20" : ""}`}
+                                                >
+                                                    {dOrder.is_sent_to_customer ? (
+                                                        <>
+                                                            <CheckCircle2 className="w-4 h-4" /> دفع وإضافة للسلة · {dOrder.final_price} ر.س
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Search className="w-4 h-4" /> معاينة واعتماد النتيجة
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </>
+                                        ) : dOrder.status === "completed" ? (
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        const invoiceOrder = {
+                                                            id: dOrder.id,
+                                                            order_number: String(dOrder.order_number || dOrder.id.slice(0, 8)),
+                                                            status: "completed",
+                                                            payment_status: "paid",
+                                                            subtotal: dOrder.final_price || 0,
+                                                            shipping_cost: 0,
+                                                            tax: 0,
+                                                            total: dOrder.final_price || 0,
+                                                            currency: "SAR",
+                                                            buyer: { display_name: "مستخدم وشّى" },
+                                                            created_at: dOrder.created_at,
+                                                            order_items: [{
+                                                                id: dOrder.id,
+                                                                custom_title: dOrder.garment_name,
+                                                                custom_garment: dOrder.garment_name,
+                                                                size: dOrder.size_name,
+                                                                quantity: 1,
+                                                                unit_price: dOrder.final_price || 0,
+                                                                total_price: dOrder.final_price || 0,
+                                                                custom_design_url: dOrder.garment_image_url
+                                                            }]
+                                                        };
+                                                        openInvoicePrint(invoiceOrder);
+                                                    }}
+                                                    className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-gold/10 hover:text-gold transition-colors flex items-center justify-center gap-2 text-center border border-transparent hover:border-gold/20"
+                                                >
+                                                    <FileText className="w-4 h-4" /> الفاتورة الذكية
+                                                </button>
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 text-center">
+                                                    تفاصيل الطلب <ExternalLink className="w-3.5 h-3.5" />
+                                                </Link>
+                                            </>
+                                        ) : dOrder.status !== "cancelled" ? (
                                             <>
                                                 <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 text-center">
                                                     تتبع الطلب والحوار <ExternalLink className="w-3.5 h-3.5" />
@@ -212,9 +252,23 @@ export function OrdersClient({
                                         })}
                                     </div>
                                 )}
+
                                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.04]">
-                                    <span className="text-xs text-fg/20">الإجمالي</span>
-                                    <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                    <div className="flex items-center gap-4">
+                                        <div>
+                                            <span className="text-xs text-fg/40 block mb-0.5">الإجمالي</span>
+                                            <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                        </div>
+                                        {/* Invoice Button */}
+                                        <button
+                                            onClick={() => openInvoicePrint(order)}
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-white/10 text-fg/60 hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
+                                            title="عرض الفاتورة"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            الفاتورة الذكية
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );

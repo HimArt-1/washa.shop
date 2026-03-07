@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // وشّى — Dark Heritage Color System
+        // وشّى — Theme-aware via CSS variables (opacity modifiers need hex fallback)
         bg: "#080808",
         fg: "#f0ebe3",
         surface: "#111111",
@@ -19,13 +19,11 @@ const config: Config = {
         accent: "#9D8BB1",
         primary: "#2a7a5a",
         secondary: "#5A3E2B",
-        // Named (legacy support)
         sand: "#f0ebe3",
         ink: "#f0ebe3",
         earth: "#5A3E2B",
         mist: "#9D8BB1",
         forest: "#2a7a5a",
-        // Wusha namespace
         wusha: {
           bg: "#080808",
           surface: "#111111",

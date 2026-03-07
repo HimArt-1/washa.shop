@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Palette, Search, User, ShoppingBag } from "lucide-react";
+import { Menu, X, Search, User } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const navItems = [
   { label: "المعرض", href: "/gallery" },
@@ -55,7 +56,7 @@ export function Header() {
 
   const headerBg =
     isScrolled || isMobileMenuOpen
-      ? "bg-[#080808]/95 backdrop-blur-xl border-b border-gold/10"
+      ? "backdrop-blur-xl border-b"
       : "bg-transparent";
 
   return (
@@ -66,6 +67,8 @@ export function Header() {
         style={{
           transform: isHidden ? "translateY(-100%)" : "translateY(0)",
           transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.5s ease-out, border-color 0.5s ease-out",
+          backgroundColor: isScrolled || isMobileMenuOpen ? "color-mix(in srgb, var(--wusha-bg) 95%, transparent)" : "transparent",
+          borderColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
         }}
       >
         <div className="container-wusha">
@@ -80,14 +83,15 @@ export function Header() {
               {navItems.map((item, index) => (
                 <Link key={item.href} href={item.href} className="group">
                   <motion.span
-                    className="relative inline-block text-white/70 group-hover:text-gold transition-colors duration-300 text-sm font-medium py-2"
+                    className="relative inline-block transition-colors duration-300 text-sm font-medium py-2 group-hover:text-[var(--wusha-gold)]"
+                    style={{ color: "color-mix(in srgb, var(--wusha-text) 70%, transparent)" }}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.08 + 0.2 }}
                     whileHover={{ y: -1 }}
                   >
                     {item.label}
-                    <span className="absolute bottom-0 right-0 left-0 h-px bg-gold scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+                    <span className="absolute bottom-0 right-0 left-0 h-px scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" style={{ backgroundColor: "var(--wusha-gold)" }} />
                   </motion.span>
                 </Link>
               ))}
@@ -95,10 +99,10 @@ export function Header() {
 
             {/* Desktop: Search + Auth */}
             <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+              <ThemeToggle />
               <Link href="/search" aria-label="البحث">
                 <motion.div
-                  className="p-2.5 rounded-xl text-white/60 hover:text-gold hover:bg-white/5 transition-all duration-300"
-                  whileHover={{ scale: 1.05 }}
+                  className="p-2.5 rounded-xl transition-all duration-300 hover:scale-105 [color:color-mix(in_srgb,var(--wusha-text)_60%,transparent)] hover:text-[var(--wusha-gold)] hover:bg-[color:color-mix(in_srgb,var(--wusha-text)_5%,transparent)]"
                   whileTap={{ scale: 0.95 }}
                 >
                   <Search className="w-5 h-5" />
@@ -154,8 +158,9 @@ export function Header() {
 
             {/* Mobile: Search + Menu Toggle */}
             <div className="flex md:hidden items-center gap-0.5">
+              <ThemeToggle />
               <Link href="/search" aria-label="البحث">
-                <span className="p-3 text-white/80 hover:text-gold transition-colors inline-block">
+                <span className="p-3 transition-colors inline-block [color:color-mix(in_srgb,var(--wusha-text)_80%,transparent)] hover:text-[var(--wusha-gold)]">
                   <Search className="w-5 h-5" />
                 </span>
               </Link>
@@ -163,7 +168,7 @@ export function Header() {
                 <NotificationBell />
               </SignedIn>
               <button
-                className="relative z-[110] p-3 -mr-1 text-white/90 hover:text-gold transition-colors rounded-xl hover:bg-white/5"
+                className="relative z-[110] p-3 -mr-1 transition-colors rounded-xl [color:color-mix(in_srgb,var(--wusha-text)_90%,transparent)] hover:text-[var(--wusha-gold)] hover:bg-[color:color-mix(in_srgb,var(--wusha-text)_5%,transparent)]"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 aria-label={isMobileMenuOpen ? "إغلاق القائمة" : "فتح القائمة"}
                 aria-expanded={isMobileMenuOpen}
@@ -191,7 +196,8 @@ export function Header() {
           >
             {/* Backdrop */}
             <div
-              className="absolute inset-0 bg-[#080808]/90 backdrop-blur-xl"
+              className="absolute inset-0 backdrop-blur-xl"
+              style={{ backgroundColor: "color-mix(in srgb, var(--wusha-bg) 90%, transparent)" }}
               onClick={() => setIsMobileMenuOpen(false)}
               aria-hidden="true"
             />
@@ -213,7 +219,7 @@ export function Header() {
                 >
                   <Link
                     href={item.href}
-                    className="block text-2xl sm:text-3xl font-bold text-white/85 hover:text-gold transition-colors py-4"
+                    className="block text-2xl sm:text-3xl font-bold transition-colors py-4 [color:color-mix(in_srgb,var(--wusha-text)_85%,transparent)] hover:text-[var(--wusha-gold)]"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.label}
@@ -229,7 +235,7 @@ export function Header() {
                 >
                   <Link
                     href="/account"
-                    className="flex items-center gap-3 text-2xl sm:text-3xl font-bold text-white/85 hover:text-gold transition-colors py-4"
+                    className="flex items-center gap-3 text-2xl sm:text-3xl font-bold transition-colors py-4 [color:color-mix(in_srgb,var(--wusha-text)_85%,transparent)] hover:text-[var(--wusha-gold)]"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <User className="w-6 h-6" />

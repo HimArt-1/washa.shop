@@ -85,14 +85,21 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-[#060606] text-white/80 pt-12 sm:pt-20 pb-6 sm:pb-8 border-t border-gold/10">
+    <footer
+      className="pt-12 sm:pt-20 pb-6 sm:pb-8 border-t"
+      style={{
+        backgroundColor: "color-mix(in srgb, var(--wusha-bg) 98%, black)",
+        color: "color-mix(in srgb, var(--wusha-text) 80%, transparent)",
+        borderColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
+      }}
+    >
       <div className="container-wusha">
         {/* Main Footer Content */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-12 sm:mb-16">
           {/* Brand Column */}
           <div className="col-span-2 sm:col-span-2 lg:col-span-2">
             <Logo size="md" className="mb-6" />
-            <p className="text-white/40 mb-6 max-w-sm">
+            <p className="mb-6 max-w-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
               منصة فنية رقمية تجمع المبدعين العرب في مساحة واحدة للعرض، البيع، والاكتشاف.
             </p>
 
@@ -100,7 +107,8 @@ export function Footer() {
             <div className="space-y-3">
               <a
                 href="mailto:washaksa@hotmail.com"
-                className="flex items-center gap-3 text-sm text-white/40 hover:text-gold transition-colors"
+                className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
+                style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
               >
                 <Mail className="w-4 h-4" />
                 washaksa@hotmail.com
@@ -109,12 +117,13 @@ export function Footer() {
                 href="https://wa.me/966532235005"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm text-white/40 hover:text-gold transition-colors"
+                className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
+                style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
               >
                 <Phone className="w-4 h-4" />
                 +966 53 223 5005
               </a>
-              <div className="flex items-center gap-3 text-sm text-white/40">
+              <div className="flex items-center gap-3 text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
                 <MapPin className="w-4 h-4" />
                 المملكة العربية السعودية
               </div>
@@ -130,7 +139,11 @@ export function Footer() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-gold hover:text-[#0a0a0a] hover:border-gold transition-all duration-300"
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-[var(--wusha-gold)] hover:text-[var(--wusha-bg)] hover:border-[var(--wusha-gold)]"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, var(--wusha-text) 5%, transparent)",
+                      border: "1px solid color-mix(in srgb, var(--wusha-text) 10%, transparent)",
+                    }}
                     whileHover={{ scale: 1.1, y: -3 }}
                     whileTap={{ scale: 0.95 }}
                     aria-label={social.label}
@@ -145,21 +158,23 @@ export function Footer() {
           {/* Links Columns */}
           {footerLinks.map((column) => (
             <div key={column.title}>
-              <h4 className="font-bold mb-6 text-white/90">{column.title}</h4>
+              <h4 className="font-bold mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>{column.title}</h4>
               <ul className="space-y-3">
                 {column.links.map((link: any) => (
                   <li key={link.label}>
                     {link.action === "openJoinModal" ? (
                       <button
                         onClick={() => setJoinModalOpen(true)}
-                        className="text-sm text-white/40 hover:text-gold transition-colors text-right"
+                        className="text-sm transition-colors text-right hover:text-[var(--wusha-gold)]"
+                        style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
                       >
                         {link.label}
                       </button>
                     ) : (
                       <a
                         href={link.href}
-                        className="text-sm text-white/40 hover:text-gold transition-colors"
+                        className="text-sm transition-colors hover:text-[var(--wusha-gold)]"
+                        style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
                       >
                         {link.label}
                       </a>
@@ -172,10 +187,10 @@ export function Footer() {
         </div>
 
         {/* Newsletter */}
-        <div className="border-t border-white/5 pt-8 sm:pt-12 mb-8 sm:mb-12">
+        <div className="pt-8 sm:pt-12 mb-8 sm:mb-12" style={{ borderTop: "1px solid color-mix(in srgb, var(--wusha-text) 5%, transparent)" }}>
           <div className="max-w-xl mx-auto text-center">
-            <h4 className="text-xl font-bold mb-3 text-white/90">ابقَ على اطلاع</h4>
-            <p className="text-sm text-white/40 mb-6">
+            <h4 className="text-xl font-bold mb-3" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>ابقَ على اطلاع</h4>
+            <p className="text-sm mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
               اشترك في نشرتنا البريدية لتصلك آخر الأعمال والمعارض
             </p>
             {subscribed ? (
@@ -194,7 +209,7 @@ export function Footer() {
                   type="email"
                   required
                   placeholder="بريدك الإلكتروني"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-gold transition-colors text-white/80 placeholder:text-white/20"
+                  className="input-dark flex-1 rounded-lg px-4 py-3 text-sm"
                   dir="ltr"
                 />
                 <motion.button
@@ -212,11 +227,11 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-white/30">
+        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid color-mix(in srgb, var(--wusha-text) 5%, transparent)" }}>
+          <p className="text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 30%, transparent)" }}>
             © {new Date().getFullYear()} وشّى. جميع الحقوق محفوظة.
           </p>
-          <div className="flex items-center gap-2 text-sm text-white/30">
+          <div className="flex items-center gap-2 text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 30%, transparent)" }}>
             <span>صُنع بـ</span>
             <motion.span
               animate={{ scale: [1, 1.2, 1] }}
