@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Palette, Search, User, ShoppingBag } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -16,17 +16,35 @@ const navItems = [
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const scrollingDown = currentY > lastScrollY.current;
+
+      setIsScrolled(currentY > 50);
+
+      // Hide header when scrolling down past 100px, show when scrolling up
+      if (currentY > 100) {
+        setIsHidden(scrollingDown);
+      } else {
+        setIsHidden(false);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
+      setIsHidden(false); // Always show when menu is open
     } else {
       document.body.style.overflow = "";
     }
@@ -44,7 +62,11 @@ export function Header() {
     <>
       {/* ─── Header Bar ───────────────────────────────────────── */}
       <header
-        className={`fixed top-0 right-0 left-0 z-[100] isolate transition-all duration-500 ease-out ${headerBg}`}
+        className={`sticky top-0 z-[100] isolate transition-all duration-500 ease-out ${headerBg}`}
+        style={{
+          transform: isHidden ? "translateY(-100%)" : "translateY(0)",
+          transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.5s ease-out, border-color 0.5s ease-out",
+        }}
       >
         <div className="container-wusha">
           <div className="flex items-center justify-between h-16 sm:h-[72px] min-h-[64px]">

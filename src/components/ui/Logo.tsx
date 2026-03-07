@@ -32,23 +32,15 @@ export function Logo({ className = "", size = "md" }: LogoProps) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.98 }}
       >
-        {/* Golden glow ring */}
-        <div
-          className="absolute inset-[-3px] rounded-full opacity-70 animate-pulse-slow"
-          style={{
-            background: "conic-gradient(from 0deg, #5A3E2B, #ceae7f, #e0c99a, #ceae7f, #5A3E2B)",
-            filter: "blur(4px)",
-          }}
-        />
-        {/* Inner dark ring */}
-        <div className="absolute inset-[-1px] rounded-full bg-[#0a0a0a]" />
-        {/* Logo image */}
         <Image
           src="/logo.png"
           alt="وشّى"
           width={dims.width}
           height={dims.height}
-          className="relative z-10 object-contain select-none rounded-full"
+          className="object-contain select-none"
+          style={{
+            filter: "sepia(0.3) saturate(1.8) hue-rotate(5deg) brightness(1.1)",
+          }}
           priority
           sizes="(max-width: 640px) 40px, 48px"
         />
