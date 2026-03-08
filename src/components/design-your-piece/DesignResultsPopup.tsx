@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, Check, Loader2, FileText, Download,
     ShoppingCart, MapPin, Maximize2, Minimize2,
-    Plus, RefreshCw, Move
+    Plus, Edit3, Send
 } from "lucide-react";
-import { getGarmentPricing, confirmDesignOrder } from "@/app/actions/smart-store";
+import { getGarmentPricing, confirmDesignOrder, submitModificationRequest } from "@/app/actions/smart-store";
 import { useCartStore } from "@/stores/cartStore";
 import { AdditionalDesignMiniWizard } from "./AdditionalDesignMiniWizard";
 import { storeOrderId } from "./OrderTracker";
@@ -43,19 +43,19 @@ export function DesignResultsPopup({
     onClose,
     onConfirm,
     onCancel,
-    onChangeDesign,
 }: {
     order: CustomDesignOrder;
     onClose: () => void;
     onConfirm: () => void;
     onCancel: () => void;
-    onChangeDesign?: () => void;
 }) {
     const [position, setPosition] = useState<PrintPosition | null>(null);
     const [size, setSize] = useState<PrintSize | null>(null);
-    const [showPositionEditor, setShowPositionEditor] = useState(false);
     const [mainConfirmed, setMainConfirmed] = useState(false);
     const [showAdditionalWizard, setShowAdditionalWizard] = useState(false);
+    const [showModificationForm, setShowModificationForm] = useState(false);
+    const [modificationText, setModificationText] = useState("");
+    const [modificationSubmitting, setModificationSubmitting] = useState(false);
     const [additionalError, setAdditionalError] = useState<string | null>(null);
     const [pricing, setPricing] = useState<any>(null);
     const [loadingPricing, setLoadingPricing] = useState(true);
@@ -72,9 +72,11 @@ export function DesignResultsPopup({
         });
     }, [order.garment_name]);
 
+    const basePrice = pricing?.base_price ?? 0;
+    const designPrice = position && size && pricing ? getPrice(pricing, position, size) : 0;
     const currentPrice = order.is_sent_to_customer
         ? (order.final_price || 0)
-        : (position && size && pricing ? getPrice(pricing, position, size) : 0);
+        : (position && size && pricing ? basePrice + designPrice : 0);
 
     const isReadyToConfirm = order.is_sent_to_customer || (position && size);
 
@@ -252,181 +254,163 @@ export function DesignResultsPopup({
                         </div>
                     )}
 
-                    {/* ═══ قبل التأكيد: تغيير موقع التصميم | تغيير التصميم ═══ */}
-                    {!order.is_sent_to_customer && !mainConfirmed && (
+                    {/* ═══ تعديل التصميم — نموذج طلب التعديل ═══ */}
+                    {showModificationForm && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 space-y-4"
+                        >
+                            <h3 className="font-bold text-fg flex items-center gap-2">
+                                <Edit3 className="w-5 h-5 text-amber-400" /> طلب تعديل التصميم
+                            </h3>
+                            <p className="text-sm text-fg/60">اكتب تفاصيل التعديل المطلوب. سيتم إرجاع الطلب للإدارة لتنفيذ التعديلات.</p>
+                            <textarea
+                                value={modificationText}
+                                onChange={(e) => setModificationText(e.target.value)}
+                                placeholder="مثال: أريد تكبير حجم الشعار قليلاً، أو تغيير اللون إلى أغمق..."
+                                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/40 resize-none"
+                                rows={4}
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={async () => {
+                                        if (!modificationText.trim()) return;
+                                        setModificationSubmitting(true);
+                                        const res = await submitModificationRequest(order.id, modificationText);
+                                        setModificationSubmitting(false);
+                                        if (res.error) {
+                                            setAdditionalError(res.error);
+                                        } else {
+                                            setShowModificationForm(false);
+                                            onConfirm();
+                                        }
+                                    }}
+                                    disabled={modificationSubmitting || !modificationText.trim()}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500/20 text-amber-400 font-bold text-sm hover:bg-amber-500/30 disabled:opacity-50"
+                                >
+                                    {modificationSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                    إرسال طلب التعديل
+                                </button>
+                                <button onClick={() => setShowModificationForm(false)} className="px-4 py-3 rounded-xl border border-white/[0.08] text-fg/60 text-sm">
+                                    إلغاء
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══ قبل التأكيد: موقع التصميم + الأزرار الثلاثة ═══ */}
+                    {!order.is_sent_to_customer && !mainConfirmed && !showModificationForm && (
                         <motion.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.3 }}
                             className="space-y-4 w-full"
                         >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <h3 className="text-lg font-bold text-fg flex items-center gap-2">
+                                <MapPin className="w-5 h-5 text-gold" /> اختر موقع وحجم التصميم
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {POSITIONS.map((pos) => {
+                                    const isActive = position === pos.id;
+                                    return (
+                                        <motion.button
+                                            key={pos.id}
+                                            whileHover={{ scale: 1.03 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => setPosition(pos.id)}
+                                            className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"}`}
+                                        >
+                                            <div className="text-3xl mb-2">{pos.emoji}</div>
+                                            <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
+                                            {isActive && <Check className="absolute top-2 left-2 w-5 h-5 text-gold" />}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                            {position && (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {(["large", "small"] as PrintSize[]).map((sz) => {
+                                        const isActive = size === sz;
+                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
+                                        return (
+                                            <motion.button
+                                                key={sz}
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.98 }}
+                                                onClick={() => setSize(sz)}
+                                                className={`relative p-4 rounded-2xl border-2 transition-all ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20"}`}
+                                            >
+                                                <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
+                                                <p className="text-xs text-fg/50 mt-1">{priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}</p>
+                                                {isActive && <Check className="absolute top-2 left-2 w-4 h-4 text-gold" />}
+                                            </motion.button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {position && size && (
+                                <div className="p-3 rounded-xl bg-gold/10 border border-gold/20 space-y-1">
+                                    <div className="flex justify-between text-sm">
+                                        {basePrice > 0 && <span className="text-fg/60">القطعة: {basePrice} ر.س</span>}
+                                        {designPrice > 0 && <span className="text-fg/60">التصميم: {designPrice} ر.س</span>}
+                                    </div>
+                                    <div className="flex justify-between items-center pt-1 border-t border-gold/20">
+                                        <span className="text-sm text-fg/60">السعر النهائي</span>
+                                        <span className="text-xl font-bold text-gold">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* الأزرار الثلاثة */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-white/[0.06]">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => setShowPositionEditor((v) => !v)}
-                                    className={`flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all ${showPositionEditor ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-gold/30 bg-white/[0.02] hover:bg-gold/5"} text-fg`}
+                                    onClick={handleConfirm}
+                                    disabled={confirming || !position || !size}
+                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 disabled:opacity-50"
                                 >
-                                    <Move className={`w-5 h-5 ${showPositionEditor ? "text-gold" : ""}`} />
-                                    <span className="font-bold text-sm">تغيير موقع التصميم</span>
+                                    {confirming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                                    تأكيد التصميم
                                 </motion.button>
-                                {onChangeDesign && (
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={onChangeDesign}
-                                        className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] hover:border-gold/30 bg-white/[0.02] hover:bg-gold/5 transition-all text-fg"
-                                    >
-                                        <RefreshCw className="w-5 h-5 text-gold" />
-                                        <span className="font-bold text-sm">تغيير التصميم</span>
-                                    </motion.button>
-                                )}
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    disabled
+                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] bg-white/[0.02] text-fg/40 text-sm cursor-not-allowed"
+                                    title="يجب تأكيد التصميم أولاً"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    انشاء تصميم إضافي
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowModificationForm(true)}
+                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] hover:border-amber-500/30 bg-white/[0.02] hover:bg-amber-500/5 transition-all text-fg"
+                                >
+                                    <Edit3 className="w-5 h-5 text-amber-400" />
+                                    <span className="font-bold text-sm">تعديل التصميم</span>
+                                </motion.button>
                             </div>
-
-                            {/* ═══ Position & Size Selector (عند النقر على تغيير موقع التصميم) ═══ */}
-                            <AnimatePresence>
-                                {showPositionEditor && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        className="space-y-4 overflow-hidden w-full pt-4 border-t border-white/[0.06]"
-                                    >
-                                        <h3 className="text-lg font-bold text-fg flex items-center gap-2">
-                                            <MapPin className="w-5 h-5 text-gold" /> اختر موقع التصميم
-                                        </h3>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {POSITIONS.map((pos) => {
-                                                const isActive = position === pos.id;
-                                                return (
-                                                    <motion.button
-                                                        key={pos.id}
-                                                        whileHover={{ scale: 1.03 }}
-                                                        whileTap={{ scale: 0.97 }}
-                                                        onClick={() => setPosition(pos.id)}
-                                                        className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
-                                                            ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                                            : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                                            }`}
-                                                    >
-                                                        <div className="text-3xl mb-2">{pos.emoji}</div>
-                                                        <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
-                                                        <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
-                                                        {isActive && (
-                                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                                className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                                <Check className="w-3.5 h-3.5 text-bg" />
-                                                            </motion.div>
-                                                        )}
-                                                    </motion.button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        {position && (
-                                            <motion.div
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                className="space-y-4"
-                                            >
-                                                <h3 className="text-lg font-bold text-fg flex items-center gap-2 mt-4">
-                                                    <Maximize2 className="w-5 h-5 text-gold" /> اختر حجم التصميم
-                                                </h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    {(["large", "small"] as PrintSize[]).map((sz) => {
-                                                        const isActive = size === sz;
-                                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
-                                                        return (
-                                                            <motion.button
-                                                                key={sz}
-                                                                whileHover={{ scale: 1.02 }}
-                                                                whileTap={{ scale: 0.98 }}
-                                                                onClick={() => setSize(sz)}
-                                                                className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col items-start ${isActive
-                                                                    ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                                                    : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                                                    }`}
-                                                            >
-                                                                <div className="flex items-center gap-3 mb-2 w-full">
-                                                                    {sz === "large"
-                                                                        ? <Maximize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                                        : <Minimize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                                    }
-                                                                    <div className="text-right flex-1">
-                                                                        <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
-                                                                        <p className="text-[10px] text-fg/35">{SIZE_LABELS[sz].desc}</p>
-                                                                    </div>
-                                                                </div>
-                                                                {!loadingPricing && (
-                                                                    <div className={`text-xl font-bold mt-2 self-start ${isActive ? "text-gold" : "text-fg/60"}`}>
-                                                                        {priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}
-                                                                    </div>
-                                                                )}
-                                                                {isActive && (
-                                                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                                        className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                                        <Check className="w-3.5 h-3.5 text-bg" />
-                                                                    </motion.div>
-                                                                )}
-                                                            </motion.button>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
                         </motion.div>
                     )}
 
-                    {/* ═══ Price Summary + Actions (قبل التأكيد فقط) ═══ */}
-                    <AnimatePresence>
-                        {isReadyToConfirm && !mainConfirmed && !showAdditionalWizard && (
-                            <motion.div
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: -20, opacity: 0 }}
-                                className="rounded-2xl p-4 sm:p-5 border border-gold/20 w-full"
-                                style={{ background: "linear-gradient(135deg, rgba(206,174,127,0.08) 0%, rgba(206,174,127,0.02) 100%)" }}
+                    {/* زر الإلغاء */}
+                    {!mainConfirmed && !showAdditionalWizard && !showModificationForm && (
+                        <div className="flex justify-end">
+                            <button
+                                onClick={onCancel}
+                                disabled={confirming}
+                                className="px-4 py-2 rounded-xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                title="إلغاء الطلب"
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <p className="text-sm text-fg/50">ملخص الطلب</p>
-                                        <p className="text-xs text-fg/30 mt-1">
-                                            {order.garment_name} — {order.is_sent_to_customer ? "حسب المواصفات المعتمدة بالاستوديو" : `${POSITIONS.find(p => p.id === position)?.label} — ${SIZE_LABELS[size!]?.label}`}
-                                        </p>
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-3xl font-bold text-gold">{currentPrice > 0 ? `${currentPrice}` : "مجاني"}</p>
-                                        {currentPrice > 0 && <p className="text-xs text-fg/40">ر.س</p>}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row gap-3">
-                                    <button
-                                        onClick={handleConfirm}
-                                        disabled={confirming}
-                                        className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all disabled:opacity-50"
-                                    >
-                                        {confirming
-                                            ? <Loader2 className="w-5 h-5 animate-spin" />
-                                            : <ShoppingCart className="w-5 h-5" />
-                                        }
-                                        {confirming ? "جاري التأكيد..." : "تأكيد وأضف للسلة 🛒"}
-                                    </button>
-                                    <button
-                                        onClick={onCancel}
-                                        disabled={confirming}
-                                        className="sm:w-20 px-5 py-4 rounded-2xl border border-red-500/30 text-red-400 text-sm hover:bg-red-500/10 transition-colors disabled:opacity-50 flex justify-center items-center"
-                                        title="إلغاء الطلب"
-                                    >
-                                        <X className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                إلغاء الطلب
+                            </button>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </motion.div>

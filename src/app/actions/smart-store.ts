@@ -162,6 +162,7 @@ export async function upsertGarment(formData: FormData) {
         image_url: (formData.get("image_url") as string) || null,
         sort_order: Number(formData.get("sort_order") ?? 0),
         is_active: formData.get("is_active") === "true",
+        base_price: Number(formData.get("base_price") ?? 0),
         // Print Pricing
         price_chest_large: Number(formData.get("price_chest_large") ?? 0),
         price_chest_small: Number(formData.get("price_chest_small") ?? 0),
@@ -698,6 +699,20 @@ export async function approveDesignOrder(id: string) {
     return { success: true };
 }
 
+export async function rejectDesignOrder(id: string, reason: string) {
+    const sb = getSmartStoreSb();
+    const text = (reason || "").trim();
+    if (!text) return { error: "يجب ذكر سبب الرفض" };
+
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({ status: "cancelled" as any, admin_notes: `رفض — السبب: ${text}` })
+        .eq("id", id)
+        .eq("status", "new");
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
 export async function cancelDesignOrderByCustomer(id: string) {
     const sb = getSmartStoreSb();
     const { error, data: order } = await sb
@@ -721,21 +736,53 @@ export async function cancelDesignOrderByCustomer(id: string) {
     return { success: true };
 }
 
+// ─── طلب تعديل التصميم (من العميل) ───────────────────────
+
+export async function submitModificationRequest(orderId: string, requestText: string) {
+    const sb = getSmartStoreSb();
+    const text = (requestText || "").trim();
+    if (!text) return { error: "يرجى كتابة تفاصيل التعديل المطلوب" };
+
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({
+            status: "modification_requested" as any,
+            modification_request: text,
+        })
+        .eq("id", orderId)
+        .in("status", ["awaiting_review"]);
+    if (error) return { error: error.message };
+
+    const { data: order } = await sb.from("custom_design_orders").select("order_number").eq("id", orderId).single();
+    if (order) {
+        await createAdminNotification({
+            title: "طلب تعديل التصميم ✏️",
+            message: `العميل طلب تعديلاً على الطلب #${(order as any).order_number}. راجع طلب التعديل.`,
+            type: "order_alert",
+            link: "/dashboard/design-orders",
+        });
+    }
+
+    return { success: true };
+}
+
 // ─── Get Garment Pricing ─────────────────────────────────
 
 export async function getGarmentPricing(garmentName: string) {
     const sb = getSmartStoreSb();
     const { data } = await sb
         .from("custom_design_garments")
-        .select("price_chest_large, price_chest_small, price_back_large, price_back_small, price_shoulder_large, price_shoulder_small")
+        .select("base_price, price_chest_large, price_chest_small, price_back_large, price_back_small, price_shoulder_large, price_shoulder_small")
         .eq("name", garmentName)
         .single();
     if (!data) return {
+        base_price: 0,
         price_chest_large: 0, price_chest_small: 0,
         price_back_large: 0, price_back_small: 0,
         price_shoulder_large: 0, price_shoulder_small: 0,
     };
     return data as {
+        base_price: number;
         price_chest_large: number; price_chest_small: number;
         price_back_large: number; price_back_small: number;
         price_shoulder_large: number; price_shoulder_small: number;
@@ -883,10 +930,11 @@ export async function assignDesignOrder(orderId: string, adminProfileId: string 
 export async function getDesignOrderStats() {
     const sb = getSmartStoreSb();
 
-    const [newRes, inProgRes, awaitRes, compRes, cancelRes, revenueRes] = await Promise.all([
+    const [newRes, inProgRes, awaitRes, modRes, compRes, cancelRes, revenueRes] = await Promise.all([
         sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "new"),
         sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
         sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "awaiting_review"),
+        sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "modification_requested"),
         sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "completed"),
         sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
         sb.from("custom_design_orders").select("final_price").eq("status", "completed").not("final_price", "is", null),
@@ -898,6 +946,7 @@ export async function getDesignOrderStats() {
         new: newRes.count ?? 0,
         in_progress: inProgRes.count ?? 0,
         awaiting_review: awaitRes.count ?? 0,
+        modification_requested: modRes.count ?? 0,
         completed: compRes.count ?? 0,
         cancelled: cancelRes.count ?? 0,
         revenue,

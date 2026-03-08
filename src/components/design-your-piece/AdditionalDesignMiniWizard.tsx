@@ -87,7 +87,9 @@ export function AdditionalDesignMiniWizard({
         });
     }, [order]);
 
-    const currentPrice = position && size && pricing ? getPrice(pricing, position, size) : 0;
+    const basePrice = pricing?.base_price ?? 0;
+    const designPrice = position && size && pricing ? getPrice(pricing, position, size) : 0;
+    const currentPrice = basePrice + designPrice;
 
     const handleSubmit = async () => {
         if (!position || !size || !selectedStyle || !selectedArtStyle) return;
@@ -398,9 +400,10 @@ export function AdditionalDesignMiniWizard({
             </div>
 
             {step === 1 && position && size && (
-                <div className="p-3 rounded-xl bg-gold/10 border border-gold/20 text-center">
-                    <span className="text-gold font-bold">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"}</span>
-                    <span className="text-fg/50 text-sm mr-1"> — سعر التصميم الإضافي</span>
+                <div className="p-3 rounded-xl bg-gold/10 border border-gold/20">
+                    {basePrice > 0 && <p className="text-xs text-fg/50">القطعة: {basePrice} ر.س</p>}
+                    <p className="text-xs text-fg/50">التصميم الإضافي: {designPrice > 0 ? `${designPrice} ر.س` : "مجاني"}</p>
+                    <p className="text-gold font-bold mt-1">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"} — الإجمالي</p>
                 </div>
             )}
         </motion.div>

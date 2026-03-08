@@ -265,6 +265,7 @@ export interface CustomDesignGarment {
     image_url: string | null;
     sort_order: number;
     is_active: boolean;
+    base_price: number;
     // Print Pricing
     price_chest_large: number;
     price_chest_small: number;
@@ -615,7 +616,7 @@ export interface Database {
 
 // ─── Design Order Types ──────────────────────────────────
 
-export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" | "completed" | "cancelled";
+export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" | "completed" | "cancelled" | "modification_requested";
 
 export interface CustomDesignOrder {
     id: string;
@@ -668,6 +669,7 @@ export interface CustomDesignOrder {
     skip_results: boolean;
     admin_notes: string | null;
     assigned_to: string | null;
+    modification_request: string | null;
 
     // Print Placement & Pricing
     print_position: string | null;

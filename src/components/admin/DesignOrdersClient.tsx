@@ -20,6 +20,7 @@ import {
     updateDesignPromptTemplate,
     sendDesignOrderToCustomer,
     assignDesignOrder,
+    rejectDesignOrder,
 } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { DesignOrderAdminChat } from "./DesignOrderAdminChat";
@@ -51,6 +52,7 @@ const STATUS_MAP: Record<CustomDesignOrderStatus, { label: string; color: string
     awaiting_review: { label: "بانتظار المراجعة", color: "bg-purple-500/10 text-purple-400 border-purple-500/20", icon: Eye },
     completed: { label: "مكتمل", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
     cancelled: { label: "ملغي", color: "bg-red-500/10 text-red-400 border-red-500/20", icon: X },
+    modification_requested: { label: "طلب تعديل", color: "bg-amber-500/10 text-amber-400 border-amber-500/20", icon: AlertCircle },
 };
 
 const NEXT_STATUSES: Record<string, CustomDesignOrderStatus[]> = {
@@ -59,6 +61,7 @@ const NEXT_STATUSES: Record<string, CustomDesignOrderStatus[]> = {
     awaiting_review: ["completed", "in_progress"],
     completed: [],
     cancelled: [],
+    modification_requested: ["in_progress", "cancelled"],
 };
 
 const FILTER_STATUSES = [
@@ -66,6 +69,7 @@ const FILTER_STATUSES = [
     { value: "new", label: "جديد" },
     { value: "in_progress", label: "قيد التنفيذ" },
     { value: "awaiting_review", label: "بانتظار المراجعة" },
+    { value: "modification_requested", label: "طلب تعديل" },
     { value: "completed", label: "مكتمل" },
     { value: "cancelled", label: "ملغي" },
 ];
@@ -78,6 +82,7 @@ interface DesignOrderStats {
     new: number;
     in_progress: number;
     awaiting_review: number;
+    modification_requested: number;
     completed: number;
     cancelled: number;
     revenue: number;
@@ -142,6 +147,7 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                 <StatCard icon={AlertCircle} label="جديد" value={stats.new} color="text-blue-400" bg="bg-blue-400/10" onClick={() => navigate({ status: "new", page: "1" })} active={currentStatus === "new"} />
                 <StatCard icon={Clock} label="قيد التنفيذ" value={stats.in_progress} color="text-amber-400" bg="bg-amber-400/10" onClick={() => navigate({ status: "in_progress", page: "1" })} active={currentStatus === "in_progress"} />
                 <StatCard icon={Eye} label="بانتظار المراجعة" value={stats.awaiting_review} color="text-purple-400" bg="bg-purple-400/10" onClick={() => navigate({ status: "awaiting_review", page: "1" })} active={currentStatus === "awaiting_review"} />
+                <StatCard icon={AlertCircle} label="طلب تعديل" value={stats.modification_requested} color="text-amber-400" bg="bg-amber-500/10" onClick={() => navigate({ status: "modification_requested", page: "1" })} active={currentStatus === "modification_requested"} />
                 <StatCard icon={CheckCircle2} label="مكتمل" value={stats.completed} color="text-emerald-400" bg="bg-emerald-400/10" onClick={() => navigate({ status: "completed", page: "1" })} active={currentStatus === "completed"} />
                 <StatCard icon={XCircle} label="ملغي" value={stats.cancelled} color="text-red-400" bg="bg-red-400/10" onClick={() => navigate({ status: "cancelled", page: "1" })} active={currentStatus === "cancelled"} />
                 <StatCard icon={DollarSign} label="الإيرادات" value={`${stats.revenue.toLocaleString()} ر.س`} color="text-gold" bg="bg-gold/10" />
@@ -304,7 +310,12 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
             {/* Detail Modal */}
             <AnimatePresence>
                 {selectedOrder && (
-                    <OrderDetailModal order={selectedOrder} adminList={adminList} onClose={() => { setSelectedOrder(null); router.refresh(); }} />
+                    <OrderDetailModal
+                        order={selectedOrder}
+                        adminList={adminList}
+                        onClose={() => { setSelectedOrder(null); router.refresh(); }}
+                        onOrderUpdated={(o) => setSelectedOrder(o)}
+                    />
                 )}
             </AnimatePresence>
 
@@ -343,16 +354,19 @@ function StatCard({ icon: Icon, label, value, color, bg, onClick, active }: {
 //  Order Detail Modal
 // ═══════════════════════════════════════════════════════════
 
-function OrderDetailModal({ order, adminList, onClose }: { order: CustomDesignOrder; adminList: AdminProfile[]; onClose: () => void }) {
+function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order: CustomDesignOrder; adminList: AdminProfile[]; onClose: () => void; onOrderUpdated?: (o: CustomDesignOrder) => void }) {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [notes, setNotes] = useState(order.admin_notes ?? "");
     const [uploading, setUploading] = useState<string | null>(null);
     const [finalPrice, setFinalPrice] = useState(order.final_price?.toString() || "");
     const [assignedTo, setAssignedTo] = useState(order.assigned_to ?? "");
+    const [rejectReason, setRejectReason] = useState("");
+    const [showRejectForm, setShowRejectForm] = useState(false);
 
     const st = STATUS_MAP[order.status];
     const nextStatuses = NEXT_STATUSES[order.status] || [];
+    const isNewOrder = order.status === "new";
 
     const handleStatusChange = async (newStatus: CustomDesignOrderStatus) => {
         setLoading(true);
@@ -421,6 +435,80 @@ function OrderDetailModal({ order, adminList, onClose }: { order: CustomDesignOr
         setUploading(null);
     };
 
+    // نافذة القبول أولاً — للطلبات الجديدة فقط
+    if (isNewOrder) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative z-10 w-full max-w-md rounded-2xl bg-surface border border-white/[0.08] p-6 shadow-2xl"
+                >
+                    <div className="text-center mb-6">
+                        <h3 className="text-xl font-bold text-fg">طلب تصميم جديد #{order.order_number}</h3>
+                        <p className="text-sm text-fg/50 mt-1">{order.garment_name} — {order.color_name}</p>
+                    </div>
+                    {!showRejectForm ? (
+                        <div className="flex gap-3">
+                            <button
+                                onClick={async () => {
+                                    setLoading(true);
+                                    await updateDesignOrderStatus(order.id, "in_progress");
+                                    setLoading(false);
+                                    onOrderUpdated?.({ ...order, status: "in_progress" });
+                                }}
+                                disabled={loading}
+                                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-50"
+                            >
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                                قبول الطلب
+                            </button>
+                            <button
+                                onClick={() => setShowRejectForm(true)}
+                                disabled={loading}
+                                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-xl bg-red-500/20 text-red-400 font-bold border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50"
+                            >
+                                <X className="w-5 h-5" />
+                                رفض الطلب
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <label className="block text-sm font-medium text-fg">سبب الرفض (إجباري)</label>
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="اكتب سبب رفض الطلب..."
+                                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm resize-none"
+                                rows={3}
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={async () => {
+                                        if (!rejectReason.trim()) { alert("يرجى ذكر سبب الرفض"); return; }
+                                        setLoading(true);
+                                        const res = await rejectDesignOrder(order.id, rejectReason);
+                                        setLoading(false);
+                                        if (res.error) alert(res.error);
+                                        else onClose();
+                                    }}
+                                    disabled={loading || !rejectReason.trim()}
+                                    className="flex-1 py-3 rounded-xl bg-red-500/20 text-red-400 font-bold disabled:opacity-50"
+                                >
+                                    {loading ? "جاري..." : "تأكيد الرفض"}
+                                </button>
+                                <button onClick={() => setShowRejectForm(false)} className="px-4 py-3 rounded-xl border border-white/[0.08] text-fg/60">
+                                    رجوع
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-12 overflow-y-auto">
             <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
@@ -481,6 +569,14 @@ function OrderDetailModal({ order, adminList, onClose }: { order: CustomDesignOr
                     <DetailCard icon={SwatchBook} label="الأسلوب" value={order.art_style_name} imageUrl={order.art_style_image_url} />
                     <DetailCard icon={Palette} label="الألوان" value={order.color_package_name ?? (order.custom_colors?.length > 0 ? `${order.custom_colors.length} ألوان` : "—")} />
                 </div>
+
+                {/* طلب التعديل من العميل */}
+                {order.modification_request && (
+                    <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
+                        <p className="text-xs text-amber-400 font-bold mb-1">✏️ طلب تعديل التصميم من العميل:</p>
+                        <p className="text-sm text-fg/80">{order.modification_request}</p>
+                    </div>
+                )}
 
                 {/* User Prompt / Image */}
                 {order.text_prompt && (

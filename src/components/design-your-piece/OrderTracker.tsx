@@ -76,6 +76,11 @@ const STATUS_CONFIG: Record<CustomDesignOrderStatus, {
         desc: "تم إلغاء هذا الطلب",
         color: "text-red-400", bg: "bg-red-500/10 border-red-500/20", icon: Ban, step: 0,
     },
+    modification_requested: {
+        label: "طلب تعديل",
+        desc: "تم إرسال طلب تعديل للإدارة — سيتم تنفيذ التعديلات قريباً",
+        color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20", icon: Eye, step: 2,
+    },
 };
 
 const PROGRESS_STEPS = [
@@ -133,7 +138,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
 
     useEffect(() => {
         fetchOrder();
-        const interval = setInterval(fetchOrder, 15000);
+        const interval = setInterval(fetchOrder, 8000);
         return () => clearInterval(interval);
     }, [fetchOrder]);
 
@@ -186,7 +191,6 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                         onClose={() => setShowResultsPopup(false)}
                         onConfirm={async () => { await fetchOrder(); setShowResultsPopup(false); }}
                         onCancel={handleCancel}
-                        onChangeDesign={async () => { await handleCancel(); setShowResultsPopup(false); clearOrderId(); window.location.reload(); }}
                     />
                 )}
             </AnimatePresence>
@@ -231,6 +235,19 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                     <h3 className={`text-lg font-bold ${st.color}`}>{st.label}</h3>
                 </div>
                 <p className="text-fg/50 text-sm">{st.desc}</p>
+                {(order.status === "new" || order.status === "in_progress") && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="mt-4 flex items-center gap-2 text-sm text-fg/40"
+                    >
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-60" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold" />
+                        </span>
+                        الصفحة تتحدث تلقائياً عند تغيّر الحالة
+                    </motion.div>
+                )}
             </motion.div>
 
             {/* Order Details */}

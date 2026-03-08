@@ -320,9 +320,12 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
                 </select>
             </FormField>
 
-            {/* أسعار الطباعة */}
+            {/* السعر الأساسي + أسعار الطباعة */}
             <div className="pt-2 border-t border-white/[0.06]">
-                <p className="text-sm font-bold text-gold mb-3">💰 أسعار الطباعة (ر.س)</p>
+                <FormField label="سعر القطعة الأساسي (بدون الطباعة) — ر.س">
+                    <input name="base_price" type="number" step="0.01" min="0" defaultValue={(editing as any)?.base_price ?? 0} className={inputCls} />
+                </FormField>
+                <p className="text-sm font-bold text-gold mb-3 mt-3">💰 أسعار التصاميم (الطباعة) — ر.س</p>
                 <div className="grid grid-cols-2 gap-3">
                     <FormField label="الصدر — كبير">
                         <input name="price_chest_large" type="number" step="0.01" min="0" defaultValue={editing?.price_chest_large ?? 0} className={inputCls} />
