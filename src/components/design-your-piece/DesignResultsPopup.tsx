@@ -49,8 +49,9 @@ export function DesignResultsPopup({
     onConfirm: () => void;
     onCancel: () => void;
 }) {
-    const [position, setPosition] = useState<PrintPosition | null>(null);
-    const [size, setSize] = useState<PrintSize | null>(null);
+    // من المرحلة الرابعة في الويزرد — القيم محفوظة، لا نعيد الاختيار في المرحلة الأخيرة
+    const position = ((order.print_position as PrintPosition) || "chest") as PrintPosition;
+    const size = ((order.print_size as PrintSize) || "large") as PrintSize;
     const [mainConfirmed, setMainConfirmed] = useState(false);
     const [showAdditionalWizard, setShowAdditionalWizard] = useState(false);
     const [showModificationForm, setShowModificationForm] = useState(false);
@@ -169,33 +170,18 @@ export function DesignResultsPopup({
 
                     {/* ─── Images Display ─── */}
                     <div className="space-y-4 w-full">
-                        {order.result_mockup_url && (
+                        {images.length > 0 ? (
                             <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-black/30 w-full group">
                                 <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-lg text-xs font-bold text-white z-10 border border-white/10 uppercase tracking-widest">
-                                    الموك آب النهائي
+                                    {images.length > 1 ? `صورة ${activeImage + 1} من ${images.length}` : (order.result_mockup_url ? "الموك آب النهائي" : "ملف التصميم")}
                                 </div>
                                 <img
-                                    src={order.result_mockup_url}
-                                    alt="Mockup"
+                                    src={images[Math.min(activeImage, images.length - 1)]}
+                                    alt=""
                                     className="w-full aspect-square sm:aspect-video object-contain bg-black/50 hover:scale-105 transition-transform duration-700"
                                 />
                             </div>
-                        )}
-
-                        {order.result_design_url && (
-                            <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-black/30 w-full group">
-                                <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-lg text-xs font-bold text-white z-10 border border-white/10 uppercase tracking-widest">
-                                    ملف التصميم
-                                </div>
-                                <img
-                                    src={order.result_design_url}
-                                    alt="Raw Design"
-                                    className="w-full h-64 sm:h-80 object-contain bg-black/50 hover:scale-105 transition-transform duration-700"
-                                />
-                            </div>
-                        )}
-
-                        {!order.result_mockup_url && !order.result_design_url && (
+                        ) : (
                             <div className="p-10 border border-white/[0.08] rounded-2xl bg-white/[0.02] flex items-center justify-center text-fg/30 text-sm">
                                 لم يتم إرفاق صور للعرض.
                             </div>
@@ -246,7 +232,7 @@ export function DesignResultsPopup({
                         <div className="rounded-2xl p-5 border border-gold/20 bg-gold/5">
                             <AdditionalDesignMiniWizard
                                 order={{ ...order, status: "completed" } as CustomDesignOrder}
-                                mainPosition={(order.is_sent_to_customer ? order.print_position : position) as PrintPosition | null}
+                                mainPosition={position}
                                 onBack={() => { setShowAdditionalWizard(false); setAdditionalError(null); }}
                                 onSuccess={(newOrderId) => {
                                     storeOrderId(newOrderId);
@@ -305,24 +291,24 @@ export function DesignResultsPopup({
                         </motion.div>
                     )}
 
-                    {/* ═══ قبل التأكيد: مصغرات الموكاب + مصغرات التعديلات + اختيار الموقع/الحجم ═══ */}
+                    {/* ═══ المرحلة الأخيرة: مصغرات الموكاب + مصغرات التعديلات فقط (الموقع والحجم من المرحلة ٤) ═══ */}
                     {!order.is_sent_to_customer && !mainConfirmed && !showModificationForm && (
                         <motion.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.3 }}
-                            className="space-y-4 w-full"
+                            className="space-y-5 w-full"
                         >
-                            {/* صور مصغرة عند وجود أكثر من صورة للموكاب */}
+                            {/* صور مصغرة — عند إدراج أكثر من صورة للموكاب */}
                             {images.length > 1 && (
-                                <div>
-                                    <p className="text-sm font-bold text-fg mb-2">صور مصغرة — الموكاب</p>
-                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                <div className="rounded-2xl p-4 bg-white/[0.02] border border-white/[0.06]">
+                                    <p className="text-xs font-medium text-fg/50 mb-3 uppercase tracking-wider">صور مصغرة — الموكاب</p>
+                                    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
                                         {images.map((url, i) => (
                                             <button
                                                 key={i}
                                                 onClick={() => setActiveImage(i)}
-                                                className={`shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all ${activeImage === i ? "border-gold ring-2 ring-gold/30" : "border-white/[0.08] hover:border-white/20"}`}
+                                                className={`shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeImage === i ? "border-gold ring-2 ring-gold/20 shadow-lg shadow-gold/10" : "border-white/[0.08] hover:border-white/20 hover:scale-[1.02]"}`}
                                             >
                                                 <img src={url} alt="" className="w-full h-full object-cover" />
                                             </button>
@@ -331,61 +317,28 @@ export function DesignResultsPopup({
                                 </div>
                             )}
 
-                            {/* صور مصغرة — التصميم الأول والتعديلات */}
+                            {/* صور مصغرة — التصميم الأول والتعديلات عند وجود تعديلات */}
                             {(order.modification_design_url || order.modification_request) && (
-                                <div>
-                                    <p className="text-sm font-bold text-fg mb-2">التصميم الأول والتعديلات</p>
-                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                <div className="rounded-2xl p-4 bg-white/[0.02] border border-white/[0.06]">
+                                    <p className="text-xs font-medium text-fg/50 mb-3 uppercase tracking-wider">التصميم الأول والتعديلات</p>
+                                    <div className="flex gap-3 overflow-x-auto pb-1">
                                         {order.result_design_url && (
-                                            <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-white/[0.08]">
+                                            <div className="relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-white/[0.12]">
                                                 <img src={order.result_design_url} alt="التصميم الأول" className="w-full h-full object-cover" />
-                                                <p className="text-[10px] text-center text-fg/50 py-0.5 bg-black/30">الأول</p>
+                                                <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm text-[10px] text-center text-fg/70 font-medium">الأول</div>
                                             </div>
                                         )}
                                         {order.modification_design_url && (
-                                            <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 border-gold/50">
+                                            <div className="relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 border-gold/40">
                                                 <img src={order.modification_design_url} alt="بعد التعديل" className="w-full h-full object-cover" />
-                                                <p className="text-[10px] text-center text-gold py-0.5 bg-black/30">بعد التعديل</p>
+                                                <div className="absolute inset-x-0 bottom-0 py-1 bg-gold/20 backdrop-blur-sm text-[10px] text-center text-gold font-bold">بعد التعديل</div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
                             )}
 
-                            {/* اختيار موقع وحجم التصميم (مختصر) */}
-                            <div className="space-y-3">
-                                <p className="text-sm font-bold text-fg">موقع وحجم التصميم</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {POSITIONS.map((pos) => (
-                                        <button
-                                            key={pos.id}
-                                            onClick={() => setPosition(pos.id)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${position === pos.id ? "border-gold bg-gold/10 text-gold" : "border-white/[0.08] hover:border-white/20"}`}
-                                        >
-                                            {pos.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                {position && (
-                                    <div className="flex gap-2">
-                                        {(["large", "small"] as PrintSize[]).map((sz) => {
-                                            const isActive = size === sz;
-                                            const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
-                                            return (
-                                                <button
-                                                    key={sz}
-                                                    onClick={() => setSize(sz)}
-                                                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${isActive ? "border-gold bg-gold/10 text-gold" : "border-white/[0.08] hover:border-white/20"}`}
-                                                >
-                                                    {SIZE_LABELS[sz].label} {priceForSize > 0 ? `(${priceForSize} ر.س)` : "(مجاني)"}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            {position && size && (
+                            {(position && size) && (
                                 <div className="p-3 rounded-xl bg-gold/10 border border-gold/20 space-y-1">
                                     <div className="flex justify-between text-sm">
                                         {basePrice > 0 && <span className="text-fg/60">القطعة: {basePrice} ر.س</span>}
@@ -404,7 +357,7 @@ export function DesignResultsPopup({
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={handleConfirm}
-                                    disabled={confirming || !position || !size}
+                                    disabled={confirming}
                                     className="flex items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 disabled:opacity-50"
                                 >
                                     {confirming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
@@ -414,16 +367,16 @@ export function DesignResultsPopup({
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={async () => {
-                                        if (position && size && !mainConfirmed) {
+                                        if (!mainConfirmed) {
                                             const ok = await handleConfirm();
                                             if (ok) setShowAdditionalWizard(true);
                                         } else {
                                             setShowAdditionalWizard(true);
                                         }
                                     }}
-                                    disabled={confirming || !position || !size}
+                                    disabled={confirming}
                                     className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-gold/30 bg-gold/10 text-gold font-bold text-sm hover:bg-gold/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title={!position || !size ? "اختر موقع وحجم التصميم أولاً" : "إضافة تصميم إضافي على نفس القطعة"}
+                                    title="إضافة تصميم إضافي على نفس القطعة"
                                 >
                                     <Plus className="w-5 h-5" />
                                     انشاء تصميم إضافي
