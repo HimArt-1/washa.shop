@@ -670,6 +670,7 @@ export interface CustomDesignOrder {
     admin_notes: string | null;
     assigned_to: string | null;
     modification_request: string | null;
+    modification_design_url: string | null;
 
     // Print Placement & Pricing
     print_position: string | null;

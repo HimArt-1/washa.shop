@@ -593,7 +593,7 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
 
 // ─── Admin: Upload Results ──────────────────────────────
 
-export async function uploadDesignResult(id: string, field: "result_design_url" | "result_mockup_url" | "result_pdf_url", url: string) {
+export async function uploadDesignResult(id: string, field: "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url", url: string) {
     const sb = getSmartStoreSb();
     const { error } = await sb.from("custom_design_orders").update({ [field]: url }).eq("id", id);
     if (error) return { error: error.message };

@@ -80,14 +80,19 @@ export function DesignResultsPopup({
 
     const isReadyToConfirm = order.is_sent_to_customer || (position && size);
 
-    const handleConfirm = async () => {
-        if (!isReadyToConfirm) return;
+    const handleConfirm = async (): Promise<boolean> => {
+        if (!isReadyToConfirm) return false;
         setConfirming(true);
 
         const posArg = order.is_sent_to_customer ? null : position;
         const sizeArg = order.is_sent_to_customer ? null : size;
 
-        await confirmDesignOrder(order.id, posArg, sizeArg, currentPrice);
+        const res = await confirmDesignOrder(order.id, posArg, sizeArg, currentPrice);
+        if (res?.error) {
+            setAdditionalError(res.error);
+            setConfirming(false);
+            return false;
+        }
 
         // Add to cart
         addItem({
@@ -108,6 +113,7 @@ export function DesignResultsPopup({
 
         setConfirming(false);
         setMainConfirmed(true);
+        return true;
     };
 
     return (
@@ -299,7 +305,7 @@ export function DesignResultsPopup({
                         </motion.div>
                     )}
 
-                    {/* ═══ قبل التأكيد: موقع التصميم + الأزرار الثلاثة ═══ */}
+                    {/* ═══ قبل التأكيد: مصغرات الموكاب + مصغرات التعديلات + اختيار الموقع/الحجم ═══ */}
                     {!order.is_sent_to_customer && !mainConfirmed && !showModificationForm && (
                         <motion.div
                             initial={{ y: 20, opacity: 0 }}
@@ -307,48 +313,77 @@ export function DesignResultsPopup({
                             transition={{ delay: 0.3 }}
                             className="space-y-4 w-full"
                         >
-                            <h3 className="text-lg font-bold text-fg flex items-center gap-2">
-                                <MapPin className="w-5 h-5 text-gold" /> اختر موقع وحجم التصميم
-                            </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {POSITIONS.map((pos) => {
-                                    const isActive = position === pos.id;
-                                    return (
-                                        <motion.button
-                                            key={pos.id}
-                                            whileHover={{ scale: 1.03 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => setPosition(pos.id)}
-                                            className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"}`}
-                                        >
-                                            <div className="text-3xl mb-2">{pos.emoji}</div>
-                                            <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
-                                            {isActive && <Check className="absolute top-2 left-2 w-5 h-5 text-gold" />}
-                                        </motion.button>
-                                    );
-                                })}
-                            </div>
-                            {position && (
-                                <div className="grid grid-cols-2 gap-3">
-                                    {(["large", "small"] as PrintSize[]).map((sz) => {
-                                        const isActive = size === sz;
-                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
-                                        return (
-                                            <motion.button
-                                                key={sz}
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => setSize(sz)}
-                                                className={`relative p-4 rounded-2xl border-2 transition-all ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20"}`}
+                            {/* صور مصغرة عند وجود أكثر من صورة للموكاب */}
+                            {images.length > 1 && (
+                                <div>
+                                    <p className="text-sm font-bold text-fg mb-2">صور مصغرة — الموكاب</p>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {images.map((url, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setActiveImage(i)}
+                                                className={`shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition-all ${activeImage === i ? "border-gold ring-2 ring-gold/30" : "border-white/[0.08] hover:border-white/20"}`}
                                             >
-                                                <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
-                                                <p className="text-xs text-fg/50 mt-1">{priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}</p>
-                                                {isActive && <Check className="absolute top-2 left-2 w-4 h-4 text-gold" />}
-                                            </motion.button>
-                                        );
-                                    })}
+                                                <img src={url} alt="" className="w-full h-full object-cover" />
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
+
+                            {/* صور مصغرة — التصميم الأول والتعديلات */}
+                            {(order.modification_design_url || order.modification_request) && (
+                                <div>
+                                    <p className="text-sm font-bold text-fg mb-2">التصميم الأول والتعديلات</p>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {order.result_design_url && (
+                                            <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-white/[0.08]">
+                                                <img src={order.result_design_url} alt="التصميم الأول" className="w-full h-full object-cover" />
+                                                <p className="text-[10px] text-center text-fg/50 py-0.5 bg-black/30">الأول</p>
+                                            </div>
+                                        )}
+                                        {order.modification_design_url && (
+                                            <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 border-gold/50">
+                                                <img src={order.modification_design_url} alt="بعد التعديل" className="w-full h-full object-cover" />
+                                                <p className="text-[10px] text-center text-gold py-0.5 bg-black/30">بعد التعديل</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* اختيار موقع وحجم التصميم (مختصر) */}
+                            <div className="space-y-3">
+                                <p className="text-sm font-bold text-fg">موقع وحجم التصميم</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {POSITIONS.map((pos) => (
+                                        <button
+                                            key={pos.id}
+                                            onClick={() => setPosition(pos.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${position === pos.id ? "border-gold bg-gold/10 text-gold" : "border-white/[0.08] hover:border-white/20"}`}
+                                        >
+                                            {pos.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {position && (
+                                    <div className="flex gap-2">
+                                        {(["large", "small"] as PrintSize[]).map((sz) => {
+                                            const isActive = size === sz;
+                                            const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
+                                            return (
+                                                <button
+                                                    key={sz}
+                                                    onClick={() => setSize(sz)}
+                                                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${isActive ? "border-gold bg-gold/10 text-gold" : "border-white/[0.08] hover:border-white/20"}`}
+                                                >
+                                                    {SIZE_LABELS[sz].label} {priceForSize > 0 ? `(${priceForSize} ر.س)` : "(مجاني)"}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
 
                             {position && size && (
                                 <div className="p-3 rounded-xl bg-gold/10 border border-gold/20 space-y-1">
@@ -378,9 +413,17 @@ export function DesignResultsPopup({
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
-                                    disabled
-                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] bg-white/[0.02] text-fg/40 text-sm cursor-not-allowed"
-                                    title="يجب تأكيد التصميم أولاً"
+                                    onClick={async () => {
+                                        if (position && size && !mainConfirmed) {
+                                            const ok = await handleConfirm();
+                                            if (ok) setShowAdditionalWizard(true);
+                                        } else {
+                                            setShowAdditionalWizard(true);
+                                        }
+                                    }}
+                                    disabled={confirming || !position || !size}
+                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-gold/30 bg-gold/10 text-gold font-bold text-sm hover:bg-gold/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title={!position || !size ? "اختر موقع وحجم التصميم أولاً" : "إضافة تصميم إضافي على نفس القطعة"}
                                 >
                                     <Plus className="w-5 h-5" />
                                     انشاء تصميم إضافي

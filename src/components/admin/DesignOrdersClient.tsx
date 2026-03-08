@@ -419,7 +419,7 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
         await updateDesignOrderNotes(order.id, notes);
     };
 
-    const handleUpload = async (field: "result_design_url" | "result_mockup_url" | "result_pdf_url", file: File) => {
+    const handleUpload = async (field: "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url", file: File) => {
         setUploading(field);
         const url = await uploadFile(file, `design-orders/${order.id}`);
         if (url) {
@@ -610,6 +610,9 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                         <ResultUpload label="صورة التصميم" field="result_design_url" currentUrl={order.result_design_url} uploading={uploading === "result_design_url"} onUpload={(f) => handleUpload("result_design_url", f)} icon={ImageIcon} />
                         <ResultUpload label="صورة الموكاب" field="result_mockup_url" currentUrl={order.result_mockup_url} uploading={uploading === "result_mockup_url"} onUpload={(f) => handleUpload("result_mockup_url", f)} icon={ImageIcon} />
                         <ResultUpload label="ملف PDF" field="result_pdf_url" currentUrl={order.result_pdf_url} uploading={uploading === "result_pdf_url"} onUpload={(f) => handleUpload("result_pdf_url", f)} icon={FileText} accept=".pdf" />
+                        {order.modification_request && (
+                            <ResultUpload label="التصميم بعد التعديل" field="modification_design_url" currentUrl={order.modification_design_url ?? undefined} uploading={uploading === "modification_design_url"} onUpload={(f) => handleUpload("modification_design_url", f)} icon={ImageIcon} />
+                        )}
                     </div>
                 )}
 
