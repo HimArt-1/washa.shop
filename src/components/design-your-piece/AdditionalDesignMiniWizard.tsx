@@ -109,7 +109,7 @@ export function AdditionalDesignMiniWizard({
         });
         setSubmitting(false);
         if ("error" in result) {
-            onError(result.error);
+            onError(result.error ?? "حدث خطأ غير متوقع");
             return;
         }
         onSuccess((result as any).orderId);
