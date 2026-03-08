@@ -63,7 +63,7 @@ const STATUS_CONFIG: Record<CustomDesignOrderStatus, {
     },
     awaiting_review: {
         label: "جاهز للمراجعة",
-        desc: "تم الانتهاء من التصميم — راجع النتائج وحدد موقع الطباعة",
+        desc: "تم الانتهاء من التصميم — راجع النتائج وحدد موقع التصميم",
         color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/20", icon: Eye, step: 3,
     },
     completed: {
@@ -186,6 +186,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                         onClose={() => setShowResultsPopup(false)}
                         onConfirm={async () => { await fetchOrder(); setShowResultsPopup(false); }}
                         onCancel={handleCancel}
+                        onChangeDesign={async () => { await handleCancel(); setShowResultsPopup(false); clearOrderId(); window.location.reload(); }}
                     />
                 )}
             </AnimatePresence>
@@ -250,7 +251,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
                     <button onClick={() => setShowResultsPopup(true)} className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all animate-pulse">
                         <Eye className="w-5 h-5 inline-block ml-2" />
-                        معاينة التصميم واختيار الطباعة
+                        معاينة التصميم واختيار مواصفاته
                     </button>
                 </motion.div>
             )}

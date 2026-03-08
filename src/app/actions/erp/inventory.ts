@@ -3,7 +3,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { Database } from "@/types/database";
-import { generateNextSKU } from "@/lib/product-identifiers";
+import { generateNextSKU, getUnitSerialsForPrint } from "@/lib/product-identifiers";
 
 // Create Admin Supabase Client
 function getAdminSb() {
@@ -75,6 +75,12 @@ export async function createSKU(input: {
 
     if (error) return { error: error.message };
     return { sku: data };
+}
+
+export async function getUnitSerials(skuId: string, count: number) {
+    const { isAdmin } = await verifyAdmin();
+    if (!isAdmin) return { error: "غير مصرح" };
+    return getUnitSerialsForPrint(skuId, count);
 }
 
 // ─── Warehouses ─────────────────────────────────────────

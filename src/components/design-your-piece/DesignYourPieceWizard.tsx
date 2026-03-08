@@ -88,7 +88,7 @@ const STEP_INFO = [
     { num: 1, label: "القطعة", icon: Shirt },
     { num: 2, label: "اللون", icon: Palette },
     { num: 3, label: "المقاس", icon: Ruler },
-    { num: 4, label: "الطباعة", icon: MapPin },
+    { num: 4, label: "التصميم", icon: MapPin },
     { num: 5, label: "الطريقة", icon: Sparkles },
     { num: 6, label: "النمط", icon: Paintbrush },
     { num: 7, label: "الأسلوب", icon: SwatchBook },
@@ -233,7 +233,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
             `📦 **القطعة:** ${state.garment?.name ?? "—"}`,
             `🎨 **اللون:** ${state.color?.name ?? "—"} (${state.color?.hex_code ?? ""})`,
             `📏 **المقاس:** ${state.size?.name ?? "—"}`,
-            `📍 **مكان وحجم الطباعة:** ${printLocation} (${printSizeAr})`,
+            `📍 **مكان وحجم التصميم:** ${printLocation} (${printSizeAr})`,
             `✍️ **طريقة التصميم:** ${state.method === "from_text" ? "من الوصف النصي" : state.method === "from_image" ? "من صورة مرجعية" : "ستيديو وشّى"}`,
         ];
 
@@ -1093,11 +1093,11 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
 
     return (
         <>
-            <StepHeader title="موقع وحجم الطباعة" desc="حدد مكان الطباعة وحجمها على القطعة + شاهد السعر" />
+            <StepHeader title="موقع وحجم التصميم" desc="حدد مكان التصميم وحجمه على القطعة + شاهد السعر" />
 
             {/* Position Selector */}
             <div className="mb-6">
-                <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-gold" /> اختر موقع الطباعة</p>
+                <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-gold" /> اختر موقع التصميم</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {PRINT_POSITIONS.map((pos) => {
                         const isActive = selectedPosition === pos.id;
@@ -1136,7 +1136,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                         exit={{ height: 0, opacity: 0 }}
                         className="mb-6 overflow-hidden"
                     >
-                        <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><Maximize2 className="w-4 h-4 text-gold" /> اختر حجم الطباعة</p>
+                        <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><Maximize2 className="w-4 h-4 text-gold" /> اختر حجم التصميم</p>
                         <div className="grid grid-cols-2 gap-4">
                             {PRINT_SIZES.map((sz) => {
                                 const isActive = selectedSize === sz.id;
@@ -1194,7 +1194,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-fg/50">سعر الطباعة</p>
+                                <p className="text-sm text-fg/50">سعر التصميم</p>
                                 <p className="text-xs text-fg/30 mt-0.5">
                                     {PRINT_POSITIONS.find(p => p.id === selectedPosition)?.label} — {PRINT_SIZES.find(s => s.id === selectedSize)?.label}
                                 </p>
@@ -1256,7 +1256,7 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 <SummaryRow label="اللون" value={state.color?.name} color={state.color?.hex_code} />
                 <SummaryRow label="المقاس" value={state.size?.name} />
                 <SummaryRow
-                    label="مكان وحجم الطباعة"
+                    label="مكان وحجم التصميم"
                     value={
                         (state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : state.printPosition === "shoulder_right" ? "الكتف الأيمن" : state.printPosition === "shoulder_left" ? "الكتف الأيسر" : "—")
                         + " — " +

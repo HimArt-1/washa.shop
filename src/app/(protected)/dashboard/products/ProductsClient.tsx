@@ -11,7 +11,7 @@ import {
 import {
     updateProduct, deleteProduct, createProductAdmin, uploadProductImage,
 } from "@/app/actions/settings";
-import { createSKU } from "@/app/actions/erp/inventory";
+import { createSKU, getUnitSerials } from "@/app/actions/erp/inventory";
 import Image from "next/image";
 import Link from "next/link";
 import Barcode from 'react-barcode';
@@ -528,6 +528,8 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
 }) {
     const [loading, setLoading] = useState(false);
     const [codeType, setCodeType] = useState<"barcode" | "qr">("barcode");
+    const [batchCount, setBatchCount] = useState("");
+    const [batchPrinting, setBatchPrinting] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     // For manual creation
@@ -582,6 +584,49 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
             win.focus();
             win.print();
         }, 500);
+    };
+
+    const handleBatchPrint = async () => {
+        if (!sku?.id) return;
+        const count = parseInt(batchCount, 10);
+        if (isNaN(count) || count < 1 || count > 999) {
+            onError?.("أدخل عدداً بين 1 و 999");
+            return;
+        }
+        setBatchPrinting(true);
+        const result = await getUnitSerials(sku.id, count);
+        setBatchPrinting(false);
+        if ("error" in result) {
+            onError?.(result.error);
+            return;
+        }
+        const codes = result.codes;
+        if (!codes.length) return;
+
+        const win = window.open("", "_blank", "width=500,height=600");
+        if (!win) return;
+        const labelsHtml = codes.map((code) => `
+            <div class="label-container" data-code="${String(code).replace(/"/g, "&quot;")}" style="width:50mm;height:30mm;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;padding:2mm;overflow:hidden;page-break-after:always;border:1px dashed #ccc;">
+                <div style="font-size:8px;font-weight:bold;margin-bottom:2px;color:#000;">${(product?.title || "").replace(/</g, "&lt;")}</div>
+                <div style="font-size:7px;margin-bottom:2px;color:#000;font-family:monospace;">${String(code).replace(/</g, "&lt;")}</div>
+                <svg></svg>
+            </div>
+        `).join("");
+        win.document.write(`
+            <!DOCTYPE html><html dir="rtl"><head><title>ملصقات — ${count} قطعة</title>
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+            <style>body{margin:0;padding:8px;background:#fff;font-family:Tahoma,sans-serif}@media print{body{padding:0}.label-container{border:none!important}}</style>
+            </head><body>${labelsHtml}
+            <script>
+                document.querySelectorAll('.label-container').forEach(function(el){
+                    var svg=el.querySelector('svg');
+                    var code=el.getAttribute('data-code');
+                    if(svg&&code){JsBarcode(svg,code,{format:"CODE128",width:1.2,height:25,displayValue:true,fontSize:10});}
+                });
+                setTimeout(function(){window.print();},300);
+            <\/script></body></html>
+        `);
+        win.document.close();
     };
 
     if (!product) return null;
@@ -721,17 +766,30 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                 )}
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-2">
+                <div className="flex flex-col gap-3 pt-2">
                     {sku ? (
                         <>
-                            <button onClick={handlePrint}
-                                className="flex-1 py-2.5 rounded-xl bg-gold/10 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/20 transition-all text-sm">
-                                <Printer className="w-4 h-4" /> طباعة ملصق
-                            </button>
-                            <button onClick={() => { navigator.clipboard.writeText(sku.sku); }}
-                                className="py-2.5 px-4 rounded-xl bg-white/5 text-fg/60 hover:bg-white/10 transition-all text-sm border border-white/[0.06]">
-                                نسخ
-                            </button>
+                            <div className="flex gap-3">
+                                <button onClick={handlePrint}
+                                    className="flex-1 py-2.5 rounded-xl bg-gold/10 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/20 transition-all text-sm">
+                                    <Printer className="w-4 h-4" /> طباعة ملصق
+                                </button>
+                                <button onClick={() => { navigator.clipboard.writeText(sku.sku); }}
+                                    className="py-2.5 px-4 rounded-xl bg-white/5 text-fg/60 hover:bg-white/10 transition-all text-sm border border-white/[0.06]">
+                                    نسخ
+                                </button>
+                            </div>
+                            <div className="flex gap-2 items-center border-t border-white/5 pt-3">
+                                <span className="text-xs text-fg/60 shrink-0">طباعة مجموعة:</span>
+                                <input type="number" min={1} max={999} placeholder="عدد الملصقات"
+                                    value={batchCount} onChange={(e) => setBatchCount(e.target.value)}
+                                    className="w-20 px-2 py-1.5 text-sm rounded-lg bg-white/5 border border-white/10 text-fg placeholder:text-fg/40" />
+                                <button onClick={handleBatchPrint} disabled={batchPrinting}
+                                    className="py-1.5 px-4 rounded-lg bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 disabled:opacity-50 flex items-center gap-1">
+                                    {batchPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                                    طباعة
+                                </button>
+                            </div>
                         </>
                     ) : (
                         <button onClick={handleCreate} disabled={loading}
@@ -841,7 +899,6 @@ function ProductFormModal({
                 title, description: form.description || null, type: form.type, price,
                 image_url: imageUrl || product.image_url, artist_id: form.artist_id,
                 in_stock: form.in_stock,
-                stock_quantity: form.stock_quantity ? parseInt(form.stock_quantity, 10) : null,
                 store_name: form.store_name.trim() || null,
             });
             setLoading(false);
@@ -975,20 +1032,29 @@ function ProductFormModal({
                     </div>
 
                     {/* Stock Controls */}
-                    <div className="flex gap-4 items-center">
+                    <div className="space-y-3">
                         <label className="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" checked={form.in_stock}
                                 onChange={(e) => setForm((f) => ({ ...f, in_stock: e.target.checked }))}
                                 className="rounded border-white/20" />
-                            <span className="text-sm text-fg/70">متوفر</span>
+                            <span className="text-sm text-fg/70">متوفر للطلب</span>
                         </label>
-                        <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1">الكمية</label>
-                            <input type="number" min="0" value={form.stock_quantity}
-                                onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
-                                placeholder="—"
-                                className="w-24 px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg" />
-                        </div>
+                        {mode === "add" ? (
+                            <div>
+                                <label className="block text-xs font-medium text-fg/50 mb-1">المخزون الابتدائي (عند الإضافة فقط)</label>
+                                <input type="number" min="0" value={form.stock_quantity}
+                                    onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
+                                    placeholder="مثال: 100"
+                                    className="w-full max-w-[120px] px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg"
+                                    dir="ltr" />
+                                <p className="text-[10px] text-fg/40 mt-1">لتسجيل الكمية دفعة واحدة عند الإنشاء. أي تعديل لاحق من تبويب المخزون والجرد.</p>
+                            </div>
+                        ) : (
+                            <div className="p-3 rounded-xl bg-gold/5 border border-gold/20">
+                                <p className="text-xs text-gold font-medium">لتعديل الكمية أو الجرد</p>
+                                <p className="text-[10px] text-fg/50 mt-0.5">انتقل إلى تبويب «المخزون والجرد» لإضافة أو تعديل الكميات.</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Submit */}

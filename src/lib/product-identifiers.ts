@@ -67,6 +67,25 @@ export async function generateNextSKU(
 }
 
 /**
+ * الحصول على معرفات وحدات لطباعة ملصقات (معرف فريد لكل قطعة)
+ * مثال: 100 قطعة → WSH-P-00001-NA-NA-00001 ... WSH-P-00001-NA-NA-00100
+ */
+export async function getUnitSerialsForPrint(
+    skuId: string,
+    count: number
+): Promise<{ codes: string[] } | { error: string }> {
+    if (count < 1 || count > 999) return { error: "الكمية يجب أن تكون بين 1 و 999" };
+    const supabase = getAdminSb() as any;
+    const { data, error } = await supabase.rpc("get_next_unit_serials", {
+        p_sku_id: skuId,
+        p_count: count,
+    });
+    if (error) return { error: error.message };
+    const codes = (data || []).map((r: { unit_code: string }) => r.unit_code);
+    return { codes };
+}
+
+/**
  * توليد معرف منتج (للتحقق من وجود الدالة)
  */
 export async function generateNextProductCode(): Promise<{ code: string } | { error: string }> {

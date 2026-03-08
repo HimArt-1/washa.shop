@@ -5,10 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     X, Check, Loader2, FileText, Download,
     ShoppingCart, MapPin, Maximize2, Minimize2,
-    ChevronLeft, ChevronRight
+    Plus, RefreshCw, Move
 } from "lucide-react";
 import { getGarmentPricing, confirmDesignOrder } from "@/app/actions/smart-store";
 import { useCartStore } from "@/stores/cartStore";
+import { AdditionalDesignMiniWizard } from "./AdditionalDesignMiniWizard";
+import { storeOrderId } from "./OrderTracker";
 import type { CustomDesignOrder } from "@/types/database";
 
 type PrintPosition = "chest" | "back" | "shoulder_right" | "shoulder_left";
@@ -41,14 +43,20 @@ export function DesignResultsPopup({
     onClose,
     onConfirm,
     onCancel,
+    onChangeDesign,
 }: {
     order: CustomDesignOrder;
     onClose: () => void;
     onConfirm: () => void;
     onCancel: () => void;
+    onChangeDesign?: () => void;
 }) {
     const [position, setPosition] = useState<PrintPosition | null>(null);
     const [size, setSize] = useState<PrintSize | null>(null);
+    const [showPositionEditor, setShowPositionEditor] = useState(false);
+    const [mainConfirmed, setMainConfirmed] = useState(false);
+    const [showAdditionalWizard, setShowAdditionalWizard] = useState(false);
+    const [additionalError, setAdditionalError] = useState<string | null>(null);
     const [pricing, setPricing] = useState<any>(null);
     const [loadingPricing, setLoadingPricing] = useState(true);
     const [confirming, setConfirming] = useState(false);
@@ -97,7 +105,7 @@ export function DesignResultsPopup({
         });
 
         setConfirming(false);
-        onConfirm();
+        setMainConfirmed(true);
     };
 
     return (
@@ -193,106 +201,188 @@ export function DesignResultsPopup({
                         </a>
                     )}
 
-                    {/* ═══ Print Position Selector ═══ */}
-                    {!order.is_sent_to_customer && (
+                    {/* ═══ بعد التأكيد: انشاء تصميم إضافي | إغلاق ═══ */}
+                    {mainConfirmed && !showAdditionalWizard && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="rounded-2xl p-5 border border-emerald-500/20 bg-emerald-500/5 space-y-4"
+                        >
+                            <div className="flex items-center gap-2 text-emerald-400">
+                                <Check className="w-6 h-6" />
+                                <p className="font-bold">تم التأكيد! تم إضافة التصميم للسلة 🎉</p>
+                            </div>
+                            <p className="text-sm text-fg/60">يمكنك إضافة تصميم إضافي على نفس القطعة في موقع مختلف، أو إغلاق النافذة.</p>
+                            <div className="flex gap-3">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowAdditionalWizard(true)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gold/20 text-gold font-bold text-sm hover:bg-gold/30 transition-all"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                    انشاء تصميم إضافي
+                                </motion.button>
+                                <button
+                                    onClick={onConfirm}
+                                    className="px-6 py-3 rounded-xl border border-white/[0.08] text-fg/70 text-sm hover:bg-white/[0.04] transition-all"
+                                >
+                                    إغلاق
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ═══ معالج التصميم الإضافي ═══ */}
+                    {showAdditionalWizard && (
+                        <div className="rounded-2xl p-5 border border-gold/20 bg-gold/5">
+                            <AdditionalDesignMiniWizard
+                                order={{ ...order, status: "completed" } as CustomDesignOrder}
+                                mainPosition={(order.is_sent_to_customer ? order.print_position : position) as PrintPosition | null}
+                                onBack={() => { setShowAdditionalWizard(false); setAdditionalError(null); }}
+                                onSuccess={(newOrderId) => {
+                                    storeOrderId(newOrderId);
+                                    onConfirm();
+                                }}
+                                onError={(msg) => setAdditionalError(msg)}
+                            />
+                            {additionalError && (
+                                <p className="mt-3 text-sm text-red-400">{additionalError}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ═══ قبل التأكيد: تغيير موقع التصميم | تغيير التصميم ═══ */}
+                    {!order.is_sent_to_customer && !mainConfirmed && (
                         <motion.div
                             initial={{ y: 20, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.3 }}
                             className="space-y-4 w-full"
                         >
-                            <h3 className="text-lg font-bold text-fg flex items-center gap-2">
-                                <MapPin className="w-5 h-5 text-gold" /> اختر موقع الطباعة
-                            </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {POSITIONS.map((pos) => {
-                                    const isActive = position === pos.id;
-                                    return (
-                                        <motion.button
-                                            key={pos.id}
-                                            whileHover={{ scale: 1.03 }}
-                                            whileTap={{ scale: 0.97 }}
-                                            onClick={() => setPosition(pos.id)}
-                                            className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
-                                                ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                                : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                                }`}
-                                        >
-                                            <div className="text-3xl mb-2">{pos.emoji}</div>
-                                            <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
-                                            <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
-                                            {isActive && (
-                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                    className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                    <Check className="w-3.5 h-3.5 text-bg" />
-                                                </motion.div>
-                                            )}
-                                        </motion.button>
-                                    );
-                                })}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <motion.button
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setShowPositionEditor((v) => !v)}
+                                    className={`flex items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all ${showPositionEditor ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-gold/30 bg-white/[0.02] hover:bg-gold/5"} text-fg`}
+                                >
+                                    <Move className={`w-5 h-5 ${showPositionEditor ? "text-gold" : ""}`} />
+                                    <span className="font-bold text-sm">تغيير موقع التصميم</span>
+                                </motion.button>
+                                {onChangeDesign && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={onChangeDesign}
+                                        className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] hover:border-gold/30 bg-white/[0.02] hover:bg-gold/5 transition-all text-fg"
+                                    >
+                                        <RefreshCw className="w-5 h-5 text-gold" />
+                                        <span className="font-bold text-sm">تغيير التصميم</span>
+                                    </motion.button>
+                                )}
                             </div>
+
+                            {/* ═══ Position & Size Selector (عند النقر على تغيير موقع التصميم) ═══ */}
+                            <AnimatePresence>
+                                {showPositionEditor && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="space-y-4 overflow-hidden w-full pt-4 border-t border-white/[0.06]"
+                                    >
+                                        <h3 className="text-lg font-bold text-fg flex items-center gap-2">
+                                            <MapPin className="w-5 h-5 text-gold" /> اختر موقع التصميم
+                                        </h3>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                            {POSITIONS.map((pos) => {
+                                                const isActive = position === pos.id;
+                                                return (
+                                                    <motion.button
+                                                        key={pos.id}
+                                                        whileHover={{ scale: 1.03 }}
+                                                        whileTap={{ scale: 0.97 }}
+                                                        onClick={() => setPosition(pos.id)}
+                                                        className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
+                                                            ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
+                                                            : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
+                                                            }`}
+                                                    >
+                                                        <div className="text-3xl mb-2">{pos.emoji}</div>
+                                                        <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
+                                                        <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
+                                                        {isActive && (
+                                                            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                                                className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
+                                                                <Check className="w-3.5 h-3.5 text-bg" />
+                                                            </motion.div>
+                                                        )}
+                                                    </motion.button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {position && (
+                                            <motion.div
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                className="space-y-4"
+                                            >
+                                                <h3 className="text-lg font-bold text-fg flex items-center gap-2 mt-4">
+                                                    <Maximize2 className="w-5 h-5 text-gold" /> اختر حجم التصميم
+                                                </h3>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    {(["large", "small"] as PrintSize[]).map((sz) => {
+                                                        const isActive = size === sz;
+                                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
+                                                        return (
+                                                            <motion.button
+                                                                key={sz}
+                                                                whileHover={{ scale: 1.02 }}
+                                                                whileTap={{ scale: 0.98 }}
+                                                                onClick={() => setSize(sz)}
+                                                                className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col items-start ${isActive
+                                                                    ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
+                                                                    : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-center gap-3 mb-2 w-full">
+                                                                    {sz === "large"
+                                                                        ? <Maximize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
+                                                                        : <Minimize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
+                                                                    }
+                                                                    <div className="text-right flex-1">
+                                                                        <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
+                                                                        <p className="text-[10px] text-fg/35">{SIZE_LABELS[sz].desc}</p>
+                                                                    </div>
+                                                                </div>
+                                                                {!loadingPricing && (
+                                                                    <div className={`text-xl font-bold mt-2 self-start ${isActive ? "text-gold" : "text-fg/60"}`}>
+                                                                        {priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}
+                                                                    </div>
+                                                                )}
+                                                                {isActive && (
+                                                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                                                        className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
+                                                                        <Check className="w-3.5 h-3.5 text-bg" />
+                                                                    </motion.div>
+                                                                )}
+                                                            </motion.button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     )}
 
-                    {/* ═══ Print Size Selector ═══ */}
+                    {/* ═══ Price Summary + Actions (قبل التأكيد فقط) ═══ */}
                     <AnimatePresence>
-                        {position && !order.is_sent_to_customer && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="space-y-4 overflow-hidden w-full"
-                            >
-                                <h3 className="text-lg font-bold text-fg flex items-center gap-2 mt-4">
-                                    <Maximize2 className="w-5 h-5 text-gold" /> اختر حجم الطباعة
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {(["large", "small"] as PrintSize[]).map((sz) => {
-                                        const isActive = size === sz;
-                                        const priceForSize = pricing ? getPrice(pricing, position, sz) : 0;
-                                        return (
-                                            <motion.button
-                                                key={sz}
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => setSize(sz)}
-                                                className={`relative p-4 sm:p-5 rounded-2xl border-2 transition-all flex flex-col items-start ${isActive
-                                                    ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                                    : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3 mb-2 w-full">
-                                                    {sz === "large"
-                                                        ? <Maximize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                        : <Minimize2 className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
-                                                    }
-                                                    <div className="text-right flex-1">
-                                                        <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
-                                                        <p className="text-[10px] text-fg/35">{SIZE_LABELS[sz].desc}</p>
-                                                    </div>
-                                                </div>
-                                                {!loadingPricing && (
-                                                    <div className={`text-xl font-bold mt-2 self-start ${isActive ? "text-gold" : "text-fg/60"}`}>
-                                                        {priceForSize > 0 ? `${priceForSize} ر.س` : "مجاني"}
-                                                    </div>
-                                                )}
-                                                {isActive && (
-                                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                                        className="absolute top-3 left-3 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                                                        <Check className="w-3.5 h-3.5 text-bg" />
-                                                    </motion.div>
-                                                )}
-                                            </motion.button>
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* ═══ Price Summary + Actions ═══ */}
-                    <AnimatePresence>
-                        {isReadyToConfirm && (
+                        {isReadyToConfirm && !mainConfirmed && !showAdditionalWizard && (
                             <motion.div
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}

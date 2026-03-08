@@ -621,6 +621,7 @@ export interface CustomDesignOrder {
     id: string;
     order_number: number;
     user_id?: string | null;
+    parent_order_id?: string | null;
 
     // Customer
     customer_name: string | null;

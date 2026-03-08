@@ -770,6 +770,102 @@ export async function confirmDesignOrder(id: string, position?: string | null, s
     return { success: true };
 }
 
+// ─── Submit Additional Design (على نفس الطلب) ─────────────
+
+export async function submitAdditionalDesignOrder(
+    parentOrderId: string,
+    data: {
+        print_position: string;
+        print_size: string;
+        style_name: string;
+        style_image_url?: string | null;
+        art_style_name: string;
+        art_style_image_url?: string | null;
+        color_package_name?: string | null;
+        custom_colors?: string[];
+    }
+) {
+    const sb = getSmartStoreSb();
+
+    const { data: parent, error: fetchErr } = await sb
+        .from("custom_design_orders")
+        .select("*")
+        .eq("id", parentOrderId)
+        .single();
+
+    if (fetchErr || !parent) return { error: "الطلب الأساسي غير موجود" };
+    const p = parent as any;
+
+    if (p.status !== "completed") return { error: "يجب تأكيد التصميم الأساسي أولاً" };
+    if (p.print_position === data.print_position) return { error: "اختر موقعاً مختلفاً عن التصميم الأساسي" };
+
+    const template = await getDesignPromptTemplate();
+    const colorsStr = data.color_package_name
+        ? data.color_package_name
+        : data.custom_colors && data.custom_colors.length > 0
+            ? data.custom_colors.join(", ")
+            : `${p.color_name} (${p.color_hex})`;
+
+    const userPrompt = p.design_method === "from_text"
+        ? (p.text_prompt ?? "—")
+        : p.design_method === "from_image"
+            ? `[صورة مرجعية: ${p.reference_image_url ?? "—"}]`
+            : `[تصميم إضافي: ${p.text_prompt ?? "—"}]`;
+
+    const aiPrompt = generateAiPrompt(template, {
+        garment_name: p.garment_name,
+        color_name: p.color_name,
+        color_hex: p.color_hex,
+        style_name: data.style_name || "—",
+        art_style_name: data.art_style_name || "—",
+        colors: colorsStr,
+        user_prompt: userPrompt,
+    });
+
+    const payload = {
+        user_id: p.user_id,
+        parent_order_id: parentOrderId,
+        garment_name: p.garment_name,
+        garment_image_url: p.garment_image_url,
+        color_name: p.color_name,
+        color_hex: p.color_hex,
+        color_image_url: p.color_image_url,
+        size_name: p.size_name,
+        design_method: p.design_method,
+        text_prompt: p.text_prompt,
+        reference_image_url: p.reference_image_url,
+        style_name: data.style_name || "—",
+        style_image_url: data.style_image_url || null,
+        art_style_name: data.art_style_name || "—",
+        art_style_image_url: data.art_style_image_url || null,
+        color_package_name: data.color_package_name || null,
+        custom_colors: data.custom_colors ?? [],
+        ai_prompt: aiPrompt,
+        customer_name: p.customer_name,
+        customer_email: p.customer_email,
+        customer_phone: p.customer_phone,
+        print_position: data.print_position,
+        print_size: data.print_size,
+    };
+
+    const { data: inserted, error } = await sb
+        .from("custom_design_orders")
+        .insert(payload)
+        .select("id, order_number")
+        .single();
+
+    if (error) return { error: error.message };
+
+    await createAdminNotification({
+        type: "order_alert",
+        title: "تصميم إضافي على الطلب 🎨",
+        message: `طلب تصميم إضافي #${(inserted as any)?.order_number} — ${p.garment_name} (موقع: ${data.print_position}) مرتبط بالطلب #${p.order_number}`,
+        link: "/dashboard/design-orders",
+    });
+
+    return { success: true, orderId: (inserted as any)?.id, orderNumber: (inserted as any)?.order_number };
+}
+
 // ─── Assign Design Order to Admin ────────────────────────
 
 export async function assignDesignOrder(orderId: string, adminProfileId: string | null) {
