@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/localizations": "^3.35.3",
     "@clerk/nextjs": "^6.37.3",
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^5.2.2",
     "@stripe/react-stripe-js": "^5.6.0",
     "@stripe/stripe-js": "^8.8.0",
@@ -25,7 +26,6 @@
     "jspdf": "^2.5.2",
     "lucide-react": "^0.378.0",
     "next": "14.2.3",
-    "next-pwa": "^5.6.0",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-barcode": "^1.6.1",

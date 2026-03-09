@@ -30,22 +30,11 @@ const nextConfig = {
   },
 };
 
-const withPWA = require("next-pwa")({
+const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-  buildExcludes: [
-    /app-build-manifest\.json$/,
-    /middleware-manifest\.json$/,
-    /middleware-build-manifest\.js$/,
-    /page_client-reference-manifest\.js$/,
-    /.*\.js\.map$/,
-    /_buildManifest\.js$/,
-    /_ssgManifest\.js$/,
-    /server\/.*$/,
-    /edge\/.*$/,
-  ],
 });
 
 module.exports = withPWA(nextConfig);
