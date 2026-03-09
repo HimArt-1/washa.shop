@@ -14,6 +14,8 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
     const [newMessage, setNewMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,7 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
     };
 
     useEffect(() => {
+        setMounted(true);
         fetchMessages();
         const interval = setInterval(fetchMessages, 10000); // Poll every 10s
         return () => clearInterval(interval);
@@ -42,11 +45,13 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
         if (!newMessage.trim() || isSubmitting) return;
 
         setIsSubmitting(true);
+        setError(null);
         const res = await customerSendOrderMessage(orderId, newMessage);
         if (res.success) {
             setNewMessage("");
             await fetchMessages();
         } else {
+            setError(res.error || "فشل إرسال الرسالة");
             console.error("Failed to send message", res.error);
         }
         setIsSubmitting(false);
@@ -104,7 +109,7 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
                                     <p className="whitespace-pre-wrap">{msg.message}</p>
                                 </div>
                                 <span className="text-[10px] text-white/30 px-1">
-                                    {format(new Date(msg.created_at), "p", { locale: ar })}
+                                    {mounted ? format(new Date(msg.created_at), "p", { locale: ar }) : ""}
                                 </span>
                             </motion.div>
                         );
@@ -115,6 +120,11 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
 
             {/* Input Area */}
             <div className="p-3 bg-[#0a0a0a] border-t border-white/[0.05] shrink-0">
+                {error && (
+                    <div className="mb-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] text-center">
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="relative">
                     <input
                         type="text"

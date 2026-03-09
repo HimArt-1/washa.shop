@@ -6,18 +6,22 @@ import type { Database, DesignOrderMessage } from "@/types/database";
 
 // Admin/Service client to bypass RLS for fetching everything easily
 function getServiceRoleClient() {
-    return createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+        console.error("Missing Supabase Service Role Env Vars:", { url: !!url, key: !!key });
+    }
+    return createClient<Database>(url!, key!);
 }
 
 // Public client for anonymous inserts
 function getPublicClient() {
-    return createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) {
+        console.error("Missing Supabase Public Env Vars:", { url: !!url, key: !!key });
+    }
+    return createClient<Database>(url!, key!);
 }
 
 /**
@@ -25,8 +29,14 @@ function getPublicClient() {
  * Safe to be called publicly because RLS allows anyone to read messages.
  */
 export async function getDesignOrderMessages(orderId: string) {
-    // Both user and admin can see this. Using service role to ensure reliable fetching regardless of auth state.
-    const sb = getServiceRoleClient();
+    // Attempt with service role first for admin context, but fallback to public
+    let sb;
+    try {
+        sb = getServiceRoleClient();
+    } catch (e) {
+        console.warn("Falling back to public client for message fetch due to service role init error");
+        sb = getPublicClient();
+    }
 
     const { data, error } = await sb
         .from("design_order_messages")
@@ -35,7 +45,18 @@ export async function getDesignOrderMessages(orderId: string) {
         .order("created_at", { ascending: true });
 
     if (error) {
-        console.error("Error fetching order messages:", error);
+        console.error(`Error fetching order messages for ${orderId}:`, error);
+        // Retry with public client if service role failed or errored out
+        if (sb !== getPublicClient()) {
+            const publicSb = getPublicClient();
+            const { data: publicData, error: publicError } = await publicSb
+                .from("design_order_messages")
+                .select("*")
+                .eq("order_id", orderId)
+                .order("created_at", { ascending: true });
+
+            if (!publicError) return (publicData as DesignOrderMessage[]) || [];
+        }
         return [];
     }
 

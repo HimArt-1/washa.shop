@@ -14,6 +14,8 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
     const [newMessage, setNewMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [mounted, setMounted] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,7 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
     };
 
     useEffect(() => {
+        setMounted(true);
         fetchMessages();
         const interval = setInterval(fetchMessages, 10000); // Poll every 10s
         return () => clearInterval(interval);
@@ -42,11 +45,13 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
         if (!newMessage.trim() || isSubmitting) return;
 
         setIsSubmitting(true);
+        setError(null);
         const res = await adminSendOrderMessage(orderId, newMessage);
         if (res.success) {
             setNewMessage("");
             await fetchMessages();
         } else {
+            setError(res.error || "فشل إرسال الرد");
             console.error("Failed to send admin message", res.error);
         }
         setIsSubmitting(false);
@@ -105,7 +110,7 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
                                     <p className="whitespace-pre-wrap">{msg.message}</p>
                                 </div>
                                 <span className="text-[10px] text-white/30 px-1">
-                                    {format(new Date(msg.created_at), "p", { locale: ar })}
+                                    {mounted ? format(new Date(msg.created_at), "p", { locale: ar }) : ""}
                                 </span>
                             </motion.div>
                         );
@@ -116,6 +121,11 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
 
             {/* Input Area */}
             <div className="p-3 bg-[#111] border-t border-white/[0.05] shrink-0">
+                {error && (
+                    <div className="mb-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] text-center">
+                        {error}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
                     <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-white/[0.05] border border-white/[0.05]">
                         <ShieldAlert className="w-4 h-4 text-white/50" />

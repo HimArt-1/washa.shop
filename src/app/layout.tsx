@@ -40,9 +40,6 @@ export const metadata: Metadata = {
     title: "وشّى",
     statusBarStyle: "black-translucent",
   },
-  other: {
-    "mobile-web-app-capable": "yes",
-  },
   openGraph: {
     title: "منصة وشّى | WASHA — فنٌ يرتدى",
     description: "منصة فنية رقمية تجمع المبدعين العرب. معرض، متجر، وتصميم قطعك بالذكاء الاصطناعي.",
