@@ -35,6 +35,21 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+  buildExcludes: [
+    /middleware-manifest\.json$/,
+    /middleware-runtime\.js$/,
+    /middleware-runtime\.js\.map$/,
+    /pages-manifest\.json$/,
+    /package\.json$/,
+    /app-build-manifest\.json$/,
+    /build-manifest\.json$/,
+    /ssg-manifest\.json$/,
+    /server\/app-paths-manifest\.json$/,
+    /server\/pages-manifest\.json$/,
+    /server\/client-reference-manifest\.js$/,
+    /server\/middleware-manifest\.json$/,
+    /page_client-reference-manifest\.js$/,
+  ],
 });
 
 module.exports = withPWA(nextConfig);
