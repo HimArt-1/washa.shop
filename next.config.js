@@ -28,6 +28,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  output: 'standalone',
 };
 
 const withPWA = require("@ducanh2912/next-pwa").default({
@@ -35,21 +36,10 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-  buildExcludes: [
-    /middleware-manifest\.json$/,
-    /middleware-runtime\.js$/,
-    /middleware-runtime\.js\.map$/,
-    /pages-manifest\.json$/,
-    /package\.json$/,
-    /app-build-manifest\.json$/,
-    /build-manifest\.json$/,
-    /ssg-manifest\.json$/,
-    /server\/app-paths-manifest\.json$/,
-    /server\/pages-manifest\.json$/,
-    /server\/client-reference-manifest\.js$/,
-    /server\/middleware-manifest\.json$/,
-    /page_client-reference-manifest\.js$/,
-  ],
+  buildExcludes: [/server\/.*$/, /edge\/.*$/, /middleware-manifest\.json$/],
+  workboxOptions: {
+    exclude: [/server\/.*$/, /edge\/.*$/, /middleware-manifest\.json$/],
+  },
 });
 
 module.exports = withPWA(nextConfig);
