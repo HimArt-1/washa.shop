@@ -105,7 +105,7 @@ export function Footer() {
           <div className="col-span-2 sm:col-span-2 lg:col-span-2">
             <Logo size="md" className="mb-6" />
             <p className="mb-6 max-w-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
-              منصة فنية رقمية تجمع المبدعين العرب في مساحة واحدة للعرض، البيع، والاكتشاف.
+              منصة فنية رقمية للأزياء ..
             </p>
 
             {/* Contact Info */}

@@ -202,6 +202,7 @@ export async function createArtwork(formData: any) {
     if (!user) return { success: false, error: "Unauthorized" };
 
     const supabase = getSupabaseServerClient();
+    const adminSupabase = getSupabaseAdminClient();
 
     // Get profile id
     const { data: profile } = await supabase
@@ -214,8 +215,8 @@ export async function createArtwork(formData: any) {
 
     if (!profileData) return { success: false, error: "Profile not found" };
 
-    // Insert artwork
-    const { error } = await supabase.from("artworks").insert({
+    // Insert artwork (admin client bypasses RLS — we've verified user via Clerk)
+    const { error } = await adminSupabase.from("artworks").insert({
         artist_id: profileData.id,
         title: formData.title,
         description: formData.description,
@@ -240,6 +241,7 @@ export async function deleteArtwork(id: string, imageUrl: string) {
     if (!user) return { success: false, error: "Unauthorized" };
 
     const supabase = getSupabaseServerClient();
+    const adminSupabase = getSupabaseAdminClient();
 
     // Verify ownership
     const { data: artwork } = await supabase
@@ -262,14 +264,14 @@ export async function deleteArtwork(id: string, imageUrl: string) {
         return { success: false, error: "Unauthorized" };
     }
 
-    // Delete from DB
-    const { error } = await supabase.from("artworks").delete().eq("id", id);
+    // Delete from DB (admin client bypasses RLS)
+    const { error } = await adminSupabase.from("artworks").delete().eq("id", id);
     if (error) return { success: false, error: error.message };
 
     // Delete from Storage
     const path = imageUrl.split("/artworks/").pop();
     if (path) {
-        await supabase.storage.from("artworks").remove([path]);
+        await adminSupabase.storage.from("artworks").remove([path]);
     }
 
     revalidatePath("/studio/artworks");
