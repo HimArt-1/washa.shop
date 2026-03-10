@@ -31,13 +31,16 @@ export async function POST(req: NextRequest) {
             process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        const [{ data: order }, { data: profile }] = await Promise.all([
+        const [
+            { data: order, error: orderErr },
+            { data: profile, error: profileErr },
+        ] = await Promise.all([
             supabase.from("orders").select("id, buyer_id, total, order_number, status").eq("id", orderId).single(),
             supabase.from("profiles").select("id").eq("clerk_id", user.id).single(),
         ]);
 
-        if (!order || !profile) {
-            return NextResponse.json({ error: "الطلب غير موجود" }, { status: 404 });
+        if (orderErr || profileErr || !order || !profile) {
+            return NextResponse.json({ error: "الطلب أو الملف الشخصي غير موجود" }, { status: 404 });
         }
 
         if (order.buyer_id !== profile.id) {

@@ -53,12 +53,13 @@ export async function unfollowArtist(artistId: string) {
 
     if (!profile) return { success: false, error: "الملف الشخصي غير موجود" };
 
-    await (supabase as any)
+    const { error: deleteError } = await (supabase as any)
         .from("artist_follows")
         .delete()
         .eq("follower_id", profile.id)
         .eq("artist_id", artistId);
 
+    if (deleteError) return { success: false, error: deleteError.message };
     revalidatePath("/artists/[username]", "page");
     return { success: true };
 }
@@ -140,12 +141,13 @@ export async function removeFromWishlist(productId: string) {
 
     if (!profile) return { success: false, error: "الملف الشخصي غير موجود" };
 
-    await (supabase as any)
+    const { error: deleteError } = await (supabase as any)
         .from("product_wishlist")
         .delete()
         .eq("user_id", profile.id)
         .eq("product_id", productId);
 
+    if (deleteError) return { success: false, error: deleteError.message };
     revalidatePath("/products/[id]", "page");
     revalidatePath("/account/wishlist", "page");
     return { success: true };
@@ -273,12 +275,13 @@ export async function unlikeProduct(productId: string) {
 
     if (!profile) return { success: false, error: "الملف الشخصي غير موجود" };
 
-    await (supabase as any)
+    const { error: deleteError } = await (supabase as any)
         .from("product_likes")
         .delete()
         .eq("user_id", profile.id)
         .eq("product_id", productId);
 
+    if (deleteError) return { success: false, error: deleteError.message };
     revalidatePath("/products/[id]", "page");
     return { success: true };
 }

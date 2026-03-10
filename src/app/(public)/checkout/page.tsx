@@ -138,25 +138,30 @@ function CheckoutContent() {
 
         if (paymentMethod === "stripe" && result.order_id && result.order_number && result.total) {
             // إنشاء جلسة Checkout مدمجة (ui_mode: 'custom')
-            const response = await fetch("/api/stripe/checkout-session", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    orderId: result.order_id,
-                    orderNumber: result.order_number,
-                    total: result.total,
-                }),
-            });
-
-            const json = await response.json();
-
-            if (!response.ok || !json.clientSecret) {
-                setError(json.error || "فشل في إنشاء جلسة الدفع");
+            let json: { clientSecret?: string; error?: string } = {};
+            try {
+                const response = await fetch("/api/stripe/checkout-session", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        orderId: result.order_id,
+                        orderNumber: result.order_number,
+                        total: result.total,
+                    }),
+                });
+                json = await response.json();
+                if (!response.ok || !json.clientSecret) {
+                    setError(json.error || "فشل في إنشاء جلسة الدفع");
+                    setIsSubmitting(false);
+                    return;
+                }
+            } catch {
+                setError("خطأ في الاتصال — تحقق من الإنترنت وأعد المحاولة");
                 setIsSubmitting(false);
                 return;
             }
 
-            setStripeClientSecret(json.clientSecret);
+            setStripeClientSecret(json.clientSecret!);
             setPendingOrderNumber(result.order_number);
             setCheckoutStep("paying");
         } else {
@@ -208,7 +213,7 @@ function CheckoutContent() {
             <div className="min-h-screen pt-32 pb-20 bg-[#080808]">
                 <div className="container-wusha max-w-2xl">
                     <button
-                        onClick={() => setCheckoutStep("address")}
+                        onClick={() => { setCheckoutStep("address"); setError(null); }}
                         className="flex items-center gap-2 text-white/40 hover:text-white text-sm mb-8 transition-colors"
                     >
                         <ArrowRight className="w-4 h-4 rotate-180" />
@@ -415,6 +420,21 @@ function CheckoutContent() {
                                     <span>المجموع الفرعي</span>
                                     <span>{subtotal.toLocaleString()} ر.س</span>
                                 </div>
+                                {discount > 0 && (
+                                    <div className="flex justify-between text-green-400 text-sm">
+                                        <span>
+                                            الخصم
+                                            {coupon && (
+                                                <span className="font-mono text-xs opacity-70 mr-1">
+                                                    ({coupon.discount_type === "percentage"
+                                                        ? `${coupon.discount_value}%`
+                                                        : `${coupon.discount_value} ر.س`})
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span>- {discount.toLocaleString()} ر.س</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-white/60 text-sm">
                                     <span>الشحن</span>
                                     <span>{shipping.toLocaleString()} ر.س</span>

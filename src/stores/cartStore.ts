@@ -136,8 +136,8 @@ export const useCartStore = create<CartState>()(
         }),
         {
             name: "wusha-cart-storage",
-            // Only persist items, not UI state like isOpen
-            partialize: (state) => ({ items: state.items }),
+            // Persist items + coupon, skip UI state like isOpen
+            partialize: (state) => ({ items: state.items, coupon: state.coupon }),
         }
     )
 );

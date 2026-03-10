@@ -76,12 +76,17 @@ export function Footer() {
   const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const res = await subscribeNewsletter(formData);
-    if (res.success) {
-      setSubscribed(true);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const res = await subscribeNewsletter(formData);
+      if (res.success) {
+        setSubscribed(true);
+      }
+    } catch (err) {
+      console.error("[Footer] Newsletter subscription error:", err);
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   return (

@@ -55,7 +55,7 @@ export async function createDiscountCoupon(data: {
         .single();
 
     if (error) {
-        if (error.code === '23505') return { error: "كود الخصم موجود مسبفاً" };
+        if (error.code === '23505') return { error: "كود الخصم موجود مسبقاً" };
         return { error: error.message };
     }
 
