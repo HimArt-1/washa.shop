@@ -54,7 +54,7 @@ export function Logo({ className = "", size = "md", asLink = true }: LogoProps) 
   return (
     <Link
       href="/"
-      className={`inline-flex items-center justify-center min-w-[44px] min-h-[44px] -m-2 p-2 rounded-xl hover:bg-white/5 transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808] ${className}`}
+      className={`inline-flex items-center justify-center min-w-[44px] min-h-[44px] -m-2 p-2 rounded-xl hover:bg-theme-subtle transition-colors duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080808] ${className}`}
       aria-label="وشّى — الصفحة الرئيسية"
     >
       {logoContent}

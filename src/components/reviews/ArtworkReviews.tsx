@@ -43,31 +43,31 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
     };
 
     return (
-        <div className="mt-12 pt-8 border-t border-white/[0.06]">
-            <h2 className="text-xl font-bold text-fg mb-6">التقييمات والمراجعات</h2>
+        <div className="mt-12 pt-8 border-t border-theme-subtle">
+            <h2 className="text-xl font-bold text-theme mb-6">التقييمات والمراجعات</h2>
 
             <div className="flex items-center gap-4 mb-6">
                 <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((s) => (
                         <Star
                             key={s}
-                            className={`w-5 h-5 ${s <= Math.round(avgRating) ? "text-gold fill-gold" : "text-fg/20"}`}
+                            className={`w-5 h-5 ${s <= Math.round(avgRating) ? "text-gold fill-gold" : "text-theme-faint"}`}
                         />
                     ))}
                 </div>
-                <span className="text-fg/60 text-sm">{avgRating.toFixed(1)} ({reviews.length} تقييم)</span>
+                <span className="text-theme-soft text-sm">{avgRating.toFixed(1)} ({reviews.length} تقييم)</span>
             </div>
 
             {isSignedIn && !loadingUser && (
-                <div className="mb-8 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                    <p className="text-sm text-fg/60 mb-3">أضف تقييمك</p>
+                <div className="mb-8 p-5 rounded-2xl bg-theme-faint border border-theme-subtle">
+                    <p className="text-sm text-theme-soft mb-3">أضف تقييمك</p>
                     <div className="flex gap-2 mb-3">
                         {[1, 2, 3, 4, 5].map((s) => (
                             <button
                                 key={s}
                                 type="button"
                                 onClick={() => setUserReview((u) => ({ ...(u || { rating: 0, comment: "" }), rating: s }))}
-                                className={`p-1 rounded ${(userReview?.rating ?? 0) >= s ? "text-gold" : "text-fg/30 hover:text-fg/50"}`}
+                                className={`p-1 rounded ${(userReview?.rating ?? 0) >= s ? "text-gold" : "text-theme-faint hover:text-theme-subtle"}`}
                             >
                                 <Star className={`w-6 h-6 ${(userReview?.rating ?? 0) >= s ? "fill-gold" : ""}`} />
                             </button>
@@ -77,7 +77,7 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
                         value={userReview?.comment ?? ""}
                         onChange={(e) => setUserReview((u) => ({ ...(u || { rating: 0, comment: "" }), comment: e.target.value }))}
                         placeholder="اكتب مراجعتك (اختياري)..."
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-fg text-sm mb-3 resize-none"
+                        className="w-full px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm mb-3 resize-none"
                         rows={3}
                         dir="rtl"
                     />
@@ -93,12 +93,12 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
             )}
 
             {!isSignedIn && (
-                <p className="text-fg/40 text-sm mb-6">سجّل الدخول لإضافة تقييمك</p>
+                <p className="text-theme-subtle text-sm mb-6">سجّل الدخول لإضافة تقييمك</p>
             )}
 
             <div className="space-y-4">
                 {reviews.map((r) => (
-                    <div key={r.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+                    <div key={r.id} className="p-4 rounded-xl bg-theme-faint border border-theme-faint">
                         <div className="flex items-center gap-3 mb-2">
                             {r.user?.avatar_url ? (
                                 <Image src={r.user.avatar_url} alt="" width={32} height={32} className="rounded-full" />
@@ -106,24 +106,24 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
                                 <div className="w-8 h-8 rounded-full bg-gold/20" />
                             )}
                             <div>
-                                <p className="text-sm font-medium text-fg">{r.user?.display_name || "مستخدم"}</p>
+                                <p className="text-sm font-medium text-theme">{r.user?.display_name || "مستخدم"}</p>
                                 <div className="flex items-center gap-1">
                                     {[1, 2, 3, 4, 5].map((s) => (
-                                        <Star key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? "text-gold fill-gold" : "text-fg/20"}`} />
+                                        <Star key={s} className={`w-3.5 h-3.5 ${s <= r.rating ? "text-gold fill-gold" : "text-theme-faint"}`} />
                                     ))}
-                                    <span className="text-xs text-fg/40 mr-2">
+                                    <span className="text-xs text-theme-subtle mr-2">
                                         {new Date(r.created_at).toLocaleDateString("ar-SA")}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        {r.comment && <p className="text-sm text-fg/70 pr-11">{r.comment}</p>}
+                        {r.comment && <p className="text-sm text-theme-soft pr-11">{r.comment}</p>}
                     </div>
                 ))}
             </div>
 
             {reviews.length === 0 && (
-                <p className="text-fg/40 text-sm py-8 text-center">لا توجد مراجعات بعد. كن أول من يقيّم!</p>
+                <p className="text-theme-subtle text-sm py-8 text-center">لا توجد مراجعات بعد. كن أول من يقيّم!</p>
             )}
         </div>
     );

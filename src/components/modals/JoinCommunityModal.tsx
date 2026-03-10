@@ -57,7 +57,7 @@ export function JoinCommunityModal({
                         <div className="glass-card rounded-2xl p-5 sm:p-8 border-gold/10 mx-4 relative overflow-hidden">
                             <button
                                 onClick={onClose}
-                                className="absolute top-4 right-4 p-2 text-white/50 hover:text-white/90 hover:bg-white/5 rounded-full transition-colors z-10"
+                                className="absolute top-4 right-4 p-2 text-theme-subtle hover:text-theme-strong hover:bg-theme-subtle rounded-full transition-colors z-10"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -67,7 +67,7 @@ export function JoinCommunityModal({
                             <h2 className="text-3xl font-bold mb-2">
                                 كن جزءاً من <span className="text-gradient">وشّى</span>
                             </h2>
-                            <p className="text-white/40 text-sm mb-6 max-w-lg">
+                            <p className="text-theme-subtle text-sm mb-6 max-w-lg">
                                 نبحث عن فنانين موهوبين يشاركوننا رؤيتنا في تشكيل مستقبل الفن العربي الرقمي
                             </p>
 
@@ -88,8 +88,8 @@ export function JoinCommunityModal({
                                         >
                                             <CheckCircle className="w-10 h-10 text-forest" />
                                         </motion.div>
-                                        <h3 className="text-2xl font-bold mb-3 text-white/90">تم إرسال طلبك بنجاح!</h3>
-                                        <p className="text-white/40 mb-6">
+                                        <h3 className="text-2xl font-bold mb-3 text-theme-strong">تم إرسال طلبك بنجاح!</h3>
+                                        <p className="text-theme-subtle mb-6">
                                             {response.message}
                                         </p>
                                         <button
@@ -124,28 +124,28 @@ export function JoinCommunityModal({
 
                                         {/* Name */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 الاسم الكامل
                                             </label>
                                             <input
                                                 name="full_name"
                                                 type="text"
                                                 required
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                 placeholder="اسمك الكامل"
                                             />
                                         </div>
 
                                         {/* Email */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 البريد الإلكتروني
                                             </label>
                                             <input
                                                 name="email"
                                                 type="email"
                                                 required
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                 placeholder="email@example.com"
                                                 dir="ltr"
                                             />
@@ -153,13 +153,13 @@ export function JoinCommunityModal({
 
                                         {/* Phone */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 رقم الهاتف
                                             </label>
                                             <input
                                                 name="phone"
                                                 type="tel"
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                 placeholder="+966..."
                                                 dir="ltr"
                                             />
@@ -167,13 +167,13 @@ export function JoinCommunityModal({
 
                                         {/* Specialty */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 التخصص الفني
                                             </label>
                                             <select
                                                 name="art_style"
                                                 required
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong"
                                             >
                                                 <option value="" className="bg-[#111]">اختر تخصصك</option>
                                                 <option value="digital" className="bg-[#111]">فن رقمي</option>
@@ -188,26 +188,26 @@ export function JoinCommunityModal({
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {/* Portfolio URL */}
                                             <div>
-                                                <label className="block text-sm font-medium mb-2 text-white/60">
+                                                <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                     رابط البورتفوليو
                                                 </label>
                                                 <input
                                                     name="portfolio_url"
                                                     type="url"
-                                                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                    className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                     placeholder="https://..."
                                                     dir="ltr"
                                                 />
                                             </div>
                                             {/* Instagram */}
                                             <div>
-                                                <label className="block text-sm font-medium mb-2 text-white/60">
+                                                <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                     انستقرام
                                                 </label>
                                                 <input
                                                     name="instagram_url"
                                                     type="text"
-                                                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                    className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                     placeholder="@username"
                                                     dir="ltr"
                                                 />
@@ -216,28 +216,28 @@ export function JoinCommunityModal({
 
                                         {/* Experience */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 سنوات الخبرة
                                             </label>
                                             <input
                                                 name="experience_years"
                                                 type="number"
                                                 min="0"
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-white/90 placeholder:text-white/20"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all text-theme-strong placeholder:text-theme-faint"
                                                 placeholder="0"
                                             />
                                         </div>
 
                                         {/* Message */}
                                         <div>
-                                            <label className="block text-sm font-medium mb-2 text-white/60">
+                                            <label className="block text-sm font-medium mb-2 text-theme-soft">
                                                 لماذا تريد الانضمام؟
                                             </label>
                                             <textarea
                                                 name="motivation"
                                                 required
                                                 rows={4}
-                                                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all resize-none text-white/90 placeholder:text-white/20"
+                                                className="w-full px-4 py-3 rounded-lg bg-theme-subtle border border-theme-soft focus:border-gold focus:ring-1 focus:ring-gold/30 outline-none transition-all resize-none text-theme-strong placeholder:text-theme-faint"
                                                 placeholder="أخبرنا عن نفسك وفنك..."
                                             />
                                         </div>

@@ -71,22 +71,22 @@ export function ProductsInventoryClient({
         <div className="space-y-6">
             {/* ─── Quick Stats Bar ─── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl border border-white/[0.06] bg-surface/30 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-theme-subtle bg-surface/30 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
                         <Package className="w-6 h-6 text-gold" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-fg">{count}</p>
-                        <p className="text-xs text-fg/50">منتج</p>
+                        <p className="text-2xl font-bold text-theme">{count}</p>
+                        <p className="text-xs text-theme-subtle">منتج</p>
                     </div>
                 </div>
-                <div className="p-4 rounded-2xl border border-white/[0.06] bg-surface/30 flex items-center gap-4">
+                <div className="p-4 rounded-2xl border border-theme-subtle bg-surface/30 flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                         <BarChart3 className="w-6 h-6 text-emerald-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-fg">{totalSkus}</p>
-                        <p className="text-xs text-fg/50">رمز SKU</p>
+                        <p className="text-2xl font-bold text-theme">{totalSkus}</p>
+                        <p className="text-xs text-theme-subtle">رمز SKU</p>
                     </div>
                 </div>
                 <div className="p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 flex items-center gap-4">
@@ -94,8 +94,8 @@ export function ProductsInventoryClient({
                         <AlertTriangle className="w-6 h-6 text-amber-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-fg">{lowStockCount}</p>
-                        <p className="text-xs text-fg/50">مخزون منخفض</p>
+                        <p className="text-2xl font-bold text-theme">{lowStockCount}</p>
+                        <p className="text-xs text-theme-subtle">مخزون منخفض</p>
                     </div>
                     {lowStockCount > 0 && (
                         <button
@@ -111,8 +111,8 @@ export function ProductsInventoryClient({
                         <XCircle className="w-6 h-6 text-red-400" />
                     </div>
                     <div>
-                        <p className="text-2xl font-bold text-fg">{outOfStockCount}</p>
-                        <p className="text-xs text-fg/50">نفد</p>
+                        <p className="text-2xl font-bold text-theme">{outOfStockCount}</p>
+                        <p className="text-xs text-theme-subtle">نفد</p>
                     </div>
                     {outOfStockCount > 0 && (
                         <button
@@ -126,7 +126,7 @@ export function ProductsInventoryClient({
             </div>
 
             {/* ─── Tabs ─── */}
-            <div className="flex gap-2 p-1 rounded-2xl bg-white/[0.02] border border-white/[0.06] w-fit">
+            <div className="flex gap-2 p-1 rounded-2xl bg-theme-faint border border-theme-subtle w-fit">
                 {tabs.map((t) => (
                     <button
                         key={t.id}
@@ -134,7 +134,7 @@ export function ProductsInventoryClient({
                         className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
                             tab === t.id
                                 ? "bg-gold/20 text-gold border border-gold/30 shadow-[0_2px_12px_rgba(206,174,127,0.15)]"
-                                : "text-fg/50 hover:text-fg/80 hover:bg-white/[0.03]"
+                                : "text-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"
                         }`}
                     >
                         <t.icon className="w-4 h-4" />

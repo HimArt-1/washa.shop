@@ -21,10 +21,10 @@ export default function TermsPage() {
                         <Scale className="w-3.5 h-3.5" />
                         القانونية
                     </div>
-                    <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4">
+                    <h1 className="text-3xl sm:text-5xl font-bold text-theme mb-4">
                         الشروط <span className="text-gradient">والأحكام</span>
                     </h1>
-                    <p className="text-white/40 max-w-lg mx-auto text-sm">
+                    <p className="text-theme-subtle max-w-lg mx-auto text-sm">
                         آخر تحديث: مارس 2026
                     </p>
                 </div>
@@ -38,9 +38,9 @@ export default function TermsPage() {
                             <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <FileText className="w-5 h-5 text-gold" />
                             </div>
-                            <h2 className="text-xl font-bold text-white/90">الشروط والأحكام</h2>
+                            <h2 className="text-xl font-bold text-theme-strong">الشروط والأحكام</h2>
                         </div>
-                        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-white/50 leading-relaxed">
+                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <p>باستخدامك لمنصة وشّى (washa.shop)، فإنك توافق على الشروط والأحكام التالية:</p>
                             <ul className="space-y-3 list-none">
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />يجب أن يكون عمر المستخدم 18 سنة أو أكثر لإتمام عمليات الشراء.</li>
@@ -61,11 +61,11 @@ export default function TermsPage() {
                             <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <Lock className="w-5 h-5 text-gold" />
                             </div>
-                            <h2 className="text-xl font-bold text-white/90">سياسة الخصوصية</h2>
+                            <h2 className="text-xl font-bold text-theme-strong">سياسة الخصوصية</h2>
                         </div>
-                        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-white/50 leading-relaxed">
+                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <div>
-                                <h3 className="font-bold text-white/70 mb-2">البيانات التي نجمعها</h3>
+                                <h3 className="font-bold text-theme-soft mb-2">البيانات التي نجمعها</h3>
                                 <ul className="space-y-2 list-none">
                                     <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />معلومات الحساب: الاسم، البريد الإلكتروني، رقم الجوال.</li>
                                     <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />معلومات الطلب: عنوان الشحن، تفاصيل المنتجات.</li>
@@ -73,7 +73,7 @@ export default function TermsPage() {
                                 </ul>
                             </div>
                             <div>
-                                <h3 className="font-bold text-white/70 mb-2">كيف نستخدم بياناتك</h3>
+                                <h3 className="font-bold text-theme-soft mb-2">كيف نستخدم بياناتك</h3>
                                 <ul className="space-y-2 list-none">
                                     <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />معالجة الطلبات وتوصيلها.</li>
                                     <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />إرسال إشعارات حول الطلبات والتحديثات.</li>
@@ -81,7 +81,7 @@ export default function TermsPage() {
                                 </ul>
                             </div>
                             <div>
-                                <h3 className="font-bold text-white/70 mb-2">حماية البيانات</h3>
+                                <h3 className="font-bold text-theme-soft mb-2">حماية البيانات</h3>
                                 <p>نستخدم تشفير SSL/TLS لحماية جميع البيانات المنقولة. لا نشارك بياناتك الشخصية مع أطراف ثالثة إلا لأغراض تنفيذ الطلب (شركات الشحن، بوابة الدفع).</p>
                             </div>
                         </div>
@@ -95,9 +95,9 @@ export default function TermsPage() {
                             <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <Copyright className="w-5 h-5 text-gold" />
                             </div>
-                            <h2 className="text-xl font-bold text-white/90">حقوق الملكية الفكرية</h2>
+                            <h2 className="text-xl font-bold text-theme-strong">حقوق الملكية الفكرية</h2>
                         </div>
-                        <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-white/50 leading-relaxed">
+                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <ul className="space-y-3 list-none">
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />جميع المحتويات المعروضة على المنصة (شعارات، تصاميم، نصوص) محمية بموجب حقوق الملكية الفكرية.</li>
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />الأعمال الفنية المعروضة في المعرض ملك لأصحابها ولا يجوز نسخها أو استخدامها بدون إذن.</li>
@@ -110,7 +110,7 @@ export default function TermsPage() {
 
                     {/* Contact for Legal */}
                     <div className="text-center pt-8">
-                        <p className="text-white/30 text-sm mb-1">لأي استفسار قانوني، تواصل معنا عبر</p>
+                        <p className="text-theme-subtle text-sm mb-1">لأي استفسار قانوني، تواصل معنا عبر</p>
                         <a href="mailto:washaksa@hotmail.com" className="text-gold hover:text-gold-light transition-colors text-sm font-bold">
                             washaksa@hotmail.com
                         </a>

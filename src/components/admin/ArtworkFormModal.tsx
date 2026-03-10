@@ -238,17 +238,17 @@ export function ArtworkFormModal({
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-surface shadow-2xl"
+                    className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-theme-soft bg-surface shadow-2xl"
                 >
-                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-surface">
-                        <h2 className="text-lg font-bold text-fg">
+                    <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-theme-subtle bg-surface">
+                        <h2 className="text-lg font-bold text-theme">
                             {isEdit ? "تعديل العمل الفني" : "إضافة عمل فني"}
                         </h2>
                         <button
                             type="button"
                             onClick={handleClose}
                             disabled={isSubmitting}
-                            className="p-2 rounded-lg text-fg/40 hover:text-fg hover:bg-white/5 transition-colors disabled:opacity-50"
+                            className="p-2 rounded-lg text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-50"
                         >
                             <X className="w-5 h-5" />
                         </button>
@@ -257,10 +257,10 @@ export function ArtworkFormModal({
                     <form onSubmit={handleSubmit} className="p-6 space-y-5">
                         {/* صورة */}
                         <div>
-                            <label className="block text-xs font-bold text-fg/60 mb-2">صورة العمل *</label>
+                            <label className="block text-xs font-bold text-theme-soft mb-2">صورة العمل *</label>
                             <div
                                 onClick={() => fileInputRef.current?.click()}
-                                className="relative aspect-video rounded-xl border-2 border-dashed border-white/10 hover:border-gold/30 cursor-pointer overflow-hidden bg-white/[0.02] flex items-center justify-center transition-colors"
+                                className="relative aspect-video rounded-xl border-2 border-dashed border-theme-soft hover:border-gold/30 cursor-pointer overflow-hidden bg-theme-faint flex items-center justify-center transition-colors"
                             >
                                 <input
                                     ref={fileInputRef}
@@ -279,7 +279,7 @@ export function ArtworkFormModal({
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="text-center text-fg/30">
+                                    <div className="text-center text-theme-faint">
                                         <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                         <p className="text-sm">اضغط لرفع صورة (PNG, JPG حتى 5MB)</p>
                                     </div>
@@ -289,11 +289,11 @@ export function ArtworkFormModal({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">الفنان *</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">الفنان *</label>
                                 <select
                                     value={form.artist_id}
                                     onChange={(e) => setForm({ ...form, artist_id: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
                                     required
                                 >
                                     <option value="">اختر الفنان...</option>
@@ -305,11 +305,11 @@ export function ArtworkFormModal({
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">الفئة</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">الفئة</label>
                                 <select
                                     value={form.category_id}
                                     onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
                                 >
                                     <option value="">بدون فئة</option>
                                     {categories.map((c) => (
@@ -320,56 +320,56 @@ export function ArtworkFormModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-fg/60 mb-1.5">عنوان العمل *</label>
+                            <label className="block text-xs font-bold text-theme-soft mb-1.5">عنوان العمل *</label>
                             <input
                                 type="text"
                                 value={form.title}
                                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
+                                className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm"
                                 placeholder="مثال: غروب في الصحراء"
                                 required
                             />
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-fg/60 mb-1.5">الوصف</label>
+                            <label className="block text-xs font-bold text-theme-soft mb-1.5">الوصف</label>
                             <textarea
                                 value={form.description}
                                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                                 rows={3}
-                                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm resize-none"
+                                className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold focus:ring-1 focus:ring-gold/20 outline-none text-sm resize-none"
                                 placeholder="قصة العمل، التقنيات..."
                             />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">الأسلوب/الوسط</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">الأسلوب/الوسط</label>
                                 <input
                                     type="text"
                                     value={form.medium}
                                     onChange={(e) => setForm({ ...form, medium: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                     placeholder="رسم رقمي، خط عربي"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">الأبعاد</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">الأبعاد</label>
                                 <input
                                     type="text"
                                     value={form.dimensions}
                                     onChange={(e) => setForm({ ...form, dimensions: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                     placeholder="80×60 سم"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">السنة</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">السنة</label>
                                 <input
                                     type="number"
                                     value={form.year}
                                     onChange={(e) => setForm({ ...form, year: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                     placeholder="2024"
                                     min="1900"
                                     max="2100"
@@ -379,22 +379,22 @@ export function ArtworkFormModal({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">السعر (ر.س)</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">السعر (ر.س)</label>
                                 <input
                                     type="number"
                                     step="0.01"
                                     value={form.price}
                                     onChange={(e) => setForm({ ...form, price: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                     placeholder="فارغ = غير معروض للبيع"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-fg/60 mb-1.5">الحالة</label>
+                                <label className="block text-xs font-bold text-theme-soft mb-1.5">الحالة</label>
                                 <select
                                     value={form.status}
                                     onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                    className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                    className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                 >
                                     {statusOptions.map((s) => (
                                         <option key={s.value} value={s.value}>{s.label}</option>
@@ -404,12 +404,12 @@ export function ArtworkFormModal({
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-fg/60 mb-1.5">الكلمات المفتاحية</label>
+                            <label className="block text-xs font-bold text-theme-soft mb-1.5">الكلمات المفتاحية</label>
                             <input
                                 type="text"
                                 value={form.tags}
                                 onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-fg focus:border-gold outline-none text-sm"
+                                className="w-full px-3 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme focus:border-gold outline-none text-sm"
                                 placeholder="طبيعة، تجريدي، ألوان زيتية (افصل بفاصلة أو ،)"
                             />
                         </div>
@@ -421,7 +421,7 @@ export function ArtworkFormModal({
                                 onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
                                 className="rounded border-white/20 text-gold focus:ring-gold/30"
                             />
-                            <span className="text-sm text-fg/80">عمل مميز (يظهر في الصفحة الرئيسية)</span>
+                            <span className="text-sm text-theme-strong">عمل مميز (يظهر في الصفحة الرئيسية)</span>
                         </label>
 
                         {error && (
@@ -435,7 +435,7 @@ export function ArtworkFormModal({
                                 type="button"
                                 onClick={handleClose}
                                 disabled={isSubmitting}
-                                className="flex-1 py-2.5 rounded-xl border border-white/10 text-fg/60 hover:bg-white/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle transition-colors disabled:opacity-50"
                             >
                                 إلغاء
                             </button>

@@ -24,8 +24,8 @@ export default async function SalesPage() {
     return (
         <main className="p-8 max-w-7xl mx-auto space-y-8">
             <header className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-fg">إدارة المبيعات ونقاط البيع (POS)</h1>
-                <p className="text-fg/60">
+                <h1 className="text-3xl font-bold text-theme">إدارة المبيعات ونقاط البيع (POS)</h1>
+                <p className="text-theme-soft">
                     تسجيل المبيعات اليدوية (مثل البوثات) ومتابعة سجل المبيعات الشامل.
                 </p>
             </header>

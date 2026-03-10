@@ -44,8 +44,8 @@ export function StepResult({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">معاينة التصميم</h2>
-        <p className="text-fg/60 text-sm">
+        <h2 className="text-2xl font-bold text-theme mb-1">معاينة التصميم</h2>
+        <p className="text-theme-soft text-sm">
           التصميم جاهز للطباعة بدون خلفية. حمّل ملف PDF بجودة عالية للطباعة
         </p>
       </div>

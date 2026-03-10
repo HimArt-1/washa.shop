@@ -108,21 +108,21 @@ export function CategoriesClient({ categories: initial }: { categories: Category
                     value={form.name_ar}
                     onChange={(e) => setForm({ ...form, name_ar: e.target.value })}
                     placeholder="الاسم بالعربي *"
-                    className="px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-fg/80 text-sm focus:border-gold focus:outline-none"
+                    className="px-3 py-2.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-strong text-sm focus:border-gold focus:outline-none"
                 />
                 <input
                     value={form.name_en}
                     onChange={(e) => setForm({ ...form, name_en: e.target.value })}
                     placeholder="Name in English *"
                     dir="ltr"
-                    className="px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-fg/80 text-sm focus:border-gold focus:outline-none"
+                    className="px-3 py-2.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-strong text-sm focus:border-gold focus:outline-none"
                 />
                 <input
                     value={form.slug}
                     onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
                     placeholder="slug *"
                     dir="ltr"
-                    className="px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-fg/80 text-sm font-mono focus:border-gold focus:outline-none"
+                    className="px-3 py-2.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-strong text-sm font-mono focus:border-gold focus:outline-none"
                 />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -130,7 +130,7 @@ export function CategoriesClient({ categories: initial }: { categories: Category
                     value={form.description || ""}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     placeholder="وصف (اختياري)"
-                    className="px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-fg/80 text-sm focus:border-gold focus:outline-none sm:col-span-2"
+                    className="px-3 py-2.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-strong text-sm focus:border-gold focus:outline-none sm:col-span-2"
                 />
                 <input
                     value={form.sort_order}
@@ -138,13 +138,13 @@ export function CategoriesClient({ categories: initial }: { categories: Category
                     placeholder="الترتيب"
                     type="number"
                     dir="ltr"
-                    className="px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-fg/80 text-sm focus:border-gold focus:outline-none"
+                    className="px-3 py-2.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-strong text-sm focus:border-gold focus:outline-none"
                 />
             </div>
             <div className="flex items-center gap-2 justify-end">
                 <button
                     onClick={resetForm}
-                    className="px-4 py-2 text-sm text-fg/40 hover:text-fg/60 transition-colors"
+                    className="px-4 py-2 text-sm text-theme-subtle hover:text-theme-soft transition-colors"
                 >
                     إلغاء
                 </button>
@@ -190,39 +190,39 @@ export function CategoriesClient({ categories: initial }: { categories: Category
             </AnimatePresence>
 
             {/* Categories List */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden divide-y divide-white/[0.04]">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden divide-y divide-white/[0.04]">
                 {categories.length === 0 ? (
-                    <div className="p-12 text-center text-fg/20 text-sm">لا توجد فئات بعد</div>
+                    <div className="p-12 text-center text-theme-faint text-sm">لا توجد فئات بعد</div>
                 ) : (
                     categories.map((cat) => (
                         <div key={cat.id}>
-                            <div className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors">
-                                <GripVertical className="w-4 h-4 text-fg/15 shrink-0" />
+                            <div className="flex items-center gap-4 px-5 py-4 hover:bg-theme-faint transition-colors">
+                                <GripVertical className="w-4 h-4 text-theme-faint shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-fg text-sm">{cat.name_ar}</span>
-                                        <span className="text-fg/30 text-xs">({cat.name_en})</span>
+                                        <span className="font-bold text-theme text-sm">{cat.name_ar}</span>
+                                        <span className="text-theme-faint text-xs">({cat.name_en})</span>
                                     </div>
                                     <div className="flex items-center gap-3 mt-0.5">
-                                        <span className="text-[10px] font-mono text-fg/20 bg-white/5 px-1.5 py-0.5 rounded">{cat.slug}</span>
+                                        <span className="text-[10px] font-mono text-theme-faint bg-theme-subtle px-1.5 py-0.5 rounded">{cat.slug}</span>
                                         {cat.description && (
-                                            <span className="text-[10px] text-fg/20 truncate">{cat.description}</span>
+                                            <span className="text-[10px] text-theme-faint truncate">{cat.description}</span>
                                         )}
                                     </div>
                                 </div>
-                                <span className="text-xs text-fg/20 px-2 py-1 bg-white/5 rounded-lg shrink-0">
+                                <span className="text-xs text-theme-faint px-2 py-1 bg-theme-subtle rounded-lg shrink-0">
                                     #{cat.sort_order}
                                 </span>
                                 <div className="flex items-center gap-1 shrink-0">
                                     <button
                                         onClick={() => startEdit(cat)}
-                                        className="p-2 text-fg/30 hover:text-gold hover:bg-gold/10 rounded-lg transition-all"
+                                        className="p-2 text-theme-faint hover:text-gold hover:bg-gold/10 rounded-lg transition-all"
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
                                         onClick={() => handleDelete(cat.id)}
-                                        className="p-2 text-fg/30 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                        className="p-2 text-theme-faint hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
                                     </button>

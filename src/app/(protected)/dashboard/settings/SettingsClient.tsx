@@ -33,11 +33,11 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         <button
             type="button"
             onClick={() => onChange(!checked)}
-            className="flex items-center justify-between w-full p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-all group"
+            className="flex items-center justify-between w-full p-4 rounded-xl bg-theme-faint border border-theme-subtle hover:border-white/[0.1] transition-all group"
         >
             <div className="flex items-center gap-3">
-                {checked ? <Eye className="w-4 h-4 text-green-400" /> : <EyeOff className="w-4 h-4 text-fg/20" />}
-                <span className="text-sm font-medium text-fg/70">{label}</span>
+                {checked ? <Eye className="w-4 h-4 text-green-400" /> : <EyeOff className="w-4 h-4 text-theme-faint" />}
+                <span className="text-sm font-medium text-theme-soft">{label}</span>
             </div>
             <div
                 className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${checked ? "bg-green-500/80" : "bg-white/10"
@@ -57,12 +57,12 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 
 function SettingsCard({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
     return (
-        <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-2.5">
+        <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-theme-subtle flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-gold/10">
                     <Icon className="w-4 h-4 text-gold" />
                 </div>
-                <h3 className="font-bold text-fg text-sm">{title}</h3>
+                <h3 className="font-bold text-theme text-sm">{title}</h3>
             </div>
             <div className="p-6">{children}</div>
         </div>
@@ -79,7 +79,7 @@ function Field({
 }) {
     return (
         <div className="space-y-2">
-            <label className="text-xs text-fg/40 font-medium">{label}</label>
+            <label className="text-xs text-theme-subtle font-medium">{label}</label>
             <div className="relative">
                 <input
                     type={type}
@@ -87,9 +87,9 @@ function Field({
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     dir={dir}
-                    className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-fg/80 text-sm focus:border-gold focus:outline-none transition-colors placeholder:text-fg/15"
+                    className="w-full px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors placeholder:text-theme-faint"
                 />
-                {Icon && <Icon className="absolute left-3 top-2.5 w-4 h-4 text-fg/20 pointer-events-none" />}
+                {Icon && <Icon className="absolute left-3 top-2.5 w-4 h-4 text-theme-faint pointer-events-none" />}
             </div>
         </div>
     );
@@ -204,7 +204,7 @@ export function SettingsClient({ settings }: SettingsProps) {
 
             {/* ─── 2. Site Info ─── */}
             <SettingsCard title="معلومات الموقع" icon={Globe}>
-                <p className="text-fg/40 text-xs mb-4">لإشعارات البريد (طلبات جديدة، طلبات انضمام): أضف <code className="bg-white/5 px-1 rounded">ADMIN_EMAIL</code> في ملف .env</p>
+                <p className="text-theme-subtle text-xs mb-4">لإشعارات البريد (طلبات جديدة، طلبات انضمام): أضف <code className="bg-theme-subtle px-1 rounded">ADMIN_EMAIL</code> في ملف .env</p>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field
@@ -314,7 +314,7 @@ export function SettingsClient({ settings }: SettingsProps) {
 
             {/* ─── 4. معرفات المنتجات والـ SKU ─── */}
             <SettingsCard title="معرفات المنتجات والـ SKU" icon={QrCode}>
-                <p className="text-fg/50 text-sm mb-4">كل منتج يصدر بمعرف فريد تلقائياً. القالب: {productIdentifiers.prefix}-P-00001-NA-NA (النوع-تسلسل-المقاس-اللون)</p>
+                <p className="text-theme-subtle text-sm mb-4">كل منتج يصدر بمعرف فريد تلقائياً. القالب: {productIdentifiers.prefix}-P-00001-NA-NA (النوع-تسلسل-المقاس-اللون)</p>
                 <div className="space-y-4">
                     <Field
                         label="البادئة (مثال: WSH, WUSHA)"
@@ -323,7 +323,7 @@ export function SettingsClient({ settings }: SettingsProps) {
                         placeholder="WSH"
                         dir="ltr"
                     />
-                    <p className="text-[10px] text-fg/30">التسلسل ذري ولا يتكرر. التعديل يؤثر على المنتجات الجديدة فقط.</p>
+                    <p className="text-[10px] text-theme-faint">التسلسل ذري ولا يتكرر. التعديل يؤثر على المنتجات الجديدة فقط.</p>
                 </div>
                 <button
                     onClick={() => handleSave("product_identifiers", {
@@ -342,7 +342,7 @@ export function SettingsClient({ settings }: SettingsProps) {
 
             {/* ─── 5. أسعار القطع (صمّم قطعتك) ─── */}
             <SettingsCard title="أسعار القطع — صمّم قطعتك" icon={Tag}>
-                <p className="text-fg/50 text-sm mb-4">أسعار التيشيرت والهودي والبلوفر في مسار التصميم المخصص</p>
+                <p className="text-theme-subtle text-sm mb-4">أسعار التيشيرت والهودي والبلوفر في مسار التصميم المخصص</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Field
                         label="تيشيرت (ر.س)"

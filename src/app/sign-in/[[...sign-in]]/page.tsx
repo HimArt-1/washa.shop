@@ -38,7 +38,7 @@ export default function SignInPage({ searchParams }: Props) {
                     </div>
                 </div>
 
-                <p className="text-center text-fg/50 text-sm mt-6">
+                <p className="text-center text-theme-subtle text-sm mt-6">
                     ليس لديك حساب؟{" "}
                     <Link
                         href="/sign-up"

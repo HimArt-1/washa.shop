@@ -38,7 +38,7 @@ interface StatCardProps {
 
 const variantStyles = {
     default: {
-        icon: "bg-white/5 text-fg/60",
+        icon: "bg-theme-subtle text-theme-soft",
         glow: "",
     },
     gold: {
@@ -90,22 +90,22 @@ export function StatCard({
                             </span>
                         )}
                         {href && (
-                            <ArrowLeft className="w-4 h-4 text-fg/20 group-hover:text-gold transition-colors" />
+                            <ArrowLeft className="w-4 h-4 text-theme-faint group-hover:text-gold transition-colors" />
                         )}
                     </div>
                 </div>
 
-                <p className="text-fg/40 text-sm font-medium mb-1">{title}</p>
-                <p className="text-2xl font-bold text-fg tracking-tight">{value}</p>
+                <p className="text-theme-subtle text-sm font-medium mb-1">{title}</p>
+                <p className="text-2xl font-bold text-theme tracking-tight">{value}</p>
                 {subtitle && (
-                    <p className="text-fg/30 text-xs mt-2">{subtitle}</p>
+                    <p className="text-theme-faint text-xs mt-2">{subtitle}</p>
                 )}
             </div>
         </>
     );
 
     const cardClass = `
-        relative overflow-hidden rounded-2xl border border-white/[0.08]
+        relative overflow-hidden rounded-2xl border border-theme-soft
         bg-surface/80 backdrop-blur-xl p-6
         transition-all duration-500 group
         hover:border-white/[0.15] hover:scale-[1.02] ${styles.glow}

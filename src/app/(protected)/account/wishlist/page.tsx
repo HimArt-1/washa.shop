@@ -21,13 +21,13 @@ export default async function WishlistPage() {
         <div className="pt-8 pb-16">
             <div className="max-w-4xl mx-auto px-6">
                 <div className="flex items-center justify-between mb-8">
-                    <h1 className="text-2xl font-bold text-fg flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-theme flex items-center gap-2">
                         <Heart className="w-6 h-6 text-red-400 fill-red-400/30" />
                         محفوظاتي
                     </h1>
                     <Link
                         href="/store"
-                        className="text-sm text-fg/40 hover:text-gold flex items-center gap-1"
+                        className="text-sm text-theme-subtle hover:text-gold flex items-center gap-1"
                     >
                         تصفح المتجر
                         <ArrowLeft className="w-4 h-4" />
@@ -35,10 +35,10 @@ export default async function WishlistPage() {
                 </div>
 
                 {products.length === 0 ? (
-                    <div className="text-center py-20 rounded-2xl border border-white/[0.06] bg-surface/30">
+                    <div className="text-center py-20 rounded-2xl border border-theme-subtle bg-surface/30">
                         <Heart className="w-16 h-16 text-fg/10 mx-auto mb-4" />
-                        <p className="text-fg/40 mb-2">لا توجد منتجات محفوظة</p>
-                        <p className="text-fg/20 text-sm mb-6">أضف منتجات للمحفوظات أثناء تصفح المتجر</p>
+                        <p className="text-theme-subtle mb-2">لا توجد منتجات محفوظة</p>
+                        <p className="text-theme-faint text-sm mb-6">أضف منتجات للمحفوظات أثناء تصفح المتجر</p>
                         <Link href="/store" className="btn-gold inline-flex items-center gap-2 py-3 px-6">
                             <ShoppingBag className="w-4 h-4" />
                             تصفح المتجر
@@ -49,7 +49,7 @@ export default async function WishlistPage() {
                         {products.map((product: any) => (
                             <div
                                 key={product.id}
-                                className="group rounded-2xl border border-white/[0.06] overflow-hidden hover:border-gold/20 transition-all bg-surface/30"
+                                className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/20 transition-all bg-surface/30"
                             >
                                 <Link href={`/products/${product.id}`} className="block aspect-square relative">
                                     <Image
@@ -62,7 +62,7 @@ export default async function WishlistPage() {
                                 </Link>
                                 <div className="p-3">
                                     <Link href={`/products/${product.id}`}>
-                                        <h3 className="text-sm font-bold text-fg truncate group-hover:text-gold transition-colors">
+                                        <h3 className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">
                                             {product.title}
                                         </h3>
                                     </Link>

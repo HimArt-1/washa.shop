@@ -17,7 +17,7 @@ export function SettingsThemeSection() {
                 borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",
             }}
         >
-            <h3 className="font-bold text-fg mb-4 flex items-center gap-2">
+            <h3 className="font-bold text-theme mb-4 flex items-center gap-2">
                 <Sun className="w-5 h-5 text-gold" />
                 تفضيلات العرض
             </h3>

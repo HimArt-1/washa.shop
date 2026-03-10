@@ -29,7 +29,7 @@ export function StudioAccessDenied({ showJoinArtist = true }: StudioAccessDenied
                 transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                 className="relative max-w-xl w-full"
             >
-                <div className="rounded-3xl border border-white/[0.06] bg-surface/60 backdrop-blur-2xl p-8 sm:p-12 shadow-2xl shadow-black/40">
+                <div className="rounded-3xl border border-theme-subtle bg-surface/60 backdrop-blur-2xl p-8 sm:p-12 shadow-2xl shadow-black/40">
                     {/* أيقونة */}
                     <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
@@ -40,10 +40,10 @@ export function StudioAccessDenied({ showJoinArtist = true }: StudioAccessDenied
                         <Palette className="w-10 h-10 text-gold" />
                     </motion.div>
 
-                    <h1 className="text-2xl sm:text-3xl font-bold text-fg text-center mb-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-theme text-center mb-3">
                         الاستوديو مخصّص للوشّاي
                     </h1>
-                    <p className="text-fg/50 text-base sm:text-lg leading-relaxed text-center mb-8 max-w-md mx-auto">
+                    <p className="text-theme-subtle text-base sm:text-lg leading-relaxed text-center mb-8 max-w-md mx-auto">
                         لوحة التحكم، رفع الأعمال، وإدارة المنتجات متاحة للفنانين المعتمدين فقط.
                         {showJoinArtist && " انضم كفنان وشّاي لفتح الاستوديو وبدء البيع."}
                     </p>
@@ -63,8 +63,8 @@ export function StudioAccessDenied({ showJoinArtist = true }: StudioAccessDenied
                                                 <Star className="w-7 h-7 text-gold" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-fg text-lg">انضم كفنان وشّاي</h3>
-                                                <p className="text-fg/40 text-sm mt-0.5">
+                                                <h3 className="font-bold text-theme text-lg">انضم كفنان وشّاي</h3>
+                                                <p className="text-theme-subtle text-sm mt-0.5">
                                                     قدّم طلبك وابدأ بعرض أعمالك وبيعها
                                                 </p>
                                             </div>
@@ -85,14 +85,14 @@ export function StudioAccessDenied({ showJoinArtist = true }: StudioAccessDenied
                     >
                         <Link
                             href="/design"
-                            className="inline-flex items-center gap-2 px-6 py-3 text-fg/60 hover:text-gold border border-white/[0.08] hover:border-gold/20 rounded-xl transition-all text-sm font-medium"
+                            className="inline-flex items-center gap-2 px-6 py-3 text-theme-soft hover:text-gold border border-theme-soft hover:border-gold/20 rounded-xl transition-all text-sm font-medium"
                         >
                             <Sparkles className="w-4 h-4" />
                             صمّم قطعتك بالذكاء الاصطناعي
                         </Link>
                         <Link
                             href="/account"
-                            className="inline-flex items-center gap-2 px-6 py-3 text-fg/40 hover:text-fg/70 transition-colors text-sm"
+                            className="inline-flex items-center gap-2 px-6 py-3 text-theme-subtle hover:text-theme-soft transition-colors text-sm"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             العودة لحسابي

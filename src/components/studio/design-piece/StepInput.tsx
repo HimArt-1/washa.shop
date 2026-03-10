@@ -81,10 +81,10 @@ export function StepInput({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">
+        <h2 className="text-2xl font-bold text-theme mb-1">
           {method === "from_image" ? "الصورة والفكرة" : "وصف التصميم"}
         </h2>
-        <p className="text-fg/60 text-sm">
+        <p className="text-theme-soft text-sm">
           {method === "from_image"
             ? "ارفع صورة أو التقطها واكتب ما تريد أن يصنعه الذكاء منها"
             : "اكتب وصفاً واضحاً للتصميم الذي تريده"}
@@ -94,7 +94,7 @@ export function StepInput({
       {method === "from_image" && (
         <>
           <div>
-            <label className="block text-sm font-bold text-fg/80 mb-2">الصورة</label>
+            <label className="block text-sm font-bold text-theme-strong mb-2">الصورة</label>
             <div className="flex gap-3">
               <input
                 ref={fileInputRef}
@@ -114,18 +114,18 @@ export function StepInput({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 bg-white/[0.02] flex flex-col items-center justify-center gap-3 min-h-[140px] transition-colors"
+                className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 bg-theme-faint flex flex-col items-center justify-center gap-3 min-h-[140px] transition-colors"
               >
-                <Upload className="w-10 h-10 text-fg/40" />
-                <span className="text-sm text-fg/60">رفع صورة</span>
+                <Upload className="w-10 h-10 text-theme-subtle" />
+                <span className="text-sm text-theme-soft">رفع صورة</span>
               </button>
               <button
                 type="button"
                 onClick={() => cameraInputRef.current?.click()}
-                className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 bg-white/[0.02] flex flex-col items-center justify-center gap-3 min-h-[140px] transition-colors"
+                className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 bg-theme-faint flex flex-col items-center justify-center gap-3 min-h-[140px] transition-colors"
               >
-                <Camera className="w-10 h-10 text-fg/40" />
-                <span className="text-sm text-fg/60">التقاط صورة</span>
+                <Camera className="w-10 h-10 text-theme-subtle" />
+                <span className="text-sm text-theme-soft">التقاط صورة</span>
               </button>
             </div>
             {imagePreviewUrl && (
@@ -138,12 +138,12 @@ export function StepInput({
                 <img
                   src={imagePreviewUrl}
                   alt="معاينة"
-                  className="h-32 w-auto object-contain rounded-xl border border-white/10"
+                  className="h-32 w-auto object-contain rounded-xl border border-theme-soft"
                 />
                 <button
                   type="button"
                   onClick={() => onImageChange(null, null)}
-                  className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500/90 text-white flex items-center justify-center hover:bg-red-500"
+                  className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500/90 text-theme flex items-center justify-center hover:bg-red-500"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -151,12 +151,12 @@ export function StepInput({
             )}
           </div>
           <div>
-            <label className="block text-sm font-bold text-fg/80 mb-2">الفكرة أو التوجيه</label>
+            <label className="block text-sm font-bold text-theme-strong mb-2">الفكرة أو التوجيه</label>
             <textarea
               value={ideaText}
               onChange={(e) => onIdeaChange(e.target.value)}
               placeholder="مثال: حوّل هذه الصورة إلى تصميم تراثي بألوان ذهبية، مناسب للطباعة على تيشيرت..."
-              className="w-full h-28 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-fg placeholder:text-fg/30 focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none"
+              className="w-full h-28 px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none"
               dir="rtl"
             />
           </div>
@@ -165,20 +165,20 @@ export function StepInput({
 
       {method === "from_text" && (
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">وصف التصميم</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">وصف التصميم</label>
           <textarea
             value={textPrompt}
             onChange={(e) => onTextPromptChange(e.target.value)}
             placeholder="مثال: خيول عربية تركض في الصحراء عند غروب الشمس، بأسلوب خط عربي وزخارف تراثية، ألوان ذهبية وبنية..."
-            className="w-full h-32 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-fg placeholder:text-fg/30 focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none"
+            className="w-full h-32 px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none"
             dir="rtl"
           />
-          <p className="text-xs text-fg/40 mt-1">كلما كان الوصف أوضح، كانت النتيجة أفضل</p>
+          <p className="text-xs text-theme-subtle mt-1">كلما كان الوصف أوضح، كانت النتيجة أفضل</p>
         </div>
       )}
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-3">النمط</label>
+        <label className="block text-sm font-bold text-theme-strong mb-3">النمط</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {DESIGN_STYLES.map((s) => (
             <button
@@ -189,7 +189,7 @@ export function StepInput({
                 px-4 py-3 rounded-xl border-2 text-right text-sm font-medium transition-all
                 ${styleId === s.id
                   ? "border-gold bg-gold/10 text-gold"
-                  : "border-white/10 bg-white/[0.03] text-fg/70 hover:border-gold/30"
+                  : "border-theme-soft bg-theme-subtle text-theme-soft hover:border-gold/30"
                 }
               `}
             >
@@ -200,7 +200,7 @@ export function StepInput({
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-3">الألوان (اختياري)</label>
+        <label className="block text-sm font-bold text-theme-strong mb-3">الألوان (اختياري)</label>
         <div className="flex flex-wrap gap-2">
           {DESIGN_COLORS.map((c) => (
             <button

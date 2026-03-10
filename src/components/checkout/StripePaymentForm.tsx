@@ -126,7 +126,7 @@ function PaymentForm({
                 )}
             </button>
 
-            <p className="text-center text-white/30 text-xs flex items-center justify-center gap-1.5">
+            <p className="text-center text-theme-faint text-xs flex items-center justify-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 الدفع محمي بتشفير SSL · Stripe
             </p>

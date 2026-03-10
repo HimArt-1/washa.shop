@@ -84,19 +84,19 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 200, opacity: 0 }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className="relative flex w-full max-w-7xl h-[90vh] m-auto bg-surface rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+                    className="relative flex w-full max-w-7xl h-[90vh] m-auto bg-surface rounded-2xl overflow-hidden border border-theme-soft shadow-2xl"
                     style={{ zIndex: 51 }}
                 >
                     {/* ─── LEFT PANEL: CONTROLS ─── */}
                     <div className="w-[400px] shrink-0 bg-surface/80 border-l border-white/5 flex flex-col h-full relative z-10">
                         <div className="p-5 border-b border-white/5 flex items-center justify-between shadow-sm bg-surface">
-                            <h2 className="text-lg font-bold text-fg flex items-center gap-2">
+                            <h2 className="text-lg font-bold text-theme flex items-center gap-2">
                                 <Settings2 className="w-5 h-5 text-gold" />
                                 تصميم الفاتورة
                             </h2>
                             <button
                                 onClick={onClose}
-                                className="p-2 rounded-lg hover:bg-white/5 text-fg/40 hover:text-fg transition-colors"
+                                className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle hover:text-theme transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -106,8 +106,8 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
 
                             {/* Templates */}
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-fg/80 flex items-center gap-2">
-                                    <LayoutTemplate className="w-4 h-4 text-fg/40" />
+                                <label className="text-sm font-bold text-theme-strong flex items-center gap-2">
+                                    <LayoutTemplate className="w-4 h-4 text-theme-subtle" />
                                     القالب
                                 </label>
                                 <div className="grid grid-cols-3 gap-2">
@@ -119,7 +119,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                                 relative p-3 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all
                                                 ${config.template === t
                                                     ? "bg-gold/10 border-gold/30 text-gold shadow-[0_0_15px_rgba(206,174,127,0.1)]"
-                                                    : "bg-white/[0.02] border-white/[0.05] text-fg/50 hover:bg-white/[0.04]"}
+                                                    : "bg-theme-faint border-theme-subtle text-theme-subtle hover:bg-theme-subtle"}
                                             `}
                                         >
                                             {t === "classic" && <FileText className="w-6 h-6" />}
@@ -136,34 +136,34 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
 
                             {/* Branding Layout */}
                             <div className="space-y-4">
-                                <label className="text-sm font-bold text-fg/80 flex items-center gap-2">
-                                    <Type className="w-4 h-4 text-fg/40" />
+                                <label className="text-sm font-bold text-theme-strong flex items-center gap-2">
+                                    <Type className="w-4 h-4 text-theme-subtle" />
                                     بيانات المنشأة
                                 </label>
 
                                 <div className="space-y-3">
                                     <div>
-                                        <span className="text-xs text-fg/50 mb-1 block">اسم الشركة</span>
+                                        <span className="text-xs text-theme-subtle mb-1 block">اسم الشركة</span>
                                         <input
                                             value={config.companyName}
                                             onChange={(e) => updateConfig("companyName", e.target.value)}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
+                                            className="w-full bg-black/20 border border-theme-soft rounded-lg px-3 py-2.5 text-sm text-theme focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
                                         />
                                     </div>
                                     <div>
-                                        <span className="text-xs text-fg/50 mb-1 block">الشعار اللفظي (Slogan)</span>
+                                        <span className="text-xs text-theme-subtle mb-1 block">الشعار اللفظي (Slogan)</span>
                                         <input
                                             value={config.tagline}
                                             onChange={(e) => updateConfig("tagline", e.target.value)}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
+                                            className="w-full bg-black/20 border border-theme-soft rounded-lg px-3 py-2.5 text-sm text-theme focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
                                         />
                                     </div>
                                     <div>
-                                        <span className="text-xs text-fg/50 mb-1 block">الرقم الضريبي (اختياري)</span>
+                                        <span className="text-xs text-theme-subtle mb-1 block">الرقم الضريبي (اختياري)</span>
                                         <input
                                             value={config.vatNumber}
                                             onChange={(e) => updateConfig("vatNumber", e.target.value)}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
+                                            className="w-full bg-black/20 border border-theme-soft rounded-lg px-3 py-2.5 text-sm text-theme focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
                                         />
                                     </div>
                                 </div>
@@ -172,8 +172,8 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                             {/* Colors & Typography */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-sm font-bold text-fg/80 mb-3 block flex items-center gap-2">
-                                        <Palette className="w-4 h-4 text-fg/40" />
+                                    <label className="text-sm font-bold text-theme-strong mb-3 block flex items-center gap-2">
+                                        <Palette className="w-4 h-4 text-theme-subtle" />
                                         الألوان
                                     </label>
                                     <div className="space-y-2">
@@ -184,7 +184,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                                 onChange={(e) => updateConfig("primaryColor", e.target.value)}
                                                 className="w-8 h-8 rounded border-none bg-transparent cursor-pointer"
                                             />
-                                            <span className="text-xs text-fg/60">الأساسي</span>
+                                            <span className="text-xs text-theme-soft">الأساسي</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <input
@@ -193,20 +193,20 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                                 onChange={(e) => updateConfig("accentColor", e.target.value)}
                                                 className="w-8 h-8 rounded border-none bg-transparent cursor-pointer"
                                             />
-                                            <span className="text-xs text-fg/60">التمييز</span>
+                                            <span className="text-xs text-theme-soft">التمييز</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-sm font-bold text-fg/80 mb-3 block flex items-center gap-2">
-                                        <Type className="w-4 h-4 text-fg/40" />
+                                    <label className="text-sm font-bold text-theme-strong mb-3 block flex items-center gap-2">
+                                        <Type className="w-4 h-4 text-theme-subtle" />
                                         الخط المعروض
                                     </label>
                                     <select
                                         value={config.fontFamily}
                                         onChange={(e) => updateConfig("fontFamily", e.target.value)}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-fg outline-none appearance-none"
+                                        className="w-full bg-black/20 border border-theme-soft rounded-lg px-3 py-2.5 text-sm text-theme outline-none appearance-none"
                                     >
                                         <option value="IBM Plex Sans Arabic">IBM Plex Sans</option>
                                         <option value="Cairo">Cairo</option>
@@ -218,12 +218,12 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                             {/* Notes & Checkboxes */}
                             <div className="space-y-4">
                                 <div>
-                                    <span className="text-xs text-fg/50 mb-1 block">ملاحظات / الشروط والأحكام</span>
+                                    <span className="text-xs text-theme-subtle mb-1 block">ملاحظات / الشروط والأحكام</span>
                                     <textarea
                                         value={config.notes}
                                         onChange={(e) => updateConfig("notes", e.target.value)}
                                         rows={4}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all resize-none"
+                                        className="w-full bg-black/20 border border-theme-soft rounded-lg px-3 py-2.5 text-sm text-theme focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all resize-none"
                                     />
                                 </div>
 
@@ -238,7 +238,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.showLogo && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none">إظهار شعار المنصة (Logo)</span>
+                                        <span className="text-sm text-theme-strong select-none">إظهار شعار المنصة (Logo)</span>
                                     </label>
 
                                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -251,7 +251,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.showWatermark && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none">إظهار العلامة المائية (Watermark)</span>
+                                        <span className="text-sm text-theme-strong select-none">إظهار العلامة المائية (Watermark)</span>
                                     </label>
 
                                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -264,12 +264,12 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.showTax && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none">إضافة ضريبة القيمة المضافة (VAT)</span>
+                                        <span className="text-sm text-theme-strong select-none">إضافة ضريبة القيمة المضافة (VAT)</span>
                                     </label>
 
                                     {config.showTax && (
                                         <div className="mr-8 mt-1">
-                                            <span className="text-xs text-fg/50 mb-1 block">نسبة الضريبة %</span>
+                                            <span className="text-xs text-theme-subtle mb-1 block">نسبة الضريبة %</span>
                                             <input
                                                 type="number"
                                                 min={0}
@@ -277,7 +277,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                                 step={0.5}
                                                 value={config.taxRate}
                                                 onChange={(e) => updateConfig("taxRate", Number(e.target.value))}
-                                                className="w-28 bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-fg focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
+                                                className="w-28 bg-black/20 border border-theme-soft rounded-lg px-3 py-2 text-sm text-theme focus:border-gold/50 focus:ring-1 focus:ring-gold/50 outline-none transition-all"
                                             />
                                         </div>
                                     )}
@@ -286,8 +286,8 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
 
                             {/* Column Settings */}
                             <div className="space-y-4">
-                                <label className="text-sm font-bold text-fg/80 flex items-center gap-2">
-                                    <LayoutTemplate className="w-4 h-4 text-fg/40" />
+                                <label className="text-sm font-bold text-theme-strong flex items-center gap-2">
+                                    <LayoutTemplate className="w-4 h-4 text-theme-subtle" />
                                     أعمدة الفاتورة (لإخفائها)
                                 </label>
                                 <div className="space-y-2">
@@ -301,7 +301,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.hiddenColumns?.quantity && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none text-red-400">إخفاء عمود {"\"الكمية\""}</span>
+                                        <span className="text-sm text-theme-strong select-none text-red-400">إخفاء عمود {"\"الكمية\""}</span>
                                     </label>
 
                                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -314,7 +314,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.hiddenColumns?.unitPrice && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none text-red-400">إخفاء عمود {"\"سعر الوحدة\""}</span>
+                                        <span className="text-sm text-theme-strong select-none text-red-400">إخفاء عمود {"\"سعر الوحدة\""}</span>
                                     </label>
 
                                     <label className="flex items-center gap-3 cursor-pointer group">
@@ -327,7 +327,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                             />
                                             {config.hiddenColumns?.subtotal && <div className="w-2.5 h-2.5 rounded-sm bg-gold" />}
                                         </div>
-                                        <span className="text-sm text-fg/80 select-none text-red-400">إخفاء عمود {"\"الإجمالي\""}</span>
+                                        <span className="text-sm text-theme-strong select-none text-red-400">إخفاء عمود {"\"الإجمالي\""}</span>
                                     </label>
                                 </div>
                             </div>
@@ -339,9 +339,9 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                             <div className="flex gap-3">
                                 <button
                                     onClick={handleSaveConfig}
-                                    className="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-fg text-sm font-bold flex items-center justify-center gap-2 transition-all border border-white/5 hover:border-white/10"
+                                    className="flex-1 py-3 px-4 rounded-xl bg-theme-subtle hover:bg-white/10 text-theme text-sm font-bold flex items-center justify-center gap-2 transition-all border border-white/5 hover:border-theme-soft"
                                 >
-                                    <Save className="w-4 h-4 text-fg/60" />
+                                    <Save className="w-4 h-4 text-theme-soft" />
                                     حفظ كافتراضي
                                 </button>
                                 <button
@@ -362,7 +362,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
 
                         <div className="w-full max-w-[800px] h-full bg-white rounded-lg shadow-2xl relative overflow-hidden flex flex-col group">
                             <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-black/5 to-transparent z-10 pointer-events-none" />
-                            <div className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-black/80 backdrop-blur text-white text-[10px] font-bold tracking-widest uppercase rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-lg">
+                            <div className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-black/80 backdrop-blur text-theme text-[10px] font-bold tracking-widest uppercase rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 shadow-lg">
                                 <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                                 Live Preview
                             </div>

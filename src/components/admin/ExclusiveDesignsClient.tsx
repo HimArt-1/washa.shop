@@ -131,9 +131,9 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
 
     return (
         <div className="space-y-6">
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 overflow-hidden">
-                <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
-                    <h3 className="font-bold text-fg">التصاميم الحصرية</h3>
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 overflow-hidden">
+                <div className="p-6 border-b border-theme-subtle flex items-center justify-between">
+                    <h3 className="font-bold text-theme">التصاميم الحصرية</h3>
                     <button
                         onClick={() => {
                             resetForm();
@@ -156,42 +156,42 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                 exit={{ opacity: 0, y: -10 }}
                                 className="p-6 rounded-xl border-2 border-gold/30 bg-gold/5 space-y-4"
                             >
-                                <h4 className="font-bold text-fg">
+                                <h4 className="font-bold text-theme">
                                     {editingId ? "تعديل التصميم" : "تصميم جديد"}
                                 </h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-xs text-fg/50 mb-1">العنوان</label>
+                                        <label className="block text-xs text-theme-subtle mb-1">العنوان</label>
                                         <input
                                             value={form.title}
                                             onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-fg"
+                                            className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme"
                                             placeholder="اسم التصميم"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-fg/50 mb-1">ترتيب العرض</label>
+                                        <label className="block text-xs text-theme-subtle mb-1">ترتيب العرض</label>
                                         <input
                                             type="number"
                                             value={form.sort_order}
                                             onChange={(e) =>
                                                 setForm({ ...form, sort_order: Number(e.target.value) || 0 })
                                             }
-                                            className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-fg"
+                                            className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme"
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-fg/50 mb-1">الوصف (اختياري)</label>
+                                    <label className="block text-xs text-theme-subtle mb-1">الوصف (اختياري)</label>
                                     <textarea
                                         value={form.description}
                                         onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-fg h-20"
+                                        className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme h-20"
                                         placeholder="وصف قصير للتصميم"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs text-fg/50 mb-1">الصورة</label>
+                                    <label className="block text-xs text-theme-subtle mb-1">الصورة</label>
                                     <div className="flex gap-3 items-start">
                                         <input
                                             type="file"
@@ -207,14 +207,14 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                             {uploading ? (
                                                 <Loader2 className="w-8 h-8 animate-spin text-gold" />
                                             ) : (
-                                                <ImageIcon className="w-8 h-8 text-fg/40" />
+                                                <ImageIcon className="w-8 h-8 text-theme-subtle" />
                                             )}
-                                            <span className="text-xs text-fg/50">
+                                            <span className="text-xs text-theme-subtle">
                                                 {form.image_url ? "تغيير الصورة" : "رفع صورة"}
                                             </span>
                                         </label>
                                         {form.image_url && (
-                                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-white/5">
+                                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-theme-subtle">
                                                 <Image
                                                     src={form.image_url}
                                                     alt=""
@@ -236,7 +236,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                     </button>
                                     <button
                                         onClick={resetForm}
-                                        className="px-6 py-2 rounded-xl border border-white/20 text-fg/70 hover:bg-white/5"
+                                        className="px-6 py-2 rounded-xl border border-white/20 text-theme-soft hover:bg-theme-subtle"
                                     >
                                         إلغاء
                                     </button>
@@ -251,10 +251,10 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                 key={d.id}
                                 layout
                                 className={`rounded-xl border overflow-hidden transition-all ${
-                                    d.is_active ? "border-white/[0.08]" : "border-white/[0.04] opacity-60"
+                                    d.is_active ? "border-theme-soft" : "border-theme-faint opacity-60"
                                 }`}
                             >
-                                <div className="aspect-square relative bg-white/5">
+                                <div className="aspect-square relative bg-theme-subtle">
                                     <Image
                                         src={d.image_url}
                                         alt={d.title}
@@ -270,7 +270,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                             {d.is_active ? (
                                                 <Eye className="w-4 h-4 text-green-400" />
                                             ) : (
-                                                <EyeOff className="w-4 h-4 text-fg/40" />
+                                                <EyeOff className="w-4 h-4 text-theme-subtle" />
                                             )}
                                         </button>
                                     </div>
@@ -295,9 +295,9 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                     </div>
                                 </div>
                                 <div className="p-3">
-                                    <p className="font-bold text-sm text-fg truncate">{d.title}</p>
+                                    <p className="font-bold text-sm text-theme truncate">{d.title}</p>
                                     {d.description && (
-                                        <p className="text-xs text-fg/50 line-clamp-2">{d.description}</p>
+                                        <p className="text-xs text-theme-subtle line-clamp-2">{d.description}</p>
                                     )}
                                 </div>
                             </motion.div>
@@ -305,7 +305,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                     </div>
 
                     {designs.length === 0 && !isAdding && (
-                        <div className="text-center py-16 text-fg/30">
+                        <div className="text-center py-16 text-theme-faint">
                             <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
                             <p>لا توجد تصاميم حصرية بعد</p>
                             <button

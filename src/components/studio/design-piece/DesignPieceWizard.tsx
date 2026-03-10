@@ -111,7 +111,7 @@ export function DesignPieceWizard() {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[calc(100vh-140px)]">
       {/* ─── لوحة الخطوات ─── */}
       <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 sm:p-8 overflow-y-auto max-h-[calc(100vh-180px)]">
+        <div className="rounded-2xl border border-theme-soft bg-theme-faint p-6 sm:p-8 overflow-y-auto max-h-[calc(100vh-180px)]">
           <AnimatePresence mode="wait">
             {state.step === 1 && (
               <StepGarment
@@ -204,7 +204,7 @@ export function DesignPieceWizard() {
             className="w-full min-h-[400px]"
           />
         ) : (
-          <div className="w-full max-w-md aspect-[3/4] rounded-2xl bg-surface border border-white/10 flex items-center justify-center text-fg/30">
+          <div className="w-full max-w-md aspect-[3/4] rounded-2xl bg-surface border border-theme-soft flex items-center justify-center text-theme-faint">
             <p className="text-center px-6">اختر القطعة وموضع الطباعة لرؤية المعاينة</p>
           </div>
         )}

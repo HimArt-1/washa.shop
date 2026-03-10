@@ -106,13 +106,13 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                     </div>
 
                     <div className="flex-1">
-                        <h1 className="text-3xl md:text-4xl font-bold text-fg flex items-center gap-2">
+                        <h1 className="text-3xl md:text-4xl font-bold text-theme flex items-center gap-2">
                             {artist.display_name}
                             {artist.is_verified && <span className="text-gold text-lg">✦</span>}
                         </h1>
-                        <p className="text-fg/30 text-sm mt-1">@{artist.username}</p>
+                        <p className="text-theme-faint text-sm mt-1">@{artist.username}</p>
                         {artist.bio && (
-                            <p className="text-fg/50 text-sm mt-3 max-w-xl leading-relaxed">{artist.bio}</p>
+                            <p className="text-theme-subtle text-sm mt-3 max-w-xl leading-relaxed">{artist.bio}</p>
                         )}
                         <div className="flex items-center gap-4 mt-4">
                             <FollowArtistButton
@@ -126,12 +126,12 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                     {/* Stats */}
                     <div className="flex gap-6">
                         <div className="text-center">
-                            <span className="text-2xl font-bold text-fg">{artworks.length}</span>
-                            <span className="block text-[10px] text-fg/20 mt-0.5">عمل فني</span>
+                            <span className="text-2xl font-bold text-theme">{artworks.length}</span>
+                            <span className="block text-[10px] text-theme-faint mt-0.5">عمل فني</span>
                         </div>
                         <div className="text-center">
-                            <span className="text-2xl font-bold text-fg">{artist.total_sales || 0}</span>
-                            <span className="block text-[10px] text-fg/20 mt-0.5">مبيعات</span>
+                            <span className="text-2xl font-bold text-theme">{artist.total_sales || 0}</span>
+                            <span className="block text-[10px] text-theme-faint mt-0.5">مبيعات</span>
                         </div>
                     </div>
                 </div>
@@ -144,7 +144,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                                 href={artist.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs text-fg/40 hover:text-gold hover:border-gold/30 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 bg-theme-subtle border border-theme-subtle rounded-xl text-xs text-theme-subtle hover:text-gold hover:border-gold/30 transition-all"
                             >
                                 <Globe className="w-3.5 h-3.5" />
                                 الموقع الشخصي
@@ -157,7 +157,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                                 href={url as string}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-xl text-xs text-fg/40 hover:text-gold hover:border-gold/30 transition-all"
+                                className="flex items-center gap-2 px-4 py-2 bg-theme-subtle border border-theme-subtle rounded-xl text-xs text-theme-subtle hover:text-gold hover:border-gold/30 transition-all"
                             >
                                 {socialLabels[platform] || platform}
                                 <ExternalLink className="w-3 h-3" />
@@ -168,7 +168,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
 
                 {/* ─── Artworks Grid ─── */}
                 <div className="mb-8">
-                    <h2 className="text-xl font-bold text-fg mb-6">الأعمال الفنية</h2>
+                    <h2 className="text-xl font-bold text-theme mb-6">الأعمال الفنية</h2>
                 </div>
 
                 {artworks.length > 0 ? (
@@ -177,7 +177,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                             <Link
                                 key={artwork.id}
                                 href={`/artworks/${artwork.id}`}
-                                className="group rounded-2xl border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all duration-500"
+                                className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
                             >
                                 <div className="aspect-square relative overflow-hidden">
                                     <Image
@@ -188,13 +188,13 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                                     />
                                     {artwork.category && (
-                                        <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-white/70 px-2 py-0.5 rounded-full">
+                                        <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-theme-soft px-2 py-0.5 rounded-full">
                                             {artwork.category.name_ar}
                                         </span>
                                     )}
                                 </div>
                                 <div className="p-3">
-                                    <h3 className="text-sm font-bold text-fg truncate group-hover:text-gold transition-colors">
+                                    <h3 className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">
                                         {artwork.title}
                                     </h3>
                                     {artwork.price && (
@@ -206,7 +206,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                     </div>
                 ) : (
                     <div className="text-center py-20">
-                        <p className="text-fg/20">لا توجد أعمال منشورة حالياً</p>
+                        <p className="text-theme-faint">لا توجد أعمال منشورة حالياً</p>
                     </div>
                 )}
             </div>

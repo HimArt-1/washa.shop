@@ -163,7 +163,7 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                         <button
                             key={s.value}
                             onClick={() => navigate({ status: s.value, page: "1" })}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${currentStatus === s.value ? "bg-gold/15 text-gold border-gold/30" : "bg-white/[0.03] text-fg/50 border-white/[0.06] hover:bg-white/[0.05]"}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${currentStatus === s.value ? "bg-gold/15 text-gold border-gold/30" : "bg-theme-subtle text-theme-subtle border-theme-subtle hover:bg-white/[0.05]"}`}
                         >
                             {s.label}
                         </button>
@@ -171,8 +171,8 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                 </div>
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-fg/40">{count} طلب</span>
-                    <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-fg/60 text-xs hover:text-fg transition-colors">
+                    <span className="text-xs text-theme-subtle">{count} طلب</span>
+                    <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-subtle border border-theme-soft text-theme-soft text-xs hover:text-theme transition-colors">
                         <Settings2 className="w-3.5 h-3.5" /> إعدادات البرومبت
                     </button>
                 </div>
@@ -182,19 +182,19 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
             <div className="flex flex-wrap gap-3">
                 {/* Search */}
                 <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/30" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                     <input
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder="بحث بالاسم أو رقم الطلب..."
-                        className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/30 transition-colors"
+                        className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-colors"
                     />
                 </div>
                 {/* Admin Filter */}
                 <select
                     value={filterAdmin}
                     onChange={(e) => setFilterAdmin(e.target.value)}
-                    className="px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm focus:outline-none focus:border-gold/30 transition-colors min-w-[180px]"
+                    className="px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm focus:outline-none focus:border-gold/30 transition-colors min-w-[180px]"
                 >
                     <option value="all">كل الأدمن</option>
                     <option value="unassigned">غير معيّن</option>
@@ -206,7 +206,7 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
 
             {/* ══ Orders Table ══ */}
             {filteredOrders.length === 0 ? (
-                <div className="text-center py-20 text-fg/30">
+                <div className="text-center py-20 text-theme-faint">
                     <Paintbrush className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>لا توجد طلبات تصميم {searchTerm ? `تطابق "${searchTerm}"` : currentStatus !== "all" && `بحالة "${FILTER_STATUSES.find(s => s.value === currentStatus)?.label}"`}</p>
                 </div>
@@ -214,14 +214,14 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/[0.06]">
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">#</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">العميل</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">القطعة</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">الحالة</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">المسؤول</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">النتائج</th>
-                                <th className="text-right text-xs text-fg/40 font-medium px-4 py-3">التاريخ</th>
+                            <tr className="border-b border-theme-subtle">
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">#</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">العميل</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">القطعة</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">الحالة</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">المسؤول</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">النتائج</th>
+                                <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">التاريخ</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -233,7 +233,7 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                                     <tr
                                         key={order.id}
                                         onClick={() => setSelectedOrder(order)}
-                                        className="border-b border-white/[0.03] hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                                        className="border-b border-theme-faint hover:bg-theme-subtle transition-colors cursor-pointer group"
                                     >
                                         {/* Order Number */}
                                         <td className="px-4 py-3">
@@ -243,17 +243,17 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                                         </td>
                                         {/* Customer */}
                                         <td className="px-4 py-3">
-                                            <p className="font-medium text-fg text-sm truncate max-w-[140px]">
+                                            <p className="font-medium text-theme text-sm truncate max-w-[140px]">
                                                 {order.customer_name || "—"}
                                             </p>
                                             {order.customer_phone && (
-                                                <p className="text-[10px] text-fg/30 mt-0.5" dir="ltr">{order.customer_phone}</p>
+                                                <p className="text-[10px] text-theme-faint mt-0.5" dir="ltr">{order.customer_phone}</p>
                                             )}
                                         </td>
                                         {/* Garment */}
                                         <td className="px-4 py-3">
-                                            <p className="text-fg/80 text-sm">{order.garment_name}</p>
-                                            <p className="text-[10px] text-fg/30 mt-0.5">{order.color_name} · {order.size_name}</p>
+                                            <p className="text-theme-strong text-sm">{order.garment_name}</p>
+                                            <p className="text-[10px] text-theme-faint mt-0.5">{order.color_name} · {order.size_name}</p>
                                         </td>
                                         {/* Status */}
                                         <td className="px-4 py-3">
@@ -265,12 +265,12 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                                         {/* Assigned Admin */}
                                         <td className="px-4 py-3">
                                             {adminName ? (
-                                                <span className="inline-flex items-center gap-1.5 text-xs text-fg/60">
+                                                <span className="inline-flex items-center gap-1.5 text-xs text-theme-soft">
                                                     <UserCircle2 className="w-3.5 h-3.5 text-gold/50" />
                                                     {adminName}
                                                 </span>
                                             ) : (
-                                                <span className="text-xs text-fg/20">غير معيّن</span>
+                                                <span className="text-xs text-theme-faint">غير معيّن</span>
                                             )}
                                         </td>
                                         {/* Results */}
@@ -280,12 +280,12 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                                                 {order.result_mockup_url && <div className="w-2 h-2 rounded-full bg-blue-400" title="موكاب" />}
                                                 {order.result_pdf_url && <div className="w-2 h-2 rounded-full bg-amber-400" title="PDF" />}
                                                 {!order.result_design_url && !order.result_mockup_url && !order.result_pdf_url && (
-                                                    <span className="text-[10px] text-fg/15">—</span>
+                                                    <span className="text-[10px] text-theme-faint">—</span>
                                                 )}
                                             </div>
                                         </td>
                                         {/* Date */}
-                                        <td className="px-4 py-3 text-xs text-fg/30 whitespace-nowrap">
+                                        <td className="px-4 py-3 text-xs text-theme-faint whitespace-nowrap">
                                             {new Date(order.created_at).toLocaleDateString("ar-SA")}
                                         </td>
                                     </tr>
@@ -299,12 +299,12 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
             {/* Pagination */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 pt-4">
-                    <button disabled={currentPage <= 1} onClick={() => navigate({ page: String(currentPage - 1) })} className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] disabled:opacity-30">
-                        <ChevronRight className="w-4 h-4 text-fg/60" />
+                    <button disabled={currentPage <= 1} onClick={() => navigate({ page: String(currentPage - 1) })} className="p-2 rounded-lg bg-theme-subtle border border-theme-soft disabled:opacity-30">
+                        <ChevronRight className="w-4 h-4 text-theme-soft" />
                     </button>
-                    <span className="text-sm text-fg/50">{currentPage} / {totalPages}</span>
-                    <button disabled={currentPage >= totalPages} onClick={() => navigate({ page: String(currentPage + 1) })} className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] disabled:opacity-30">
-                        <ChevronLeft className="w-4 h-4 text-fg/60" />
+                    <span className="text-sm text-theme-subtle">{currentPage} / {totalPages}</span>
+                    <button disabled={currentPage >= totalPages} onClick={() => navigate({ page: String(currentPage + 1) })} className="p-2 rounded-lg bg-theme-subtle border border-theme-soft disabled:opacity-30">
+                        <ChevronLeft className="w-4 h-4 text-theme-soft" />
                     </button>
                 </div>
             )}
@@ -341,13 +341,13 @@ function StatCard({ icon: Icon, label, value, color, bg, onClick, active }: {
     return (
         <button
             onClick={onClick}
-            className={`p-4 rounded-xl border transition-all text-right ${active ? "border-gold/30 bg-gold/[0.07]" : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]"} ${onClick ? "cursor-pointer" : "cursor-default"}`}
+            className={`p-4 rounded-xl border transition-all text-right ${active ? "border-gold/30 bg-gold/[0.07]" : "border-theme-subtle bg-theme-faint hover:bg-theme-subtle"} ${onClick ? "cursor-pointer" : "cursor-default"}`}
         >
             <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
                 <Icon className={`w-4 h-4 ${color}`} />
             </div>
-            <p className="text-lg font-bold text-fg">{value}</p>
-            <p className="text-[10px] text-fg/40 mt-0.5">{label}</p>
+            <p className="text-lg font-bold text-theme">{value}</p>
+            <p className="text-[10px] text-theme-subtle mt-0.5">{label}</p>
         </button>
     );
 }
@@ -445,11 +445,11 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="relative z-10 w-full max-w-md rounded-2xl bg-surface border border-white/[0.08] p-6 shadow-2xl"
+                    className="relative z-10 w-full max-w-md rounded-2xl bg-surface border border-theme-soft p-6 shadow-2xl"
                 >
                     <div className="text-center mb-6">
-                        <h3 className="text-xl font-bold text-fg">طلب تصميم جديد #{order.order_number}</h3>
-                        <p className="text-sm text-fg/50 mt-1">{order.garment_name} — {order.color_name}</p>
+                        <h3 className="text-xl font-bold text-theme">طلب تصميم جديد #{order.order_number}</h3>
+                        <p className="text-sm text-theme-subtle mt-1">{order.garment_name} — {order.color_name}</p>
                     </div>
                     {!showRejectForm ? (
                         <div className="flex gap-3">
@@ -477,12 +477,12 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <label className="block text-sm font-medium text-fg">سبب الرفض (إجباري)</label>
+                            <label className="block text-sm font-medium text-theme">سبب الرفض (إجباري)</label>
                             <textarea
                                 value={rejectReason}
                                 onChange={(e) => setRejectReason(e.target.value)}
                                 placeholder="اكتب سبب رفض الطلب..."
-                                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm resize-none"
+                                className="w-full px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm resize-none"
                                 rows={3}
                             />
                             <div className="flex gap-3">
@@ -500,7 +500,7 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                                 >
                                     {loading ? "جاري..." : "تأكيد الرفض"}
                                 </button>
-                                <button onClick={() => setShowRejectForm(false)} className="px-4 py-3 rounded-xl border border-white/[0.08] text-fg/60">
+                                <button onClick={() => setShowRejectForm(false)} className="px-4 py-3 rounded-xl border border-theme-soft text-theme-soft">
                                     رجوع
                                 </button>
                             </div>
@@ -518,34 +518,34 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative z-10 w-full max-w-3xl rounded-2xl bg-surface border border-white/[0.08] p-6 shadow-2xl mb-12"
+                className="relative z-10 w-full max-w-3xl rounded-2xl bg-surface border border-theme-soft p-6 shadow-2xl mb-12"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center font-bold text-gold">#{order.order_number}</div>
                         <div>
-                            <h3 className="font-bold text-fg">طلب تصميم #{order.order_number}</h3>
-                            <p className="text-xs text-fg/40">{new Date(order.created_at).toLocaleString("ar-SA")}</p>
+                            <h3 className="font-bold text-theme">طلب تصميم #{order.order_number}</h3>
+                            <p className="text-xs text-theme-subtle">{new Date(order.created_at).toLocaleString("ar-SA")}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <span className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${st.color}`}>
                             {st.label}
                         </span>
-                        <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg"><X className="w-5 h-5 text-fg/40" /></button>
+                        <button onClick={onClose} className="p-2 hover:bg-theme-subtle rounded-lg"><X className="w-5 h-5 text-theme-subtle" /></button>
                     </div>
                 </div>
 
                 {/* Assign Admin */}
-                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle mb-4 flex items-center gap-3">
                     <Users className="w-5 h-5 text-gold/60 shrink-0" />
                     <div className="flex-1 min-w-0">
-                        <p className="text-xs text-fg/40 mb-1">الأدمن المسؤول</p>
+                        <p className="text-xs text-theme-subtle mb-1">الأدمن المسؤول</p>
                         <select
                             value={assignedTo}
                             onChange={(e) => handleAssign(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-fg text-sm focus:outline-none focus:border-gold/30 transition-colors"
+                            className="w-full px-3 py-2 rounded-lg bg-theme-subtle border border-theme-soft text-theme text-sm focus:outline-none focus:border-gold/30 transition-colors"
                         >
                             <option value="">غير معيّن</option>
                             {adminList.map(a => (
@@ -557,8 +557,8 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
 
                 {/* Customer Info */}
                 {(order.customer_name || order.customer_email) && (
-                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4 text-sm">
-                        <p className="text-fg/50">👤 {order.customer_name ?? "—"} {order.customer_email && `· ${order.customer_email}`} {order.customer_phone && `· ${order.customer_phone}`}</p>
+                    <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle mb-4 text-sm">
+                        <p className="text-theme-subtle">👤 {order.customer_name ?? "—"} {order.customer_email && `· ${order.customer_email}`} {order.customer_phone && `· ${order.customer_phone}`}</p>
                     </div>
                 )}
 
@@ -576,20 +576,20 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                 {order.modification_request && (
                     <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 mb-4">
                         <p className="text-xs text-amber-400 font-bold mb-1">✏️ طلب تعديل التصميم من العميل:</p>
-                        <p className="text-sm text-fg/80">{order.modification_request}</p>
+                        <p className="text-sm text-theme-strong">{order.modification_request}</p>
                     </div>
                 )}
 
                 {/* User Prompt / Image */}
                 {order.text_prompt && (
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4">
-                        <p className="text-xs text-fg/40 mb-1">📝 وصف العميل:</p>
-                        <p className="text-sm text-fg/80">{order.text_prompt}</p>
+                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle mb-4">
+                        <p className="text-xs text-theme-subtle mb-1">📝 وصف العميل:</p>
+                        <p className="text-sm text-theme-strong">{order.text_prompt}</p>
                     </div>
                 )}
                 {order.reference_image_url && (
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-4">
-                        <p className="text-xs text-fg/40 mb-2">🖼️ الصورة المرجعية:</p>
+                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle mb-4">
+                        <p className="text-xs text-theme-subtle mb-2">🖼️ الصورة المرجعية:</p>
                         <img src={order.reference_image_url} alt="Reference" className="max-h-40 rounded-xl" />
                     </div>
                 )}
@@ -602,13 +602,13 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                             {copied ? <><Check className="w-3.5 h-3.5" /> تم النسخ!</> : <><Copy className="w-3.5 h-3.5" /> نسخ</>}
                         </button>
                     </div>
-                    <pre className="text-xs text-fg/70 whitespace-pre-wrap font-mono leading-relaxed max-h-48 overflow-y-auto">{order.ai_prompt}</pre>
+                    <pre className="text-xs text-theme-soft whitespace-pre-wrap font-mono leading-relaxed max-h-48 overflow-y-auto">{order.ai_prompt}</pre>
                 </div>
 
                 {/* Results Upload */}
                 {!order.skip_results && order.status !== "cancelled" && (
-                    <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 mb-6 space-y-3">
-                        <p className="text-sm font-bold text-fg mb-2">📎 النتائج المطلوبة</p>
+                    <div className="rounded-xl bg-theme-faint border border-theme-subtle p-4 mb-6 space-y-3">
+                        <p className="text-sm font-bold text-theme mb-2">📎 النتائج المطلوبة</p>
                         <ResultUpload label="صورة التصميم" field="result_design_url" currentUrl={order.result_design_url} uploading={uploading === "result_design_url"} onUpload={(f) => handleUpload("result_design_url", f)} icon={ImageIcon} />
                         <ResultUpload label="صورة الموكاب" field="result_mockup_url" currentUrl={order.result_mockup_url} uploading={uploading === "result_mockup_url"} onUpload={(f) => handleUpload("result_mockup_url", f)} icon={ImageIcon} />
                         <ResultUpload label="ملف PDF" field="result_pdf_url" currentUrl={order.result_pdf_url} uploading={uploading === "result_pdf_url"} onUpload={(f) => handleUpload("result_pdf_url", f)} icon={FileText} accept=".pdf" />
@@ -626,10 +626,10 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
 
                 {/* Admin Notes */}
                 <div className="mb-6">
-                    <label className="text-sm text-fg/50 mb-1.5 block">ملاحظات الإدارة</label>
+                    <label className="text-sm text-theme-subtle mb-1.5 block">ملاحظات الإدارة</label>
                     <div className="flex gap-2">
-                        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/40 resize-none" rows={2} placeholder="أضف ملاحظات..." />
-                        <button onClick={handleSaveNotes} className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg/50 hover:text-fg text-xs self-end">حفظ</button>
+                        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="flex-1 px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm placeholder:text-theme-faint focus:outline-none focus:border-gold/40 resize-none" rows={2} placeholder="أضف ملاحظات..." />
+                        <button onClick={handleSaveNotes} className="px-3 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme-subtle hover:text-theme text-xs self-end">حفظ</button>
                     </div>
                 </div>
 
@@ -639,7 +639,7 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-white/[0.06]">
+                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-theme-subtle">
                     {nextStatuses.map((ns) => {
                         const nsInfo = STATUS_MAP[ns];
                         return (
@@ -650,7 +650,7 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                         );
                     })}
                     {!order.skip_results && order.status !== "completed" && order.status !== "cancelled" && (
-                        <button onClick={handleSkip} disabled={loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium border border-white/[0.08] text-fg/50 hover:bg-white/[0.04] transition-colors mr-auto">
+                        <button onClick={handleSkip} disabled={loading} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium border border-theme-soft text-theme-subtle hover:bg-theme-subtle transition-colors mr-auto">
                             <Slash className="w-3.5 h-3.5" /> تجاوز (/)
                         </button>
                     )}
@@ -660,12 +660,12 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                 {!order.is_sent_to_customer && order.user_id && order.status !== "cancelled" && (
                     <div className="mt-6 p-4 rounded-xl bg-gold/5 border border-gold/20">
                         <h4 className="text-sm font-bold text-gold mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4" /> إرسال التصميم للعميل كمنتج</h4>
-                        <p className="text-xs text-fg/60 mb-4">
+                        <p className="text-xs text-theme-soft mb-4">
                             عند الانتهاء من تجهيز التصميم وتسعير التطريز/الطباعة بناءً على التفاصيل، أدخل السعر النهائي وأرسله لتنبيه العميل ليتمكن من إضافته للسلة والدفع.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="relative flex-1">
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-fg/40 text-sm">ر.س</span>
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-theme-subtle text-sm">ر.س</span>
                                 <input
                                     type="number"
                                     min="0"
@@ -673,7 +673,7 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
                                     value={finalPrice}
                                     onChange={(e) => setFinalPrice(e.target.value)}
                                     placeholder="السعر النهائي..."
-                                    className="w-full px-4 pr-12 py-2.5 rounded-xl bg-white/[0.04] border border-gold/30 text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/60"
+                                    className="w-full px-4 pr-12 py-2.5 rounded-xl bg-theme-subtle border border-gold/30 text-theme text-sm placeholder:text-theme-faint focus:outline-none focus:border-gold/60"
                                 />
                             </div>
                             <button
@@ -702,16 +702,16 @@ function OrderDetailModal({ order, adminList, onClose, onOrderUpdated }: { order
 
 function DetailCard({ icon: Icon, label, value, color, imageUrl }: { icon: React.ElementType; label: string; value: string; color?: string; imageUrl?: string | null }) {
     return (
-        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center">
+        <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle text-center">
             {imageUrl ? (
                 <img src={imageUrl} alt={label} className="w-full h-16 object-cover rounded-lg mb-2" />
             ) : (
                 <div className="flex items-center justify-center mb-2">
-                    {color ? <div className="w-8 h-8 rounded-lg border border-white/10" style={{ backgroundColor: color }} /> : <Icon className="w-5 h-5 text-fg/30" />}
+                    {color ? <div className="w-8 h-8 rounded-lg border border-theme-soft" style={{ backgroundColor: color }} /> : <Icon className="w-5 h-5 text-theme-faint" />}
                 </div>
             )}
-            <p className="text-[10px] text-fg/40">{label}</p>
-            <p className="text-xs font-medium text-fg truncate">{value}</p>
+            <p className="text-[10px] text-theme-subtle">{label}</p>
+            <p className="text-xs font-medium text-theme truncate">{value}</p>
         </div>
     );
 }
@@ -721,17 +721,17 @@ function ResultUpload({ label, field, currentUrl, uploading, onUpload, icon: Ico
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     return (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-            <Icon className="w-5 h-5 text-fg/30 shrink-0" />
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-theme-faint border border-theme-faint">
+            <Icon className="w-5 h-5 text-theme-faint shrink-0" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-fg/70">{label}</p>
+                <p className="text-xs font-medium text-theme-soft">{label}</p>
                 {currentUrl ? (
                     <a href={currentUrl} target="_blank" rel="noreferrer" className="text-[10px] text-gold hover:underline truncate block">✅ تم الرفع — عرض</a>
                 ) : (
-                    <p className="text-[10px] text-fg/30">لم يتم الرفع بعد</p>
+                    <p className="text-[10px] text-theme-faint">لم يتم الرفع بعد</p>
                 )}
             </div>
-            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-dashed border-white/[0.12] hover:border-gold/30 cursor-pointer text-xs text-fg/50 whitespace-nowrap transition-colors">
+            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-theme-subtle border border-dashed border-white/[0.12] hover:border-gold/30 cursor-pointer text-xs text-theme-subtle whitespace-nowrap transition-colors">
                 {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 {uploading ? "جاري..." : currentUrl ? "تغيير" : "رفع"}
                 <input ref={inputRef} type="file" accept={accept ?? "image/*"} onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); }} className="hidden" disabled={uploading} />
@@ -764,21 +764,21 @@ function PromptSettingsModal({ template, onClose }: { template: string; onClose:
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative z-10 w-full max-w-2xl rounded-2xl bg-surface border border-white/[0.08] p-6 shadow-2xl"
+                className="relative z-10 w-full max-w-2xl rounded-2xl bg-surface border border-theme-soft p-6 shadow-2xl"
             >
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-fg flex items-center gap-2"><Settings2 className="w-5 h-5 text-gold" /> إعدادات البرومبت الموحد</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg"><X className="w-5 h-5 text-fg/40" /></button>
+                    <h3 className="text-lg font-bold text-theme flex items-center gap-2"><Settings2 className="w-5 h-5 text-gold" /> إعدادات البرومبت الموحد</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-theme-subtle rounded-lg"><X className="w-5 h-5 text-theme-subtle" /></button>
                 </div>
 
-                <p className="text-xs text-fg/40 mb-3">
+                <p className="text-xs text-theme-subtle mb-3">
                     استخدم المتغيرات: <code className="text-gold/70">{"{{garment_name}}"}</code> <code className="text-gold/70">{"{{color_name}}"}</code> <code className="text-gold/70">{"{{color_hex}}"}</code> <code className="text-gold/70">{"{{style_name}}"}</code> <code className="text-gold/70">{"{{art_style_name}}"}</code> <code className="text-gold/70">{"{{colors}}"}</code> <code className="text-gold/70">{"{{user_prompt}}"}</code>
                 </p>
 
                 <textarea
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm font-mono placeholder:text-fg/25 focus:outline-none focus:border-gold/40 resize-none"
+                    className="w-full px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm font-mono placeholder:text-theme-faint focus:outline-none focus:border-gold/40 resize-none"
                     rows={14}
                 />
 
@@ -787,7 +787,7 @@ function PromptSettingsModal({ template, onClose }: { template: string; onClose:
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                         {saving ? "جاري الحفظ..." : saved ? "تم الحفظ!" : "حفظ القالب"}
                     </button>
-                    <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 text-sm hover:bg-white/[0.04]">إلغاء</button>
+                    <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-theme-soft text-theme-soft text-sm hover:bg-theme-subtle">إلغاء</button>
                 </div>
             </motion.div>
         </div>

@@ -9,21 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // وشّى — Theme-aware via CSS variables (opacity modifiers need hex fallback)
+        // وشّى — استخدام المتغيرات (للألوان الأساسية فقط؛ الـ opacity لا يعمل مع var)
+        gold: "var(--wusha-gold)",
+        "gold-light": "var(--wusha-gold-light)",
+        accent: "var(--wusha-mist)",
+        primary: "var(--wusha-forest)",
+        secondary: "var(--wusha-earth)",
+        earth: "var(--wusha-earth)",
+        mist: "var(--wusha-mist)",
+        forest: "var(--wusha-forest)",
+        // للـ opacity: استخدم text-theme-subtle, bg-theme-subtle من globals.css
         bg: "#080808",
         fg: "#f0ebe3",
         surface: "#111111",
         "surface-2": "#1a1a1a",
-        gold: "#ceae7f",
-        "gold-light": "#e0c99a",
-        accent: "#9D8BB1",
-        primary: "#2a7a5a",
-        secondary: "#5A3E2B",
         sand: "#f0ebe3",
         ink: "#f0ebe3",
-        earth: "#5A3E2B",
-        mist: "#9D8BB1",
-        forest: "#2a7a5a",
         wusha: {
           bg: "#080808",
           surface: "#111111",

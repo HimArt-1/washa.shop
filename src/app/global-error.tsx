@@ -36,10 +36,10 @@ export default function GlobalError({
                                 />
                             </svg>
                         </div>
-                        <h1 className="text-2xl font-bold text-fg mb-3">
+                        <h1 className="text-2xl font-bold text-theme mb-3">
                             حدث خطأ غير متوقع
                         </h1>
-                        <p className="text-fg/40 text-sm mb-8 leading-relaxed">
+                        <p className="text-theme-subtle text-sm mb-8 leading-relaxed">
                             نعتذر عن هذا الخطأ. يمكنك المحاولة مرة أخرى.
                         </p>
                         <button

@@ -12,7 +12,7 @@ function SearchFallback() {
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16 flex items-center justify-center" dir="rtl">
             <div className="text-center">
                 <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-fg/30 text-sm">جاري التحميل...</p>
+                <p className="text-theme-faint text-sm">جاري التحميل...</p>
             </div>
         </div>
     );

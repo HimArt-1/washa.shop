@@ -61,10 +61,10 @@ export default function FAQPage() {
                         <HelpCircle className="w-3.5 h-3.5" />
                         مركز المساعدة
                     </div>
-                    <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4">
+                    <h1 className="text-3xl sm:text-5xl font-bold text-theme mb-4">
                         الأسئلة <span className="text-gradient">الشائعة</span>
                     </h1>
-                    <p className="text-white/40 max-w-lg mx-auto">
+                    <p className="text-theme-subtle max-w-lg mx-auto">
                         إجابات سريعة لأكثر الأسئلة شيوعاً. ما لقيت جوابك؟ تواصل معنا مباشرة.
                     </p>
                 </div>
@@ -74,13 +74,13 @@ export default function FAQPage() {
                     {faqs.map((faq, i) => (
                         <details
                             key={i}
-                            className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden transition-all hover:border-gold/20"
+                            className="group bg-theme-subtle border border-theme-soft rounded-2xl overflow-hidden transition-all hover:border-gold/20"
                         >
                             <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer list-none select-none">
-                                <span className="font-bold text-white/90 text-base">{faq.q}</span>
+                                <span className="font-bold text-theme-strong text-base">{faq.q}</span>
                                 <ChevronDown className="w-5 h-5 text-gold/60 shrink-0 transition-transform duration-300 group-open:rotate-180" />
                             </summary>
-                            <div className="px-6 pb-6 pt-0 text-white/50 leading-relaxed text-sm border-t border-white/[0.04]">
+                            <div className="px-6 pb-6 pt-0 text-theme-subtle leading-relaxed text-sm border-t border-theme-faint">
                                 <p className="pt-4">{faq.a}</p>
                             </div>
                         </details>
@@ -89,7 +89,7 @@ export default function FAQPage() {
 
                 {/* CTA */}
                 <div className="text-center mt-16">
-                    <p className="text-white/30 text-sm mb-4">ما لقيت جوابك؟</p>
+                    <p className="text-theme-subtle text-sm mb-4">ما لقيت جوابك؟</p>
                     <a
                         href="/account/support"
                         className="inline-flex items-center gap-2 btn-gold py-3 px-8 text-sm rounded-xl"

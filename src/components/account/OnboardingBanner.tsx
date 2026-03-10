@@ -33,7 +33,7 @@ export function OnboardingBanner() {
                 >
                     <button
                         onClick={dismiss}
-                        className="absolute top-4 left-4 p-2 rounded-xl text-fg/30 hover:text-fg/60 hover:bg-white/5 transition-colors"
+                        className="absolute top-4 left-4 p-2 rounded-xl text-theme-faint hover:text-theme-soft hover:bg-theme-subtle transition-colors"
                         aria-label="إغلاق"
                     >
                         <X className="w-5 h-5" />
@@ -44,8 +44,8 @@ export function OnboardingBanner() {
                             <Sparkles className="w-8 h-8 text-gold" />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-xl font-bold text-fg mb-1">مرحباً بك في وشّى</h3>
-                            <p className="text-fg/50 text-sm leading-relaxed mb-4">
+                            <h3 className="text-xl font-bold text-theme mb-1">مرحباً بك في وشّى</h3>
+                            <p className="text-theme-subtle text-sm leading-relaxed mb-4">
                                 ابدأ بتصفح المعرض، المتجر، أو صمّم قطعتك بالذكاء الاصطناعي
                             </p>
                             <div className="flex flex-wrap gap-3">
@@ -60,7 +60,7 @@ export function OnboardingBanner() {
                                 <Link
                                     href="/store"
                                     onClick={dismiss}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-white/10 hover:border-gold/20 text-fg/70 hover:text-gold rounded-xl text-sm font-medium transition-colors"
+                                    className="inline-flex items-center gap-2 px-4 py-2.5 border border-theme-soft hover:border-gold/20 text-theme-soft hover:text-gold rounded-xl text-sm font-medium transition-colors"
                                 >
                                     <ShoppingBag className="w-4 h-4" />
                                     تصفح المتجر

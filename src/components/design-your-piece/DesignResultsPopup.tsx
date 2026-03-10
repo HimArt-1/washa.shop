@@ -161,18 +161,18 @@ export function DesignResultsPopup({
                                     ✨ تصميمك جاهز
                                 </span>
                             </motion.h2>
-                            <p className="text-fg/40 text-sm mt-1">طلب #{order.order_number} — {order.garment_name}</p>
+                            <p className="text-theme-subtle text-sm mt-1">طلب #{order.order_number} — {order.garment_name}</p>
                         </div>
-                        <button onClick={onClose} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors shrink-0">
-                            <X className="w-5 h-5 text-fg/40" />
+                        <button onClick={onClose} className="p-2 rounded-xl bg-theme-subtle hover:bg-white/10 transition-colors shrink-0">
+                            <X className="w-5 h-5 text-theme-subtle" />
                         </button>
                     </div>
 
                     {/* ─── Images Display ─── */}
                     <div className="space-y-4 w-full">
                         {images.length > 0 ? (
-                            <div className="relative rounded-2xl overflow-hidden border border-white/[0.08] bg-black/30 w-full group">
-                                <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-lg text-xs font-bold text-white z-10 border border-white/10 uppercase tracking-widest">
+                            <div className="relative rounded-2xl overflow-hidden border border-theme-soft bg-black/30 w-full group">
+                                <div className="absolute top-3 right-3 px-3 py-1.5 bg-black/50 backdrop-blur-md rounded-lg text-xs font-bold text-theme z-10 border border-theme-soft uppercase tracking-widest">
                                     {images.length > 1 ? `صورة ${activeImage + 1} من ${images.length}` : (order.result_mockup_url ? "الموك آب النهائي" : "ملف التصميم")}
                                 </div>
                                 <img
@@ -182,7 +182,7 @@ export function DesignResultsPopup({
                                 />
                             </div>
                         ) : (
-                            <div className="p-10 border border-white/[0.08] rounded-2xl bg-white/[0.02] flex items-center justify-center text-fg/30 text-sm">
+                            <div className="p-10 border border-theme-soft rounded-2xl bg-theme-faint flex items-center justify-center text-theme-faint text-sm">
                                 لم يتم إرفاق صور للعرض.
                             </div>
                         )}
@@ -190,7 +190,7 @@ export function DesignResultsPopup({
 
                     {/* PDF Download */}
                     {order.result_pdf_url && (
-                        <a href={order.result_pdf_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg/70 text-sm hover:bg-white/[0.06] transition-colors w-fit">
+                        <a href={order.result_pdf_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme-soft text-sm hover:bg-theme-soft transition-colors w-fit">
                             <FileText className="w-4 h-4" /> تحميل PDF <Download className="w-3.5 h-3.5" />
                         </a>
                     )}
@@ -206,7 +206,7 @@ export function DesignResultsPopup({
                                 <Check className="w-6 h-6" />
                                 <p className="font-bold">تم التأكيد! تم إضافة التصميم للسلة 🎉</p>
                             </div>
-                            <p className="text-sm text-fg/60">يمكنك إضافة تصميم إضافي على نفس القطعة في موقع مختلف، أو إغلاق النافذة.</p>
+                            <p className="text-sm text-theme-soft">يمكنك إضافة تصميم إضافي على نفس القطعة في موقع مختلف، أو إغلاق النافذة.</p>
                             <div className="flex gap-3">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
@@ -219,7 +219,7 @@ export function DesignResultsPopup({
                                 </motion.button>
                                 <button
                                     onClick={onConfirm}
-                                    className="px-6 py-3 rounded-xl border border-white/[0.08] text-fg/70 text-sm hover:bg-white/[0.04] transition-all"
+                                    className="px-6 py-3 rounded-xl border border-theme-soft text-theme-soft text-sm hover:bg-theme-subtle transition-all"
                                 >
                                     إغلاق
                                 </button>
@@ -253,15 +253,15 @@ export function DesignResultsPopup({
                             animate={{ opacity: 1, y: 0 }}
                             className="rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 space-y-4"
                         >
-                            <h3 className="font-bold text-fg flex items-center gap-2">
+                            <h3 className="font-bold text-theme flex items-center gap-2">
                                 <Edit3 className="w-5 h-5 text-amber-400" /> طلب تعديل التصميم
                             </h3>
-                            <p className="text-sm text-fg/60">اكتب تفاصيل التعديل المطلوب. سيتم إرجاع الطلب للإدارة لتنفيذ التعديلات.</p>
+                            <p className="text-sm text-theme-soft">اكتب تفاصيل التعديل المطلوب. سيتم إرجاع الطلب للإدارة لتنفيذ التعديلات.</p>
                             <textarea
                                 value={modificationText}
                                 onChange={(e) => setModificationText(e.target.value)}
                                 placeholder="مثال: أريد تكبير حجم الشعار قليلاً، أو تغيير اللون إلى أغمق..."
-                                className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg text-sm placeholder:text-fg/25 focus:outline-none focus:border-gold/40 resize-none"
+                                className="w-full px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm placeholder:text-theme-faint focus:outline-none focus:border-gold/40 resize-none"
                                 rows={4}
                             />
                             <div className="flex gap-3">
@@ -284,7 +284,7 @@ export function DesignResultsPopup({
                                     {modificationSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                     إرسال طلب التعديل
                                 </button>
-                                <button onClick={() => setShowModificationForm(false)} className="px-4 py-3 rounded-xl border border-white/[0.08] text-fg/60 text-sm">
+                                <button onClick={() => setShowModificationForm(false)} className="px-4 py-3 rounded-xl border border-theme-soft text-theme-soft text-sm">
                                     إلغاء
                                 </button>
                             </div>
@@ -301,14 +301,14 @@ export function DesignResultsPopup({
                         >
                             {/* صور مصغرة — عند إدراج أكثر من صورة للموكاب */}
                             {images.length > 1 && (
-                                <div className="rounded-2xl p-4 bg-white/[0.02] border border-white/[0.06]">
-                                    <p className="text-xs font-medium text-fg/50 mb-3 uppercase tracking-wider">صور مصغرة — الموكاب</p>
+                                <div className="rounded-2xl p-4 bg-theme-faint border border-theme-subtle">
+                                    <p className="text-xs font-medium text-theme-subtle mb-3 uppercase tracking-wider">صور مصغرة — الموكاب</p>
                                     <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
                                         {images.map((url, i) => (
                                             <button
                                                 key={i}
                                                 onClick={() => setActiveImage(i)}
-                                                className={`shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeImage === i ? "border-gold ring-2 ring-gold/20 shadow-lg shadow-gold/10" : "border-white/[0.08] hover:border-white/20 hover:scale-[1.02]"}`}
+                                                className={`shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${activeImage === i ? "border-gold ring-2 ring-gold/20 shadow-lg shadow-gold/10" : "border-theme-soft hover:border-white/20 hover:scale-[1.02]"}`}
                                             >
                                                 <img src={url} alt="" className="w-full h-full object-cover" />
                                             </button>
@@ -319,13 +319,13 @@ export function DesignResultsPopup({
 
                             {/* صور مصغرة — التصميم الأول والتعديلات عند وجود تعديلات */}
                             {(order.modification_design_url || order.modification_request) && (
-                                <div className="rounded-2xl p-4 bg-white/[0.02] border border-white/[0.06]">
-                                    <p className="text-xs font-medium text-fg/50 mb-3 uppercase tracking-wider">التصميم الأول والتعديلات</p>
+                                <div className="rounded-2xl p-4 bg-theme-faint border border-theme-subtle">
+                                    <p className="text-xs font-medium text-theme-subtle mb-3 uppercase tracking-wider">التصميم الأول والتعديلات</p>
                                     <div className="flex gap-3 overflow-x-auto pb-1">
                                         {order.result_design_url && (
                                             <div className="relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-white/[0.12]">
                                                 <img src={order.result_design_url} alt="التصميم الأول" className="w-full h-full object-cover" />
-                                                <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm text-[10px] text-center text-fg/70 font-medium">الأول</div>
+                                                <div className="absolute inset-x-0 bottom-0 py-1 bg-black/60 backdrop-blur-sm text-[10px] text-center text-theme-soft font-medium">الأول</div>
                                             </div>
                                         )}
                                         {order.modification_design_url && (
@@ -341,18 +341,18 @@ export function DesignResultsPopup({
                             {(position && size) && (
                                 <div className="p-3 rounded-xl bg-gold/10 border border-gold/20 space-y-1">
                                     <div className="flex justify-between text-sm">
-                                        {basePrice > 0 && <span className="text-fg/60">القطعة: {basePrice} ر.س</span>}
-                                        {designPrice > 0 && <span className="text-fg/60">التصميم: {designPrice} ر.س</span>}
+                                        {basePrice > 0 && <span className="text-theme-soft">القطعة: {basePrice} ر.س</span>}
+                                        {designPrice > 0 && <span className="text-theme-soft">التصميم: {designPrice} ر.س</span>}
                                     </div>
                                     <div className="flex justify-between items-center pt-1 border-t border-gold/20">
-                                        <span className="text-sm text-fg/60">السعر النهائي</span>
+                                        <span className="text-sm text-theme-soft">السعر النهائي</span>
                                         <span className="text-xl font-bold text-gold">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"}</span>
                                     </div>
                                 </div>
                             )}
 
                             {/* الأزرار الثلاثة */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-white/[0.06]">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-theme-subtle">
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
@@ -385,7 +385,7 @@ export function DesignResultsPopup({
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => setShowModificationForm(true)}
-                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-white/[0.08] hover:border-amber-500/30 bg-white/[0.02] hover:bg-amber-500/5 transition-all text-fg"
+                                    className="flex items-center justify-center gap-2 p-4 rounded-2xl border-2 border-theme-soft hover:border-amber-500/30 bg-theme-faint hover:bg-amber-500/5 transition-all text-theme"
                                 >
                                     <Edit3 className="w-5 h-5 text-amber-400" />
                                     <span className="font-bold text-sm">تعديل التصميم</span>

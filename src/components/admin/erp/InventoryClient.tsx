@@ -55,11 +55,11 @@ export default function InventoryClient({
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="relative max-w-sm w-full">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/40" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-subtle" />
                     <input
                         type="text"
                         placeholder="ابحث برقم الباركود أو اسم المنتج..."
-                        className="w-full pl-4 pr-10 py-2 bg-surface/50 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-gold/50 transition-colors"
+                        className="w-full pl-4 pr-10 py-2 bg-surface/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/50 transition-colors"
                         value={searchQuery}
                         onChange={d => setSearchQuery(d.target.value)}
                     />
@@ -76,7 +76,7 @@ export default function InventoryClient({
             {/* List */}
             <div className="bg-surface/30 border border-white/5 rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-right">
-                    <thead className="bg-white/5 text-fg/60">
+                    <thead className="bg-theme-subtle text-theme-soft">
                         <tr>
                             <th className="px-6 py-4 font-medium">المنتج (الباركود)</th>
                             <th className="px-6 py-4 font-medium">المستودع</th>
@@ -86,7 +86,7 @@ export default function InventoryClient({
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {filteredInventory.map((item) => (
-                            <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                            <tr key={item.id} className="hover:bg-theme-faint transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         {item.sku?.product?.image_url && (
@@ -96,12 +96,12 @@ export default function InventoryClient({
                                         )}
                                         <div>
                                             <span className="font-medium block">{item.sku?.product?.title}</span>
-                                            <span className="text-xs text-fg/60 font-mono mt-1 block">{item.sku?.sku}</span>
+                                            <span className="text-xs text-theme-soft font-mono mt-1 block">{item.sku?.sku}</span>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <span className="inline-block px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs">
+                                    <span className="inline-block px-3 py-1 bg-theme-subtle border border-theme-soft rounded-lg text-xs">
                                         {item.warehouse?.name}
                                     </span>
                                 </td>
@@ -110,14 +110,14 @@ export default function InventoryClient({
                                         {item.quantity}
                                     </span>
                                 </td>
-                                <td className="px-6 py-4 text-fg/60 text-xs text-left" dir="ltr">
+                                <td className="px-6 py-4 text-theme-soft text-xs text-left" dir="ltr">
                                     {new Date(item.updated_at).toLocaleDateString()}
                                 </td>
                             </tr>
                         ))}
                         {filteredInventory.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center text-fg/40">
+                                <td colSpan={4} className="px-6 py-12 text-center text-theme-subtle">
                                     لم يتم رصد أي كميات في المستودعات بعد.
                                 </td>
                             </tr>
@@ -129,10 +129,10 @@ export default function InventoryClient({
             {/* Adjust Modal */}
             {isAdjusting && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                    <div className="bg-surface border border-theme-soft rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-theme-faint">
                             <h2 className="text-xl font-bold">تعديل المخزون</h2>
-                            <button onClick={() => setIsAdjusting(false)} className="text-fg/40 hover:text-white transition-colors">
+                            <button onClick={() => setIsAdjusting(false)} className="text-theme-subtle hover:text-theme transition-colors">
                                 إغلاق
                             </button>
                         </div>
@@ -142,10 +142,10 @@ export default function InventoryClient({
                                 <AlertCircle className="w-12 h-12 text-gold/50 mx-auto border-4 border-gold/10 rounded-full p-2 mb-4" />
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-fg/80">المنتج المراد جردّه (الباركود)</label>
+                                    <label className="text-sm font-medium text-theme-strong">المنتج المراد جردّه (الباركود)</label>
                                     <select
                                         required
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors font-mono text-sm"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors font-mono text-sm"
                                         value={selectedSkuId}
                                         onChange={e => setSelectedSkuId(e.target.value)}
                                     >
@@ -159,10 +159,10 @@ export default function InventoryClient({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-fg/80">المستودع</label>
+                                    <label className="text-sm font-medium text-theme-strong">المستودع</label>
                                     <select
                                         required
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors"
                                         value={selectedWarehouseId}
                                         onChange={e => setSelectedWarehouseId(e.target.value)}
                                     >
@@ -173,21 +173,21 @@ export default function InventoryClient({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-fg/80">كمية الإضافة/السحب (استخدم سالب - للسحب)</label>
+                                    <label className="text-sm font-medium text-theme-strong">كمية الإضافة/السحب (استخدم سالب - للسحب)</label>
                                     <input
                                         type="number"
                                         required
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors text-center font-bold text-lg"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors text-center font-bold text-lg"
                                         value={quantityToAdd}
                                         onChange={e => setQuantityToAdd(Number(e.target.value))}
                                     />
                                 </div>
 
                                 <div className="space-y-2 text-sm">
-                                    <label className="text-fg/80 font-medium">ملاحظات الجرد</label>
+                                    <label className="text-theme-strong font-medium">ملاحظات الجرد</label>
                                     <textarea
                                         rows={3}
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors resize-none"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors resize-none"
                                         placeholder="مثال: توريد جديد من المصنع، إتلاف، عينة..."
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
@@ -196,11 +196,11 @@ export default function InventoryClient({
                             </form>
                         </div>
 
-                        <div className="p-6 border-t border-white/5 bg-white/[0.01] flex justify-end gap-3">
+                        <div className="p-6 border-t border-white/5 bg-theme-faint flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsAdjusting(false)}
-                                className="px-5 py-2.5 rounded-xl font-medium border border-white/10 hover:bg-white/5 transition-colors"
+                                className="px-5 py-2.5 rounded-xl font-medium border border-theme-soft hover:bg-theme-subtle transition-colors"
                             >
                                 إلغاء
                             </button>

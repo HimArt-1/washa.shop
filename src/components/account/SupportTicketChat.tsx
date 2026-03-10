@@ -30,8 +30,8 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
             case "open": return { label: "مفتوحة", icon: MessageSquare, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" };
             case "in_progress": return { label: "جاري المعالجة", icon: Clock, color: "text-gold", bg: "bg-gold/10 border-gold/20" };
             case "resolved": return { label: "تم الحل", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" };
-            case "closed": return { label: "مغلقة", icon: X, color: "text-white/40", bg: "bg-white/5 border-white/10" };
-            default: return { label: status, icon: MessageSquare, color: "text-white/60", bg: "bg-white/5 border-white/10" };
+            case "closed": return { label: "مغلقة", icon: X, color: "text-theme-subtle", bg: "bg-theme-subtle border-theme-soft" };
+            default: return { label: status, icon: MessageSquare, color: "text-theme-soft", bg: "bg-theme-subtle border-theme-soft" };
         }
     };
 
@@ -56,21 +56,21 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
     const isClosed = ticket.status === "closed" || ticket.status === "resolved";
 
     return (
-        <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[500px] bg-white/[0.01] border border-white/[0.05] rounded-3xl overflow-hidden relative">
+        <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[500px] bg-theme-faint border border-theme-subtle rounded-3xl overflow-hidden relative">
             {/* Header */}
-            <div className="p-4 sm:p-6 border-b border-white/[0.05] bg-white/[0.02] flex items-center justify-between z-10">
+            <div className="p-4 sm:p-6 border-b border-theme-subtle bg-theme-faint flex items-center justify-between z-10">
                 <div className="flex items-center gap-4">
-                    <Link href="/account/support" className="p-2 -ml-2 hover:bg-white/5 rounded-full transition-colors text-white/50 hover:text-white">
+                    <Link href="/account/support" className="p-2 -ml-2 hover:bg-theme-subtle rounded-full transition-colors text-theme-subtle hover:text-theme">
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h2 className="text-lg font-bold text-white max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
+                        <h2 className="text-lg font-bold text-theme max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
                         <div className="flex items-center gap-2 mt-1">
                             <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${statusObj.bg} ${statusObj.color}`}>
                                 <statusObj.icon className="w-2.5 h-2.5" />
                                 <span>{statusObj.label}</span>
                             </div>
-                            <span className="text-xs text-white/40">
+                            <span className="text-xs text-theme-subtle">
                                 {format(new Date(ticket.created_at), "dd MMM yyyy, p", { locale: ar })}
                             </span>
                         </div>
@@ -102,25 +102,25 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                                     alt={senderName}
                                     width={36}
                                     height={36}
-                                    className="rounded-full object-cover border border-white/10"
+                                    className="rounded-full object-cover border border-theme-soft"
                                 />
                             </div>
                             <div className={clsx(
                                 "flex flex-col gap-1",
                                 isUser ? "items-end" : "items-start"
                             )}>
-                                <span className="text-xs text-white/40 px-1">
+                                <span className="text-xs text-theme-subtle px-1">
                                     {isUser ? "أنت" : "دعم وشّى"}
                                 </span>
                                 <div className={clsx(
                                     "p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed",
                                     isUser
-                                        ? "bg-gold/10 border border-gold/20 text-white rounded-tr-sm"
-                                        : "bg-white/[0.04] border border-white/10 text-white/90 rounded-tl-sm"
+                                        ? "bg-gold/10 border border-gold/20 text-theme rounded-tr-sm"
+                                        : "bg-theme-subtle border border-theme-soft text-theme-strong rounded-tl-sm"
                                 )}>
                                     <p className="whitespace-pre-wrap">{msg.message}</p>
                                 </div>
-                                <span className="text-[10px] text-white/30 px-1">
+                                <span className="text-[10px] text-theme-faint px-1">
                                     {format(new Date(msg.created_at), "p", { locale: ar })}
                                 </span>
                             </div>
@@ -131,10 +131,10 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
             </div>
 
             {/* Input Area */}
-            <div className="p-4 sm:p-6 border-t border-white/[0.05] bg-[#0a0a0a]">
+            <div className="p-4 sm:p-6 border-t border-theme-subtle bg-[#0a0a0a]">
                 {isClosed ? (
-                    <div className="text-center p-4 bg-white/[0.02] rounded-xl border border-white/[0.05]">
-                        <p className="text-white/50 text-sm">هذه التذكرة مغلقة ولا يمكن الرد عليها.</p>
+                    <div className="text-center p-4 bg-theme-faint rounded-xl border border-theme-subtle">
+                        <p className="text-theme-subtle text-sm">هذه التذكرة مغلقة ولا يمكن الرد عليها.</p>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="relative">
@@ -144,7 +144,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="اكتب ردك هنا..."
-                            className="w-full bg-white/[0.03] border border-white/[0.08] disabled:opacity-50 text-white text-sm rounded-2xl pl-16 pr-4 py-4 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all"
+                            className="w-full bg-theme-subtle border border-theme-soft disabled:opacity-50 text-theme text-sm rounded-2xl pl-16 pr-4 py-4 focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all"
                         />
                         <button
                             type="submit"

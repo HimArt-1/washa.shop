@@ -27,8 +27,8 @@ export function CreationStepMethod({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">كيف تريد التصميم؟</h2>
-        <p className="text-fg/60 text-sm">اختر الطريقة المناسبة لإبداعك</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">كيف تريد التصميم؟</h2>
+        <p className="text-theme-soft text-sm">اختر الطريقة المناسبة لإبداعك</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -43,7 +43,7 @@ export function CreationStepMethod({
               ${
                 selected === m.id
                   ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                  : "border-white/10 bg-white/[0.03] hover:border-gold/30 hover:bg-white/[0.06]"
+                  : "border-theme-soft bg-theme-subtle hover:border-gold/30 hover:bg-theme-soft"
               }
             `}
           >
@@ -51,8 +51,8 @@ export function CreationStepMethod({
               {m.icon}
             </span>
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-fg">{m.label}</div>
-              <div className="text-xs text-fg/50 mt-0.5">{m.description}</div>
+              <div className="font-bold text-theme">{m.label}</div>
+              <div className="text-xs text-theme-subtle mt-0.5">{m.description}</div>
             </div>
             {selected === m.id && (
               <motion.div
@@ -72,7 +72,7 @@ export function CreationStepMethod({
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 rounded-xl border border-white/20 text-fg/80 hover:bg-white/5"
+          className="px-4 py-2 rounded-xl border border-white/20 text-theme-strong hover:bg-theme-subtle"
         >
           رجوع
         </button>

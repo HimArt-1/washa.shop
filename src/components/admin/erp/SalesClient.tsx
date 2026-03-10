@@ -74,7 +74,7 @@ export default function SalesClient({
         switch (method) {
             case 'online_store': return <span title="المتجر الإلكتروني"><Computer className="w-4 h-4 text-emerald-400" /></span>;
             case 'booth_manual': return <span title="تسجيل يدوي (بوث)"><Store className="w-4 h-4 text-gold" /></span>;
-            default: return <DollarSign className="w-4 h-4 text-fg/60" />;
+            default: return <DollarSign className="w-4 h-4 text-theme-soft" />;
         }
     };
 
@@ -83,11 +83,11 @@ export default function SalesClient({
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="relative max-w-sm w-full">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/40" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-subtle" />
                     <input
                         type="text"
                         placeholder="ابحث في سجل المبيعات..."
-                        className="w-full pl-4 pr-10 py-2 bg-surface/50 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-gold/50 transition-colors"
+                        className="w-full pl-4 pr-10 py-2 bg-surface/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/50 transition-colors"
                         value={searchQuery}
                         onChange={d => setSearchQuery(d.target.value)}
                     />
@@ -104,7 +104,7 @@ export default function SalesClient({
             {/* List */}
             <div className="bg-surface/30 border border-white/5 rounded-2xl overflow-hidden">
                 <table className="w-full text-sm text-right">
-                    <thead className="bg-white/5 text-fg/60">
+                    <thead className="bg-theme-subtle text-theme-soft">
                         <tr>
                             <th className="px-6 py-4 font-medium">طريقة البيع</th>
                             <th className="px-6 py-4 font-medium">المنتج المباع</th>
@@ -115,7 +115,7 @@ export default function SalesClient({
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {filteredSales.map((item) => (
-                            <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                            <tr key={item.id} className="hover:bg-theme-faint transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
                                         {getMethodIcon(item.sales_method)}
@@ -132,30 +132,30 @@ export default function SalesClient({
                                             <>
                                                 <div>
                                                     <span className="font-medium block">{item.sku.product.title}</span>
-                                                    <span className="text-xs text-fg/60 font-mono mt-1 block">{item.sku.sku}</span>
+                                                    <span className="text-xs text-theme-soft font-mono mt-1 block">{item.sku.sku}</span>
                                                 </div>
                                             </>
                                         ) : (
-                                            <span className="text-white/40 italic">-- غير مرتبط بمنتج --</span>
+                                            <span className="text-theme-subtle italic">-- غير مرتبط بمنتج --</span>
                                         )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-white/5 rounded-md border border-white/10">
+                                    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-theme-subtle rounded-md border border-theme-soft">
                                         {item.quantity}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 font-semibold text-gold">
                                     {item.total_price} ر.س
                                 </td>
-                                <td className="px-6 py-4 text-fg/60 text-xs text-left" dir="ltr">
+                                <td className="px-6 py-4 text-theme-soft text-xs text-left" dir="ltr">
                                     {new Date(item.created_at).toLocaleString('ar-SA')}
                                 </td>
                             </tr>
                         ))}
                         {filteredSales.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-fg/40">
+                                <td colSpan={5} className="px-6 py-12 text-center text-theme-subtle">
                                     لا توجد مبيعات مسجلة في السجل.
                                 </td>
                             </tr>
@@ -167,13 +167,13 @@ export default function SalesClient({
             {/* POS Modal */}
             {isSelling && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-surface border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                    <div className="bg-surface border border-theme-soft rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-theme-faint">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Store className="w-5 h-5 text-gold" />
                                 تسجيل بيع يدوي جديد (بدون متجر)
                             </h2>
-                            <button onClick={() => setIsSelling(false)} className="text-fg/40 hover:text-white transition-colors">
+                            <button onClick={() => setIsSelling(false)} className="text-theme-subtle hover:text-theme transition-colors">
                                 إغلاق
                             </button>
                         </div>
@@ -186,10 +186,10 @@ export default function SalesClient({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-fg/80">المنتج (حدد بالباركود)</label>
+                                    <label className="text-sm font-medium text-theme-strong">المنتج (حدد بالباركود)</label>
                                     <select
                                         required
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors font-mono text-sm"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors font-mono text-sm"
                                         value={selectedSkuId}
                                         onChange={e => handleSkuChange(e.target.value)}
                                     >
@@ -204,10 +204,10 @@ export default function SalesClient({
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-fg/80">سحب من مستودع</label>
+                                        <label className="text-sm font-medium text-theme-strong">سحب من مستودع</label>
                                         <select
                                             required
-                                            className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors text-sm"
+                                            className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors text-sm"
                                             value={selectedWarehouseId}
                                             onChange={e => setSelectedWarehouseId(e.target.value)}
                                         >
@@ -217,12 +217,12 @@ export default function SalesClient({
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-fg/80">الكمية المباعة</label>
+                                        <label className="text-sm font-medium text-theme-strong">الكمية المباعة</label>
                                         <input
                                             type="number"
                                             required
                                             min="1"
-                                            className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors text-center"
+                                            className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors text-center"
                                             value={quantity}
                                             onChange={e => handleQuantityChange(Number(e.target.value))}
                                         />
@@ -230,7 +230,7 @@ export default function SalesClient({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-fg/80">السعر الإجمالي (المدفوع من العميل - ر.س)</label>
+                                    <label className="text-sm font-medium text-theme-strong">السعر الإجمالي (المدفوع من العميل - ر.س)</label>
                                     <input
                                         type="number"
                                         required
@@ -240,14 +240,14 @@ export default function SalesClient({
                                         value={totalPrice}
                                         onChange={e => setTotalPrice(Number(e.target.value))}
                                     />
-                                    <p className="text-xs text-fg/40">السعر يُحسب تلقائياً حسب تسعيرة المنتج ولكن يمكنك تعديله (في حال وجود خصم).</p>
+                                    <p className="text-xs text-theme-subtle">السعر يُحسب تلقائياً حسب تسعيرة المنتج ولكن يمكنك تعديله (في حال وجود خصم).</p>
                                 </div>
 
                                 <div className="space-y-2 text-sm">
-                                    <label className="text-fg/80 font-medium">ملاحظات (اختياري)</label>
+                                    <label className="text-theme-strong font-medium">ملاحظات (اختياري)</label>
                                     <textarea
                                         rows={2}
-                                        className="w-full p-3 bg-black/40 border border-white/10 rounded-xl focus:border-gold/50 outline-none transition-colors resize-none"
+                                        className="w-full p-3 bg-black/40 border border-theme-soft rounded-xl focus:border-gold/50 outline-none transition-colors resize-none"
                                         placeholder="مثال: بيع من بوث معرض الرياض، الدفع كاش أو شبكة..."
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
@@ -256,11 +256,11 @@ export default function SalesClient({
                             </form>
                         </div>
 
-                        <div className="p-6 border-t border-white/5 bg-white/[0.01] flex justify-end gap-3">
+                        <div className="p-6 border-t border-white/5 bg-theme-faint flex justify-end gap-3">
                             <button
                                 type="button"
                                 onClick={() => setIsSelling(false)}
-                                className="px-5 py-2.5 rounded-xl font-medium border border-white/10 hover:bg-white/5 transition-colors"
+                                className="px-5 py-2.5 rounded-xl font-medium border border-theme-soft hover:bg-theme-subtle transition-colors"
                             >
                                 إلغاء
                             </button>

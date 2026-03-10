@@ -18,8 +18,8 @@ export default async function DesignTrackerPage({
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-xl font-bold text-white/60 mb-2">رقم الطلب مفقود</h2>
-                    <p className="text-white/30 text-sm">الرجاء استخدام رابط صالح لتتبع الطلب.</p>
+                    <h2 className="text-xl font-bold text-theme-soft mb-2">رقم الطلب مفقود</h2>
+                    <p className="text-theme-subtle text-sm">الرجاء استخدام رابط صالح لتتبع الطلب.</p>
                 </div>
             </div>
         );
@@ -35,10 +35,10 @@ export default async function DesignTrackerPage({
             <div className="relative z-10 max-w-2xl mx-auto px-4 sm:px-6">
                 {/* Header */}
                 <div className="text-center mb-10">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-theme mb-2">
                         تتبع <span className="text-gradient">التصميم</span>
                     </h1>
-                    <p className="text-white/40 text-sm">تابع حالة طلبك وتواصل مع فريق التصميم</p>
+                    <p className="text-theme-subtle text-sm">تابع حالة طلبك وتواصل مع فريق التصميم</p>
                 </div>
 
                 <DesignTrackerClient orderId={orderId} />

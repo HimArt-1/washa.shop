@@ -21,8 +21,8 @@ export function CreationStepGarment({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">اختر القطعة</h2>
-        <p className="text-fg/60 text-sm">هودي أو تيشيرت — ابدأ بتحديد ما تريد تصميمه</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">اختر القطعة</h2>
+        <p className="text-theme-soft text-sm">هودي أو تيشيرت — ابدأ بتحديد ما تريد تصميمه</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -37,7 +37,7 @@ export function CreationStepGarment({
               ${
                 selected === g.id
                   ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                  : "border-white/10 bg-white/[0.03] hover:border-gold/30 hover:bg-white/[0.06]"
+                  : "border-theme-soft bg-theme-subtle hover:border-gold/30 hover:bg-theme-soft"
               }
             `}
           >
@@ -45,7 +45,7 @@ export function CreationStepGarment({
               {g.icon}
             </span>
             <div className="w-full">
-              <div className="font-bold text-fg">{g.label}</div>
+              <div className="font-bold text-theme">{g.label}</div>
             </div>
             {selected === g.id && (
               <motion.div

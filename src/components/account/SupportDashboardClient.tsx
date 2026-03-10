@@ -25,17 +25,17 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
             case "open": return { label: "مفتوحة", icon: MessageSquare, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" };
             case "in_progress": return { label: "جاري المعالجة", icon: Clock, color: "text-gold", bg: "bg-gold/10 border-gold/20" };
             case "resolved": return { label: "تم الحل", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" };
-            case "closed": return { label: "مغلقة", icon: X, color: "text-white/40", bg: "bg-white/5 border-white/10" };
-            default: return { label: status, icon: MessageSquare, color: "text-white/60", bg: "bg-white/5 border-white/10" };
+            case "closed": return { label: "مغلقة", icon: X, color: "text-theme-subtle", bg: "bg-theme-subtle border-theme-soft" };
+            default: return { label: status, icon: MessageSquare, color: "text-theme-soft", bg: "bg-theme-subtle border-theme-soft" };
         }
     };
 
     const getPriorityInfo = (prio: string) => {
         switch (prio) {
             case "high": return { label: "عالية", color: "text-red-400" };
-            case "normal": return { label: "عادية", color: "text-white/60" };
-            case "low": return { label: "منخفضة", color: "text-white/40" };
-            default: return { label: prio, color: "text-white/60" };
+            case "normal": return { label: "عادية", color: "text-theme-soft" };
+            case "low": return { label: "منخفضة", color: "text-theme-subtle" };
+            default: return { label: prio, color: "text-theme-soft" };
         }
     };
 
@@ -58,10 +58,10 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-6 rounded-2xl">
+            <div className="flex justify-between items-center bg-theme-faint border border-theme-subtle p-6 rounded-2xl">
                 <div>
-                    <h3 className="text-lg font-bold text-white">تذاكر الدعم</h3>
-                    <p className="text-white/50 text-sm mt-1">تابع حالة تذاكرك الحالية أو افتح تذكرة جديدة</p>
+                    <h3 className="text-lg font-bold text-theme">تذاكر الدعم</h3>
+                    <p className="text-theme-subtle text-sm mt-1">تابع حالة تذاكرك الحالية أو افتح تذكرة جديدة</p>
                 </div>
                 <motion.button
                     onClick={() => setIsCreateModalOpen(true)}
@@ -75,15 +75,15 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
             </div>
 
             {tickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-4 bg-white/[0.01] border border-white/[0.05] rounded-3xl text-center">
-                    <div className="w-20 h-20 rounded-full bg-white/[0.03] flex items-center justify-center mb-6 border border-white/[0.05]">
-                        <MessageSquare className="w-8 h-8 text-white/20" />
+                <div className="flex flex-col items-center justify-center py-16 px-4 bg-theme-faint border border-theme-subtle rounded-3xl text-center">
+                    <div className="w-20 h-20 rounded-full bg-theme-subtle flex items-center justify-center mb-6 border border-theme-subtle">
+                        <MessageSquare className="w-8 h-8 text-theme-faint" />
                     </div>
-                    <h3 className="text-xl font-bold text-white mb-2">لا توجد رسائل دعم</h3>
-                    <p className="text-white/50 max-w-sm mb-6">لم تقم بإنشاء أي تذاكر دعم حتى الآن. إذا احتجت لأي مساعدة، نحن هنا بخدمتك.</p>
+                    <h3 className="text-xl font-bold text-theme mb-2">لا توجد رسائل دعم</h3>
+                    <p className="text-theme-subtle max-w-sm mb-6">لم تقم بإنشاء أي تذاكر دعم حتى الآن. إذا احتجت لأي مساعدة، نحن هنا بخدمتك.</p>
                     <motion.button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="text-gold font-medium hover:text-white transition-colors flex items-center gap-2"
+                        className="text-gold font-medium hover:text-theme transition-colors flex items-center gap-2"
                         whileHover={{ x: -4 }}
                     >
                         <span>إنشاء تذكرة دعم</span>
@@ -101,7 +101,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
-                                    className="bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] hover:border-gold/30 rounded-2xl p-5 sm:p-6 transition-all duration-300 group cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                    className="bg-theme-faint hover:bg-theme-subtle border border-theme-subtle hover:border-gold/30 rounded-2xl p-5 sm:p-6 transition-all duration-300 group cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                                 >
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-3 mb-2">
@@ -109,21 +109,21 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                                 <status.icon className="w-3 h-3" />
                                                 <span>{status.label}</span>
                                             </div>
-                                            <span className="text-white/40 text-xs">#{ticket.id.slice(0, 8)}</span>
+                                            <span className="text-theme-subtle text-xs">#{ticket.id.slice(0, 8)}</span>
                                         </div>
-                                        <h4 className="text-lg font-bold text-white group-hover:text-gold transition-colors truncate">
+                                        <h4 className="text-lg font-bold text-theme group-hover:text-gold transition-colors truncate">
                                             {ticket.subject}
                                         </h4>
                                     </div>
 
                                     <div className="flex items-center gap-6 sm:justify-end shrink-0">
                                         <div className="flex flex-col gap-1 items-start sm:items-end">
-                                            <span className="text-xs text-white/40">الأهمية</span>
+                                            <span className="text-xs text-theme-subtle">الأهمية</span>
                                             <span className={`text-sm font-medium ${prio.color}`}>{prio.label}</span>
                                         </div>
                                         <div className="flex flex-col gap-1 items-start sm:items-end w-28">
-                                            <span className="text-xs text-white/40">آخر تحديث</span>
-                                            <span className="text-sm text-white/80 font-medium">
+                                            <span className="text-xs text-theme-subtle">آخر تحديث</span>
+                                            <span className="text-sm text-theme-strong font-medium">
                                                 {formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true, locale: ar })}
                                             </span>
                                         </div>
@@ -150,14 +150,14 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative bg-[#111] border border-white/10 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+                            className="relative bg-[#111] border border-theme-soft rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
                         >
                             <div className="p-6 sm:p-8">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-xl font-bold text-white">إنشاء تذكرة دعم</h3>
+                                    <h3 className="text-xl font-bold text-theme">إنشاء تذكرة دعم</h3>
                                     <button
                                         onClick={() => !isSubmitting && setIsCreateModalOpen(false)}
-                                        className="p-2 text-white/50 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+                                        className="p-2 text-theme-subtle hover:text-theme bg-theme-subtle hover:bg-white/10 rounded-full transition-colors"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -172,19 +172,19 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
 
                                 <form onSubmit={handleSubmit} className="space-y-5">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">الموضوع</label>
+                                        <label className="text-sm font-medium text-theme-soft">الموضوع</label>
                                         <input
                                             type="text"
                                             required
                                             value={subject}
                                             onChange={e => setSubject(e.target.value)}
                                             placeholder="بخصوص ماذا تريد التواصل معنا؟"
-                                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">مستوى الأهمية</label>
+                                        <label className="text-sm font-medium text-theme-soft">مستوى الأهمية</label>
                                         <div className="grid grid-cols-3 gap-3">
                                             {[
                                                 { id: "low", label: "منخفضة" },
@@ -197,7 +197,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                                     onClick={() => setPriority(p.id as any)}
                                                     className={`py-2.5 rounded-xl border text-sm font-medium transition-all ${priority === p.id
                                                             ? "bg-gold/10 border-gold text-gold"
-                                                            : "bg-white/[0.02] border-white/[0.08] text-white/60 hover:border-white/20"
+                                                            : "bg-theme-faint border-theme-soft text-theme-soft hover:border-white/20"
                                                         }`}
                                                 >
                                                     {p.label}
@@ -207,14 +207,14 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-white/70">الرسالة</label>
+                                        <label className="text-sm font-medium text-theme-soft">الرسالة</label>
                                         <textarea
                                             required
                                             value={message}
                                             onChange={e => setMessage(e.target.value)}
                                             placeholder="اشرح مشكلتك أو استفسارك بالتفصيل..."
                                             rows={5}
-                                            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all resize-none"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all resize-none"
                                         />
                                     </div>
 
@@ -230,7 +230,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                             type="button"
                                             disabled={isSubmitting}
                                             onClick={() => setIsCreateModalOpen(false)}
-                                            className="px-6 py-3.5 rounded-xl border border-white/10 text-white/70 hover:bg-white/5 hover:text-white transition-all disabled:opacity-50"
+                                            className="px-6 py-3.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle hover:text-theme transition-all disabled:opacity-50"
                                         >
                                             إلغاء
                                         </button>

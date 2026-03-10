@@ -159,7 +159,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
         return (
             <div className="flex flex-col items-center justify-center py-24">
                 <div className="w-10 h-10 border-2 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
-                <p className="text-fg/40 text-sm">جاري تحميل حالة الطلب...</p>
+                <p className="text-theme-subtle text-sm">جاري تحميل حالة الطلب...</p>
             </div>
         );
     }
@@ -168,8 +168,8 @@ export function OrderTracker({ orderId }: { orderId: string }) {
         clearOrderId();
         return (
             <div className="text-center py-20">
-                <AlertCircle className="w-16 h-16 mx-auto text-fg/20 mb-4" />
-                <p className="text-fg/50 mb-4">لم يتم العثور على الطلب</p>
+                <AlertCircle className="w-16 h-16 mx-auto text-theme-faint mb-4" />
+                <p className="text-theme-subtle mb-4">لم يتم العثور على الطلب</p>
                 <button onClick={handleNewOrder} className="px-6 py-3 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm">
                     ابدأ طلب جديد
                 </button>
@@ -200,7 +200,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                 <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
                     طلبك #{order.order_number}
                 </h1>
-                <p className="text-fg/50 mt-2 text-sm">تتبع حالة تصميمك المخصص</p>
+                <p className="text-theme-subtle mt-2 text-sm">تتبع حالة تصميمك المخصص</p>
             </motion.div>
 
             {/* Progress Timeline */}
@@ -212,15 +212,15 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                             const isCurrent = currentStep === (i + 1);
                             return (
                                 <div key={ps.status} className="flex-1 flex flex-col items-center relative z-10">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${isDone ? "bg-gold text-bg" : isCurrent ? "bg-gold/20 text-gold border-2 border-gold animate-pulse" : "bg-white/[0.06] text-fg/25"}`}>
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 ${isDone ? "bg-gold text-bg" : isCurrent ? "bg-gold/20 text-gold border-2 border-gold animate-pulse" : "bg-theme-soft text-theme-faint"}`}>
                                         {isDone ? <Check className="w-4 h-4" /> : <span className="text-xs font-bold">{i + 1}</span>}
                                     </div>
-                                    <span className={`text-[10px] mt-2 font-medium text-center ${isCurrent ? "text-gold" : isDone ? "text-fg/60" : "text-fg/25"}`}>{ps.label}</span>
+                                    <span className={`text-[10px] mt-2 font-medium text-center ${isCurrent ? "text-gold" : isDone ? "text-theme-soft" : "text-theme-faint"}`}>{ps.label}</span>
                                 </div>
                             );
                         })}
                     </div>
-                    <div className="absolute top-5 left-[12%] right-[12%] h-0.5 bg-white/[0.08]">
+                    <div className="absolute top-5 left-[12%] right-[12%] h-0.5 bg-theme-soft">
                         <motion.div className="h-full bg-gradient-to-l from-gold to-gold-light rounded-full"
                             animate={{ width: `${Math.max(0, ((currentStep - 1) / (PROGRESS_STEPS.length - 1)) * 100)}%` }}
                             transition={{ duration: 0.8 }} />
@@ -234,12 +234,12 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                     <st.icon className={`w-6 h-6 ${st.color} ${order.status === "in_progress" ? "animate-spin" : ""}`} />
                     <h3 className={`text-lg font-bold ${st.color}`}>{st.label}</h3>
                 </div>
-                <p className="text-fg/50 text-sm">{st.desc}</p>
+                <p className="text-theme-subtle text-sm">{st.desc}</p>
                 {(order.status === "new" || order.status === "in_progress") && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="mt-4 flex items-center gap-2 text-sm text-fg/40"
+                        className="mt-4 flex items-center gap-2 text-sm text-theme-subtle"
                     >
                         <span className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-60" />
@@ -251,8 +251,8 @@ export function OrderTracker({ orderId }: { orderId: string }) {
             </motion.div>
 
             {/* Order Details */}
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5">
-                <h3 className="font-bold text-fg mb-4">تفاصيل الطلب</h3>
+            <div className="rounded-2xl border border-theme-soft bg-theme-faint p-5">
+                <h3 className="font-bold text-theme mb-4">تفاصيل الطلب</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <MiniCard icon={Shirt} label="القطعة" value={order.garment_name} />
                     <MiniCard icon={Palette} label="اللون" value={order.color_name} color={order.color_hex} />
@@ -266,7 +266,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
             {/* Awaiting Review — Open Popup Button */}
             {order.status === "awaiting_review" && !showResultsPopup && (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
-                    <button onClick={() => setShowResultsPopup(true)} className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all animate-pulse">
+                    <button onClick={() => setShowResultsPopup(true)} className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-theme font-bold text-sm hover:shadow-lg hover:shadow-purple-500/30 transition-all animate-pulse">
                         <Eye className="w-5 h-5 inline-block ml-2" />
                         معاينة التصميم واختيار مواصفاته
                     </button>
@@ -278,7 +278,7 @@ export function OrderTracker({ orderId }: { orderId: string }) {
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 space-y-4">
                     <h3 className="font-bold text-emerald-300 flex items-center gap-2"><CheckCircle2 className="w-5 h-5" /> التصميم المعتمد</h3>
                     {order.print_position && order.print_size && (
-                        <div className="flex gap-3 text-xs text-fg/50">
+                        <div className="flex gap-3 text-xs text-theme-subtle">
                             <span>📍 {POSITIONS.find(p => p.id === order.print_position)?.label ?? order.print_position}</span>
                             <span>📐 {SIZE_LABELS[order.print_size as PrintSize]?.label ?? order.print_size}</span>
                             {order.final_price && <span className="text-gold font-bold">{order.final_price} ر.س</span>}
@@ -314,23 +314,23 @@ export function OrderTracker({ orderId }: { orderId: string }) {
 
 function MiniCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color?: string }) {
     return (
-        <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center">
+        <div className="p-3 rounded-xl bg-theme-subtle border border-theme-subtle text-center">
             <div className="flex items-center justify-center mb-1.5">
-                {color ? <div className="w-5 h-5 rounded-md" style={{ backgroundColor: color }} /> : <Icon className="w-4 h-4 text-fg/30" />}
+                {color ? <div className="w-5 h-5 rounded-md" style={{ backgroundColor: color }} /> : <Icon className="w-4 h-4 text-theme-faint" />}
             </div>
             <p className="text-[10px] text-fg/35">{label}</p>
-            <p className="text-xs font-medium text-fg truncate">{value}</p>
+            <p className="text-xs font-medium text-theme truncate">{value}</p>
         </div>
     );
 }
 
 function ResultPreview({ label, url }: { label: string; url: string }) {
     return (
-        <div className="rounded-xl overflow-hidden border border-white/[0.08]">
+        <div className="rounded-xl overflow-hidden border border-theme-soft">
             <a href={url} target="_blank" rel="noreferrer">
                 <img src={url} alt={label} className="w-full aspect-[4/3] object-cover hover:scale-105 transition-transform duration-500" />
             </a>
-            <div className="px-3 py-2 bg-white/[0.03]"><p className="text-[10px] text-fg/40">{label}</p></div>
+            <div className="px-3 py-2 bg-theme-subtle"><p className="text-[10px] text-theme-subtle">{label}</p></div>
         </div>
     );
 }

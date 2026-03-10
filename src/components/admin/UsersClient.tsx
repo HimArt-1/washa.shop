@@ -184,13 +184,13 @@ export function UsersClient({
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm p-5"
+                        className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm p-5"
                     >
                         <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${s.color} mb-3`}>
-                            <s.icon className="w-5 h-5 text-fg/70" />
+                            <s.icon className="w-5 h-5 text-theme-soft" />
                         </div>
-                        <p className="text-fg/40 text-xs font-medium">{s.label}</p>
-                        <p className="text-2xl font-bold text-fg mt-0.5">{s.value}</p>
+                        <p className="text-theme-subtle text-xs font-medium">{s.label}</p>
+                        <p className="text-2xl font-bold text-theme mt-0.5">{s.value}</p>
                     </motion.div>
                 ))}
             </div>
@@ -200,20 +200,20 @@ export function UsersClient({
                 <div className="flex flex-wrap items-center gap-3">
                     <Link
                         href="/dashboard/users-clerk"
-                        className="flex items-center gap-2 px-4 py-2.5 text-fg/50 hover:text-gold border border-white/[0.06] hover:border-gold/20 rounded-xl text-sm font-medium transition-all"
+                        className="flex items-center gap-2 px-4 py-2.5 text-theme-subtle hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all"
                     >
                         <UserCheck className="w-4 h-4" />
                         مستخدمي Clerk
                     </Link>
                     {/* Role Tabs */}
-                    <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-white/[0.06]">
+                    <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-theme-subtle">
                         {roles.map((r) => (
                             <button
                                 key={r.value}
                                 onClick={() => navigate({ role: r.value, search, page: "1" })}
                                 className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${currentRole === r.value
                                     ? "bg-gold/10 text-gold"
-                                    : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
+                                    : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
                                     }`}
                             >
                                 {r.label}
@@ -244,13 +244,13 @@ export function UsersClient({
 
                 {/* Search */}
                 <form onSubmit={handleSearch} className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/20" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث بالاسم أو اسم المستخدم..."
-                        className="w-64 pl-4 pr-10 py-2.5 bg-surface/50 border border-white/[0.06] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 transition-colors"
+                        className="w-64 pl-4 pr-10 py-2.5 bg-surface/50 border border-theme-subtle rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-colors"
                     />
                 </form>
             </div>
@@ -287,7 +287,7 @@ export function UsersClient({
             </AnimatePresence>
 
             {/* ─── Table ─── */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
                 {isPending && (
                     <div className="absolute inset-0 bg-bg/50 flex items-center justify-center z-10">
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
@@ -296,7 +296,7 @@ export function UsersClient({
                 <div className="overflow-x-auto relative">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/[0.06]">
+                            <tr className="border-b border-theme-subtle">
                                 <th className="text-right px-4 py-3.5">
                                     <input
                                         type="checkbox"
@@ -305,12 +305,12 @@ export function UsersClient({
                                         className="rounded border-white/20"
                                     />
                                 </th>
-                                <th className="text-right px-6 py-3.5 text-fg/30 font-medium text-xs">المستخدم</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">اسم المستخدم</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">الدور</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">التحقق</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">تاريخ الانضمام</th>
-                                <th className="text-right px-6 py-3.5 text-fg/30 font-medium text-xs">إجراءات</th>
+                                <th className="text-right px-6 py-3.5 text-theme-faint font-medium text-xs">المستخدم</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">اسم المستخدم</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الدور</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">التحقق</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">تاريخ الانضمام</th>
+                                <th className="text-right px-6 py-3.5 text-theme-faint font-medium text-xs">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -320,7 +320,7 @@ export function UsersClient({
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: i * 0.02 }}
-                                    className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
+                                    className="border-b border-theme-faint hover:bg-theme-faint transition-colors group"
                                 >
                                     <td className="px-4 py-3.5">
                                         <input
@@ -336,12 +336,12 @@ export function UsersClient({
                                                 {user.display_name?.[0] || "؟"}
                                             </div>
                                             <div>
-                                                <span className="font-medium text-fg truncate max-w-[140px] block">{user.display_name}</span>
-                                                <span className="text-fg/30 text-[10px] font-mono truncate max-w-[120px] block">{user.clerk_id?.slice(0, 16)}…</span>
+                                                <span className="font-medium text-theme truncate max-w-[140px] block">{user.display_name}</span>
+                                                <span className="text-theme-faint text-[10px] font-mono truncate max-w-[120px] block">{user.clerk_id?.slice(0, 16)}…</span>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 text-fg/50 font-mono text-xs">@{user.username}</td>
+                                    <td className="px-4 py-3.5 text-theme-subtle font-mono text-xs">@{user.username}</td>
                                     <td className="px-4 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <StatusBadge status={user.role} type="role" />
@@ -350,7 +350,7 @@ export function UsersClient({
                                                     value={user.wushsha_level ?? 1}
                                                     onChange={(e) => handleLevelChange(user.id, Number(e.target.value))}
                                                     disabled={changingLevel === user.id}
-                                                    className="bg-white/[0.03] border border-white/[0.08] rounded-lg px-2 py-1 text-[10px] text-fg focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer w-12"
+                                                    className="bg-theme-subtle border border-theme-soft rounded-lg px-2 py-1 text-[10px] text-theme focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer w-12"
                                                     title="مستوى الوشّاي"
                                                 >
                                                     {[1, 2, 3, 4, 5].map((l) => (
@@ -364,10 +364,10 @@ export function UsersClient({
                                         {user.is_verified ? (
                                             <span title="موثق"><Shield className="w-4 h-4 text-gold" /></span>
                                         ) : (
-                                            <span className="text-fg/20 text-xs">—</span>
+                                            <span className="text-theme-faint text-xs">—</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3.5 text-fg/30 text-xs" dir="ltr">
+                                    <td className="px-4 py-3.5 text-theme-faint text-xs" dir="ltr">
                                         {mounted ? new Date(user.created_at).toLocaleDateString("ar-SA") : user.created_at?.split("T")[0] || "—"}
                                     </td>
                                     <td className="px-6 py-3.5">
@@ -384,7 +384,7 @@ export function UsersClient({
                                                     }
                                                 }}
                                                 disabled={changingRole === user.id}
-                                                className="bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-1.5 text-xs text-fg focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer min-w-[100px]"
+                                                className="bg-theme-subtle border border-theme-soft rounded-lg px-3 py-1.5 text-xs text-theme focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer min-w-[100px]"
                                             >
                                                 {roleOptions.map((r) => (
                                                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -396,14 +396,14 @@ export function UsersClient({
                                             </select>
                                             <Link
                                                 href={`/dashboard/users/${user.id}`}
-                                                className="p-2 rounded-lg text-fg/40 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                                                className="p-2 rounded-lg text-theme-subtle hover:text-blue-400 hover:bg-blue-500/10 transition-all"
                                                 title="عرض الملف الشخصي"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Link>
                                             <button
                                                 onClick={() => { setEditingUser(user); clearFeedback(); }}
-                                                className="p-2 rounded-lg text-fg/40 hover:text-gold hover:bg-gold/10 transition-all"
+                                                className="p-2 rounded-lg text-theme-subtle hover:text-gold hover:bg-gold/10 transition-all"
                                                 title="تعديل"
                                             >
                                                 <Pencil className="w-4 h-4" />
@@ -411,7 +411,7 @@ export function UsersClient({
                                             <button
                                                 onClick={() => handleDelete(user)}
                                                 disabled={deletingId === user.id}
-                                                className="p-2 rounded-lg text-fg/40 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                                                className="p-2 rounded-lg text-theme-subtle hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
                                                 title="حذف"
                                             >
                                                 {deletingId === user.id ? (
@@ -426,7 +426,7 @@ export function UsersClient({
                             ))}
                             {users.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-20 text-fg/20">
+                                    <td colSpan={7} className="text-center py-20 text-theme-faint">
                                         <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm">لا يوجد مستخدمون</p>
                                         <button
@@ -446,22 +446,22 @@ export function UsersClient({
             {/* ─── Pagination ─── */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-between">
-                    <p className="text-xs text-fg/30">{count} مستخدم</p>
+                    <p className="text-xs text-theme-faint">{count} مستخدم</p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => navigate({ role: currentRole, search, page: String(currentPage - 1) })}
                             disabled={currentPage <= 1}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-                        <span className="text-xs text-fg/40 px-3">
+                        <span className="text-xs text-theme-subtle px-3">
                             {currentPage} / {totalPages}
                         </span>
                         <button
                             onClick={() => navigate({ role: currentRole, search, page: String(currentPage + 1) })}
                             disabled={currentPage >= totalPages}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -554,72 +554,72 @@ function AddUserModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-bg shadow-2xl"
+                className="w-full max-w-lg rounded-2xl border border-theme-soft bg-bg shadow-2xl"
             >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                    <h2 className="text-lg font-bold text-fg">إضافة مستخدم جديد</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
+                    <h2 className="text-lg font-bold text-theme">إضافة مستخدم جديد</h2>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">معرف Clerk (clerk_id) *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">معرف Clerk (clerk_id) *</label>
                         <input
                             type="text"
                             value={form.clerk_id}
                             onChange={(e) => setForm((f) => ({ ...f, clerk_id: e.target.value }))}
                             placeholder="user_xxxxxxxx"
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                             dir="ltr"
                         />
-                        <p className="text-[10px] text-fg/30 mt-1">من Clerk Dashboard → Users → User ID</p>
+                        <p className="text-[10px] text-theme-faint mt-1">من Clerk Dashboard → Users → User ID</p>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الاسم *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الاسم *</label>
                         <input
                             type="text"
                             value={form.display_name}
                             onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
                             placeholder="الاسم المعروض"
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">اسم المستخدم *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المستخدم *</label>
                         <input
                             type="text"
                             value={form.username}
                             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                             placeholder="username"
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                             dir="ltr"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الدور</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الدور</label>
                         <input
                             type="text"
                             value={form.role}
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                             list="add-role-list"
                             placeholder="مثال: subscriber, wushsha, admin..."
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                         />
                         <datalist id="add-role-list">
                             {roleOptions.map((r) => (
                                 <option key={r.value} value={r.value} />
                             ))}
                         </datalist>
-                        <p className="text-[10px] text-fg/30 mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
+                        <p className="text-[10px] text-theme-faint mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
                     </div>
                     {form.role === "wushsha" && (
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">مستوى الوشّاي</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">مستوى الوشّاي</label>
                             <select
                                 value={form.wushsha_level}
                                 onChange={(e) => setForm((f) => ({ ...f, wushsha_level: Number(e.target.value) }))}
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                             >
                                 {[1, 2, 3, 4, 5].map((l) => (
                                     <option key={l} value={l}>المستوى {l}</option>
@@ -628,20 +628,20 @@ function AddUserModal({
                         </div>
                     )}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">نبذة (اختياري)</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">نبذة (اختياري)</label>
                         <textarea
                             value={form.bio}
                             onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                             placeholder="نبذة قصيرة..."
                             rows={2}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 resize-none"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 resize-none"
                         />
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 hover:bg-white/[0.03] transition-colors"
+                            className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle transition-colors"
                         >
                             إلغاء
                         </button>
@@ -728,58 +728,58 @@ function EditUserModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg rounded-2xl border border-white/[0.08] bg-bg shadow-2xl"
+                className="w-full max-w-lg rounded-2xl border border-theme-soft bg-bg shadow-2xl"
             >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                    <h2 className="text-lg font-bold text-fg">تعديل المستخدم</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
+                    <h2 className="text-lg font-bold text-theme">تعديل المستخدم</h2>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الاسم *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الاسم *</label>
                         <input
                             type="text"
                             value={form.display_name}
                             onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">اسم المستخدم *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المستخدم *</label>
                         <input
                             type="text"
                             value={form.username}
                             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                             dir="ltr"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الدور</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الدور</label>
                         <input
                             type="text"
                             value={form.role}
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                             list="edit-role-list"
                             placeholder="مثال: subscriber, wushsha, admin..."
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                         />
                         <datalist id="edit-role-list">
                             {roleOptions.map((r) => (
                                 <option key={r.value} value={r.value} />
                             ))}
                         </datalist>
-                        <p className="text-[10px] text-fg/30 mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
+                        <p className="text-[10px] text-theme-faint mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
                     </div>
                     {form.role === "wushsha" && (
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">مستوى الوشّاي</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">مستوى الوشّاي</label>
                             <select
                                 value={form.wushsha_level}
                                 onChange={(e) => setForm((f) => ({ ...f, wushsha_level: Number(e.target.value) }))}
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                             >
                                 {[1, 2, 3, 4, 5].map((l) => (
                                     <option key={l} value={l}>المستوى {l}</option>
@@ -788,23 +788,23 @@ function EditUserModal({
                         </div>
                     )}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الموقع (اختياري)</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الموقع (اختياري)</label>
                         <input
                             type="url"
                             value={form.website}
                             onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
                             placeholder="https://..."
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                             dir="ltr"
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">نبذة</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">نبذة</label>
                         <textarea
                             value={form.bio}
                             onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30 resize-none"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30 resize-none"
                         />
                     </div>
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -814,13 +814,13 @@ function EditUserModal({
                             onChange={(e) => setForm((f) => ({ ...f, is_verified: e.target.checked }))}
                             className="rounded border-white/20"
                         />
-                        <span className="text-sm text-fg/70">حساب موثق</span>
+                        <span className="text-sm text-theme-soft">حساب موثق</span>
                     </label>
                     <div className="flex gap-3 pt-2">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 hover:bg-white/[0.03] transition-colors"
+                            className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle transition-colors"
                         >
                             إلغاء
                         </button>

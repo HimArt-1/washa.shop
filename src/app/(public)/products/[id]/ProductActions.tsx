@@ -93,7 +93,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             {/* Size Selector */}
             {sizesToUse.length > 0 && (
                 <div>
-                    <label className="text-xs text-fg/30 mb-2 block">اختر المقاس</label>
+                    <label className="text-xs text-theme-faint mb-2 block">اختر المقاس</label>
                     <div className="flex gap-2 flex-wrap">
                         {sizesToUse.map((size: string) => (
                             <button
@@ -101,7 +101,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                                 onClick={() => setSelectedSize(size)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${selectedSize === size
                                     ? "bg-gold/10 border-gold/40 text-gold"
-                                    : "border-white/[0.08] text-fg/40 hover:border-white/20"
+                                    : "border-theme-soft text-theme-subtle hover:border-white/20"
                                     }`}
                             >
                                 {size}
@@ -137,7 +137,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleWishlist}
                         disabled={loadingWishlist}
-                        className={`p-3.5 border rounded-2xl transition-colors ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "border-white/[0.08] text-fg/40 hover:text-gold hover:border-gold/30"
+                        className={`p-3.5 border rounded-2xl transition-colors ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "border-theme-soft text-theme-subtle hover:text-gold hover:border-gold/30"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -148,7 +148,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleLike}
                         disabled={loadingLike}
-                        className={`p-3.5 border rounded-2xl transition-colors flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "border-white/[0.08] text-fg/40 hover:text-red-400 hover:border-red-500/20"
+                        className={`p-3.5 border rounded-2xl transition-colors flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "border-theme-soft text-theme-subtle hover:text-red-400 hover:border-red-500/20"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -161,14 +161,14 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                 <SignedOut>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className="p-3.5 border border-white/[0.08] rounded-2xl text-fg/40 hover:text-gold hover:border-gold/30 transition-colors inline-block"
+                        className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-gold hover:border-gold/30 transition-colors inline-block"
                         title="إضافة للمحفوظات"
                     >
                         <Bookmark className="w-5 h-5" />
                     </Link>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className="p-3.5 border border-white/[0.08] rounded-2xl text-fg/40 hover:text-red-400 hover:border-red-500/20 transition-colors inline-flex items-center gap-1"
+                        className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-red-400 hover:border-red-500/20 transition-colors inline-flex items-center gap-1"
                         title="إعجاب"
                     >
                         <Heart className="w-5 h-5" />
@@ -178,7 +178,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
 
                 <motion.button
                     onClick={handleShare}
-                    className="p-3.5 border border-white/[0.08] rounded-2xl text-fg/40 hover:text-gold hover:border-gold/30 transition-colors"
+                    className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-gold hover:border-gold/30 transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     title="مشاركة الرابط"

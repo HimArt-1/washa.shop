@@ -8,8 +8,8 @@ export default function DashboardLoading() {
                     <div className="absolute inset-1 w-10 h-10 border-2 border-transparent border-b-gold/50 rounded-xl animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
                 </div>
                 <div className="text-center">
-                    <p className="text-fg/70 text-sm font-medium">جاري تحميل لوحة الإدارة</p>
-                    <p className="text-fg/30 text-xs mt-1">يرجى الانتظار...</p>
+                    <p className="text-theme-soft text-sm font-medium">جاري تحميل لوحة الإدارة</p>
+                    <p className="text-theme-faint text-xs mt-1">يرجى الانتظار...</p>
                 </div>
             </div>
         </div>

@@ -62,7 +62,7 @@ export function PushSubscribeButton() {
     if (!supported || !isSignedIn) return null;
     if (permission === "granted") {
         return (
-            <span className="inline-flex items-center gap-1.5 text-xs text-fg/40">
+            <span className="inline-flex items-center gap-1.5 text-xs text-theme-subtle">
                 <Bell className="w-3.5 h-3.5 text-emerald-400" />
                 الإشعارات مفعّلة
             </span>
@@ -74,7 +74,7 @@ export function PushSubscribeButton() {
             type="button"
             onClick={handleSubscribe}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 text-xs text-fg/50 hover:text-gold transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-theme-subtle hover:text-gold transition-colors"
         >
             <BellOff className="w-3.5 h-3.5" />
             {loading ? "جاري..." : "تفعيل الإشعارات"}

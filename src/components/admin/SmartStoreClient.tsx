@@ -112,7 +112,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "bg-gold/15 text-gold border border-gold/30" : "bg-white/[0.03] text-fg/50 border border-white/[0.06] hover:text-fg/80 hover:bg-white/[0.05]"}`}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "bg-gold/15 text-gold border border-gold/30" : "bg-theme-subtle text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-white/[0.05]"}`}
                         >
                             <Icon className="w-4 h-4" />
                             {tab.label}
@@ -141,9 +141,9 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
 function SectionCard({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd: () => void }) {
     return (
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6">
+        <div className="rounded-2xl border border-theme-soft bg-theme-faint p-6">
             <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-fg">{title}</h2>
+                <h2 className="text-lg font-bold text-theme">{title}</h2>
                 <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
                     <Plus className="w-4 h-4" /> إضافة
                 </button>
@@ -156,15 +156,15 @@ function SectionCard({ children, title, onAdd }: { children: React.ReactNode; ti
 function FormField({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <label className="text-sm font-medium text-fg/60">{label}</label>
+            <label className="text-sm font-medium text-theme-soft">{label}</label>
             {children}
         </div>
     );
 }
 
-const inputCls = "w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/30 focus:outline-none focus:border-gold/40 transition-colors text-sm";
+const inputCls = "w-full px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/40 transition-colors text-sm";
 const btnPrimary = "px-6 py-2.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all";
-const btnSecondary = "px-4 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 text-sm hover:bg-white/[0.04] transition-colors";
+const btnSecondary = "px-4 py-2.5 rounded-xl border border-theme-soft text-theme-soft text-sm hover:bg-theme-subtle transition-colors";
 
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
     if (!open) return null;
@@ -174,12 +174,12 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-surface border border-white/[0.08] p-6 shadow-2xl"
+                className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-surface border border-theme-soft p-6 shadow-2xl"
             >
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-fg">{title}</h3>
-                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
-                        <X className="w-5 h-5 text-fg/40" />
+                    <h3 className="text-lg font-bold text-theme">{title}</h3>
+                    <button onClick={onClose} className="p-2 hover:bg-theme-subtle rounded-lg transition-colors">
+                        <X className="w-5 h-5 text-theme-subtle" />
                     </button>
                 </div>
                 {children}
@@ -189,7 +189,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 }
 
 function EmptyState({ text }: { text: string }) {
-    return <div className="text-center py-16 text-fg/30"><p className="text-sm">{text}</p></div>;
+    return <div className="text-center py-16 text-theme-faint"><p className="text-sm">{text}</p></div>;
 }
 
 // ─── Image Uploader ─────────────────────────────────────
@@ -237,7 +237,7 @@ function ImageUploader({ value, onChange, folder, label }: {
                     <img
                         src={preview || value}
                         alt={label ?? "صورة"}
-                        className="h-28 max-w-full rounded-xl object-cover border border-white/10 bg-white/5"
+                        className="h-28 max-w-full rounded-xl object-cover border border-theme-soft bg-theme-subtle"
                     />
                     {uploading && (
                         <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
@@ -250,13 +250,13 @@ function ImageUploader({ value, onChange, folder, label }: {
                             onClick={() => { setPreview(""); onChange(""); }}
                             className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shadow-lg"
                         >
-                            <X className="w-3.5 h-3.5 text-white" />
+                            <X className="w-3.5 h-3.5 text-theme" />
                         </button>
                     )}
                 </div>
             )}
             {/* Upload button */}
-            <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-dashed border-white/[0.15] hover:border-gold/30 cursor-pointer transition-colors text-sm text-fg/50 hover:text-fg/70 w-fit">
+            <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-theme-subtle border border-dashed border-white/[0.15] hover:border-gold/30 cursor-pointer transition-colors text-sm text-theme-subtle hover:text-theme-soft w-fit">
                 <Upload className="w-4 h-4" />
                 {uploading ? "جاري الرفع..." : (preview || value) ? "تغيير الصورة" : "رفع صورة من الجهاز"}
                 <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" disabled={uploading} />
@@ -321,7 +321,7 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
             </FormField>
 
             {/* السعر الأساسي + أسعار الطباعة */}
-            <div className="pt-2 border-t border-white/[0.06]">
+            <div className="pt-2 border-t border-theme-subtle">
                 <FormField label="سعر القطعة الأساسي (بدون الطباعة) — ر.س">
                     <input name="base_price" type="number" step="0.01" min="0" defaultValue={(editing as any)?.base_price ?? 0} className={inputCls} />
                 </FormField>
@@ -360,21 +360,21 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
             {items.length === 0 ? <EmptyState text="لا توجد قطع بعد. أضف أول قطعة!" /> : (
                 <div className="grid gap-3">
                     {items.map((g) => (
-                        <div key={g.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group">
+                        <div key={g.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
                             {g.image_url ? (
-                                <img src={g.image_url} alt={g.name} className="w-14 h-14 rounded-lg object-cover bg-white/5" />
+                                <img src={g.image_url} alt={g.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />
                             ) : (
-                                <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center"><ImageIcon className="w-6 h-6 text-fg/20" /></div>
+                                <div className="w-14 h-14 rounded-lg bg-theme-subtle flex items-center justify-center"><ImageIcon className="w-6 h-6 text-theme-faint" /></div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <p className="font-medium text-fg truncate">{g.name}</p>
-                                <p className="text-xs text-fg/40">{g.slug} · ترتيب: {g.sort_order}</p>
+                                <p className="font-medium text-theme truncate">{g.name}</p>
+                                <p className="text-xs text-theme-subtle">{g.slug} · ترتيب: {g.sort_order}</p>
                             </div>
                             <span className={`text-xs px-2 py-1 rounded-full ${g.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                 {g.is_active ? "نشط" : "معطل"}
                             </span>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEdit(g)} className="p-2 hover:bg-white/5 rounded-lg"><Pencil className="w-4 h-4 text-fg/40" /></button>
+                                <button onClick={() => openEdit(g)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
                                 <button onClick={() => handleDelete(g.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                             </div>
                         </div>
@@ -431,7 +431,7 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: أسود" />
             </FormField>
             <FormField label="كود اللون">
-                <input name="hex_code" type="color" defaultValue={editing?.hex_code ?? "#000000"} required className="w-16 h-10 rounded-lg cursor-pointer bg-transparent border border-white/10" />
+                <input name="hex_code" type="color" defaultValue={editing?.hex_code ?? "#000000"} required className="w-16 h-10 rounded-lg cursor-pointer bg-transparent border border-theme-soft" />
             </FormField>
             <FormField label="صورة Mockup">
                 <ImageUploader value={imageUrl} onChange={setImageUrl} folder="colors" />
@@ -465,18 +465,18 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                     {filtered.map((c) => {
                         const garmentName = garments.find(g => g.id === c.garment_id)?.name ?? "—";
                         return (
-                            <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group">
-                                <div className="w-10 h-10 rounded-lg border border-white/10 shadow-inner" style={{ backgroundColor: c.hex_code }} />
-                                {c.image_url && <img src={c.image_url} alt={c.name} className="w-14 h-14 rounded-lg object-cover bg-white/5" />}
+                            <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
+                                <div className="w-10 h-10 rounded-lg border border-theme-soft shadow-inner" style={{ backgroundColor: c.hex_code }} />
+                                {c.image_url && <img src={c.image_url} alt={c.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />}
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-fg truncate">{c.name}</p>
-                                    <p className="text-xs text-fg/40">{garmentName} · {c.hex_code}</p>
+                                    <p className="font-medium text-theme truncate">{c.name}</p>
+                                    <p className="text-xs text-theme-subtle">{garmentName} · {c.hex_code}</p>
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded-full ${c.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                     {c.is_active ? "نشط" : "معطل"}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-white/5 rounded-lg"><Pencil className="w-4 h-4 text-fg/40" /></button>
+                                    <button onClick={() => openEdit(c)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
                                     <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
@@ -557,20 +557,20 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
             {items.length === 0 ? <EmptyState text="لا توجد عناصر بعد." /> : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
-                        <div key={item.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group relative overflow-hidden">
+                        <div key={item.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group relative overflow-hidden">
                             {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3 bg-white/5" />
+                                <img src={item.image_url} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3 bg-theme-subtle" />
                             ) : (
-                                <div className="w-full h-32 rounded-lg bg-white/[0.04] flex items-center justify-center mb-3"><ImageIcon className="w-8 h-8 text-fg/15" /></div>
+                                <div className="w-full h-32 rounded-lg bg-theme-subtle flex items-center justify-center mb-3"><ImageIcon className="w-8 h-8 text-theme-faint" /></div>
                             )}
-                            <p className="font-medium text-fg truncate">{item.name}</p>
-                            {item.description && <p className="text-xs text-fg/40 mt-1 line-clamp-2">{item.description}</p>}
+                            <p className="font-medium text-theme truncate">{item.name}</p>
+                            {item.description && <p className="text-xs text-theme-subtle mt-1 line-clamp-2">{item.description}</p>}
                             <div className="flex items-center justify-between mt-3">
                                 <span className={`text-xs px-2 py-1 rounded-full ${item.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                     {item.is_active ? "نشط" : "معطل"}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-white/5 rounded-lg"><Pencil className="w-3.5 h-3.5 text-fg/40" /></button>
+                                    <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
                                     <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
                                 </div>
                             </div>
@@ -676,17 +676,17 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                         const garmentName = garments.find(g => g.id === s.garment_id)?.name ?? "—";
                         const colorName = s.color_id ? colors.find(c => c.id === s.color_id)?.name : null;
                         return (
-                            <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group">
-                                <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center font-bold text-gold text-sm">{s.name}</div>
+                            <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
+                                <div className="w-10 h-10 rounded-lg bg-theme-subtle flex items-center justify-center font-bold text-gold text-sm">{s.name}</div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-fg truncate">{garmentName} — {s.name}</p>
-                                    {colorName && <p className="text-xs text-fg/40">لون: {colorName}</p>}
+                                    <p className="font-medium text-theme truncate">{garmentName} — {s.name}</p>
+                                    {colorName && <p className="text-xs text-theme-subtle">لون: {colorName}</p>}
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded-full ${s.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                     {s.is_active ? "نشط" : "معطل"}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(s)} className="p-2 hover:bg-white/5 rounded-lg"><Pencil className="w-4 h-4 text-fg/40" /></button>
+                                    <button onClick={() => openEdit(s)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
                                     <button onClick={() => handleDelete(s.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
@@ -787,12 +787,12 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
             {items.length === 0 ? <EmptyState text="لا توجد باقات ألوان بعد." /> : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((pkg) => (
-                        <div key={pkg.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group">
-                            {pkg.image_url && <img src={pkg.image_url} alt={pkg.name} className="w-full h-24 object-cover rounded-lg mb-2 bg-white/5" />}
-                            <p className="font-medium text-fg mb-2">{pkg.name}</p>
+                        <div key={pkg.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
+                            {pkg.image_url && <img src={pkg.image_url} alt={pkg.name} className="w-full h-24 object-cover rounded-lg mb-2 bg-theme-subtle" />}
+                            <p className="font-medium text-theme mb-2">{pkg.name}</p>
                             <div className="flex gap-1 mb-3">
                                 {(Array.isArray(pkg.colors) ? pkg.colors : []).map((c: any, i: number) => (
-                                    <div key={i} className="w-6 h-6 rounded-full border border-white/10" style={{ backgroundColor: c.hex }} title={c.name} />
+                                    <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c.hex }} title={c.name} />
                                 ))}
                             </div>
                             <div className="flex items-center justify-between">
@@ -800,7 +800,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                                     {pkg.is_active ? "نشط" : "معطل"}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(pkg)} className="p-1.5 hover:bg-white/5 rounded-lg"><Pencil className="w-3.5 h-3.5 text-fg/40" /></button>
+                                    <button onClick={() => openEdit(pkg)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
                                     <button onClick={() => handleDelete(pkg.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
                                 </div>
                             </div>
@@ -900,8 +900,8 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
             {items.length === 0 ? <EmptyState text="لا توجد تصاميم ستيديو بعد." /> : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
-                        <div key={item.id} className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] group overflow-hidden relative">
-                            <div className="relative mb-3 aspect-[3/4] rounded-lg overflow-hidden bg-white/5">
+                        <div key={item.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group overflow-hidden relative">
+                            <div className="relative mb-3 aspect-[3/4] rounded-lg overflow-hidden bg-theme-subtle">
                                 {(item.model_image_url || item.mockup_image_url || item.main_image_url) ? (
                                     <img
                                         src={item.model_image_url || item.mockup_image_url || item.main_image_url!}
@@ -910,7 +910,7 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                                     />
                                 ) : (
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                        <Camera className="w-8 h-8 text-fg/20" />
+                                        <Camera className="w-8 h-8 text-theme-faint" />
                                     </div>
                                 )}
                                 <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/60 backdrop-blur-md text-gold text-xs font-bold border border-gold/20">
@@ -918,15 +918,15 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                                 </div>
                             </div>
 
-                            <p className="font-medium text-fg mb-1 truncate">{item.name}</p>
-                            {item.description && <p className="text-xs text-fg/50 line-clamp-2 mb-3">{item.description}</p>}
+                            <p className="font-medium text-theme mb-1 truncate">{item.name}</p>
+                            {item.description && <p className="text-xs text-theme-subtle line-clamp-2 mb-3">{item.description}</p>}
 
                             <div className="flex items-center justify-between">
                                 <span className={`text-xs px-2 py-1 rounded-full ${item.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                     {item.is_active ? "نشط" : "معطل"}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => openEdit(item)} className="p-2 hover:bg-white/5 rounded-lg"><Pencil className="w-4 h-4 text-fg/40" /></button>
+                                    <button onClick={() => openEdit(item)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
                                     <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>

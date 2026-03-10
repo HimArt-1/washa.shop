@@ -42,7 +42,7 @@ export function ArtworkActions({ artwork }: { artwork: any }) {
             )}
             <motion.button
                 onClick={handleShare}
-                className="p-3.5 border border-white/[0.08] rounded-2xl text-fg/40 hover:text-gold hover:border-gold/30 transition-colors"
+                className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-gold hover:border-gold/30 transition-colors"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
             >

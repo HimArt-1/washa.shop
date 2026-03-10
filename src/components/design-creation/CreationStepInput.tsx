@@ -215,11 +215,11 @@ export function CreationStepInput({
         className="space-y-8"
       >
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">تصاميم وشّى الحصرية</h2>
-          <p className="text-fg/60 text-sm">مطبوعات حصرية من تصاميم وشّى الخاصة — اختر التصميم الذي يعجبك</p>
+          <h2 className="text-2xl font-bold text-theme mb-1">تصاميم وشّى الحصرية</h2>
+          <p className="text-theme-soft text-sm">مطبوعات حصرية من تصاميم وشّى الخاصة — اختر التصميم الذي يعجبك</p>
         </div>
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">موضع الطباعة</label>
           <div className="flex gap-2 mb-4">
             {CREATION_POSITIONS.map((p) => (
               <button
@@ -227,7 +227,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("position", p.id)}
                 className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {p.label}
@@ -242,20 +242,20 @@ export function CreationStepInput({
                 key={d.id}
                 type="button"
                 onClick={() => handleExclusiveSelect(d)}
-                className="relative aspect-square rounded-xl overflow-hidden border-2 border-white/10 hover:border-gold/40 transition-colors group"
+                className="relative aspect-square rounded-xl overflow-hidden border-2 border-theme-soft hover:border-gold/40 transition-colors group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={d.image_url} alt={d.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-xs font-bold text-white truncate">{d.title}</p>
+                  <p className="text-xs font-bold text-theme truncate">{d.title}</p>
                 </div>
               </button>
             ))}
           </div>
         ) : (
-          <div className="p-8 rounded-2xl bg-white/5 border border-white/10 text-center">
+          <div className="p-8 rounded-2xl bg-theme-subtle border border-theme-soft text-center">
             <span className="text-4xl">👑</span>
-            <p className="mt-4 text-fg/60">لا توجد تصاميم حصرية متاحة حالياً. جرّب طريقة أخرى.</p>
+            <p className="mt-4 text-theme-soft">لا توجد تصاميم حصرية متاحة حالياً. جرّب طريقة أخرى.</p>
           </div>
         )}
         <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border border-white/20">
@@ -276,8 +276,8 @@ export function CreationStepInput({
         className="space-y-8"
       >
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">اختر النص</h2>
-          <p className="text-fg/60 text-sm">كتابة جاهزة بأسلوب عربي حديث</p>
+          <h2 className="text-2xl font-bold text-theme mb-1">اختر النص</h2>
+          <p className="text-theme-soft text-sm">كتابة جاهزة بأسلوب عربي حديث</p>
         </div>
         <div className="grid grid-cols-2 gap-3">
           {READY_TEXTS.map((r) => (
@@ -288,16 +288,16 @@ export function CreationStepInput({
               className={`p-4 rounded-xl border-2 text-center transition-all ${
                 state.readyTextId === r.id
                   ? "border-gold bg-gold/10"
-                  : "border-white/10 hover:border-gold/30"
+                  : "border-theme-soft hover:border-gold/30"
               }`}
             >
               <span className="text-xl font-arabic block">{r.text}</span>
-              <span className="text-xs text-fg/50">{r.style}</span>
+              <span className="text-xs text-theme-subtle">{r.style}</span>
             </button>
           ))}
         </div>
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">موضع الطباعة</label>
           <div className="flex gap-2">
             {CREATION_POSITIONS.map((p) => (
               <button
@@ -305,7 +305,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("position", p.id)}
                 className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {p.label}
@@ -341,11 +341,11 @@ export function CreationStepInput({
         className="space-y-8"
       >
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">اختر من الاستوديو</h2>
-          <p className="text-fg/60 text-sm">تصاميم فنية من مكتبة وشّى</p>
+          <h2 className="text-2xl font-bold text-theme mb-1">اختر من الاستوديو</h2>
+          <p className="text-theme-soft text-sm">تصاميم فنية من مكتبة وشّى</p>
         </div>
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">موضع الطباعة</label>
           <div className="flex gap-2 mb-4">
             {CREATION_POSITIONS.map((p) => (
               <button
@@ -353,7 +353,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("position", p.id)}
                 className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {p.label}
@@ -368,7 +368,7 @@ export function CreationStepInput({
                 key={art.id}
                 type="button"
                 onClick={() => handleStudioSelect(art)}
-                className="aspect-square rounded-xl overflow-hidden border-2 border-white/10 hover:border-gold/40"
+                className="aspect-square rounded-xl overflow-hidden border-2 border-theme-soft hover:border-gold/40"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={art.image_url} alt={art.title ?? ""} className="w-full h-full object-cover" />
@@ -376,7 +376,7 @@ export function CreationStepInput({
             ))}
           </div>
         ) : (
-          <p className="text-fg/50 text-sm">لا توجد تصاميم متاحة حالياً. جرّب طريقة أخرى.</p>
+          <p className="text-theme-subtle text-sm">لا توجد تصاميم متاحة حالياً. جرّب طريقة أخرى.</p>
         )}
         <button type="button" onClick={onBack} className="px-4 py-2 rounded-xl border border-white/20">
           رجوع
@@ -397,18 +397,18 @@ export function CreationStepInput({
         className="space-y-8"
       >
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">وصف التصميم</h2>
-          <p className="text-fg/60 text-sm">اكتب وصفاً واضحاً — الذكاء الاصطناعي سينفّذه</p>
+          <h2 className="text-2xl font-bold text-theme mb-1">وصف التصميم</h2>
+          <p className="text-theme-soft text-sm">اكتب وصفاً واضحاً — الذكاء الاصطناعي سينفّذه</p>
         </div>
         <textarea
           value={state.textPrompt}
           onChange={(e) => set("textPrompt", e.target.value)}
           placeholder="مثال: خيول عربية تركض في الصحراء عند غروب الشمس، بأسلوب خط عربي وزخارف تراثية..."
-          className="w-full h-32 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 text-fg placeholder:text-fg/30 focus:border-gold outline-none resize-none"
+          className="w-full h-32 px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold outline-none resize-none"
           dir="rtl"
         />
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">النمط</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">النمط</label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {DESIGN_STYLES.map((s) => (
               <button
@@ -416,7 +416,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("styleId", s.id)}
                 className={`px-4 py-3 rounded-xl border-2 text-sm ${
-                  state.styleId === s.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.styleId === s.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {s.label}
@@ -425,7 +425,7 @@ export function CreationStepInput({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+          <label className="block text-sm font-bold text-theme-strong mb-2">موضع الطباعة</label>
           <div className="flex gap-2">
             {CREATION_POSITIONS.map((p) => (
               <button
@@ -433,7 +433,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("position", p.id)}
                 className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {p.label}
@@ -488,8 +488,8 @@ export function CreationStepInput({
         className="space-y-8"
       >
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">الصورة والفكرة</h2>
-          <p className="text-fg/60 text-sm">ارفع صورة مرجعية واكتب ما تريد أن يصنعه الذكاء منها</p>
+          <h2 className="text-2xl font-bold text-theme mb-1">الصورة والفكرة</h2>
+          <p className="text-theme-soft text-sm">ارفع صورة مرجعية واكتب ما تريد أن يصنعه الذكاء منها</p>
         </div>
         <div className="flex gap-3">
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
@@ -499,7 +499,7 @@ export function CreationStepInput({
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 flex flex-col items-center gap-2"
           >
-            <Upload className="w-10 h-10 text-fg/40" />
+            <Upload className="w-10 h-10 text-theme-subtle" />
             <span className="text-sm">رفع صورة</span>
           </button>
           <button
@@ -507,7 +507,7 @@ export function CreationStepInput({
             onClick={() => cameraInputRef.current?.click()}
             className="flex-1 p-6 rounded-2xl border-2 border-dashed border-white/20 hover:border-gold/40 flex flex-col items-center gap-2"
           >
-            <Camera className="w-10 h-10 text-fg/40" />
+            <Camera className="w-10 h-10 text-theme-subtle" />
             <span className="text-sm">التقاط</span>
           </button>
         </div>
@@ -518,7 +518,7 @@ export function CreationStepInput({
             <button
               type="button"
               onClick={() => onImageChange(null, null)}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center"
+              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500 text-theme flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
@@ -530,7 +530,7 @@ export function CreationStepInput({
             value={state.ideaText ?? ""}
             onChange={(e) => set("ideaText", e.target.value)}
             placeholder="حوّل هذه الصورة إلى تصميم تراثي بألوان ذهبية..."
-            className="w-full h-24 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10"
+            className="w-full h-24 px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft"
             dir="rtl"
           />
         </div>
@@ -543,7 +543,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("styleId", s.id)}
                 className={`px-4 py-3 rounded-xl border-2 text-sm ${
-                  state.styleId === s.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.styleId === s.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {s.label}
@@ -560,7 +560,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("position", p.id)}
                 className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                  state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                  state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
                 }`}
               >
                 {p.label}
@@ -598,12 +598,12 @@ export function CreationStepInput({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">دمج عناصر</h2>
-        <p className="text-fg/60 text-sm">اجمع نصاً مع صورة لصناعة طباعة فريدة</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">دمج عناصر</h2>
+        <p className="text-theme-soft text-sm">اجمع نصاً مع صورة لصناعة طباعة فريدة</p>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-2">النص</label>
+        <label className="block text-sm font-bold text-theme-strong mb-2">النص</label>
         <div className="grid grid-cols-2 gap-2 mb-3">
           {READY_TEXTS.map((r) => (
             <button
@@ -611,7 +611,7 @@ export function CreationStepInput({
               type="button"
               onClick={() => set("combineTextId", state.combineTextId === r.id ? null : r.id)}
               className={`p-3 rounded-xl border-2 text-sm text-center ${
-                state.combineTextId === r.id ? "border-gold bg-gold/10" : "border-white/10"
+                state.combineTextId === r.id ? "border-gold bg-gold/10" : "border-theme-soft"
               }`}
             >
               <span className="font-arabic block">{r.text}</span>
@@ -623,32 +623,32 @@ export function CreationStepInput({
           value={state.combineTextCustom}
           onChange={(e) => set("combineTextCustom", e.target.value)}
           placeholder="أو اكتب نصك..."
-          className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-fg"
+          className="w-full px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme"
           dir="rtl"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-2">صورة (اختياري)</label>
+        <label className="block text-sm font-bold text-theme-strong mb-2">صورة (اختياري)</label>
         <div className="flex gap-3 mb-3">
           <button
             type="button"
             onClick={() => set("combineImageSource", state.combineImageSource === "upload" ? null : "upload")}
             className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 ${
-              state.combineImageSource === "upload" ? "border-gold bg-gold/10" : "border-white/10"
+              state.combineImageSource === "upload" ? "border-gold bg-gold/10" : "border-theme-soft"
             }`}
           >
-            <Upload className="w-8 h-8 text-fg/40" />
+            <Upload className="w-8 h-8 text-theme-subtle" />
             <span className="text-xs">رفع صورة</span>
           </button>
           <button
             type="button"
             onClick={() => set("combineImageSource", state.combineImageSource === "studio" ? null : "studio")}
             className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 ${
-              state.combineImageSource === "studio" ? "border-gold bg-gold/10" : "border-white/10"
+              state.combineImageSource === "studio" ? "border-gold bg-gold/10" : "border-theme-soft"
             }`}
           >
-            <ImageIcon className="w-8 h-8 text-fg/40" />
+            <ImageIcon className="w-8 h-8 text-theme-subtle" />
             <span className="text-xs">من الاستوديو</span>
           </button>
         </div>
@@ -670,7 +670,7 @@ export function CreationStepInput({
                       e.stopPropagation();
                       onImageChange(null, null);
                     }}
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white text-xs"
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-theme text-xs"
                   >
                     ×
                   </button>
@@ -690,7 +690,7 @@ export function CreationStepInput({
                 type="button"
                 onClick={() => set("combineStudioId", state.combineStudioId === art.id ? null : art.id)}
                 className={`aspect-square rounded-lg overflow-hidden border-2 ${
-                  state.combineStudioId === art.id ? "border-gold" : "border-white/10"
+                  state.combineStudioId === art.id ? "border-gold" : "border-theme-soft"
                 }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -699,13 +699,13 @@ export function CreationStepInput({
             ))}
           </div>
           ) : (
-            <p className="text-fg/50 text-sm py-4">لا توجد أعمال في الاستوديو — اختر رفع صورة أو تخطّ الصورة</p>
+            <p className="text-theme-subtle text-sm py-4">لا توجد أعمال في الاستوديو — اختر رفع صورة أو تخطّ الصورة</p>
           )
         )}
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-2">النمط</label>
+        <label className="block text-sm font-bold text-theme-strong mb-2">النمط</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {DESIGN_STYLES.map((s) => (
             <button
@@ -713,7 +713,7 @@ export function CreationStepInput({
               type="button"
               onClick={() => set("styleId", s.id)}
               className={`px-4 py-3 rounded-xl border-2 text-sm ${
-                state.styleId === s.id ? "border-gold bg-gold/10" : "border-white/10"
+                state.styleId === s.id ? "border-gold bg-gold/10" : "border-theme-soft"
               }`}
             >
               {s.label}
@@ -723,7 +723,7 @@ export function CreationStepInput({
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-2">موضع الطباعة</label>
+        <label className="block text-sm font-bold text-theme-strong mb-2">موضع الطباعة</label>
         <div className="flex gap-2">
           {CREATION_POSITIONS.map((p) => (
             <button
@@ -731,7 +731,7 @@ export function CreationStepInput({
               type="button"
               onClick={() => set("position", p.id)}
               className={`px-4 py-2 rounded-xl border-2 text-sm ${
-                state.position === p.id ? "border-gold bg-gold/10" : "border-white/10"
+                state.position === p.id ? "border-gold bg-gold/10" : "border-theme-soft"
               }`}
             >
               {p.label}

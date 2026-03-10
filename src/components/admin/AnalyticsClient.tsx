@@ -88,13 +88,13 @@ export function AnalyticsClient({
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-fg">لوحة التحليلات</h1>
-                    <p className="text-fg/50 text-sm mt-1">إيرادات ومبيعات ومستخدمين</p>
+                    <h1 className="text-2xl font-bold text-theme">لوحة التحليلات</h1>
+                    <p className="text-theme-subtle text-sm mt-1">إيرادات ومبيعات ومستخدمين</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <button
                         onClick={exportCSV}
-                        className="px-4 py-2 rounded-xl text-sm font-medium border border-white/10 hover:border-gold/40 text-fg/70 hover:text-gold transition-colors inline-flex items-center gap-2"
+                        className="px-4 py-2 rounded-xl text-sm font-medium border border-theme-soft hover:border-gold/40 text-theme-soft hover:text-gold transition-colors inline-flex items-center gap-2"
                     >
                         <Download className="w-4 h-4" />
                         تصدير CSV
@@ -107,7 +107,7 @@ export function AnalyticsClient({
                             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                                 period === p.id
                                     ? "bg-gold/20 text-gold border border-gold/40"
-                                    : "bg-white/5 text-fg/60 border border-white/10 hover:bg-white/10"
+                                    : "bg-theme-subtle text-theme-soft border border-theme-soft hover:bg-white/10"
                             }`}
                         >
                             {p.label}
@@ -118,9 +118,9 @@ export function AnalyticsClient({
 
             {/* Summary cards + مقارنة الفترة السابقة */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-2xl glass-premium border border-white/[0.08] hover:border-gold/20 transition-all duration-500">
+                <div className="p-4 rounded-2xl glass-premium border border-theme-soft hover:border-gold/20 transition-all duration-500">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-fg/50 text-sm mb-1">
+                        <div className="flex items-center gap-2 text-theme-subtle text-sm mb-1">
                             <DollarSign className="w-4 h-4" />
                             إجمالي الإيرادات
                         </div>
@@ -131,16 +131,16 @@ export function AnalyticsClient({
                             </span>
                         )}
                     </div>
-                    <p className="text-xl font-bold text-fg">
+                    <p className="text-xl font-bold text-theme">
                         {data.summary.totalRevenue.toLocaleString()} ر.س
                     </p>
                     {data.previousPeriod && (
-                        <p className="text-xs text-fg/30 mt-1">الفترة السابقة: {data.previousPeriod.totalRevenue.toLocaleString()} ر.س</p>
+                        <p className="text-xs text-theme-faint mt-1">الفترة السابقة: {data.previousPeriod.totalRevenue.toLocaleString()} ر.س</p>
                     )}
                 </div>
-                <div className="p-4 rounded-2xl glass-premium border border-white/[0.08] hover:border-gold/20 transition-all duration-500">
+                <div className="p-4 rounded-2xl glass-premium border border-theme-soft hover:border-gold/20 transition-all duration-500">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-fg/50 text-sm mb-1">
+                        <div className="flex items-center gap-2 text-theme-subtle text-sm mb-1">
                             <Package className="w-4 h-4" />
                             عدد الطلبات
                         </div>
@@ -151,14 +151,14 @@ export function AnalyticsClient({
                             </span>
                         )}
                     </div>
-                    <p className="text-xl font-bold text-fg">{data.summary.totalOrders}</p>
+                    <p className="text-xl font-bold text-theme">{data.summary.totalOrders}</p>
                     {data.previousPeriod && (
-                        <p className="text-xs text-fg/30 mt-1">الفترة السابقة: {data.previousPeriod.totalOrders}</p>
+                        <p className="text-xs text-theme-faint mt-1">الفترة السابقة: {data.previousPeriod.totalOrders}</p>
                     )}
                 </div>
-                <div className="p-4 rounded-2xl glass-premium border border-white/[0.08] hover:border-gold/20 transition-all duration-500">
+                <div className="p-4 rounded-2xl glass-premium border border-theme-soft hover:border-gold/20 transition-all duration-500">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-fg/50 text-sm mb-1">
+                        <div className="flex items-center gap-2 text-theme-subtle text-sm mb-1">
                             <Users className="w-4 h-4" />
                             مستخدمون جدد
                         </div>
@@ -169,25 +169,25 @@ export function AnalyticsClient({
                             </span>
                         )}
                     </div>
-                    <p className="text-xl font-bold text-fg">{data.summary.totalUsers}</p>
+                    <p className="text-xl font-bold text-theme">{data.summary.totalUsers}</p>
                     {data.previousPeriod && (
-                        <p className="text-xs text-fg/30 mt-1">الفترة السابقة: {data.previousPeriod.totalUsers}</p>
+                        <p className="text-xs text-theme-faint mt-1">الفترة السابقة: {data.previousPeriod.totalUsers}</p>
                     )}
                 </div>
-                <div className="p-4 rounded-2xl glass-premium border border-white/[0.08] hover:border-gold/20 transition-all duration-500">
-                    <div className="flex items-center gap-2 text-fg/50 text-sm mb-1">
+                <div className="p-4 rounded-2xl glass-premium border border-theme-soft hover:border-gold/20 transition-all duration-500">
+                    <div className="flex items-center gap-2 text-theme-subtle text-sm mb-1">
                         <TrendingUp className="w-4 h-4" />
                         متوسط قيمة الطلب
                     </div>
-                    <p className="text-xl font-bold text-fg">
+                    <p className="text-xl font-bold text-theme">
                         {Math.round(data.summary.avgOrderValue).toLocaleString()} ر.س
                     </p>
                 </div>
             </div>
 
             {/* Revenue & Orders chart */}
-            <div className="rounded-2xl glass-premium border border-white/[0.08] p-6">
-                <h2 className="text-lg font-bold text-fg mb-4">الإيرادات والطلبات</h2>
+            <div className="rounded-2xl glass-premium border border-theme-soft p-6">
+                <h2 className="text-lg font-bold text-theme mb-4">الإيرادات والطلبات</h2>
                 <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={revenueChartData}>
@@ -228,8 +228,8 @@ export function AnalyticsClient({
             </div>
 
             {/* Users chart */}
-            <div className="rounded-2xl glass-premium border border-white/[0.08] p-6">
-                <h2 className="text-lg font-bold text-fg mb-4">المستخدمون الجدد</h2>
+            <div className="rounded-2xl glass-premium border border-theme-soft p-6">
+                <h2 className="text-lg font-bold text-theme mb-4">المستخدمون الجدد</h2>
                 <div className="h-56">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={usersChartData}>
@@ -250,13 +250,13 @@ export function AnalyticsClient({
             </div>
 
             {/* Top products */}
-            <div className="rounded-2xl glass-premium border border-white/[0.08] p-6">
-                <h2 className="text-lg font-bold text-fg mb-4">أكثر المنتجات مبيعاً</h2>
+            <div className="rounded-2xl glass-premium border border-theme-soft p-6">
+                <h2 className="text-lg font-bold text-theme mb-4">أكثر المنتجات مبيعاً</h2>
                 {data.topProducts.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-fg/50 border-b border-white/10">
+                                <tr className="text-theme-subtle border-b border-theme-soft">
                                     <th className="text-right py-3 px-4">#</th>
                                     <th className="text-right py-3 px-4">المنتج</th>
                                     <th className="text-right py-3 px-4">الكمية</th>
@@ -266,9 +266,9 @@ export function AnalyticsClient({
                             <tbody>
                                 {data.topProducts.map((p, i) => (
                                     <tr key={p.productId} className="border-b border-white/5">
-                                        <td className="py-3 px-4 text-fg/60">{i + 1}</td>
-                                        <td className="py-3 px-4 font-medium text-fg">{p.title}</td>
-                                        <td className="py-3 px-4 text-fg/80">{p.quantity}</td>
+                                        <td className="py-3 px-4 text-theme-soft">{i + 1}</td>
+                                        <td className="py-3 px-4 font-medium text-theme">{p.title}</td>
+                                        <td className="py-3 px-4 text-theme-strong">{p.quantity}</td>
                                         <td className="py-3 px-4 text-gold">{p.revenue.toLocaleString()} ر.س</td>
                                     </tr>
                                 ))}
@@ -276,7 +276,7 @@ export function AnalyticsClient({
                         </table>
                     </div>
                 ) : (
-                    <p className="text-fg/50 text-sm py-8 text-center">لا توجد مبيعات في الفترة المحددة</p>
+                    <p className="text-theme-subtle text-sm py-8 text-center">لا توجد مبيعات في الفترة المحددة</p>
                 )}
             </div>
         </div>

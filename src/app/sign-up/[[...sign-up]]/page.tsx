@@ -31,7 +31,7 @@ export default function SignUpPage() {
                     </div>
                 </div>
 
-                <p className="text-center text-fg/50 text-sm mt-6">
+                <p className="text-center text-theme-subtle text-sm mt-6">
                     لديك حساب؟{" "}
                     <Link
                         href="/sign-in"

@@ -56,7 +56,7 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
             className="mb-8"
         >
             {/* Breadcrumbs */}
-            <nav className="flex items-center gap-2 text-xs text-fg/40 mb-4 flex-wrap">
+            <nav className="flex items-center gap-2 text-xs text-theme-subtle mb-4 flex-wrap">
                 <Link href="/dashboard" className="hover:text-gold transition-colors flex items-center gap-1">
                     <Home className="w-3.5 h-3.5" />
                     الرئيسية
@@ -65,7 +65,7 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
                     <span key={c.href} className="flex items-center gap-2">
                         <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
                         {i === crumbs.length - 1 ? (
-                            <span className="text-fg font-medium">{c.label}</span>
+                            <span className="text-theme font-medium">{c.label}</span>
                         ) : (
                             <Link href={c.href} className="hover:text-gold transition-colors">
                                 {c.label}
@@ -78,7 +78,7 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
             {/* Title & Actions */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-fg flex items-center gap-3">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-theme flex items-center gap-3">
                         {displayTitle}
                         {pathname === "/dashboard" && (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium">
@@ -87,7 +87,7 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
                             </span>
                         )}
                     </h1>
-                    {subtitle && <p className="text-fg/40 mt-1 text-sm">{subtitle}</p>}
+                    {subtitle && <p className="text-theme-subtle mt-1 text-sm">{subtitle}</p>}
                 </div>
                 {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
             </div>

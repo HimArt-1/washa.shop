@@ -23,8 +23,8 @@ export function StepMethod({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">كيف تريد التصميم؟</h2>
-        <p className="text-fg/60 text-sm">من صورة موجودة أو من وصف نصي</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">كيف تريد التصميم؟</h2>
+        <p className="text-theme-soft text-sm">من صورة موجودة أو من وصف نصي</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -38,14 +38,14 @@ export function StepMethod({
               flex flex-col items-start gap-4
               ${selected === m.id
                 ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                : "border-white/10 bg-white/[0.03] hover:border-gold/30 hover:bg-white/[0.06]"
+                : "border-theme-soft bg-theme-subtle hover:border-gold/30 hover:bg-theme-soft"
               }
             `}
           >
             <span className="text-4xl" aria-hidden>{m.icon}</span>
             <div>
-              <div className="font-bold text-fg text-lg">{m.label}</div>
-              <div className="text-sm text-fg/50 mt-1">{m.description}</div>
+              <div className="font-bold text-theme text-lg">{m.label}</div>
+              <div className="text-sm text-theme-subtle mt-1">{m.description}</div>
             </div>
             {selected === m.id && (
               <motion.div

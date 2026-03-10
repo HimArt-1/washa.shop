@@ -129,9 +129,9 @@ export function AccountDashboardClient({
                     {/* ─── Profile Header ─── */}
                     <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                         <div className="flex items-center gap-5">
-                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-surface shrink-0 relative group">
+                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-theme-soft bg-surface shrink-0 relative group">
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
-                                    <Link href="/account/settings" className="text-white text-xs font-bold px-2 py-1 bg-white/20 rounded-lg backdrop-blur-md">تعديل</Link>
+                                    <Link href="/account/settings" className="text-theme text-xs font-bold px-2 py-1 bg-white/20 rounded-lg backdrop-blur-md">تعديل</Link>
                                 </div>
                                 {profile?.avatar_url ? (
                                     <Image src={profile.avatar_url} alt="" width={80} height={80} className="object-cover w-full h-full" />
@@ -144,10 +144,10 @@ export function AccountDashboardClient({
                                 )}
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-fg">
+                                <h1 className="text-2xl font-bold text-theme">
                                     مرحباً، {profile?.display_name || currentUser.firstName || "مستخدم وشّى"}
                                 </h1>
-                                <p className="text-fg/30 text-sm mt-1">
+                                <p className="text-theme-faint text-sm mt-1">
                                     {roleLabel} · @{profile?.username || "user"}
                                 </p>
                                 <div className="mt-2">
@@ -157,22 +157,22 @@ export function AccountDashboardClient({
                         </div>
 
                         {/* Completeness Widget */}
-                        <div className="p-4 rounded-2xl border border-white/[0.06] bg-surface/30 flex items-center gap-4 w-full md:w-auto">
+                        <div className="p-4 rounded-2xl border border-theme-subtle bg-surface/30 flex items-center gap-4 w-full md:w-auto">
                             <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                     <path className="text-white/[0.05]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
                                     <path className={`${completeness === 100 ? "text-emerald-400" : "text-gold"}`} strokeDasharray={`${completeness}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                                 </svg>
-                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-fg">
+                                <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-theme">
                                     {completeness}%
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-sm font-bold text-fg mb-0.5 flex items-center gap-1.5">
+                                <h3 className="text-sm font-bold text-theme mb-0.5 flex items-center gap-1.5">
                                     {completeness === 100 ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Award className="w-4 h-4 text-gold" />}
                                     اكتمال الملف الشخصي
                                 </h3>
-                                <p className="text-xs text-fg/40 leading-snug">
+                                <p className="text-xs text-theme-subtle leading-snug">
                                     {completeness === 100 ? "كل شيء جاهز للبدء!" : "أكمل ملفك الشخصي لتحصل على تجربة أفضل"}
                                 </p>
                             </div>
@@ -191,10 +191,10 @@ export function AccountDashboardClient({
                                                 <Star className="w-7 h-7 text-gold" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-fg text-base mb-1">
+                                                <h3 className="font-bold text-theme text-base mb-1">
                                                     انضم كفنان وشّاي
                                                 </h3>
-                                                <p className="text-fg/40 text-sm leading-relaxed">
+                                                <p className="text-theme-subtle text-sm leading-relaxed">
                                                     اعرض أعمالك، بِع تصاميمك، وانضم لمجتمع الفنانين
                                                 </p>
                                             </div>
@@ -208,7 +208,7 @@ export function AccountDashboardClient({
 
                     {/* ─── Application Status (if pending/reviewing) ─── */}
                     {isSubscriber && applicationStatus && applicationStatus !== "accepted" && (
-                        <motion.div variants={itemVariants} className="mb-8 rounded-2xl border border-white/[0.06] bg-surface/30 p-6">
+                        <motion.div variants={itemVariants} className="mb-8 rounded-2xl border border-theme-subtle bg-surface/30 p-6">
                             <div className="flex items-center gap-4">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${applicationStatus === "pending" || applicationStatus === "reviewing"
                                     ? "bg-amber-500/10 border border-amber-500/20"
@@ -220,12 +220,12 @@ export function AccountDashboardClient({
                                         }`} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-fg text-sm">
+                                    <h3 className="font-bold text-theme text-sm">
                                         {applicationStatus === "pending" && "طلب الانضمام قيد المراجعة"}
                                         {applicationStatus === "reviewing" && "طلبك قيد المراجعة من الفريق"}
                                         {applicationStatus === "rejected" && "لم يتم قبول طلبك هذه المرة"}
                                     </h3>
-                                    <p className="text-fg/30 text-xs mt-1">
+                                    <p className="text-theme-faint text-xs mt-1">
                                         {applicationStatus === "rejected"
                                             ? "يمكنك إعادة التقديم لاحقاً بعد تطوير معرض أعمالك"
                                             : "سنخبرك فور اتخاذ القرار — شكراً لصبرك"
@@ -242,23 +242,23 @@ export function AccountDashboardClient({
                             <motion.div key={link.href} variants={itemVariants}>
                                 <Link
                                     href={link.href}
-                                    className="group block p-5 rounded-2xl border border-white/[0.06] hover:border-gold/20 transition-all duration-500 bg-surface/30 hover:bg-surface/50 relative overflow-hidden h-full"
+                                    className="group block p-5 rounded-2xl border border-theme-subtle hover:border-gold/20 transition-all duration-500 bg-surface/30 hover:bg-surface/50 relative overflow-hidden h-full"
                                 >
                                     <div className={`absolute inset-0 bg-gradient-to-br ${link.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
                                     <div className="relative flex items-center justify-between">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center group-hover:bg-white/[0.08] transition-colors">
-                                                <link.icon className="w-5 h-5 text-fg/40 group-hover:text-gold transition-colors" />
+                                            <div className="w-12 h-12 rounded-xl bg-theme-subtle flex items-center justify-center group-hover:bg-theme-soft transition-colors">
+                                                <link.icon className="w-5 h-5 text-theme-subtle group-hover:text-gold transition-colors" />
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-fg text-sm flex items-center gap-2">
+                                                <h3 className="font-bold text-theme text-sm flex items-center gap-2">
                                                     {link.title}
                                                     {link.badge !== undefined && link.badge > 0 && (
                                                         <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full">{link.badge}</span>
                                                     )}
                                                 </h3>
-                                                <p className="text-xs text-fg/30 mt-0.5">{link.description}</p>
+                                                <p className="text-xs text-theme-faint mt-0.5">{link.description}</p>
                                             </div>
                                         </div>
                                         <ArrowLeft className="w-4 h-4 text-fg/10 group-hover:text-gold/40 transition-colors" />

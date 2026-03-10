@@ -19,23 +19,23 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
             case "open": return { label: "جديدة", icon: MessageSquare, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" };
             case "in_progress": return { label: "قيد المعالجة", icon: Clock, color: "text-gold", bg: "bg-gold/10 border-gold/20" };
             case "resolved": return { label: "تم الحل", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" };
-            case "closed": return { label: "مغلقة", icon: X, color: "text-white/40", bg: "bg-white/5 border-white/10" };
-            default: return { label: status, icon: MessageSquare, color: "text-white/60", bg: "bg-white/5 border-white/10" };
+            case "closed": return { label: "مغلقة", icon: X, color: "text-theme-subtle", bg: "bg-theme-subtle border-theme-soft" };
+            default: return { label: status, icon: MessageSquare, color: "text-theme-soft", bg: "bg-theme-subtle border-theme-soft" };
         }
     };
 
     const getPriorityInfo = (prio: string) => {
         switch (prio) {
             case "high": return { label: "عالية", color: "text-red-400" };
-            case "normal": return { label: "عادية", color: "text-white/60" };
-            case "low": return { label: "منخفضة", color: "text-white/40" };
-            default: return { label: prio, color: "text-white/60" };
+            case "normal": return { label: "عادية", color: "text-theme-soft" };
+            case "low": return { label: "منخفضة", color: "text-theme-subtle" };
+            default: return { label: prio, color: "text-theme-soft" };
         }
     };
 
     return (
         <div className="space-y-6">
-            <div className="flex gap-2 bg-white/[0.02] border border-white/[0.05] p-2 rounded-2xl overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 bg-theme-faint border border-theme-subtle p-2 rounded-2xl overflow-x-auto scrollbar-hide">
                 {[
                     { id: "all", label: "الكل" },
                     { id: "open", label: "الجديدة" },
@@ -47,8 +47,8 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
                         key={f.id}
                         onClick={() => setFilter(f.id)}
                         className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${filter === f.id
-                                ? "bg-white/10 text-white"
-                                : "text-white/50 hover:text-white hover:bg-white/5"
+                                ? "bg-white/10 text-theme"
+                                : "text-theme-subtle hover:text-theme hover:bg-theme-subtle"
                             }`}
                     >
                         {f.label}
@@ -57,10 +57,10 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
             </div>
 
             {filteredTickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white/[0.01] border border-white/[0.05] rounded-3xl text-center">
-                    <MessageSquare className="w-12 h-12 text-white/20 mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-2">لا يوجد تذاكر!</h3>
-                    <p className="text-white/50">لا توجد تذاكر تطابق الفلتر الحالي.</p>
+                <div className="flex flex-col items-center justify-center py-20 bg-theme-faint border border-theme-subtle rounded-3xl text-center">
+                    <MessageSquare className="w-12 h-12 text-theme-faint mb-4" />
+                    <h3 className="text-xl font-bold text-theme mb-2">لا يوجد تذاكر!</h3>
+                    <p className="text-theme-subtle">لا توجد تذاكر تطابق الفلتر الحالي.</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -76,7 +76,7 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.03 }}
-                                    className="bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] hover:border-gold/30 rounded-2xl p-5 sm:p-6 transition-all duration-300 group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                    className="bg-theme-faint hover:bg-theme-subtle border border-theme-subtle hover:border-gold/30 rounded-2xl p-5 sm:p-6 transition-all duration-300 group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                                 >
                                     <div className="flex items-center gap-4 flex-1 min-w-0">
                                         <Image
@@ -94,10 +94,10 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
                                                 </div>
                                                 <span className={`text-[10px] font-bold ${prio.color}`}>{prio.label}</span>
                                             </div>
-                                            <h4 className="text-base sm:text-lg font-bold text-white group-hover:text-gold transition-colors truncate">
+                                            <h4 className="text-base sm:text-lg font-bold text-theme group-hover:text-gold transition-colors truncate">
                                                 {ticket.subject}
                                             </h4>
-                                            <p className="text-sm text-white/50 truncate flex items-center gap-2 mt-0.5">
+                                            <p className="text-sm text-theme-subtle truncate flex items-center gap-2 mt-0.5">
                                                 <span>{userName}</span>
                                                 <span>•</span>
                                                 <span>{formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true, locale: ar })}</span>
@@ -105,7 +105,7 @@ export function AdminSupportDashboardClient({ initialTickets }: { initialTickets
                                         </div>
                                     </div>
 
-                                    <div className="shrink-0 flex items-center text-white/40 group-hover:text-white/80 transition-colors">
+                                    <div className="shrink-0 flex items-center text-theme-subtle group-hover:text-theme-strong transition-colors">
                                         <span className="text-sm">عرض التذكرة</span>
                                     </div>
                                 </motion.div>

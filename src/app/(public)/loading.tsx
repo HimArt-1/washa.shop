@@ -13,7 +13,7 @@ export default function PublicLoading() {
                 </div>
 
                 {/* Text */}
-                <p className="text-fg/30 text-sm animate-pulse">
+                <p className="text-theme-faint text-sm animate-pulse">
                     جاري التحميل...
                 </p>
             </div>

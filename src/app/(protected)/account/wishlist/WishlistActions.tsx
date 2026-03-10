@@ -15,7 +15,7 @@ export function WishlistActions({ productId }: { productId: string }) {
     return (
         <button
             onClick={handleRemove}
-            className="mt-2 w-full flex items-center justify-center gap-2 py-2 text-xs text-fg/40 hover:text-red-400 hover:bg-red-500/5 rounded-xl transition-colors"
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2 text-xs text-theme-subtle hover:text-red-400 hover:bg-red-500/5 rounded-xl transition-colors"
         >
             <Trash2 className="w-3.5 h-3.5" />
             إزالة من المحفوظات

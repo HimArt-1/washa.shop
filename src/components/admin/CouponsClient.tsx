@@ -86,8 +86,8 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-black text-white/90">كوبونات الخصم</h1>
-                    <p className="text-white/50 text-sm mt-1">أدِر حملاتك التسويقية وأكواد الخصم بسهولة</p>
+                    <h1 className="text-3xl font-black text-theme-strong">كوبونات الخصم</h1>
+                    <p className="text-theme-subtle text-sm mt-1">أدِر حملاتك التسويقية وأكواد الخصم بسهولة</p>
                 </div>
                 <button
                     onClick={() => setIsCreating(true)}
@@ -111,9 +111,9 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                             initial={{ scale: 0.95, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
-                            className="bg-zinc-900 border border-white/10 p-6 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+                            className="bg-zinc-900 border border-theme-soft p-6 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto"
                         >
-                            <h2 className="text-xl font-bold text-white mb-6">إنشاء كود خصم جديد</h2>
+                            <h2 className="text-xl font-bold text-theme mb-6">إنشاء كود خصم جديد</h2>
 
                             {error && (
                                 <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm mb-6">
@@ -123,31 +123,31 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
 
                             <form onSubmit={handleCreate} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-white/70 mb-1">كود الخصم (مثال: WASHA20)</label>
+                                    <label className="block text-sm font-medium text-theme-soft mb-1">كود الخصم (مثال: WASHA20)</label>
                                     <input
                                         type="text"
                                         required
                                         value={code}
                                         onChange={(e) => setCode(e.target.value.toUpperCase())}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white uppercase focus:ring-2 focus:ring-wusha-gold outline-none"
+                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme uppercase focus:ring-2 focus:ring-wusha-gold outline-none"
                                         placeholder="CODE2024"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-white/70 mb-1">نوع الخصم</label>
+                                        <label className="block text-sm font-medium text-theme-soft mb-1">نوع الخصم</label>
                                         <select
                                             value={type}
                                             onChange={(e) => setType(e.target.value as any)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-wusha-gold outline-none"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme focus:ring-2 focus:ring-wusha-gold outline-none"
                                         >
                                             <option value="percentage">نسبة مئوية (%)</option>
                                             <option value="fixed">مبلغ ثابت (SAR)</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-white/70 mb-1">
+                                        <label className="block text-sm font-medium text-theme-soft mb-1">
                                             {type === 'percentage' ? 'النسبة (%)' : 'المبلغ (SAR)'}
                                         </label>
                                         <input
@@ -157,7 +157,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                             step={type === 'percentage' ? "1" : "0.01"}
                                             value={value}
                                             onChange={(e) => setValue(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-wusha-gold outline-none"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme focus:ring-2 focus:ring-wusha-gold outline-none"
                                             placeholder="20"
                                         />
                                     </div>
@@ -165,34 +165,34 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-white/70 mb-1">الحد الأقصى للاستخدام</label>
+                                        <label className="block text-sm font-medium text-theme-soft mb-1">الحد الأقصى للاستخدام</label>
                                         <input
                                             type="number"
                                             min="0"
                                             value={maxUses}
                                             onChange={(e) => setMaxUses(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-wusha-gold outline-none"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme focus:ring-2 focus:ring-wusha-gold outline-none"
                                             placeholder="أتركه فارغاً للامحدود"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-white/70 mb-1">تاريخ الانتهاء</label>
+                                        <label className="block text-sm font-medium text-theme-soft mb-1">تاريخ الانتهاء</label>
                                         <input
                                             type="datetime-local"
                                             value={validUntil}
                                             onChange={(e) => setValidUntil(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-wusha-gold outline-none"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme focus:ring-2 focus:ring-wusha-gold outline-none"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-white/70 mb-1">تفاصيل وملاحظات (اختياري)</label>
+                                    <label className="block text-sm font-medium text-theme-soft mb-1">تفاصيل وملاحظات (اختياري)</label>
                                     <input
                                         type="text"
                                         value={details}
                                         onChange={(e) => setDetails(e.target.value)}
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-wusha-gold outline-none"
+                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-2.5 text-theme focus:ring-2 focus:ring-wusha-gold outline-none"
                                         placeholder="مثال: خصم بمناسبة اليوم الوطني"
                                     />
                                 </div>
@@ -201,7 +201,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                     <button
                                         type="button"
                                         onClick={() => setIsCreating(false)}
-                                        className="flex-1 py-2.5 rounded-xl font-bold text-white/70 hover:bg-white/5 transition-colors"
+                                        className="flex-1 py-2.5 rounded-xl font-bold text-theme-soft hover:bg-theme-subtle transition-colors"
                                     >
                                         إلغاء
                                     </button>
@@ -232,26 +232,26 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             className={`relative p-6 rounded-2xl border backdrop-blur-md transition-all ${isValid
-                                ? "bg-zinc-900/50 border-white/10 hover:border-wusha-gold/50"
+                                ? "bg-zinc-900/50 border-theme-soft hover:border-wusha-gold/50"
                                 : "bg-red-900/10 border-red-500/20 opacity-75"
                                 }`}
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-3 rounded-xl ${isValid ? "bg-wusha-gold/10 text-wusha-gold" : "bg-white/5 text-white/50"}`}>
+                                    <div className={`p-3 rounded-xl ${isValid ? "bg-wusha-gold/10 text-wusha-gold" : "bg-theme-subtle text-theme-subtle"}`}>
                                         {coupon.discount_type === 'percentage' ? <Percent className="w-6 h-6" /> : <Tag className="w-6 h-6" />}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-2xl font-black text-white">{coupon.code}</h3>
+                                            <h3 className="text-2xl font-black text-theme">{coupon.code}</h3>
                                             <button
                                                 onClick={() => copyToClipboard(coupon.code)}
-                                                className="text-white/40 hover:text-wusha-gold transition-colors"
+                                                className="text-theme-subtle hover:text-wusha-gold transition-colors"
                                             >
                                                 {copiedCode === coupon.code ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                             </button>
                                         </div>
-                                        <p className="text-white/60 font-medium tracking-wide">
+                                        <p className="text-theme-soft font-medium tracking-wide">
                                             {coupon.discount_type === 'percentage'
                                                 ? `خصم ${coupon.discount_value}%`
                                                 : `خصم ${coupon.discount_value} ر.س`}
@@ -262,21 +262,21 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
 
                             <div className="space-y-2 mb-6">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-white/50">الاستخدام</span>
-                                    <span className="text-white font-mono">
+                                    <span className="text-theme-subtle">الاستخدام</span>
+                                    <span className="text-theme font-mono">
                                         {coupon.current_uses} / {coupon.max_uses === 0 ? "∞" : coupon.max_uses}
                                     </span>
                                 </div>
                                 {coupon.valid_until && (
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-white/50">صالح حتى</span>
-                                        <span className={`font-mono ${isExpired ? "text-red-400" : "text-white"}`}>
+                                        <span className="text-theme-subtle">صالح حتى</span>
+                                        <span className={`font-mono ${isExpired ? "text-red-400" : "text-theme"}`}>
                                             {new Date(coupon.valid_until).toLocaleDateString('ar-SA')}
                                         </span>
                                     </div>
                                 )}
                                 {coupon.details && (
-                                    <p className="text-white/40 text-xs mt-2 line-clamp-2">{coupon.details}</p>
+                                    <p className="text-theme-subtle text-xs mt-2 line-clamp-2">{coupon.details}</p>
                                 )}
                             </div>
 
@@ -284,7 +284,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                 <button
                                     onClick={() => handleToggle(coupon.id, coupon.is_active)}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${coupon.is_active
-                                        ? "bg-white/5 text-white/70 hover:bg-white/10"
+                                        ? "bg-theme-subtle text-theme-soft hover:bg-white/10"
                                         : "bg-wusha-gold/10 text-wusha-gold hover:bg-wusha-gold/20"
                                         }`}
                                 >
@@ -293,7 +293,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                 </button>
                                 <button
                                     onClick={() => handleDelete(coupon.id)}
-                                    className="p-2 bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                                    className="p-2 bg-theme-subtle text-theme-subtle hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                                 >
                                     <Trash2 className="w-4 h-4" />
                                 </button>
@@ -304,10 +304,10 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
             </div>
 
             {coupons.length === 0 && (
-                <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl">
-                    <Tag className="w-12 h-12 text-white/20 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-white mb-2">لا يوجد كوبونات</h3>
-                    <p className="text-white/50">لم تقم بإنشاء أي أكواد خصم بعد.</p>
+                <div className="text-center py-20 border border-dashed border-theme-soft rounded-3xl">
+                    <Tag className="w-12 h-12 text-theme-faint mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-theme mb-2">لا يوجد كوبونات</h3>
+                    <p className="text-theme-subtle">لم تقم بإنشاء أي أكواد خصم بعد.</p>
                 </div>
             )}
         </div>

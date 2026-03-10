@@ -27,11 +27,11 @@ const sortOptions = [
 // ─── Skeleton ───────────────────────────────────────────────
 function CardSkeleton() {
     return (
-        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden animate-pulse">
-            <div className="aspect-square bg-white/[0.04]" />
+        <div className="rounded-2xl bg-theme-subtle border border-theme-subtle overflow-hidden animate-pulse">
+            <div className="aspect-square bg-theme-subtle" />
             <div className="p-4 space-y-3">
-                <div className="h-4 bg-white/[0.06] rounded-full w-3/4" />
-                <div className="h-3 bg-white/[0.04] rounded-full w-1/2" />
+                <div className="h-4 bg-theme-soft rounded-full w-3/4" />
+                <div className="h-3 bg-theme-subtle rounded-full w-1/2" />
             </div>
         </div>
     );
@@ -45,7 +45,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group rounded-2xl bg-surface/50 border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all duration-500"
+            className="group rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
         >
             <Link href={`/artworks/${artwork.id}`} className="block">
                 <div className="aspect-square relative overflow-hidden">
@@ -58,7 +58,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     {artwork.category && (
-                        <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-white/80 px-2 py-1 rounded-full">
+                        <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-theme-strong px-2 py-1 rounded-full">
                             {artwork.category.name_ar}
                         </span>
                     )}
@@ -66,7 +66,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
             </Link>
             <div className="p-4">
                 <Link href={`/artworks/${artwork.id}`}>
-                    <h3 className="font-bold text-fg text-sm truncate group-hover:text-gold transition-colors">
+                    <h3 className="font-bold text-theme text-sm truncate group-hover:text-gold transition-colors">
                         {artwork.title}
                     </h3>
                 </Link>
@@ -77,7 +77,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
                         ) : (
                             <div className="w-5 h-5 rounded-full bg-gold/20" />
                         )}
-                        <span className="text-xs text-fg/40">{artwork.artist?.display_name}</span>
+                        <span className="text-xs text-theme-subtle">{artwork.artist?.display_name}</span>
                         {artwork.artist?.is_verified && <span className="text-gold text-[10px]">✦</span>}
                     </Link>
                     {artwork.price && (
@@ -112,7 +112,7 @@ function ProductCard({ product }: { product: any }) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group rounded-2xl bg-surface/50 border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all duration-500"
+            className="group rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
         >
             <Link href={`/products/${product.id}`} className="block">
                 <div className="aspect-square relative overflow-hidden">
@@ -123,19 +123,19 @@ function ProductCard({ product }: { product: any }) {
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     />
-                    <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-white/80 px-2 py-1 rounded-full">
+                    <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-theme-strong px-2 py-1 rounded-full">
                         {product.type}
                     </span>
                 </div>
             </Link>
             <div className="p-4">
                 <Link href={`/products/${product.id}`}>
-                    <h3 className="font-bold text-fg text-sm truncate group-hover:text-gold transition-colors">
+                    <h3 className="font-bold text-theme text-sm truncate group-hover:text-gold transition-colors">
                         {product.title}
                     </h3>
                 </Link>
                 <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-fg/40">{product.artist?.display_name}</span>
+                    <span className="text-xs text-theme-subtle">{product.artist?.display_name}</span>
                     <span className="text-sm font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                 </div>
                 <button
@@ -165,7 +165,7 @@ function ArtistCard({ artist }: { artist: any }) {
         >
             <Link
                 href={`/artists/${artist.username}`}
-                className="group block rounded-2xl bg-surface/50 border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all duration-500"
+                className="group block rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
             >
                 {/* Cover */}
                 <div className="h-24 relative bg-gradient-to-br from-gold/20 via-purple-500/10 to-emerald-500/10">
@@ -184,15 +184,15 @@ function ArtistCard({ artist }: { artist: any }) {
                             </div>
                         )}
                     </div>
-                    <h3 className="font-bold text-fg text-sm flex items-center gap-1.5">
+                    <h3 className="font-bold text-theme text-sm flex items-center gap-1.5">
                         {artist.display_name}
                         {artist.is_verified && <span className="text-gold text-xs">✦</span>}
                     </h3>
-                    <p className="text-xs text-fg/30 mt-0.5">@{artist.username}</p>
+                    <p className="text-xs text-theme-faint mt-0.5">@{artist.username}</p>
                     {artist.bio && (
-                        <p className="text-xs text-fg/40 mt-2 line-clamp-2">{artist.bio}</p>
+                        <p className="text-xs text-theme-subtle mt-2 line-clamp-2">{artist.bio}</p>
                     )}
-                    <div className="flex items-center gap-4 mt-3 text-[10px] text-fg/20">
+                    <div className="flex items-center gap-4 mt-3 text-[10px] text-theme-faint">
                         <span>{artist.total_artworks || 0} عمل</span>
                         <span>{artist.total_sales || 0} مبيعات</span>
                     </div>
@@ -264,7 +264,7 @@ export default function SearchContent() {
                     <motion.h1
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl md:text-5xl font-bold text-fg text-center mb-2"
+                        className="text-4xl md:text-5xl font-bold text-theme text-center mb-2"
                     >
                         اكتشف الفن
                     </motion.h1>
@@ -272,7 +272,7 @@ export default function SearchContent() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.1 }}
-                        className="text-fg/30 text-center mb-8"
+                        className="text-theme-faint text-center mb-8"
                     >
                         ابحث في الأعمال الفنية، المنتجات، والفنانين
                     </motion.p>
@@ -284,7 +284,7 @@ export default function SearchContent() {
                         transition={{ delay: 0.2 }}
                         className="relative"
                     >
-                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-fg/20" />
+                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-faint" />
                         <input
                             type="text"
                             value={query}
@@ -293,13 +293,13 @@ export default function SearchContent() {
                                 setPage(1);
                             }}
                             placeholder="ابحث... مثلاً: خط عربي، تيشيرت، فنان"
-                            className="w-full h-14 bg-surface/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl pr-14 pl-14 text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/40 focus:ring-2 focus:ring-gold/10 transition-all text-sm"
+                            className="w-full h-14 bg-surface/80 backdrop-blur-xl border border-theme-soft rounded-2xl pr-14 pl-14 text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/40 focus:ring-2 focus:ring-gold/10 transition-all text-sm"
                             autoFocus
                         />
                         {query && (
                             <button
                                 onClick={() => setQuery("")}
-                                className="absolute left-5 top-1/2 -translate-y-1/2 text-fg/20 hover:text-fg/50 transition-colors"
+                                className="absolute left-5 top-1/2 -translate-y-1/2 text-theme-faint hover:text-theme-subtle transition-colors"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -321,13 +321,13 @@ export default function SearchContent() {
                                 onClick={() => { setActiveTab(tab.id); setPage(1); }}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab.id
                                     ? "bg-gold/10 text-gold border border-gold/30"
-                                    : "text-fg/30 hover:text-fg/60 hover:bg-white/[0.03] border border-transparent"
+                                    : "text-theme-faint hover:text-theme-soft hover:bg-theme-subtle border border-transparent"
                                     }`}
                             >
                                 <tab.icon className="w-4 h-4" />
                                 {tab.label}
                                 {results && (
-                                    <span className="text-[10px] bg-white/[0.06] px-1.5 py-0.5 rounded-full">
+                                    <span className="text-[10px] bg-theme-soft px-1.5 py-0.5 rounded-full">
                                         {results[tab.id].count}
                                     </span>
                                 )}
@@ -337,7 +337,7 @@ export default function SearchContent() {
 
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all ${showFilters ? "bg-gold/10 text-gold" : "text-fg/30 hover:bg-white/[0.03]"
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all ${showFilters ? "bg-gold/10 text-gold" : "text-theme-faint hover:bg-theme-subtle"
                             }`}
                     >
                         <SlidersHorizontal className="w-4 h-4" />
@@ -354,14 +354,14 @@ export default function SearchContent() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden mb-8"
                         >
-                            <div className="p-6 bg-surface/50 backdrop-blur-sm border border-white/[0.06] rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="p-6 bg-surface/50 backdrop-blur-sm border border-theme-subtle rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 {/* Sort */}
                                 <div>
-                                    <label className="text-xs text-fg/30 mb-2 block">الترتيب</label>
+                                    <label className="text-xs text-theme-faint mb-2 block">الترتيب</label>
                                     <select
                                         value={filters.sortBy}
                                         onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-fg focus:outline-none focus:border-gold/40"
+                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
                                     >
                                         {sortOptions.map((opt) => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -372,11 +372,11 @@ export default function SearchContent() {
                                 {/* Category (artworks only) */}
                                 {activeTab === "artworks" && (
                                     <div>
-                                        <label className="text-xs text-fg/30 mb-2 block">التصنيف</label>
+                                        <label className="text-xs text-theme-faint mb-2 block">التصنيف</label>
                                         <select
                                             value={filters.category}
                                             onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-fg focus:outline-none focus:border-gold/40"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
                                         >
                                             <option value="all">الكل</option>
                                             {categories.map((cat) => (
@@ -389,11 +389,11 @@ export default function SearchContent() {
                                 {/* Product Type (products only) */}
                                 {activeTab === "products" && (
                                     <div>
-                                        <label className="text-xs text-fg/30 mb-2 block">نوع المنتج</label>
+                                        <label className="text-xs text-theme-faint mb-2 block">نوع المنتج</label>
                                         <select
                                             value={filters.productType}
                                             onChange={(e) => setFilters({ ...filters, productType: e.target.value })}
-                                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-fg focus:outline-none focus:border-gold/40"
+                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
                                         >
                                             <option value="all">الكل</option>
                                             <option value="t-shirt">تيشيرت</option>
@@ -407,25 +407,25 @@ export default function SearchContent() {
 
                                 {/* Min Price */}
                                 <div>
-                                    <label className="text-xs text-fg/30 mb-2 block">أقل سعر</label>
+                                    <label className="text-xs text-theme-faint mb-2 block">أقل سعر</label>
                                     <input
                                         type="number"
                                         value={filters.minPrice || ""}
                                         onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })}
                                         placeholder="0"
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-fg focus:outline-none focus:border-gold/40"
+                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
                                     />
                                 </div>
 
                                 {/* Max Price */}
                                 <div>
-                                    <label className="text-xs text-fg/30 mb-2 block">أعلى سعر</label>
+                                    <label className="text-xs text-theme-faint mb-2 block">أعلى سعر</label>
                                     <input
                                         type="number"
                                         value={filters.maxPrice || ""}
                                         onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
                                         placeholder="∞"
-                                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2 text-sm text-fg focus:outline-none focus:border-gold/40"
+                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
                                     />
                                 </div>
                             </div>
@@ -461,7 +461,7 @@ export default function SearchContent() {
                                         onClick={() => { setPage(i + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                                         className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${page === i + 1
                                             ? "bg-gold text-bg"
-                                            : "text-fg/30 hover:bg-white/[0.04]"
+                                            : "text-theme-faint hover:bg-theme-subtle"
                                             }`}
                                     >
                                         {i + 1}
@@ -473,10 +473,10 @@ export default function SearchContent() {
                 ) : (
                     <div className="text-center py-24">
                         <Search className="w-16 h-16 text-fg/10 mx-auto mb-6" />
-                        <h3 className="text-xl font-bold text-fg/30 mb-2">
+                        <h3 className="text-xl font-bold text-theme-faint mb-2">
                             {query ? "لا توجد نتائج" : "ابدأ البحث"}
                         </h3>
-                        <p className="text-fg/15 text-sm">
+                        <p className="text-theme-faint text-sm">
                             {query ? `لم نجد نتائج لـ "${query}" في ${tabs.find(t => t.id === activeTab)?.label}` : "اكتب ما تبحث عنه في الأعلى"}
                         </p>
                     </div>

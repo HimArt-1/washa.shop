@@ -71,7 +71,7 @@ export function NotificationBell() {
         <div className="relative" ref={dropdownRef}>
             <motion.button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2.5 rounded-xl text-white/60 hover:text-gold hover:bg-white/5 transition-all duration-300"
+                className="relative p-2.5 rounded-xl text-theme-soft hover:text-gold hover:bg-theme-subtle transition-all duration-300"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 aria-label="الإشعارات"
@@ -83,7 +83,7 @@ export function NotificationBell() {
                         animate={{ scale: 1 }}
                         className="absolute top-2 right-2 flex items-center justify-center min-w-[16px] h-[16px] px-1 bg-red-500 rounded-full border border-[#080808]"
                     >
-                        <span className="text-[9px] font-bold text-white leading-none">
+                        <span className="text-[9px] font-bold text-theme leading-none">
                             {unreadCount > 9 ? "9+" : unreadCount}
                         </span>
                     </motion.div>
@@ -97,11 +97,11 @@ export function NotificationBell() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute right-0 sm:-right-4 mt-2 w-80 sm:w-96 bg-[#0c0c0c] border border-white/10 rounded-2xl shadow-2xl z-[120] overflow-hidden"
+                        className="absolute right-0 sm:-right-4 mt-2 w-80 sm:w-96 bg-[#0c0c0c] border border-theme-soft rounded-2xl shadow-2xl z-[120] overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-white/[0.05] bg-white/[0.02]">
-                            <h3 className="font-bold text-white">الإشعارات</h3>
+                        <div className="flex items-center justify-between p-4 border-b border-theme-subtle bg-theme-faint">
+                            <h3 className="font-bold text-theme">الإشعارات</h3>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={handleMarkAllRead}
@@ -116,16 +116,16 @@ export function NotificationBell() {
                         {/* List */}
                         <div className="max-h-[400px] overflow-y-auto no-scrollbar">
                             {isLoading ? (
-                                <div className="p-8 text-center text-white/40 text-sm">
+                                <div className="p-8 text-center text-theme-subtle text-sm">
                                     جاري التحميل...
                                 </div>
                             ) : notifications.length === 0 ? (
                                 <div className="p-12 flex flex-col items-center justify-center text-center">
-                                    <div className="w-16 h-16 rounded-full bg-white/[0.03] flex items-center justify-center mb-4 border border-white/[0.05]">
-                                        <Bell className="w-6 h-6 text-white/20" />
+                                    <div className="w-16 h-16 rounded-full bg-theme-subtle flex items-center justify-center mb-4 border border-theme-subtle">
+                                        <Bell className="w-6 h-6 text-theme-faint" />
                                     </div>
-                                    <p className="text-white/60 font-medium text-sm">لا توجد إشعارات حالياً</p>
-                                    <p className="text-white/30 text-xs mt-1">سنخبرك بكل جديد هنا</p>
+                                    <p className="text-theme-soft font-medium text-sm">لا توجد إشعارات حالياً</p>
+                                    <p className="text-theme-faint text-xs mt-1">سنخبرك بكل جديد هنا</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col">
@@ -135,33 +135,33 @@ export function NotificationBell() {
                                             onClick={() => handleNotificationClick(n)}
                                             className={`
                                                 relative p-4 flex gap-4 cursor-pointer transition-colors border-b border-white/[0.02] last:border-0
-                                                ${!n.is_read ? "bg-gold/[0.04] hover:bg-gold/[0.08]" : "hover:bg-white/[0.02]"}
+                                                ${!n.is_read ? "bg-gold/[0.04] hover:bg-gold/[0.08]" : "hover:bg-theme-faint"}
                                             `}
                                         >
                                             {!n.is_read && (
                                                 <div className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-gold" />
                                             )}
 
-                                            <div className="w-10 h-10 rounded-full bg-white/[0.05] border border-white/[0.08] flex items-center justify-center shrink-0">
+                                            <div className="w-10 h-10 rounded-full bg-white/[0.05] border border-theme-soft flex items-center justify-center shrink-0">
                                                 {n.type === "order_update" ? (
-                                                    <Check className={`w-4 h-4 ${!n.is_read ? "text-gold" : "text-white/50"}`} />
+                                                    <Check className={`w-4 h-4 ${!n.is_read ? "text-gold" : "text-theme-subtle"}`} />
                                                 ) : n.type === "support_reply" ? (
-                                                    <User className={`w-4 h-4 ${!n.is_read ? "text-blue-400" : "text-white/50"}`} />
+                                                    <User className={`w-4 h-4 ${!n.is_read ? "text-blue-400" : "text-theme-subtle"}`} />
                                                 ) : (
-                                                    <Bell className={`w-4 h-4 ${!n.is_read ? "text-white/80" : "text-white/50"}`} />
+                                                    <Bell className={`w-4 h-4 ${!n.is_read ? "text-theme-strong" : "text-theme-subtle"}`} />
                                                 )}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-2 mb-1">
-                                                    <h4 className={`text-sm font-bold truncate ${!n.is_read ? "text-white" : "text-white/70"}`}>
+                                                    <h4 className={`text-sm font-bold truncate ${!n.is_read ? "text-theme" : "text-theme-soft"}`}>
                                                         {n.title}
                                                     </h4>
-                                                    <span className="text-[10px] text-white/40 shrink-0 mt-0.5">
+                                                    <span className="text-[10px] text-theme-subtle shrink-0 mt-0.5">
                                                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ar })}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-white/50 leading-relaxed line-clamp-2">
+                                                <p className="text-xs text-theme-subtle leading-relaxed line-clamp-2">
                                                     {n.message}
                                                 </p>
                                             </div>
@@ -172,8 +172,8 @@ export function NotificationBell() {
                         </div>
 
                         {/* Footer Link */}
-                        <div className="p-3 border-t border-white/[0.05] bg-white/[0.01]">
-                            <Link href="/account/settings" onClick={() => setIsOpen(false)} className="text-xs text-white/50 hover:text-white flex items-center justify-center gap-1.5 transition-colors py-1">
+                        <div className="p-3 border-t border-theme-subtle bg-theme-faint">
+                            <Link href="/account/settings" onClick={() => setIsOpen(false)} className="text-xs text-theme-subtle hover:text-theme flex items-center justify-center gap-1.5 transition-colors py-1">
                                 <span>إعدادات الإشعارات</span>
                                 <ExternalLink className="w-3 h-3" />
                             </Link>

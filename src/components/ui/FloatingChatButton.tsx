@@ -31,7 +31,7 @@ export function FloatingChatButton() {
                 <MessageSquareText className="w-6 h-6 text-[#111] drop-shadow-sm relative z-10 transition-transform group-hover:rotate-12 group-hover:scale-110 duration-300" />
 
                 {/* Tooltip */}
-                <div className="absolute bottom-full right-1/2 translate-x-1/2 mb-3 px-3 py-1.5 bg-[#1a1a1a] border border-white/10 rounded-lg text-white text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                <div className="absolute bottom-full right-1/2 translate-x-1/2 mb-3 px-3 py-1.5 bg-[#1a1a1a] border border-theme-soft rounded-lg text-theme text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                     فريق الدعم
                     <div className="absolute top-full right-1/2 translate-x-1/2 -mt-px border-4 border-transparent border-t-[#1a1a1a]" />
                 </div>

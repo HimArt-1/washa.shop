@@ -65,8 +65,8 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                 {/* Status Badge */}
                 <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${artwork.status === 'published'
-                            ? 'bg-green-500/90 text-white'
-                            : 'bg-yellow-500/90 text-white'
+                            ? 'bg-green-500/90 text-theme'
+                            : 'bg-yellow-500/90 text-theme'
                         }`}>
                         {artwork.status === 'published' ? 'منشور' : 'مسودة'}
                     </span>
@@ -76,7 +76,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                 <div className="absolute top-3 left-3">
                     <button
                         onClick={() => setShowMenu(!showMenu)}
-                        className="p-1.5 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-colors"
+                        className="p-1.5 bg-white/20 backdrop-blur-md rounded-full text-theme hover:bg-white/40 transition-colors"
                     >
                         <MoreVertical className="w-4 h-4" />
                     </button>

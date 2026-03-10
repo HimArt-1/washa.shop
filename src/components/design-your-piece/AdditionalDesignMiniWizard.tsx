@@ -121,7 +121,7 @@ export function AdditionalDesignMiniWizard({
         return (
             <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 className="w-10 h-10 animate-spin text-gold mb-4" />
-                <p className="text-fg/50 text-sm">جاري تحميل الخيارات...</p>
+                <p className="text-theme-subtle text-sm">جاري تحميل الخيارات...</p>
             </div>
         );
     }
@@ -139,7 +139,7 @@ export function AdditionalDesignMiniWizard({
             className="space-y-6"
         >
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-fg">إنشاء تصميم إضافي</h3>
+                <h3 className="text-lg font-bold text-theme">إنشاء تصميم إضافي</h3>
                 <div className="flex gap-1">
                     {[1, 2, 3, 4].map((s) => (
                         <div
@@ -159,11 +159,11 @@ export function AdditionalDesignMiniWizard({
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-4"
                     >
-                        <p className="text-sm text-fg/60">
+                        <p className="text-sm text-theme-soft">
                             اختر موقعاً مختلفاً عن التصميم الأساسي ({mainPosition ? POSITIONS.find((p) => p.id === mainPosition)?.label : "—"})
                         </p>
                         <div>
-                            <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2">
+                            <p className="text-sm font-bold text-theme mb-3 flex items-center gap-2">
                                 <MapPin className="w-4 h-4 text-gold" /> موقع التصميم
                             </p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -175,10 +175,10 @@ export function AdditionalDesignMiniWizard({
                                             whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={() => { setPosition(pos.id); setSize(null); }}
-                                            className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"}`}
+                                            className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive ? "border-gold bg-gold/10" : "border-theme-soft hover:border-white/20 bg-theme-faint"}`}
                                         >
                                             <div className="text-2xl mb-1">{pos.emoji}</div>
-                                            <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
+                                            <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme"}`}>{pos.label}</p>
                                             {isActive && <Check className="absolute top-2 left-2 w-4 h-4 text-gold" />}
                                         </motion.button>
                                     );
@@ -187,7 +187,7 @@ export function AdditionalDesignMiniWizard({
                         </div>
                         {position && (
                             <div>
-                                <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2">
+                                <p className="text-sm font-bold text-theme mb-3 flex items-center gap-2">
                                     <Maximize2 className="w-4 h-4 text-gold" /> حجم التصميم
                                 </p>
                                 <div className="grid grid-cols-2 gap-3">
@@ -200,10 +200,10 @@ export function AdditionalDesignMiniWizard({
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                                 onClick={() => setSize(sz)}
-                                                className={`relative p-4 rounded-2xl border-2 transition-all ${isActive ? "border-gold bg-gold/10" : "border-white/[0.08] hover:border-white/20"}`}
+                                                className={`relative p-4 rounded-2xl border-2 transition-all ${isActive ? "border-gold bg-gold/10" : "border-theme-soft hover:border-white/20"}`}
                                             >
-                                                <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{SIZE_LABELS[sz].label}</p>
-                                                <p className="text-xs text-fg/50 mt-1">{price > 0 ? `${price} ر.س` : "مجاني"}</p>
+                                                <p className={`font-bold ${isActive ? "text-gold" : "text-theme"}`}>{SIZE_LABELS[sz].label}</p>
+                                                <p className="text-xs text-theme-subtle mt-1">{price > 0 ? `${price} ر.س` : "مجاني"}</p>
                                                 {isActive && <Check className="absolute top-2 left-2 w-4 h-4 text-gold" />}
                                             </motion.button>
                                         );
@@ -222,8 +222,8 @@ export function AdditionalDesignMiniWizard({
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-4"
                     >
-                        <p className="text-sm text-fg/60">معيّن تلقائياً من التصميم الأساسي — يمكنك التغيير</p>
-                        <p className="text-sm font-bold text-fg flex items-center gap-2">
+                        <p className="text-sm text-theme-soft">معيّن تلقائياً من التصميم الأساسي — يمكنك التغيير</p>
+                        <p className="text-sm font-bold text-theme flex items-center gap-2">
                             <Sparkles className="w-4 h-4 text-gold" /> النمط
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -235,17 +235,17 @@ export function AdditionalDesignMiniWizard({
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => setSelectedStyle(s)}
-                                        className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-white/[0.08] hover:border-white/20"}`}
+                                        className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-theme-soft hover:border-white/20"}`}
                                     >
                                         {s.image_url ? (
                                             <img src={s.image_url} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
                                         ) : (
-                                            <div className="w-full aspect-square rounded-xl bg-white/[0.04] flex items-center justify-center">
-                                                <Sparkles className="w-8 h-8 text-fg/20" />
+                                            <div className="w-full aspect-square rounded-xl bg-theme-subtle flex items-center justify-center">
+                                                <Sparkles className="w-8 h-8 text-theme-faint" />
                                             </div>
                                         )}
                                         <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                                            <p className="text-xs font-bold text-white">{s.name}</p>
+                                            <p className="text-xs font-bold text-theme">{s.name}</p>
                                         </div>
                                         {isSelected && (
                                             <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
@@ -267,8 +267,8 @@ export function AdditionalDesignMiniWizard({
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-4"
                     >
-                        <p className="text-sm text-fg/60">معيّن تلقائياً — يمكنك التغيير</p>
-                        <p className="text-sm font-bold text-fg flex items-center gap-2">
+                        <p className="text-sm text-theme-soft">معيّن تلقائياً — يمكنك التغيير</p>
+                        <p className="text-sm font-bold text-theme flex items-center gap-2">
                             <Paintbrush className="w-4 h-4 text-gold" /> الأسلوب
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -280,17 +280,17 @@ export function AdditionalDesignMiniWizard({
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => setSelectedArtStyle(a)}
-                                        className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-white/[0.08] hover:border-white/20"}`}
+                                        className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-theme-soft hover:border-white/20"}`}
                                     >
                                         {a.image_url ? (
                                             <img src={a.image_url} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
                                         ) : (
-                                            <div className="w-full aspect-square rounded-xl bg-white/[0.04] flex items-center justify-center">
-                                                <Paintbrush className="w-8 h-8 text-fg/20" />
+                                            <div className="w-full aspect-square rounded-xl bg-theme-subtle flex items-center justify-center">
+                                                <Paintbrush className="w-8 h-8 text-theme-faint" />
                                             </div>
                                         )}
                                         <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                                            <p className="text-xs font-bold text-white truncate">{a.name}</p>
+                                            <p className="text-xs font-bold text-theme truncate">{a.name}</p>
                                         </div>
                                         {isSelected && (
                                             <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
@@ -312,8 +312,8 @@ export function AdditionalDesignMiniWizard({
                         exit={{ opacity: 0, x: -20 }}
                         className="space-y-4"
                     >
-                        <p className="text-sm text-fg/60">معيّن تلقائياً — يمكنك التغيير</p>
-                        <p className="text-sm font-bold text-fg flex items-center gap-2">
+                        <p className="text-sm text-theme-soft">معيّن تلقائياً — يمكنك التغيير</p>
+                        <p className="text-sm font-bold text-theme flex items-center gap-2">
                             <SwatchBook className="w-4 h-4 text-gold" /> الألوان
                         </p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -325,12 +325,12 @@ export function AdditionalDesignMiniWizard({
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => { setSelectedPackage(isSelected ? null : pkg); setCustomColors([]); }}
-                                        className={`p-4 rounded-2xl border-2 text-right ${isSelected ? "border-gold bg-gold/5" : "border-white/[0.08] hover:border-white/20"}`}
+                                        className={`p-4 rounded-2xl border-2 text-right ${isSelected ? "border-gold bg-gold/5" : "border-theme-soft hover:border-white/20"}`}
                                     >
-                                        <p className={`font-bold text-sm mb-2 ${isSelected ? "text-gold" : "text-fg"}`}>{pkg.name}</p>
+                                        <p className={`font-bold text-sm mb-2 ${isSelected ? "text-gold" : "text-theme"}`}>{pkg.name}</p>
                                         <div className="flex gap-1 flex-wrap">
                                             {(Array.isArray(pkg.colors) ? pkg.colors : []).map((c: any, i: number) => (
-                                                <div key={i} className="w-6 h-6 rounded-full border border-white/10" style={{ backgroundColor: c.hex }} />
+                                                <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c.hex }} />
                                             ))}
                                         </div>
                                         {isSelected && <Check className="w-4 h-4 text-gold mt-2" />}
@@ -368,10 +368,10 @@ export function AdditionalDesignMiniWizard({
                 )}
             </AnimatePresence>
 
-            <div className="flex justify-between pt-4 border-t border-white/[0.06]">
+            <div className="flex justify-between pt-4 border-t border-theme-subtle">
                 <button
                     onClick={step === 1 ? onBack : () => setStep((s) => s - 1)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] text-fg/60 text-sm hover:bg-white/[0.04]"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-theme-soft text-theme-soft text-sm hover:bg-theme-subtle"
                 >
                     <ArrowRight className="w-4 h-4" /> {step === 1 ? "رجوع" : "السابق"}
                 </button>
@@ -401,8 +401,8 @@ export function AdditionalDesignMiniWizard({
 
             {step === 1 && position && size && (
                 <div className="p-3 rounded-xl bg-gold/10 border border-gold/20">
-                    {basePrice > 0 && <p className="text-xs text-fg/50">القطعة: {basePrice} ر.س</p>}
-                    <p className="text-xs text-fg/50">التصميم الإضافي: {designPrice > 0 ? `${designPrice} ر.س` : "مجاني"}</p>
+                    {basePrice > 0 && <p className="text-xs text-theme-subtle">القطعة: {basePrice} ر.س</p>}
+                    <p className="text-xs text-theme-subtle">التصميم الإضافي: {designPrice > 0 ? `${designPrice} ر.س` : "مجاني"}</p>
                     <p className="text-gold font-bold mt-1">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"} — الإجمالي</p>
                 </div>
             )}

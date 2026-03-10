@@ -30,10 +30,10 @@ export default async function OrdersPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-fg">طلباتي</h1>
-                        <p className="text-fg/30 text-sm mt-1">{totalCount} طلب</p>
+                        <h1 className="text-2xl font-bold text-theme">طلباتي</h1>
+                        <p className="text-theme-faint text-sm mt-1">{totalCount} طلب</p>
                     </div>
-                    <Link href="/account" className="flex items-center gap-2 text-xs text-fg/30 hover:text-gold transition-colors">
+                    <Link href="/account" className="flex items-center gap-2 text-xs text-theme-faint hover:text-gold transition-colors">
                         <ArrowLeft className="w-4 h-4" />
                         حسابي
                     </Link>

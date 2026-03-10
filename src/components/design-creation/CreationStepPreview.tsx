@@ -73,12 +73,12 @@ export function CreationStepPreview({ state, creationPrices, onBack, onOrder, se
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">معاينة التصميم</h2>
-        <p className="text-fg/60 text-sm">تأكد من التصميم واختر المقاس ثم اطلب قطعتك</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">معاينة التصميم</h2>
+        <p className="text-theme-soft text-sm">تأكد من التصميم واختر المقاس ثم اطلب قطعتك</p>
       </div>
 
       <div>
-        <label className="block text-sm font-bold text-fg/80 mb-2">المقاس</label>
+        <label className="block text-sm font-bold text-theme-strong mb-2">المقاس</label>
         <div className="flex flex-wrap gap-2">
           {CREATION_SIZES.map((s) => (
             <button
@@ -88,7 +88,7 @@ export function CreationStepPreview({ state, creationPrices, onBack, onOrder, se
               className={`px-4 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${
                 state.size === s
                   ? "border-gold bg-gold/10 text-gold"
-                  : "border-white/10 hover:border-gold/30 text-fg/80"
+                  : "border-theme-soft hover:border-gold/30 text-theme-strong"
               }`}
             >
               {s}
@@ -98,8 +98,8 @@ export function CreationStepPreview({ state, creationPrices, onBack, onOrder, se
       </div>
 
       {garmentMeta && (
-        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-          <p className="text-sm text-fg/70">
+        <div className="p-4 rounded-2xl bg-theme-subtle border border-theme-soft">
+          <p className="text-sm text-theme-soft">
             {garmentMeta.label} — {price} ر.س
           </p>
         </div>
@@ -118,7 +118,7 @@ export function CreationStepPreview({ state, creationPrices, onBack, onOrder, se
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 rounded-xl border border-white/20 text-fg/80 hover:bg-white/5"
+          className="px-4 py-2 rounded-xl border border-white/20 text-theme-strong hover:bg-theme-subtle"
         >
           <ChevronLeft className="w-4 h-4 inline ml-1" />
           تعديل التصميم

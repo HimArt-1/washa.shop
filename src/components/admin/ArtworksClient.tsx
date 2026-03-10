@@ -124,7 +124,7 @@ export function ArtworksClient({
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-xl bg-forest text-white font-bold text-sm shadow-lg"
+                        className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-xl bg-forest text-theme font-bold text-sm shadow-lg"
                     >
                         {toast}
                     </motion.div>
@@ -133,7 +133,7 @@ export function ArtworksClient({
 
             {/* Header: Tabs + Add Button */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-white/[0.06] overflow-x-auto">
+                <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-theme-subtle overflow-x-auto">
                     {statuses.map((s) => (
                         <button
                             key={s.value}
@@ -141,7 +141,7 @@ export function ArtworksClient({
                             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
                                 currentStatus === s.value
                                     ? "bg-gold/10 text-gold"
-                                    : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
+                                    : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
                             }`}
                         >
                             {s.label}
@@ -165,10 +165,10 @@ export function ArtworksClient({
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.04 }}
-                        className="rounded-2xl glass-premium border border-white/[0.08] overflow-hidden hover:border-gold/20 transition-all duration-500 group"
+                        className="rounded-2xl glass-premium border border-theme-soft overflow-hidden hover:border-gold/20 transition-all duration-500 group"
                     >
                         {/* Image */}
-                        <div className="relative aspect-[4/3] overflow-hidden bg-white/[0.02]">
+                        <div className="relative aspect-[4/3] overflow-hidden bg-theme-faint">
                             {artwork.image_url ? (
                                 <Image
                                     src={artwork.image_url}
@@ -194,10 +194,10 @@ export function ArtworksClient({
                             )}
 
                             <div className="absolute bottom-3 left-3 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="flex items-center gap-1 text-white/80 text-xs">
+                                <span className="flex items-center gap-1 text-theme-strong text-xs">
                                     <Eye className="w-3.5 h-3.5" /> {artwork.views_count ?? 0}
                                 </span>
-                                <span className="flex items-center gap-1 text-white/80 text-xs">
+                                <span className="flex items-center gap-1 text-theme-strong text-xs">
                                     <Heart className="w-3.5 h-3.5" /> {artwork.likes_count ?? 0}
                                 </span>
                             </div>
@@ -205,20 +205,20 @@ export function ArtworksClient({
 
                         {/* Content */}
                         <div className="p-4">
-                            <h3 className="font-bold text-fg text-sm mb-1 truncate">{artwork.title}</h3>
+                            <h3 className="font-bold text-theme text-sm mb-1 truncate">{artwork.title}</h3>
 
                             <div className="flex items-center gap-2 mb-3">
                                 <div className="w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center text-accent text-[10px] font-bold">
                                     {artwork.artist?.display_name?.[0] || "؟"}
                                 </div>
-                                <span className="text-fg/40 text-xs truncate">{artwork.artist?.display_name || "—"}</span>
+                                <span className="text-theme-subtle text-xs truncate">{artwork.artist?.display_name || "—"}</span>
                                 {artwork.artist?.is_verified && (
                                     <Shield className="w-3 h-3 text-gold shrink-0" />
                                 )}
                             </div>
 
                             <div className="flex items-center justify-between text-xs mb-4">
-                                <span className="text-fg/30 truncate">{artwork.category?.name_ar || "بدون تصنيف"}</span>
+                                <span className="text-theme-faint truncate">{artwork.category?.name_ar || "بدون تصنيف"}</span>
                                 {artwork.price != null && artwork.price > 0 && (
                                     <span className="font-bold text-gold shrink-0">{Number(artwork.price).toLocaleString()} ر.س</span>
                                 )}
@@ -230,14 +230,14 @@ export function ArtworksClient({
                                     href={`/artworks/${artwork.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="p-2 rounded-lg bg-white/[0.03] text-fg/40 hover:text-gold hover:bg-gold/10 border border-white/[0.06] transition-all"
+                                    className="p-2 rounded-lg bg-theme-subtle text-theme-subtle hover:text-gold hover:bg-gold/10 border border-theme-subtle transition-all"
                                     title="عرض"
                                 >
                                     <ExternalLink className="w-3.5 h-3.5" />
                                 </Link>
                                 <button
                                     onClick={() => setEditingArtwork(artwork)}
-                                    className="p-2 rounded-lg bg-white/[0.03] text-fg/40 hover:text-gold hover:bg-gold/10 border border-white/[0.06] transition-all"
+                                    className="p-2 rounded-lg bg-theme-subtle text-theme-subtle hover:text-gold hover:bg-gold/10 border border-theme-subtle transition-all"
                                     title="تعديل"
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -270,7 +270,7 @@ export function ArtworksClient({
                                     <button
                                         onClick={() => handleStatusChange(artwork.id, "archived")}
                                         disabled={updatingId === artwork.id}
-                                        className="p-2 bg-white/[0.03] text-fg/30 border border-white/[0.06] rounded-xl hover:bg-white/[0.05] transition-all disabled:opacity-50"
+                                        className="p-2 bg-theme-subtle text-theme-faint border border-theme-subtle rounded-xl hover:bg-white/[0.05] transition-all disabled:opacity-50"
                                         title="أرشفة"
                                     >
                                         <Archive className="w-3.5 h-3.5" />
@@ -296,10 +296,10 @@ export function ArtworksClient({
 
             {/* Empty State */}
             {artworks.length === 0 && (
-                <div className="text-center py-20 rounded-2xl border border-white/[0.06] bg-surface/30">
+                <div className="text-center py-20 rounded-2xl border border-theme-subtle bg-surface/30">
                     <Palette className="w-16 h-16 text-fg/10 mx-auto mb-4" />
-                    <p className="text-fg/20 text-lg font-medium mb-2">لا توجد أعمال فنية</p>
-                    <p className="text-fg/30 text-sm mb-6">أضف عملاً فنياً جديداً للبدء</p>
+                    <p className="text-theme-faint text-lg font-medium mb-2">لا توجد أعمال فنية</p>
+                    <p className="text-theme-faint text-sm mb-6">أضف عملاً فنياً جديداً للبدء</p>
                     <button
                         onClick={() => setShowAddModal(true)}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold text-bg font-bold text-sm hover:bg-gold/90 transition-colors"
@@ -313,22 +313,22 @@ export function ArtworksClient({
             {/* Pagination */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-between">
-                    <p className="text-xs text-fg/30">{count} عمل فني</p>
+                    <p className="text-xs text-theme-faint">{count} عمل فني</p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => navigate({ status: currentStatus, page: String(currentPage - 1) })}
                             disabled={currentPage <= 1}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-                        <span className="text-xs text-fg/40 px-3">
+                        <span className="text-xs text-theme-subtle px-3">
                             {currentPage} / {totalPages}
                         </span>
                         <button
                             onClick={() => navigate({ status: currentStatus, page: String(currentPage + 1) })}
                             disabled={currentPage >= totalPages}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>

@@ -42,7 +42,7 @@ function OrderProgressBar({ status }: { status: string }) {
         <div className="flex items-center gap-1 mt-4">
             {progressSteps.map((step, i) => (
                 <div key={step} className="flex items-center gap-1 flex-1">
-                    <div className={`h-1.5 flex-1 rounded-full transition-colors ${i <= currentIdx ? "bg-gold" : "bg-white/[0.06]"}`} />
+                    <div className={`h-1.5 flex-1 rounded-full transition-colors ${i <= currentIdx ? "bg-gold" : "bg-theme-soft"}`} />
                 </div>
             ))}
         </div>
@@ -70,12 +70,12 @@ export function OrdersClient({
 
     if (hasNoOrders) {
         return (
-            <div className="text-center py-24 rounded-2xl border border-white/[0.04] bg-surface/20">
-                <div className="w-20 h-20 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-5">
-                    <Package className="w-10 h-10 text-fg/20" />
+            <div className="text-center py-24 rounded-2xl border border-theme-faint bg-surface/20">
+                <div className="w-20 h-20 rounded-2xl bg-theme-subtle border border-theme-subtle flex items-center justify-center mx-auto mb-5">
+                    <Package className="w-10 h-10 text-theme-faint" />
                 </div>
-                <h3 className="text-lg font-bold text-fg/40 mb-2">لا توجد طلبات</h3>
-                <p className="text-fg/30 text-sm mb-6 max-w-sm mx-auto">لم تقم بأي طلب بعد. تصفح المتجر واختر ما يعجبك</p>
+                <h3 className="text-lg font-bold text-theme-subtle mb-2">لا توجد طلبات</h3>
+                <p className="text-theme-faint text-sm mb-6 max-w-sm mx-auto">لم تقم بأي طلب بعد. تصفح المتجر واختر ما يعجبك</p>
                 <Link href="/store" className="inline-flex items-center gap-2 btn-gold py-3 px-8 text-sm">
                     تصفح المتجر
                 </Link>
@@ -88,7 +88,7 @@ export function OrdersClient({
             {/* ====== Custom Design Orders Section ====== */}
             {designOrders.length > 0 && (
                 <div className="space-y-4">
-                    <h2 className="text-lg font-bold text-fg/80 mb-4 flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-theme-strong mb-4 flex items-center gap-2">
                         <Brush className="w-5 h-5 text-gold" />
                         طلبات التصميم المخصص
                     </h2>
@@ -98,29 +98,29 @@ export function OrdersClient({
                             const isAwaiting = dOrder.status === "awaiting_review";
 
                             return (
-                                <div key={dOrder.id} className="p-5 border border-white/[0.06] rounded-2xl bg-surface/30 hover:border-gold/20 transition-all flex flex-col justify-between">
+                                <div key={dOrder.id} className="p-5 border border-theme-subtle rounded-2xl bg-surface/30 hover:border-gold/20 transition-all flex flex-col justify-between">
                                     <div>
                                         <div className="flex items-center justify-between mb-4">
-                                            <span className="text-xs text-fg/30">تصميم #{dOrder.order_number}</span>
+                                            <span className="text-xs text-theme-faint">تصميم #{dOrder.order_number}</span>
                                             <span className={`text-[10px] px-2.5 py-1 rounded-full ${conf.bg} ${conf.color} font-bold`}>
                                                 {conf.label}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-4 mb-4">
-                                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/[0.02] border border-white/[0.04] shrink-0 p-1">
+                                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-theme-faint border border-theme-faint shrink-0 p-1">
                                                 {dOrder.garment_image_url ? (
                                                     <Image src={dOrder.garment_image_url} alt="Garment" width={64} height={64} className="object-contain w-full h-full" />
-                                                ) : <Brush className="w-8 h-8 text-fg/20 m-auto mt-3" />}
+                                                ) : <Brush className="w-8 h-8 text-theme-faint m-auto mt-3" />}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-fg">{dOrder.garment_name}</p>
-                                                <p className="text-xs text-fg/40 mt-1">{dOrder.size_name} · {dOrder.color_name}</p>
+                                                <p className="text-sm font-bold text-theme">{dOrder.garment_name}</p>
+                                                <p className="text-xs text-theme-subtle mt-1">{dOrder.size_name} · {dOrder.color_name}</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.04]">
+                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-theme-faint">
                                         {isAwaiting ? (
                                             <>
                                                 <button
@@ -167,17 +167,17 @@ export function OrdersClient({
                                                         };
                                                         openInvoicePrint(invoiceOrder);
                                                     }}
-                                                    className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-gold/10 hover:text-gold transition-colors flex items-center justify-center gap-2 text-center border border-transparent hover:border-gold/20"
+                                                    className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-gold/10 hover:text-gold transition-colors flex items-center justify-center gap-2 text-center border border-transparent hover:border-gold/20"
                                                 >
                                                     <FileText className="w-4 h-4" /> الفاتورة الذكية
                                                 </button>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 text-center">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-theme-soft transition-colors flex items-center justify-center gap-2 text-center">
                                                     تفاصيل الطلب <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                             </>
                                         ) : dOrder.status !== "cancelled" ? (
                                             <>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-white/[0.04] text-fg py-2 rounded-xl text-xs font-bold hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 text-center">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-theme-soft transition-colors flex items-center justify-center gap-2 text-center">
                                                     تتبع الطلب والحوار <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                                 <button
@@ -201,7 +201,7 @@ export function OrdersClient({
             {/* ====== Regular Orders Section ====== */}
             {orders.length > 0 && (
                 <div className="space-y-4">
-                    <h2 className="text-lg font-bold text-fg/80 mb-4 flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-theme-strong mb-4 flex items-center gap-2">
                         <Package className="w-5 h-5 text-gold" />
                         الطلبات الشرائية
                     </h2>
@@ -212,17 +212,17 @@ export function OrdersClient({
                         return (
                             <div
                                 key={order.id}
-                                className="p-5 border border-white/[0.06] rounded-2xl bg-surface/30 hover:border-gold/20 hover:bg-surface/40 transition-all duration-300"
+                                className="p-5 border border-theme-subtle rounded-2xl bg-surface/30 hover:border-gold/20 hover:bg-surface/40 transition-all duration-300"
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-fg/20">#{order.order_number || order.id.slice(0, 8)}</span>
+                                        <span className="text-xs text-theme-faint">#{order.order_number || order.id.slice(0, 8)}</span>
                                         <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${config.bgColor} ${config.color}`}>
                                             <StatusIcon className="w-3 h-3" />
                                             {config.label}
                                         </span>
                                     </div>
-                                    <span className="text-xs text-fg/20">
+                                    <span className="text-xs text-theme-faint">
                                         {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
                                     </span>
                                 </div>
@@ -237,32 +237,32 @@ export function OrdersClient({
                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                             return (
                                                 <div key={item.id} className="flex items-center gap-3">
-                                                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/[0.04] bg-white/[0.02] shrink-0">
+                                                    <div className="w-12 h-12 rounded-xl overflow-hidden border border-theme-faint bg-theme-faint shrink-0">
                                                         {imageUrl && <Image src={imageUrl} alt={title} width={48} height={48} className="object-cover w-full h-full" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-fg truncate">{title}</p>
-                                                        <p className="text-[10px] text-fg/20">
+                                                        <p className="text-sm text-theme truncate">{title}</p>
+                                                        <p className="text-[10px] text-theme-faint">
                                                             {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
                                                         </p>
                                                     </div>
-                                                    <span className="text-xs font-bold text-fg/40">{Number(item.total_price).toLocaleString()} ر.س</span>
+                                                    <span className="text-xs font-bold text-theme-subtle">{Number(item.total_price).toLocaleString()} ر.س</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/[0.04]">
+                                <div className="flex items-center justify-between mt-4 pt-3 border-t border-theme-faint">
                                     <div className="flex items-center gap-4">
                                         <div>
-                                            <span className="text-xs text-fg/40 block mb-0.5">الإجمالي</span>
+                                            <span className="text-xs text-theme-subtle block mb-0.5">الإجمالي</span>
                                             <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
                                         </div>
                                         {/* Invoice Button */}
                                         <button
                                             onClick={() => openInvoicePrint(order)}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-white/10 text-fg/60 hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
+                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-theme-soft text-theme-soft hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
                                             title="عرض الفاتورة"
                                         >
                                             <FileText className="w-4 h-4" />

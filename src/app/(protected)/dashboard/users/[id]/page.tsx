@@ -22,7 +22,7 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
                 subtitle={`@${profile.username || "—"} · ${String(profile.role || "subscriber")}`}
                 actions={
                     <Link href="/dashboard/users"
-                        className="px-4 py-2 text-xs text-fg/40 hover:text-fg/60 border border-white/[0.06] rounded-lg hover:bg-white/[0.04] transition-all">
+                        className="px-4 py-2 text-xs text-theme-subtle hover:text-theme-soft border border-theme-subtle rounded-lg hover:bg-theme-subtle transition-all">
                         ← العودة للمستخدمين
                     </Link>
                 }

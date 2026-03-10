@@ -15,7 +15,7 @@ export default async function SupportTicketPage({ params }: { params: { id: stri
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-white">تذكرة #{details.ticket.id.slice(0, 8)}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-theme">تذكرة #{details.ticket.id.slice(0, 8)}</h1>
             <SupportTicketChat ticket={details.ticket} initialMessages={details.messages} />
         </div>
     );

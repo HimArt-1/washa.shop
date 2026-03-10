@@ -25,7 +25,7 @@ export default function CreatePage() {
         <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-8">
             {/* Input Section */}
             <div className="w-full lg:w-1/3 flex flex-col gap-6">
-                <div className="bg-white p-6 rounded-2xl border border-ink/5 shadow-sm">
+                <div className="bg-theme-surface p-6 rounded-2xl border border-theme-soft shadow-sm">
                     <div className="flex items-center gap-2 mb-4">
                         <Wand2 className="w-5 h-5 text-gold" />
                         <h2 className="text-xl font-bold">وصف العمل الفني</h2>
@@ -41,7 +41,7 @@ export default function CreatePage() {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-ink/5 shadow-sm">
+                <div className="bg-theme-surface p-6 rounded-2xl border border-theme-soft shadow-sm">
                     <h3 className="font-bold mb-4">الإعدادات</h3>
                     <div className="space-y-4">
                         <div>
@@ -84,7 +84,7 @@ export default function CreatePage() {
             </div>
 
             {/* Result Section */}
-            <div className="flex-1 bg-white rounded-3xl border border-ink/5 shadow-inner flex items-center justify-center relative overflow-hidden group">
+            <div className="flex-1 bg-theme-surface rounded-3xl border border-theme-soft shadow-inner flex items-center justify-center relative overflow-hidden group">
                 <div className="absolute inset-0 bg-grid-ink/5 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]" />
 
                 {generatedImage ? (
@@ -102,12 +102,12 @@ export default function CreatePage() {
                         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                             <div className="flex gap-2 justify-center">
                                 <button className="btn-gold py-2 px-4 text-sm scale-90">حفظ في المعرض</button>
-                                <button className="bg-white/20 backdrop-blur-md text-white py-2 px-4 rounded-lg text-sm hover:bg-white/30 transition-colors">تحميل</button>
+                                <button className="bg-theme-soft backdrop-blur-md text-theme py-2 px-4 rounded-lg text-sm hover:bg-theme-subtle-hover transition-colors">تحميل</button>
                             </div>
                         </div>
                     </motion.div>
                 ) : (
-                    <div className="text-center text-ink/30 flex flex-col items-center gap-4">
+                    <div className="text-center text-theme-subtle flex flex-col items-center gap-4">
                         <ImageIcon className="w-16 h-16" />
                         <p className="text-lg">مساحة الإبداع فارغة... ابدأ بكتابة وصفك</p>
                     </div>

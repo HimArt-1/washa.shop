@@ -65,8 +65,8 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                             <AlertTriangle className="w-6 h-6 text-amber-400" />
                         </div>
                         <div>
-                            <p className="font-bold text-fg">{lowStockCount} منتج</p>
-                            <p className="text-sm text-fg/60">مخزون منخفض (≤5)</p>
+                            <p className="font-bold text-theme">{lowStockCount} منتج</p>
+                            <p className="text-sm text-theme-soft">مخزون منخفض (≤5)</p>
                         </div>
                         <button
                             onClick={() => setFilter("low")}
@@ -82,8 +82,8 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                             <XCircle className="w-6 h-6 text-red-400" />
                         </div>
                         <div>
-                            <p className="font-bold text-fg">{outOfStockCount} منتج</p>
-                            <p className="text-sm text-fg/60">نفد من المخزون</p>
+                            <p className="font-bold text-theme">{outOfStockCount} منتج</p>
+                            <p className="text-sm text-theme-soft">نفد من المخزون</p>
                         </div>
                         <button
                             onClick={() => setFilter("out")}
@@ -102,7 +102,7 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                         key={f}
                         onClick={() => setFilter(f)}
                         className={`px-4 py-2 rounded-xl text-sm font-medium ${
-                            filter === f ? "bg-gold/20 text-gold border border-gold/40" : "bg-white/5 text-fg/60 border border-white/10"
+                            filter === f ? "bg-gold/20 text-gold border border-gold/40" : "bg-theme-subtle text-theme-soft border border-theme-soft"
                         }`}
                     >
                         {f === "all" && "الكل"}
@@ -113,16 +113,16 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
             </div>
 
             {/* جدول المنتجات */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 overflow-hidden">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/[0.06]">
-                                <th className="text-right px-5 py-3 text-fg/30 font-medium text-xs">المنتج</th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">الوشّاي</th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">المخزون</th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">الحالة</th>
-                                <th className="text-right px-5 py-3 text-fg/30 font-medium text-xs">إجراء</th>
+                            <tr className="border-b border-theme-subtle">
+                                <th className="text-right px-5 py-3 text-theme-faint font-medium text-xs">المنتج</th>
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">الوشّاي</th>
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">المخزون</th>
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">الحالة</th>
+                                <th className="text-right px-5 py-3 text-theme-faint font-medium text-xs">إجراء</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -132,18 +132,18 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                                     const isOut = !p.in_stock || p.stock_quantity === 0;
                                     const isEditing = editingId === p.id;
                                     return (
-                                        <tr key={p.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                                        <tr key={p.id} className="border-b border-theme-faint hover:bg-theme-faint">
                                             <td className="px-5 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-lg bg-white/5 overflow-hidden shrink-0 relative">
+                                                    <div className="w-10 h-10 rounded-lg bg-theme-subtle overflow-hidden shrink-0 relative">
                                                         {p.image_url && (
                                                             <Image src={p.image_url} alt="" fill className="object-cover" sizes="40px" />
                                                         )}
                                                     </div>
-                                                    <span className="font-medium text-fg/80">{p.title}</span>
+                                                    <span className="font-medium text-theme-strong">{p.title}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-fg/40 text-xs">{p.artist?.display_name || "—"}</td>
+                                            <td className="px-4 py-3 text-theme-subtle text-xs">{p.artist?.display_name || "—"}</td>
                                             <td className="px-4 py-3">
                                                 {isEditing ? (
                                                     <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                                                             type="text"
                                                             value={editValue}
                                                             onChange={(e) => setEditValue(e.target.value)}
-                                                            className="w-20 px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-fg text-sm"
+                                                            className="w-20 px-2 py-1 rounded-lg bg-theme-subtle border border-theme-soft text-theme text-sm"
                                                             placeholder="∞"
                                                             dir="ltr"
                                                         />
@@ -182,7 +182,7 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                                                 {!isEditing && (
                                                     <button
                                                         onClick={() => startEdit(p)}
-                                                        className="p-2 rounded-lg text-fg/40 hover:text-gold hover:bg-gold/10"
+                                                        className="p-2 rounded-lg text-theme-subtle hover:text-gold hover:bg-gold/10"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
@@ -193,7 +193,7 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan={5} className="text-center py-16 text-fg/20">
+                                    <td colSpan={5} className="text-center py-16 text-theme-faint">
                                         <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm">لا توجد منتجات في هذا التصنيف</p>
                                     </td>

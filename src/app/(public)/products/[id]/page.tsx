@@ -75,18 +75,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
             <div className="max-w-7xl mx-auto px-6">
                 {/* ─── Breadcrumb ─── */}
-                <nav className="flex items-center gap-2 text-xs text-fg/30 mb-8">
+                <nav className="flex items-center gap-2 text-xs text-theme-faint mb-8">
                     <Link href="/" className="hover:text-gold transition-colors">الرئيسية</Link>
                     <span>/</span>
                     <Link href="/store" className="hover:text-gold transition-colors">المتجر</Link>
                     <span>/</span>
-                    <span className="text-fg/50">{product.title}</span>
+                    <span className="text-theme-subtle">{product.title}</span>
                 </nav>
 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Image */}
-                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-white/[0.06] bg-surface/30">
+                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-theme-subtle bg-surface/30">
                         <Image
                             src={product.image_url}
                             alt={product.title}
@@ -95,20 +95,20 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             sizes="(max-width: 1024px) 100vw, 50vw"
                             priority
                         />
-                        <span className="absolute top-4 right-4 text-xs bg-black/50 backdrop-blur-sm text-white/80 px-3 py-1 rounded-full">
+                        <span className="absolute top-4 right-4 text-xs bg-black/50 backdrop-blur-sm text-theme-strong px-3 py-1 rounded-full">
                             {product.type}
                         </span>
                     </div>
 
                     {/* Info */}
                     <div className="flex flex-col justify-center">
-                        <h1 className="text-3xl md:text-4xl font-bold text-fg mb-3">{product.title}</h1>
+                        <h1 className="text-3xl md:text-4xl font-bold text-theme mb-3">{product.title}</h1>
 
                         {/* Artist */}
                         {product.artist && (
                             <Link
                                 href={`/artists/${product.artist.username}`}
-                                className="flex items-center gap-2 mb-6 text-fg/40 hover:text-gold transition-colors"
+                                className="flex items-center gap-2 mb-6 text-theme-subtle hover:text-gold transition-colors"
                             >
                                 {product.artist.avatar_url ? (
                                     <Image src={product.artist.avatar_url} alt="" width={24} height={24} className="rounded-full" />
@@ -121,23 +121,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
                         {/* Description */}
                         {product.description && (
-                            <p className="text-fg/50 text-sm leading-relaxed mb-6">{product.description}</p>
+                            <p className="text-theme-subtle text-sm leading-relaxed mb-6">{product.description}</p>
                         )}
 
                         {/* Product Details */}
                         <div className="space-y-3 mb-8">
-                            <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
-                                <span className="text-xs text-fg/30">النوع</span>
-                                <span className="text-sm text-fg/70">{product.type}</span>
+                            <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                                <span className="text-xs text-theme-faint">النوع</span>
+                                <span className="text-sm text-theme-soft">{product.type}</span>
                             </div>
                             {availableSizes.size > 0 && (
-                                <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
-                                    <span className="text-xs text-fg/30">المقاسات المتاحة المتوفرة</span>
-                                    <span className="text-sm text-fg/70 font-semibold">{Array.from(availableSizes).join(" ، ")}</span>
+                                <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                                    <span className="text-xs text-theme-faint">المقاسات المتاحة المتوفرة</span>
+                                    <span className="text-sm text-theme-soft font-semibold">{Array.from(availableSizes).join(" ، ")}</span>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between py-3 border-b border-white/[0.04]">
-                                <span className="text-xs text-fg/30">الحالة</span>
+                            <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                                <span className="text-xs text-theme-faint">الحالة</span>
                                 <span className={`text-sm font-medium ${isCurrentlyInStock ? "text-emerald-400" : "text-red-400"}`}>
                                     {isCurrentlyInStock ? "متوفر" : "غير متوفر"}
                                 </span>
@@ -147,7 +147,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         {/* Price */}
                         <div className="mb-6">
                             <span className="text-3xl font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
-                            <span className="text-xs text-fg/20 mr-2">{product.currency || "SAR"}</span>
+                            <span className="text-xs text-theme-faint mr-2">{product.currency || "SAR"}</span>
                         </div>
 
                         <ProductActions
@@ -169,13 +169,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {/* ─── Related Products ─── */}
                 {relatedProducts.length > 0 && (
                     <div className="mt-20">
-                        <h2 className="text-2xl font-bold text-fg mb-8">منتجات مشابهة</h2>
+                        <h2 className="text-2xl font-bold text-theme mb-8">منتجات مشابهة</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
                             {relatedProducts.map((item: any) => (
                                 <Link
                                     key={item.id}
                                     href={`/products/${item.id}`}
-                                    className="group rounded-2xl border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all"
+                                    className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all"
                                 >
                                     <div className="aspect-square relative">
                                         <Image
@@ -187,7 +187,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                         />
                                     </div>
                                     <div className="p-3">
-                                        <h3 className="text-sm font-bold text-fg truncate">{item.title}</h3>
+                                        <h3 className="text-sm font-bold text-theme truncate">{item.title}</h3>
                                         <p className="text-xs text-gold mt-1">{Number(item.price).toLocaleString()} ر.س</p>
                                     </div>
                                 </Link>

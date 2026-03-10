@@ -54,7 +54,7 @@ export function FollowArtistButton({ artistId, artistUsername, followersCount: i
                     disabled={loading}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                         isFollowing
-                            ? "border border-white/20 bg-white/5 text-fg/60 hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
+                            ? "border border-white/20 bg-theme-subtle text-theme-soft hover:bg-red-500/10 hover:border-red-500/20 hover:text-red-400"
                             : "bg-gold/20 border border-gold/30 text-gold hover:bg-gold/30"
                     }`}
                 >
@@ -82,7 +82,7 @@ export function FollowArtistButton({ artistId, artistUsername, followersCount: i
                     متابعة
                 </Link>
             </SignedOut>
-            <span className="text-fg/30 text-sm">{count} متابع</span>
+            <span className="text-theme-faint text-sm">{count} متابع</span>
         </>
     );
 }

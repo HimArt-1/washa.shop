@@ -58,15 +58,15 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
     };
 
     return (
-        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] overflow-hidden flex flex-col h-[400px]">
+        <div className="rounded-3xl border border-theme-soft bg-theme-faint overflow-hidden flex flex-col h-[400px]">
             {/* Header */}
-            <div className="p-4 bg-white/[0.03] border-b border-white/[0.05] flex items-center gap-3 shrink-0">
+            <div className="p-4 bg-theme-subtle border-b border-theme-subtle flex items-center gap-3 shrink-0">
                 <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center">
                     <MessageCircle className="w-5 h-5 text-gold" />
                 </div>
                 <div>
-                    <h3 className="text-white font-bold text-sm">محادثة الطلب</h3>
-                    <p className="text-white/40 text-xs">تواصل مع فريق التصميم مباشرة</p>
+                    <h3 className="text-theme font-bold text-sm">محادثة الطلب</h3>
+                    <p className="text-theme-subtle text-xs">تواصل مع فريق التصميم مباشرة</p>
                 </div>
             </div>
 
@@ -77,7 +77,7 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center text-white/30 space-y-2">
+                    <div className="flex flex-col items-center justify-center h-full text-center text-theme-faint space-y-2">
                         <MessageCircle className="w-8 h-8 opacity-50" />
                         <p className="text-sm">لا توجد رسائل حتى الآن</p>
                         <p className="text-xs">اكتب أي استفسار أو ملاحظة حول تصميمك</p>
@@ -97,18 +97,18 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
                                     isUser ? "mr-auto items-end" : "ml-auto items-start"
                                 )}
                             >
-                                <span className="text-[10px] text-white/40 px-1">
+                                <span className="text-[10px] text-theme-subtle px-1">
                                     {isUser ? "أنت" : "وشّى"}
                                 </span>
                                 <div className={clsx(
                                     "p-3 rounded-2xl text-sm leading-relaxed",
                                     isUser
-                                        ? "bg-gold/10 border border-gold/20 text-white rounded-tr-sm"
-                                        : "bg-white/[0.05] border border-white/10 text-white/90 rounded-tl-sm"
+                                        ? "bg-gold/10 border border-gold/20 text-theme rounded-tr-sm"
+                                        : "bg-white/[0.05] border border-theme-soft text-theme-strong rounded-tl-sm"
                                 )}>
                                     <p className="whitespace-pre-wrap">{msg.message}</p>
                                 </div>
-                                <span className="text-[10px] text-white/30 px-1">
+                                <span className="text-[10px] text-theme-faint px-1">
                                     {mounted ? format(new Date(msg.created_at), "p", { locale: ar }) : ""}
                                 </span>
                             </motion.div>
@@ -119,7 +119,7 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
             </div>
 
             {/* Input Area */}
-            <div className="p-3 bg-[#0a0a0a] border-t border-white/[0.05] shrink-0">
+            <div className="p-3 bg-[#0a0a0a] border-t border-theme-subtle shrink-0">
                 {error && (
                     <div className="mb-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] text-center">
                         {error}
@@ -132,7 +132,7 @@ export function DesignOrderChat({ orderId }: { orderId: string }) {
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="اكتب ملاحظاتك..."
-                        className="w-full bg-white/[0.04] border border-white/[0.08] disabled:opacity-50 text-white text-sm rounded-xl pl-14 pr-4 py-3 focus:outline-none focus:border-gold/50 focus:bg-white/[0.06] transition-all"
+                        className="w-full bg-theme-subtle border border-theme-soft disabled:opacity-50 text-theme text-sm rounded-xl pl-14 pr-4 py-3 focus:outline-none focus:border-gold/50 focus:bg-theme-soft transition-all"
                     />
                     <button
                         type="submit"

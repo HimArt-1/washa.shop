@@ -20,15 +20,15 @@ import {
 // ─── Template Definitions ───────────────────────────────
 
 const templates = [
-    { id: "gold" as const, label: "ذهبي فاخر", preview: "bg-gradient-to-r from-[#5A3E2B] via-[#ceae7f] to-[#5A3E2B] text-white", icon: Sparkles },
-    { id: "gradient" as const, label: "متدرج حيوي", preview: "bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white", icon: Zap },
-    { id: "minimal" as const, label: "بسيط أنيق", preview: "bg-white/[0.05] border border-white/[0.1] text-fg/80", icon: Eye },
+    { id: "gold" as const, label: "ذهبي فاخر", preview: "bg-gradient-to-r from-[#5A3E2B] via-[#ceae7f] to-[#5A3E2B] text-theme", icon: Sparkles },
+    { id: "gradient" as const, label: "متدرج حيوي", preview: "bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-theme", icon: Zap },
+    { id: "minimal" as const, label: "بسيط أنيق", preview: "bg-white/[0.05] border border-white/[0.1] text-theme-strong", icon: Eye },
     { id: "alert" as const, label: "تنبيه عاجل", preview: "bg-red-500/10 border border-red-500/30 text-red-400", icon: AlertTriangle },
-    { id: "promo" as const, label: "عرض ترويجي", preview: "bg-gradient-to-r from-emerald-600 to-teal-500 text-white", icon: Gift },
+    { id: "promo" as const, label: "عرض ترويجي", preview: "bg-gradient-to-r from-emerald-600 to-teal-500 text-theme", icon: Gift },
     // ── قوالب جديدة ──
     { id: "neon" as const, label: "نيون زجاجي", preview: "bg-blue-500/[0.08] border border-blue-400/20 text-blue-200 backdrop-blur-md shadow-[0_0_20px_rgba(59,130,246,0.15)]", icon: Zap },
     { id: "sunset" as const, label: "غروب دافئ", preview: "bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 border border-amber-400/15 text-amber-100 backdrop-blur-sm", icon: Sparkles },
-    { id: "frost" as const, label: "صقيع لامع", preview: "bg-white/[0.06] border border-white/[0.12] text-white/90 backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]", icon: Eye },
+    { id: "frost" as const, label: "صقيع لامع", preview: "bg-theme-soft border border-white/[0.12] text-theme-strong backdrop-blur-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]", icon: Eye },
     { id: "rose" as const, label: "وردي ناعم", preview: "bg-gradient-to-r from-pink-500/10 via-rose-400/10 to-fuchsia-500/10 border border-pink-400/15 text-pink-200 backdrop-blur-sm", icon: Gift },
     { id: "aurora" as const, label: "شفق قطبي", preview: "bg-gradient-to-r from-violet-600/15 via-cyan-500/15 to-emerald-500/15 border border-violet-400/15 text-cyan-100 backdrop-blur-md", icon: Sparkles },
 ];
@@ -191,14 +191,14 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
             {/* ─── Stats Cards ─── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                    { label: "الإجمالي", value: stats.total, color: "text-fg/60", bg: "bg-white/[0.03] border-white/[0.06]" },
-                    { label: "نشطة حالياً", value: stats.active, color: "text-emerald-400", bg: stats.active > 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-white/[0.03] border-white/[0.06]" },
-                    { label: "مجدولة", value: stats.scheduled, color: "text-blue-400", bg: stats.scheduled > 0 ? "bg-blue-500/5 border-blue-500/20" : "bg-white/[0.03] border-white/[0.06]" },
-                    { label: "منتهية", value: stats.expired, color: "text-fg/30", bg: "bg-white/[0.03] border-white/[0.06]" },
+                    { label: "الإجمالي", value: stats.total, color: "text-theme-soft", bg: "bg-theme-subtle border-theme-subtle" },
+                    { label: "نشطة حالياً", value: stats.active, color: "text-emerald-400", bg: stats.active > 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-theme-subtle border-theme-subtle" },
+                    { label: "مجدولة", value: stats.scheduled, color: "text-blue-400", bg: stats.scheduled > 0 ? "bg-blue-500/5 border-blue-500/20" : "bg-theme-subtle border-theme-subtle" },
+                    { label: "منتهية", value: stats.expired, color: "text-theme-faint", bg: "bg-theme-subtle border-theme-subtle" },
                 ].map((s, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                         className={`p-4 rounded-2xl border backdrop-blur-sm ${s.bg}`}>
-                        <span className="text-[11px] text-fg/40 font-medium">{s.label}</span>
+                        <span className="text-[11px] text-theme-subtle font-medium">{s.label}</span>
                         <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
                     </motion.div>
                 ))}
@@ -207,10 +207,10 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
             {/* ─── Toolbar ─── */}
             <div className="flex items-center gap-3 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/30" />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                     <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث في الإعلانات..."
-                        className="w-full pr-10 pl-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 transition-all" />
+                        className="w-full pr-10 pl-4 py-2 bg-theme-subtle border border-theme-subtle rounded-lg text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-all" />
                 </div>
                 <button onClick={() => { resetForm(); setShowForm(true); }}
                     className="flex items-center gap-2 px-4 py-2 bg-gold/10 text-gold border border-gold/20 rounded-lg text-sm font-bold hover:bg-gold/20 transition-all">
@@ -228,11 +228,11 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                         <div className="p-6 space-y-5">
                             {/* Header */}
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-fg/80 flex items-center gap-2">
+                                <h3 className="font-bold text-theme-strong flex items-center gap-2">
                                     <Megaphone className="w-5 h-5 text-gold" />
                                     {editingId ? "تعديل الإعلان" : "إعلان جديد"}
                                 </h3>
-                                <button onClick={resetForm} className="p-2 rounded-lg hover:bg-white/5 text-fg/40">
+                                <button onClick={resetForm} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle">
                                     <X className="w-5 h-5" />
                                 </button>
                             </div>
@@ -240,55 +240,55 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                             {/* Title + Body */}
                             <div className="grid grid-cols-1 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">العنوان *</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">العنوان *</label>
                                     <input type="text" value={form.title}
                                         onChange={(e) => setForm({ ...form, title: e.target.value })}
                                         placeholder="عنوان الإعلان"
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">المحتوى *</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">المحتوى *</label>
                                     <textarea value={form.body}
                                         onChange={(e) => setForm({ ...form, body: e.target.value })}
                                         placeholder="نص الإعلان..."
                                         rows={2}
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 resize-none" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 resize-none" />
                                 </div>
                             </div>
 
                             {/* Type + Template */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">نوع العرض</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">نوع العرض</label>
                                     <select value={form.type}
                                         onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30">
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30">
                                         {Object.entries(typeLabels).map(([k, v]) => (
                                             <option key={k} value={k}>{v.label}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">الأولوية</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">الأولوية</label>
                                     <input type="number" min="0" value={form.priority}
                                         onChange={(e) => setForm({ ...form, priority: parseInt(e.target.value) || 0 })}
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" />
                                 </div>
                             </div>
 
                             {/* Template Selection */}
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-2">القالب</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-2">القالب</label>
                                 <div className="grid grid-cols-5 gap-2 max-h-[140px] overflow-y-auto pr-1">
                                     {templates.map((t) => (
                                         <button key={t.id}
                                             onClick={() => setForm({ ...form, template: t.id })}
                                             className={`relative p-3 rounded-xl border-2 transition-all text-center ${form.template === t.id
                                                 ? "border-gold shadow-[0_0_15px_rgba(206,174,127,0.2)]"
-                                                : "border-white/[0.06] hover:border-white/[0.15]"}`}
+                                                : "border-theme-subtle hover:border-white/[0.15]"}`}
                                         >
                                             <div className={`w-full h-6 rounded-lg mb-1.5 ${t.preview}`} />
-                                            <span className="text-[10px] text-fg/50 font-medium">{t.label}</span>
+                                            <span className="text-[10px] text-theme-subtle font-medium">{t.label}</span>
                                         </button>
                                     ))}
                                 </div>
@@ -296,7 +296,7 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
 
                             {/* Live Preview */}
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-2">معاينة حية</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-2">معاينة حية</label>
                                 <div className={`px-5 py-3 rounded-xl text-center ${templatePreview?.preview}`}>
                                     <p className="font-bold text-sm">{form.title || "عنوان الإعلان"}</p>
                                     <p className="text-xs opacity-80 mt-0.5">{form.body || "محتوى الإعلان سيظهر هنا..."}</p>
@@ -307,27 +307,27 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                             </div>
 
                             {/* ═══ TRIGGER SETTINGS ═══ */}
-                            <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 space-y-4">
+                            <div className="rounded-xl border border-theme-soft bg-theme-faint p-4 space-y-4">
                                 <h4 className="text-xs font-bold text-gold flex items-center gap-2">
                                     <Target className="w-4 h-4" /> إعدادات الظهور والمحفّزات
                                 </h4>
 
                                 {/* Trigger Type */}
                                 <div>
-                                    <label className="block text-[11px] font-medium text-fg/40 mb-2">متى يظهر الإعلان؟</label>
+                                    <label className="block text-[11px] font-medium text-theme-subtle mb-2">متى يظهر الإعلان؟</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                         {(Object.entries(triggerLabels) as [TriggerType, typeof triggerLabels[TriggerType]][]).map(([key, val]) => (
                                             <button key={key}
                                                 onClick={() => updateTrigger({ type: key })}
                                                 className={`p-2.5 rounded-lg border text-right transition-all ${form.trigger.type === key
                                                     ? "border-gold/30 bg-gold/5"
-                                                    : "border-white/[0.06] hover:border-white/[0.12]"}`}
+                                                    : "border-theme-subtle hover:border-white/[0.12]"}`}
                                             >
                                                 <div className="flex items-center gap-2 mb-0.5">
-                                                    <val.icon className={`w-3.5 h-3.5 ${form.trigger.type === key ? "text-gold" : "text-fg/30"}`} />
-                                                    <span className={`text-[11px] font-bold ${form.trigger.type === key ? "text-gold" : "text-fg/50"}`}>{val.label}</span>
+                                                    <val.icon className={`w-3.5 h-3.5 ${form.trigger.type === key ? "text-gold" : "text-theme-faint"}`} />
+                                                    <span className={`text-[11px] font-bold ${form.trigger.type === key ? "text-gold" : "text-theme-subtle"}`}>{val.label}</span>
                                                 </div>
-                                                <p className="text-[9px] text-fg/25 leading-tight">{val.desc}</p>
+                                                <p className="text-[9px] text-theme-faint leading-tight">{val.desc}</p>
                                             </button>
                                         ))}
                                     </div>
@@ -336,20 +336,20 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                 {/* Conditional Fields based on trigger type */}
                                 {form.trigger.type === "after_delay" && (
                                     <div>
-                                        <label className="block text-[11px] font-medium text-fg/40 mb-1.5">
+                                        <label className="block text-[11px] font-medium text-theme-subtle mb-1.5">
                                             <Timer className="w-3 h-3 inline ml-1" /> المدة بالثواني
                                         </label>
                                         <input type="number" min="1" max="300"
                                             value={form.trigger.delaySeconds || 5}
                                             onChange={(e) => updateTrigger({ delaySeconds: parseInt(e.target.value) || 5 })}
-                                            className="w-32 px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg focus:outline-none focus:border-gold/30" />
-                                        <p className="text-[9px] text-fg/20 mt-1">سيظهر الإعلان بعد {form.trigger.delaySeconds || 5} ثانية من دخول الزائر</p>
+                                            className="w-32 px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30" />
+                                        <p className="text-[9px] text-theme-faint mt-1">سيظهر الإعلان بعد {form.trigger.delaySeconds || 5} ثانية من دخول الزائر</p>
                                     </div>
                                 )}
 
                                 {form.trigger.type === "page_enter" && (
                                     <div>
-                                        <label className="block text-[11px] font-medium text-fg/40 mb-2">
+                                        <label className="block text-[11px] font-medium text-theme-subtle mb-2">
                                             <MousePointerClick className="w-3 h-3 inline ml-1" /> الصفحات المستهدفة
                                         </label>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -366,7 +366,7 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                                         }}
                                                         className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${selected
                                                             ? "border-gold/30 bg-gold/10 text-gold"
-                                                            : "border-white/[0.06] text-fg/40 hover:border-white/[0.12]"}`}
+                                                            : "border-theme-subtle text-theme-subtle hover:border-white/[0.12]"}`}
                                                     >
                                                         {p.label}
                                                     </button>
@@ -378,24 +378,24 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
 
                                 {form.trigger.type === "scroll_depth" && (
                                     <div>
-                                        <label className="block text-[11px] font-medium text-fg/40 mb-1.5">
+                                        <label className="block text-[11px] font-medium text-theme-subtle mb-1.5">
                                             <ArrowDown className="w-3 h-3 inline ml-1" /> نسبة التمرير (%)
                                         </label>
                                         <input type="number" min="10" max="100" step="10"
                                             value={form.trigger.scrollPercent || 50}
                                             onChange={(e) => updateTrigger({ scrollPercent: parseInt(e.target.value) || 50 })}
-                                            className="w-32 px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg focus:outline-none focus:border-gold/30" />
-                                        <p className="text-[9px] text-fg/20 mt-1">يظهر عند تمرير {form.trigger.scrollPercent || 50}% من الصفحة</p>
+                                            className="w-32 px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30" />
+                                        <p className="text-[9px] text-theme-faint mt-1">يظهر عند تمرير {form.trigger.scrollPercent || 50}% من الصفحة</p>
                                     </div>
                                 )}
 
                                 {/* Frequency + Dismissible */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-[11px] font-medium text-fg/40 mb-1.5">تكرار الظهور</label>
+                                        <label className="block text-[11px] font-medium text-theme-subtle mb-1.5">تكرار الظهور</label>
                                         <select value={form.trigger.frequency}
                                             onChange={(e) => updateTrigger({ frequency: e.target.value as any })}
-                                            className="w-full px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg focus:outline-none focus:border-gold/30">
+                                            className="w-full px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30">
                                             {Object.entries(frequencyLabels).map(([k, v]) => (
                                                 <option key={k} value={k}>{v}</option>
                                             ))}
@@ -406,7 +406,7 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                             <input type="checkbox" checked={form.trigger.dismissible}
                                                 onChange={(e) => updateTrigger({ dismissible: e.target.checked })}
                                                 className="rounded border-white/20" />
-                                            <span className="text-xs text-fg/50">يمكن إغلاقه</span>
+                                            <span className="text-xs text-theme-subtle">يمكن إغلاقه</span>
                                         </label>
                                     </div>
                                 </div>
@@ -415,38 +415,38 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                             {/* Link */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">رابط (اختياري)</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">رابط (اختياري)</label>
                                     <input type="url" value={form.link}
                                         onChange={(e) => setForm({ ...form, link: e.target.value })}
                                         placeholder="https://..."
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" dir="ltr" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5">نص الرابط</label>
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5">نص الرابط</label>
                                     <input type="text" value={form.linkText}
                                         onChange={(e) => setForm({ ...form, linkText: e.target.value })}
                                         placeholder="مثال: تسوق الآن"
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" />
                                 </div>
                             </div>
 
                             {/* Scheduling */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5 flex items-center gap-1">
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" /> بداية العرض
                                     </label>
                                     <input type="datetime-local" value={form.startDate}
                                         onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" dir="ltr" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" dir="ltr" />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-fg/50 mb-1.5 flex items-center gap-1">
+                                    <label className="block text-xs font-medium text-theme-subtle mb-1.5 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" /> نهاية العرض
                                     </label>
                                     <input type="datetime-local" value={form.endDate}
                                         onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" dir="ltr" />
+                                        className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" dir="ltr" />
                                 </div>
                             </div>
 
@@ -456,11 +456,11 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                     <input type="checkbox" checked={form.isActive}
                                         onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                                         className="rounded border-white/20" />
-                                    <span className="text-sm text-fg/70">نشط فوراً</span>
+                                    <span className="text-sm text-theme-soft">نشط فوراً</span>
                                 </label>
                                 <div className="flex items-center gap-2">
                                     <button onClick={resetForm}
-                                        className="px-4 py-2 text-sm text-fg/40 hover:text-fg/60 transition-colors">
+                                        className="px-4 py-2 text-sm text-theme-subtle hover:text-theme-soft transition-colors">
                                         إلغاء
                                     </button>
                                     <button onClick={handleSubmit} disabled={loading}
@@ -476,9 +476,9 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
             </AnimatePresence>
 
             {/* ─── Announcements List ─── */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
                 {filtered.length === 0 ? (
-                    <div className="p-16 text-center text-fg/20">
+                    <div className="p-16 text-center text-theme-faint">
                         <Megaphone className="w-12 h-12 mx-auto mb-3 opacity-30" />
                         <p className="text-sm font-medium">لا توجد إعلانات</p>
                         <button onClick={() => { resetForm(); setShowForm(true); }}
@@ -500,18 +500,18 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                             return (
                                 <motion.div key={a.id}
                                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                                    className={`px-5 py-4 hover:bg-white/[0.02] transition-all ${!a.isActive ? "opacity-50" : ""}`}
+                                    className={`px-5 py-4 hover:bg-theme-faint transition-all ${!a.isActive ? "opacity-50" : ""}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         {/* Template Preview Mini */}
-                                        <div className={`w-12 h-12 rounded-xl shrink-0 flex items-center justify-center ${tmpl?.preview || "bg-white/5"}`}>
+                                        <div className={`w-12 h-12 rounded-xl shrink-0 flex items-center justify-center ${tmpl?.preview || "bg-theme-subtle"}`}>
                                             {tmpl?.icon && <tmpl.icon className="w-5 h-5" />}
                                         </div>
 
                                         {/* Content */}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-0.5">
-                                                <h4 className="text-sm font-bold text-fg/80 truncate">{a.title}</h4>
+                                                <h4 className="text-sm font-bold text-theme-strong truncate">{a.title}</h4>
                                                 {isLive && (
                                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold flex items-center gap-0.5">
                                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> نشط
@@ -521,14 +521,14 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-bold">مجدول</span>
                                                 )}
                                                 {isExpired && (
-                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-fg/30 font-bold">منتهي</span>
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-theme-subtle text-theme-faint font-bold">منتهي</span>
                                                 )}
                                                 {!a.isActive && (
-                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-fg/20 font-bold">معطّل</span>
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-theme-subtle text-theme-faint font-bold">معطّل</span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-fg/30 truncate">{a.body}</p>
-                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-fg/20 flex-wrap">
+                                            <p className="text-xs text-theme-faint truncate">{a.body}</p>
+                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-theme-faint flex-wrap">
                                                 <span className="flex items-center gap-0.5">
                                                     {typeInfo?.icon && <typeInfo.icon className="w-2.5 h-2.5" />} {typeInfo?.label}
                                                 </span>
@@ -538,7 +538,7 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                                     </span>
                                                 )}
                                                 {a.trigger?.frequency && (
-                                                    <span className="text-fg/15">· {frequencyLabels[a.trigger.frequency]}</span>
+                                                    <span className="text-theme-faint">· {frequencyLabels[a.trigger.frequency]}</span>
                                                 )}
                                                 {a.startDate && <span>من: {new Date(a.startDate).toLocaleDateString("ar-SA")}</span>}
                                                 {a.endDate && <span>إلى: {new Date(a.endDate).toLocaleDateString("ar-SA")}</span>}
@@ -548,12 +548,12 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                         {/* Actions */}
                                         <div className="flex items-center gap-1 shrink-0">
                                             <button onClick={() => handleToggle(a.id)}
-                                                className={`p-2 rounded-lg transition-all ${a.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-fg/20 hover:bg-white/5"}`}
+                                                className={`p-2 rounded-lg transition-all ${a.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-theme-faint hover:bg-theme-subtle"}`}
                                                 title={a.isActive ? "إيقاف" : "تفعيل"}>
                                                 {a.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                             </button>
                                             <button onClick={() => startEdit(a)}
-                                                className="p-2 rounded-lg text-fg/40 hover:text-gold hover:bg-gold/10 transition-all" title="تعديل">
+                                                className="p-2 rounded-lg text-theme-subtle hover:text-gold hover:bg-gold/10 transition-all" title="تعديل">
                                                 <Pencil className="w-3.5 h-3.5" />
                                             </button>
                                             {confirmDeleteId === a.id ? (
@@ -563,13 +563,13 @@ export function AnnouncementsClient({ announcements: initial }: { announcements:
                                                         تأكيد
                                                     </button>
                                                     <button onClick={() => setConfirmDeleteId(null)}
-                                                        className="px-2 py-1 rounded text-[10px] text-fg/40 hover:bg-white/5">
+                                                        className="px-2 py-1 rounded text-[10px] text-theme-subtle hover:bg-theme-subtle">
                                                         إلغاء
                                                     </button>
                                                 </div>
                                             ) : (
                                                 <button onClick={() => setConfirmDeleteId(a.id)}
-                                                    className="p-2 rounded-lg text-fg/40 hover:text-red-400 hover:bg-red-500/10 transition-all" title="حذف">
+                                                    className="p-2 rounded-lg text-theme-subtle hover:text-red-400 hover:bg-red-500/10 transition-all" title="حذف">
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}

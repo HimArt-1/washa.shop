@@ -23,10 +23,10 @@ export function DesignPieceAccessDenied() {
                     <Lock className="w-12 h-12 text-gold" />
                 </motion.div>
 
-                <h1 className="text-2xl sm:text-3xl font-bold text-fg mb-3">
+                <h1 className="text-2xl sm:text-3xl font-bold text-theme mb-3">
                     سجّل دخولك لتصمّم قطعتك
                 </h1>
-                <p className="text-fg/60 text-base leading-relaxed mb-8">
+                <p className="text-theme-soft text-base leading-relaxed mb-8">
                     سجّل حسابك مجاناً وابدأ بتصميم تيشيرت أو هودي بالذكاء الاصطناعي فوراً.
                 </p>
 

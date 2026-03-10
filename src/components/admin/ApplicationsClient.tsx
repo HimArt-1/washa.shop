@@ -67,14 +67,14 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
     return (
         <div className="space-y-6">
             {/* ─── Status Tabs ─── */}
-            <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-white/[0.06]">
+            <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-theme-subtle">
                 {statuses.map((s) => (
                     <button
                         key={s.value}
                         onClick={() => navigate(s.value)}
                         className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${currentStatus === s.value
                             ? "bg-gold/10 text-gold"
-                            : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
+                            : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
                             }`}
                     >
                         {s.label}
@@ -90,15 +90,15 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.05 }}
-                        className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm p-6 hover:border-white/[0.1] transition-all group"
+                        className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm p-6 hover:border-white/[0.1] transition-all group"
                     >
                         {/* Header */}
                         <div className="flex items-start justify-between mb-4">
                             <div>
-                                <h3 className="font-bold text-fg text-lg">{app.full_name}</h3>
-                                <p className="text-fg/40 text-sm mt-0.5">{app.email}</p>
+                                <h3 className="font-bold text-theme text-lg">{app.full_name}</h3>
+                                <p className="text-theme-subtle text-sm mt-0.5">{app.email}</p>
                                 {app.phone && (
-                                    <p className="text-fg/40 text-sm mt-0.5 flex items-center gap-1.5">
+                                    <p className="text-theme-subtle text-sm mt-0.5 flex items-center gap-1.5">
                                         <Phone className="w-3.5 h-3.5" />
                                         <span dir="ltr">{app.phone}</span>
                                     </p>
@@ -111,11 +111,11 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                         <div className="grid grid-cols-2 gap-3 mb-4">
                             <div className="flex items-center gap-2 text-sm">
                                 <Palette className="w-4 h-4 text-accent/60" />
-                                <span className="text-fg/60">{app.art_style}</span>
+                                <span className="text-theme-soft">{app.art_style}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
-                                <Clock className="w-4 h-4 text-fg/30" />
-                                <span className="text-fg/40">
+                                <Clock className="w-4 h-4 text-theme-faint" />
+                                <span className="text-theme-subtle">
                                     {app.experience_years ? `${app.experience_years} سنوات خبرة` : "لم يحدد"}
                                 </span>
                             </div>
@@ -144,8 +144,8 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                         </div>
 
                         {/* Motivation */}
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] mb-4">
-                            <p className="text-fg/50 text-sm leading-relaxed line-clamp-3">{app.motivation}</p>
+                        <div className="p-4 rounded-xl bg-theme-faint border border-theme-faint mb-4">
+                            <p className="text-theme-subtle text-sm leading-relaxed line-clamp-3">{app.motivation}</p>
                         </div>
 
                         {/* Review Notes */}
@@ -165,7 +165,7 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                                         setReviewingId(app.id);
                                         setReviewNotes(e.target.value);
                                     }}
-                                    className="w-full p-3 bg-white/[0.02] border border-white/[0.06] rounded-xl text-sm text-fg placeholder:text-fg/20 resize-none focus:outline-none focus:border-gold/20 transition-colors"
+                                    className="w-full p-3 bg-theme-faint border border-theme-subtle rounded-xl text-sm text-theme placeholder:text-theme-faint resize-none focus:outline-none focus:border-gold/20 transition-colors"
                                     rows={2}
                                 />
                                 <div className="space-y-2">
@@ -202,7 +202,7 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <p className="text-fg/20 text-xs text-center">
+                                <p className="text-theme-faint text-xs text-center">
                                     {new Date(app.updated_at || app.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}
                                 </p>
                                 {app.status === "accepted" && (
@@ -237,14 +237,14 @@ export function ApplicationsClient({ applications, count, currentStatus }: Appli
             {applications.length === 0 && (
                 <div className="text-center py-20">
                     <FileText className="w-16 h-16 text-fg/10 mx-auto mb-4" />
-                    <p className="text-fg/20 text-lg font-medium">لا توجد طلبات</p>
-                    <p className="text-fg/15 text-sm mt-1">ستظهر هنا عندما يتقدم أحد الفنانين للانضمام</p>
+                    <p className="text-theme-faint text-lg font-medium">لا توجد طلبات</p>
+                    <p className="text-theme-faint text-sm mt-1">ستظهر هنا عندما يتقدم أحد الفنانين للانضمام</p>
                 </div>
             )}
 
             {/* ─── Count ─── */}
             {count > 0 && (
-                <p className="text-xs text-fg/30">{count} طلب</p>
+                <p className="text-xs text-theme-faint">{count} طلب</p>
             )}
 
             {/* ─── Accept & Create User Modal ─── */}
@@ -317,14 +317,14 @@ function CreateClerkOnlyModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-bg shadow-2xl"
+                className="w-full max-w-md rounded-2xl border border-theme-soft bg-bg shadow-2xl"
             >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                    <h2 className="text-lg font-bold text-fg flex items-center gap-2">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
+                    <h2 className="text-lg font-bold text-theme flex items-center gap-2">
                         <UserPlus className="w-5 h-5 text-forest" />
                         إنشاء حساب في Clerk
                     </h2>
-                    <button onClick={tempPassword ? onSuccess : onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40">
+                    <button onClick={tempPassword ? onSuccess : onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -332,7 +332,7 @@ function CreateClerkOnlyModal({
                     <div className="p-6 space-y-4">
                         <div className="p-4 rounded-xl bg-forest/10 border border-forest/20 text-forest">
                             <p className="text-sm font-medium mb-2">تم إنشاء الحساب بنجاح ✓</p>
-                            <p className="text-xs text-fg/70 mb-3">انسخ كلمة المرور وأرسلها للمستخدم:</p>
+                            <p className="text-xs text-theme-soft mb-3">انسخ كلمة المرور وأرسلها للمستخدم:</p>
                             <div className="flex items-center gap-2">
                                 <code className="flex-1 px-3 py-2 bg-black/30 rounded-lg text-sm font-mono break-all select-all" dir="ltr">
                                     {tempPassword}
@@ -345,7 +345,7 @@ function CreateClerkOnlyModal({
                                     نسخ
                                 </button>
                             </div>
-                            <p className="text-[10px] text-fg/40 mt-2">البريد: {application.email}</p>
+                            <p className="text-[10px] text-theme-subtle mt-2">البريد: {application.email}</p>
                         </div>
                         <button type="button" onClick={onSuccess} className="w-full py-2.5 rounded-xl bg-gold/20 text-gold font-bold hover:bg-gold/30">
                             تم
@@ -353,14 +353,14 @@ function CreateClerkOnlyModal({
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                        <p className="text-fg/60 text-sm">
-                            سيتم إنشاء حساب Clerk لـ <strong className="text-fg">{application.full_name}</strong> بالبريد {application.email}
+                        <p className="text-theme-soft text-sm">
+                            سيتم إنشاء حساب Clerk لـ <strong className="text-theme">{application.full_name}</strong> بالبريد {application.email}
                         </p>
                         {error && (
                             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>
                         )}
                         <div className="flex gap-3 pt-2">
-                            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 hover:bg-white/[0.03]">
+                            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle">
                                 إلغاء
                             </button>
                             <button
@@ -434,14 +434,14 @@ function AcceptAndCreateModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-bg shadow-2xl"
+                className="w-full max-w-md rounded-2xl border border-theme-soft bg-bg shadow-2xl"
             >
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06]">
-                    <h2 className="text-lg font-bold text-fg flex items-center gap-2">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
+                    <h2 className="text-lg font-bold text-theme flex items-center gap-2">
                         <UserPlus className="w-5 h-5 text-gold" />
                         قبول وإنشاء مستخدم
                     </h2>
-                    <button onClick={tempPassword ? handleCloseAfterPassword : onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40">
+                    <button onClick={tempPassword ? handleCloseAfterPassword : onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -450,7 +450,7 @@ function AcceptAndCreateModal({
                     <div className="p-6 space-y-4">
                         <div className="p-4 rounded-xl bg-forest/10 border border-forest/20 text-forest">
                             <p className="text-sm font-medium mb-2">تم إنشاء الحساب بنجاح ✓</p>
-                            <p className="text-xs text-fg/70 mb-3">المستخدم يمكنه تسجيل الدخول بالبريد وكلمة المرور التالية. انسخها وأرسلها له:</p>
+                            <p className="text-xs text-theme-soft mb-3">المستخدم يمكنه تسجيل الدخول بالبريد وكلمة المرور التالية. انسخها وأرسلها له:</p>
                             <div className="flex items-center gap-2">
                                 <code className="flex-1 px-3 py-2 bg-black/30 rounded-lg text-sm font-mono break-all select-all" dir="ltr">
                                     {tempPassword}
@@ -463,7 +463,7 @@ function AcceptAndCreateModal({
                                     نسخ
                                 </button>
                             </div>
-                            <p className="text-[10px] text-fg/40 mt-2">البريد: {application.email}</p>
+                            <p className="text-[10px] text-theme-subtle mt-2">البريد: {application.email}</p>
                         </div>
                         <button
                             type="button"
@@ -475,9 +475,9 @@ function AcceptAndCreateModal({
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                        <p className="text-fg/60 text-sm">
-                            سيتم إنشاء مستخدم جديد من طلب <strong className="text-fg">{application.full_name}</strong>
-                            {application.email && <span className="block text-fg/40 mt-1">البريد: {application.email}</span>}
+                        <p className="text-theme-soft text-sm">
+                            سيتم إنشاء مستخدم جديد من طلب <strong className="text-theme">{application.full_name}</strong>
+                            {application.email && <span className="block text-theme-subtle mt-1">البريد: {application.email}</span>}
                         </p>
                         {error && (
                             <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -491,20 +491,20 @@ function AcceptAndCreateModal({
                                 onChange={(e) => setCreateInClerk(e.target.checked)}
                                 className="rounded border-white/20"
                             />
-                            <span className="text-sm text-fg/80">إنشاء حساب في Clerk (ليتمكن من تسجيل الدخول)</span>
+                            <span className="text-sm text-theme-strong">إنشاء حساب في Clerk (ليتمكن من تسجيل الدخول)</span>
                         </label>
                         {createInClerk && application.email && (
-                            <p className="text-[10px] text-fg/40">سيُنشأ حساب بالبريد أعلاه وكلمة مرور مؤقتة تُعرض بعد الإنشاء</p>
+                            <p className="text-[10px] text-theme-subtle">سيُنشأ حساب بالبريد أعلاه وكلمة مرور مؤقتة تُعرض بعد الإنشاء</p>
                         )}
                         {!createInClerk && (
                             <p className="text-[10px] text-amber-400/80">بدون Clerk لن يتمكن المستخدم من تسجيل الدخول — استخدم إن كان لديه حساب مسبقاً</p>
                         )}
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">الدور</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">الدور</label>
                             <select
                                 value={role}
                                 onChange={(e) => setRole(e.target.value as "wushsha" | "subscriber")}
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                             >
                                 <option value="wushsha">وشّاي</option>
                                 <option value="subscriber">مشترك</option>
@@ -512,11 +512,11 @@ function AcceptAndCreateModal({
                         </div>
                         {role === "wushsha" && (
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1.5">مستوى الوشّاي</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">مستوى الوشّاي</label>
                                 <select
                                     value={wushshaLevel}
                                     onChange={(e) => setWushshaLevel(Number(e.target.value))}
-                                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                                    className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                                 >
                                     {[1, 2, 3, 4, 5].map((l) => (
                                         <option key={l} value={l}>المستوى {l}</option>
@@ -526,23 +526,23 @@ function AcceptAndCreateModal({
                         )}
                         {!createInClerk && (
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1.5">معرف Clerk (اختياري)</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">معرف Clerk (اختياري)</label>
                                 <input
                                     type="text"
                                     value={clerkId}
                                     onChange={(e) => setClerkId(e.target.value)}
                                     placeholder="user_xxx — اتركه فارغاً للإنشاء التلقائي"
-                                    className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                                    className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                                     dir="ltr"
                                 />
-                                <p className="text-[10px] text-fg/30 mt-1">إن تركت فارغاً سيُستخدم معرف مؤقت حتى يسجّل المستخدم</p>
+                                <p className="text-[10px] text-theme-faint mt-1">إن تركت فارغاً سيُستخدم معرف مؤقت حتى يسجّل المستخدم</p>
                             </div>
                         )}
                         <div className="flex gap-3 pt-2">
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 hover:bg-white/[0.03] transition-colors"
+                                className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle transition-colors"
                             >
                                 إلغاء
                             </button>

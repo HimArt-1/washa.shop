@@ -70,7 +70,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                 <div className={`p-6 rounded-2xl border transition-all duration-300 ${step === 1 ? "bg-white border-gold shadow-lg ring-1 ring-gold/20" : "bg-white/50 border-ink/5 opacity-60"}`}>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-gold text-white flex items-center justify-center text-xs">1</span>
+                            <span className="w-6 h-6 rounded-full bg-gold text-theme flex items-center justify-center text-xs">1</span>
                             اختر العمل الفني
                         </h3>
                         {step > 1 && <CheckCircle2 className="w-5 h-5 text-green-500" />}
@@ -87,7 +87,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                                     <Image src={art.image_url} alt={art.title} fill className="object-cover" />
                                     {selectedArtwork?.id === art.id && (
                                         <div className="absolute inset-0 bg-gold/20 flex items-center justify-center">
-                                            <CheckCircle2 className="w-8 h-8 text-white drop-shadow-md" />
+                                            <CheckCircle2 className="w-8 h-8 text-theme drop-shadow-md" />
                                         </div>
                                     )}
                                 </button>
@@ -125,7 +125,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                 <div className={`p-6 rounded-2xl border transition-all duration-300 ${step === 2 ? "bg-white border-gold shadow-lg ring-1 ring-gold/20" : "bg-white/50 border-ink/5 opacity-60"}`}>
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold flex items-center gap-2">
-                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? "bg-gold text-white" : "bg-ink/10 text-ink/40"}`}>2</span>
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${step >= 2 ? "bg-gold text-theme" : "bg-ink/10 text-ink/40"}`}>2</span>
                             تخصيص المنتج
                         </h3>
                         {step > 2 && <CheckCircle2 className="w-5 h-5 text-green-500" />}
@@ -142,7 +142,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                                             onClick={() => setProductType(type)}
                                             className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${productType.id === type.id ? "border-gold bg-gold/5" : "border-ink/10 hover:border-gold/30"}`}
                                         >
-                                            <div className={`p-2 rounded-lg ${productType.id === type.id ? "bg-gold text-white" : "bg-ink/5 text-ink/60"}`}>
+                                            <div className={`p-2 rounded-lg ${productType.id === type.id ? "bg-gold text-theme" : "bg-ink/5 text-ink/60"}`}>
                                                 <type.icon className="w-5 h-5" />
                                             </div>
                                             <div className="text-right flex-1">
@@ -240,7 +240,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                                     {productType.id === "apparel" && (
                                         <div className="w-[80%] h-[80%] bg-black mask-image-tshirt flex items-center justify-center opacity-90 shadow-2xl rounded-3xl">
                                             {/* T-Shirt Shape would be an image ideally */}
-                                            <div className="text-white/20 text-9xl">👕</div>
+                                            <div className="text-theme-faint text-9xl">👕</div>
                                         </div>
                                     )}
                                     {/* Artwork Overlay */}

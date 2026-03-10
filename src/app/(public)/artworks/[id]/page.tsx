@@ -40,18 +40,18 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
             <div className="max-w-7xl mx-auto px-6">
                 {/* ─── Breadcrumb ─── */}
-                <nav className="flex items-center gap-2 text-xs text-fg/30 mb-8">
+                <nav className="flex items-center gap-2 text-xs text-theme-faint mb-8">
                     <Link href="/" className="hover:text-gold transition-colors">الرئيسية</Link>
                     <span>/</span>
                     <Link href="/gallery" className="hover:text-gold transition-colors">المعرض</Link>
                     <span>/</span>
-                    <span className="text-fg/50">{artwork.title}</span>
+                    <span className="text-theme-subtle">{artwork.title}</span>
                 </nav>
 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Image */}
-                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-white/[0.06] bg-surface/30">
+                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-theme-subtle bg-surface/30">
                         <Image
                             src={artwork.image_url}
                             alt={artwork.title}
@@ -71,14 +71,14 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                             </span>
                         )}
 
-                        <h1 className="text-3xl md:text-4xl font-bold text-fg mb-4">{artwork.title}</h1>
+                        <h1 className="text-3xl md:text-4xl font-bold text-theme mb-4">{artwork.title}</h1>
 
                         {/* Artist */}
                         <Link
                             href={`/artists/${artwork.artist?.username}`}
                             className="flex items-center gap-3 mb-6 group"
                         >
-                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/[0.08] bg-surface">
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-theme-soft bg-surface">
                                 {artwork.artist?.avatar_url ? (
                                     <Image src={artwork.artist.avatar_url} alt="" width={48} height={48} className="object-cover" />
                                 ) : (
@@ -88,42 +88,42 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                 )}
                             </div>
                             <div>
-                                <span className="font-bold text-fg text-sm group-hover:text-gold transition-colors flex items-center gap-1.5">
+                                <span className="font-bold text-theme text-sm group-hover:text-gold transition-colors flex items-center gap-1.5">
                                     {artwork.artist?.display_name}
                                     {artwork.artist?.is_verified && <span className="text-gold text-xs">✦</span>}
                                 </span>
-                                <span className="text-xs text-fg/30">@{artwork.artist?.username}</span>
+                                <span className="text-xs text-theme-faint">@{artwork.artist?.username}</span>
                             </div>
                         </Link>
 
                         {/* Description */}
                         {artwork.description && (
-                            <p className="text-fg/50 text-sm leading-relaxed mb-6">{artwork.description}</p>
+                            <p className="text-theme-subtle text-sm leading-relaxed mb-6">{artwork.description}</p>
                         )}
 
                         {/* Details Grid */}
                         <div className="grid grid-cols-2 gap-4 mb-8">
                             {artwork.medium && (
-                                <div className="p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                                    <span className="text-[10px] text-fg/20 block">الخامة</span>
-                                    <span className="text-sm text-fg/70">{artwork.medium}</span>
+                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                    <span className="text-[10px] text-theme-faint block">الخامة</span>
+                                    <span className="text-sm text-theme-soft">{artwork.medium}</span>
                                 </div>
                             )}
                             {artwork.dimensions && (
-                                <div className="p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                                    <span className="text-[10px] text-fg/20 block">الأبعاد</span>
-                                    <span className="text-sm text-fg/70">{artwork.dimensions}</span>
+                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                    <span className="text-[10px] text-theme-faint block">الأبعاد</span>
+                                    <span className="text-sm text-theme-soft">{artwork.dimensions}</span>
                                 </div>
                             )}
                             {artwork.year && (
-                                <div className="p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                                    <span className="text-[10px] text-fg/20 block">السنة</span>
-                                    <span className="text-sm text-fg/70">{artwork.year}</span>
+                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                    <span className="text-[10px] text-theme-faint block">السنة</span>
+                                    <span className="text-sm text-theme-soft">{artwork.year}</span>
                                 </div>
                             )}
-                            <div className="p-3 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                                <span className="text-[10px] text-fg/20 block">المشاهدات</span>
-                                <span className="text-sm text-fg/70">{artwork.views_count || 0}</span>
+                            <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                <span className="text-[10px] text-theme-faint block">المشاهدات</span>
+                                <span className="text-sm text-theme-soft">{artwork.views_count || 0}</span>
                             </div>
                         </div>
 
@@ -144,7 +144,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                     <Link
                                         key={tag}
                                         href={`/search?q=${tag}`}
-                                        className="text-[10px] bg-white/[0.04] text-fg/30 px-3 py-1 rounded-full hover:bg-gold/10 hover:text-gold transition-colors"
+                                        className="text-[10px] bg-theme-subtle text-theme-faint px-3 py-1 rounded-full hover:bg-gold/10 hover:text-gold transition-colors"
                                     >
                                         #{tag}
                                     </Link>
@@ -160,13 +160,13 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                 {/* ─── Similar Artworks ─── */}
                 {similarArtworks.length > 0 && (
                     <div className="mt-20">
-                        <h2 className="text-2xl font-bold text-fg mb-8">أعمال قد تعجبك</h2>
+                        <h2 className="text-2xl font-bold text-theme mb-8">أعمال قد تعجبك</h2>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
                             {similarArtworks.map((item: any) => (
                                 <Link
                                     key={item.id}
                                     href={`/artworks/${item.id}`}
-                                    className="group rounded-2xl border border-white/[0.06] overflow-hidden hover:border-gold/30 transition-all"
+                                    className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all"
                                 >
                                     <div className="aspect-square relative">
                                         <Image
@@ -178,8 +178,8 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                         />
                                     </div>
                                     <div className="p-3">
-                                        <h3 className="text-sm font-bold text-fg truncate">{item.title}</h3>
-                                        <p className="text-xs text-fg/30 mt-1">{item.artist?.display_name}</p>
+                                        <h3 className="text-sm font-bold text-theme truncate">{item.title}</h3>
+                                        <p className="text-xs text-theme-faint mt-1">{item.artist?.display_name}</p>
                                     </div>
                                 </Link>
                             ))}

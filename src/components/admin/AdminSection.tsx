@@ -17,8 +17,8 @@ export function AdminSection({ title, description, children }: AdminSectionProps
             className="space-y-4"
         >
             <div>
-                <h2 className="text-lg font-bold text-fg">{title}</h2>
-                {description && <p className="text-sm text-fg/50 mt-1">{description}</p>}
+                <h2 className="text-lg font-bold text-theme">{title}</h2>
+                {description && <p className="text-sm text-theme-subtle mt-1">{description}</p>}
             </div>
             {children}
         </motion.section>

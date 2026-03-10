@@ -104,7 +104,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
-                    <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-white/70 px-2 py-0.5 rounded-full">
+                    <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
                         {product.type}
                     </span>
                 </div>
@@ -134,7 +134,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     className="object-cover group-hover:scale-105 transition-transform duration-700"
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
-                <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-white/70 px-2 py-0.5 rounded-full">
+                <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
                     {product.type}
                 </span>
 
@@ -143,7 +143,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     <SignedIn>
                         <button
                             onClick={handleWishlist}
-                            className={`p-2 rounded-xl backdrop-blur-md transition-colors ${inWishlist ? "bg-gold/20 text-gold" : "bg-black/40 text-white/80 hover:bg-gold/20 hover:text-gold"
+                            className={`p-2 rounded-xl backdrop-blur-md transition-colors ${inWishlist ? "bg-gold/20 text-gold" : "bg-black/40 text-on-dark hover:bg-gold/20 hover:text-gold"
                                 }`}
                             title={inWishlist ? "إزالة من المحفوظات" : "إضافة للمحفوظات"}
                         >
@@ -151,7 +151,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </button>
                         <button
                             onClick={handleLike}
-                            className={`p-2 rounded-xl backdrop-blur-md transition-colors flex items-center gap-1 ${liked ? "bg-red-500/20 text-red-400" : "bg-black/40 text-white/80 hover:bg-red-500/20 hover:text-red-400"
+                            className={`p-2 rounded-xl backdrop-blur-md transition-colors flex items-center gap-1 ${liked ? "bg-red-500/20 text-red-400" : "bg-black/40 text-on-dark hover:bg-red-500/20 hover:text-red-400"
                                 }`}
                             title={liked ? "إلغاء الإعجاب" : "إعجاب"}
                         >
@@ -161,7 +161,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     </SignedIn>
                     <button
                         onClick={handleShare}
-                        className="p-2 rounded-xl backdrop-blur-md bg-black/40 text-white/80 hover:bg-gold/20 hover:text-gold transition-colors"
+                        className="p-2 rounded-xl backdrop-blur-md bg-black/40 text-on-dark hover:bg-gold/20 hover:text-gold transition-colors"
                         title="مشاركة"
                     >
                         <Share2 className="w-4 h-4" />
@@ -169,11 +169,11 @@ export function ProductCard({ product }: ProductCardProps) {
                 </div>
             </div>
             <div className="p-3">
-                <h3 className="text-sm font-bold text-fg truncate group-hover:text-gold transition-colors">
+                <h3 className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">
                     {product.title}
                 </h3>
                 <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-fg/30">{product.store_name || product.artist?.display_name}</span>
+                    <span className="text-[10px] text-theme-faint">{product.store_name || product.artist?.display_name}</span>
                     <span suppressHydrationWarning className="text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                 </div>
             </div>

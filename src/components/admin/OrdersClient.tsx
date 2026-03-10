@@ -79,14 +79,14 @@ export function OrdersClient({
             <InvoiceBuilder order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
 
             {/* ─── Status Tabs ─── */}
-            <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-white/[0.06] overflow-x-auto">
+            <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-theme-subtle overflow-x-auto">
                 {statuses.map((s) => (
                     <button
                         key={s.value}
                         onClick={() => navigate({ status: s.value, page: "1" })}
                         className={`px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${currentStatus === s.value
                             ? "bg-gold/10 text-gold"
-                            : "text-fg/40 hover:text-fg/60 hover:bg-white/[0.03]"
+                            : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
                             }`}
                     >
                         {s.label}
@@ -95,7 +95,7 @@ export function OrdersClient({
             </div>
 
             {/* ─── Orders Table ─── */}
-            <div className="rounded-2xl glass-premium border border-white/[0.08] overflow-hidden relative">
+            <div className="rounded-2xl glass-premium border border-theme-soft overflow-hidden relative">
                 {isPending && (
                     <div className="absolute inset-0 bg-bg/50 flex items-center justify-center z-10">
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
@@ -104,15 +104,15 @@ export function OrdersClient({
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/[0.06]">
+                            <tr className="border-b border-theme-subtle">
                                 <th className="w-10"></th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">رقم الطلب</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">المشتري</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">المبلغ</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">الحالة</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">الدفع</th>
-                                <th className="text-right px-4 py-3.5 text-fg/30 font-medium text-xs">التاريخ</th>
-                                <th className="text-right px-6 py-3.5 text-fg/30 font-medium text-xs">إجراء</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">رقم الطلب</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">المشتري</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">المبلغ</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الحالة</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الدفع</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">التاريخ</th>
+                                <th className="text-right px-6 py-3.5 text-theme-faint font-medium text-xs">إجراء</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -127,13 +127,13 @@ export function OrdersClient({
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ delay: i * 0.03 }}
-                                            className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group"
+                                            className="border-b border-theme-faint hover:bg-theme-faint transition-colors group"
                                         >
                                             <td className="px-3 py-3.5">
                                                 {items.length > 0 && (
                                                     <button
                                                         onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                                                        className="p-1 rounded hover:bg-white/5 text-fg/30 transition-colors"
+                                                        className="p-1 rounded hover:bg-theme-subtle text-theme-faint transition-colors"
                                                     >
                                                         <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                                                     </button>
@@ -142,13 +142,13 @@ export function OrdersClient({
                                             <td className="px-4 py-3.5 font-mono text-xs text-gold">{order.order_number}</td>
                                             <td className="px-4 py-3.5">
                                                 <div>
-                                                    <span className="text-fg font-medium">{order.buyer?.display_name || "—"}</span>
+                                                    <span className="text-theme font-medium">{order.buyer?.display_name || "—"}</span>
                                                     {order.buyer?.username && (
-                                                        <span className="text-fg/30 text-xs block">@{order.buyer.username}</span>
+                                                        <span className="text-theme-faint text-xs block">@{order.buyer.username}</span>
                                                     )}
                                                 </div>
                                             </td>
-                                            <td suppressHydrationWarning className="px-4 py-3.5 font-bold text-fg">{Number(order.total).toLocaleString()} ر.س</td>
+                                            <td suppressHydrationWarning className="px-4 py-3.5 font-bold text-theme">{Number(order.total).toLocaleString()} ر.س</td>
                                             <td className="px-4 py-3.5"><StatusBadge status={order.status} type="order" /></td>
                                             <td className="px-4 py-3.5">
                                                 <span className={`text-xs font-bold ${order.payment_status === "paid" ? "text-forest" : "text-amber-400"
@@ -158,14 +158,14 @@ export function OrdersClient({
                                                             order.payment_status === "refunded" ? "مسترجع" : "معلق"}
                                                 </span>
                                             </td>
-                                            <td suppressHydrationWarning className="px-4 py-3.5 text-fg/30 text-xs" dir="ltr">
+                                            <td suppressHydrationWarning className="px-4 py-3.5 text-theme-faint text-xs" dir="ltr">
                                                 {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
                                             </td>
                                             <td className="px-6 py-3.5">
                                                 <div className="flex items-center gap-2">
                                                     <button
                                                         onClick={() => setInvoiceOrder(order)}
-                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-white/10 text-fg/60 hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold rounded-lg border border-theme-soft text-theme-soft hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
                                                         title="تصدير فاتورة"
                                                     >
                                                         <FileDown className="w-3.5 h-3.5" />
@@ -192,7 +192,7 @@ export function OrdersClient({
                                                             ))}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-fg/20 text-xs">—</span>
+                                                        <span className="text-theme-faint text-xs">—</span>
                                                     )}
                                                 </div>
                                             </td>
@@ -202,11 +202,11 @@ export function OrdersClient({
                                                 initial={{ opacity: 0, height: 0 }}
                                                 animate={{ opacity: 1, height: "auto" }}
                                                 exit={{ opacity: 0, height: 0 }}
-                                                className="border-b border-white/[0.03] bg-white/[0.02]"
+                                                className="border-b border-theme-faint bg-theme-faint"
                                             >
                                                 <td colSpan={8} className="px-6 py-4">
                                                     <div className="space-y-3">
-                                                        <p className="text-xs font-bold text-fg/50 mb-2">عناصر الطلب</p>
+                                                        <p className="text-xs font-bold text-theme-subtle mb-2">عناصر الطلب</p>
                                                         <div className="flex flex-wrap gap-4">
                                                             {items.map((item: any) => {
                                                                 const isCustom = !!item.custom_design_url;
@@ -216,8 +216,8 @@ export function OrdersClient({
                                                                     ? `${item.custom_garment || ""} · مقاس ${item.size || "—"}`
                                                                     : item.size ? `مقاس ${item.size}` : "";
                                                                 return (
-                                                                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] min-w-[280px]">
-                                                                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/5 shrink-0">
+                                                                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-theme-subtle border border-theme-subtle min-w-[280px]">
+                                                                        <div className="w-14 h-14 rounded-lg overflow-hidden bg-theme-subtle shrink-0">
                                                                             {imageUrl && (
                                                                                 <Image
                                                                                     src={imageUrl}
@@ -229,9 +229,9 @@ export function OrdersClient({
                                                                             )}
                                                                         </div>
                                                                         <div className="flex-1 min-w-0">
-                                                                            <p className="text-sm font-medium text-fg truncate">{title}</p>
-                                                                            <p className="text-xs text-fg/40">{subtitle}</p>
-                                                                            <p suppressHydrationWarning className="text-xs text-fg/50 mt-0.5">
+                                                                            <p className="text-sm font-medium text-theme truncate">{title}</p>
+                                                                            <p className="text-xs text-theme-subtle">{subtitle}</p>
+                                                                            <p suppressHydrationWarning className="text-xs text-theme-subtle mt-0.5">
                                                                                 {item.quantity} × {Number(item.unit_price).toLocaleString()} ر.س
                                                                             </p>
                                                                         </div>
@@ -253,7 +253,7 @@ export function OrdersClient({
                                 <tr>
                                     <td colSpan={8} className="text-center py-16">
                                         <Package className="w-12 h-12 text-fg/10 mx-auto mb-3" />
-                                        <p className="text-fg/20 text-sm">لا توجد طلبات</p>
+                                        <p className="text-theme-faint text-sm">لا توجد طلبات</p>
                                     </td>
                                 </tr>
                             )}
@@ -265,20 +265,20 @@ export function OrdersClient({
             {/* ─── Pagination ─── */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-between">
-                    <p className="text-xs text-fg/30">{count} طلب</p>
+                    <p className="text-xs text-theme-faint">{count} طلب</p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => navigate({ status: currentStatus, page: String(currentPage - 1) })}
                             disabled={currentPage <= 1}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-                        <span className="text-xs text-fg/40 px-3">{currentPage} / {totalPages}</span>
+                        <span className="text-xs text-theme-subtle px-3">{currentPage} / {totalPages}</span>
                         <button
                             onClick={() => navigate({ status: currentStatus, page: String(currentPage + 1) })}
                             disabled={currentPage >= totalPages}
-                            className="p-2 rounded-lg bg-surface/50 border border-white/[0.06] text-fg/40 hover:text-fg disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>

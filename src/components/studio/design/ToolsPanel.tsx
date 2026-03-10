@@ -40,11 +40,11 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
         <div className="flex flex-col h-full">
             {/* Header */}
             <div className="p-6 border-b border-fg/10">
-                <h2 className="text-2xl font-bold text-fg flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-theme flex items-center gap-2">
                     <Wand2 className="w-6 h-6 text-gold" />
                     استوديو التصميم
                 </h2>
-                <p className="text-sm text-fg/60 mt-2">أطلق العنان لإبداعك بمساعدة الذكاء الاصطناعي</p>
+                <p className="text-sm text-theme-soft mt-2">أطلق العنان لإبداعك بمساعدة الذكاء الاصطناعي</p>
             </div>
 
             {/* Tabs */}
@@ -55,7 +55,7 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex-1 py-4 flex flex-col items-center gap-2 text-sm font-medium transition-colors ${activeTab === tab.id
                             ? "text-gold bg-gold/5 border-b-2 border-gold"
-                            : "text-fg/60 hover:text-fg hover:bg-fg/5"
+                            : "text-theme-soft hover:text-theme hover:bg-fg/5"
                             }`}
                     >
                         <tab.icon className="w-5 h-5" />
@@ -69,13 +69,13 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
                 {activeTab === "ai-create" && (
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-sm font-bold text-fg mb-3">اختر المنتج</label>
+                            <label className="block text-sm font-bold text-theme mb-3">اختر المنتج</label>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => setApparelType("tshirt")}
                                     className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${apparelType === "tshirt"
                                         ? "border-gold bg-gold/10 text-gold"
-                                        : "border-fg/10 hover:border-fg/30 text-fg/60"
+                                        : "border-fg/10 hover:border-fg/30 text-theme-soft"
                                         }`}
                                 >
                                     <div className="w-10 h-10 bg-current/10 rounded-full flex items-center justify-center">
@@ -87,7 +87,7 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
                                     onClick={() => setApparelType("hoodie")}
                                     className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${apparelType === "hoodie"
                                         ? "border-gold bg-gold/10 text-gold"
-                                        : "border-fg/10 hover:border-fg/30 text-fg/60"
+                                        : "border-fg/10 hover:border-fg/30 text-theme-soft"
                                         }`}
                                 >
                                     <div className="w-10 h-10 bg-current/10 rounded-full flex items-center justify-center">
@@ -99,12 +99,12 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
                         </div>
 
                         <div>
-                            <label className="block text-sm font-bold text-fg mb-3">صف فكرتك</label>
+                            <label className="block text-sm font-bold text-theme mb-3">صف فكرتك</label>
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 placeholder="مثال: رسم زيتي لخيول عربية تركض في الصحراء وقت الغروب..."
-                                className="w-full h-32 p-4 rounded-xl bg-bg border border-fg/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none transition-all placeholder:text-fg/30"
+                                className="w-full h-32 p-4 rounded-xl bg-bg border border-fg/10 focus:border-gold focus:ring-1 focus:ring-gold outline-none resize-none transition-all placeholder:text-theme-faint"
                             />
                         </div>
 
@@ -130,7 +130,7 @@ export function ToolsPanel({ setGeneratedImage, apparelType, setApparelType }: T
 
                 {/* Placeholders for other tabs */}
                 {activeTab !== "ai-create" && (
-                    <div className="h-full flex flex-col items-center justify-center text-fg/40 text-center">
+                    <div className="h-full flex flex-col items-center justify-center text-theme-subtle text-center">
                         <p>هذه الأداة قادمة قريباً</p>
                     </div>
                 )}

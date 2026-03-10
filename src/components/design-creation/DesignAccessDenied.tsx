@@ -21,10 +21,10 @@ export function DesignAccessDenied() {
           <Lock className="w-12 h-12 text-gold" />
         </motion.div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-fg mb-3">
+        <h1 className="text-2xl sm:text-3xl font-bold text-theme mb-3">
           سجّل دخولك لتصمّم قطعتك
         </h1>
-        <p className="text-fg/60 text-base leading-relaxed mb-8">
+        <p className="text-theme-soft text-base leading-relaxed mb-8">
           سجّل حسابك مجاناً وابدأ بتصميم تيشيرت أو هودي بالذكاء الاصطناعي فوراً.
         </p>
 
@@ -38,7 +38,7 @@ export function DesignAccessDenied() {
           </Link>
           <Link
             href="/sign-in?redirect_url=/design"
-            className="inline-flex items-center gap-2 justify-center px-6 py-3 text-fg/60 hover:text-gold border border-white/[0.08] hover:border-gold/20 rounded-xl transition-all text-sm font-medium"
+            className="inline-flex items-center gap-2 justify-center px-6 py-3 text-theme-soft hover:text-gold border border-theme-soft hover:border-gold/20 rounded-xl transition-all text-sm font-medium"
           >
             تسجيل الدخول
           </Link>

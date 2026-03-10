@@ -60,10 +60,10 @@ export default function ContactPage() {
                         <Mail className="w-3.5 h-3.5" />
                         تواصل
                     </div>
-                    <h1 className="text-3xl sm:text-5xl font-bold text-white mb-4">
+                    <h1 className="text-3xl sm:text-5xl font-bold text-theme mb-4">
                         تواصل <span className="text-gradient">معنا</span>
                     </h1>
-                    <p className="text-white/40 max-w-lg mx-auto">
+                    <p className="text-theme-subtle max-w-lg mx-auto">
                         فريق وشّى جاهز لخدمتك. اختر الطريقة الأنسب لك.
                     </p>
                 </div>
@@ -78,14 +78,14 @@ export default function ContactPage() {
                                 href={method.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group p-6 bg-white/[0.03] border border-white/[0.06] rounded-2xl hover:border-gold/20 transition-all duration-300 hover:-translate-y-1"
+                                className="group p-6 bg-theme-subtle border border-theme-soft rounded-2xl hover:border-gold/20 transition-all duration-300 hover:-translate-y-1"
                             >
                                 <div className={`w-12 h-12 rounded-xl ${method.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                                     <Icon className={`w-6 h-6 ${method.color}`} />
                                 </div>
-                                <h3 className="font-bold text-white/90 mb-1">{method.title}</h3>
+                                <h3 className="font-bold text-theme-strong mb-1">{method.title}</h3>
                                 <p className="text-gold text-sm font-bold mb-2" dir="ltr">{method.value}</p>
-                                <p className="text-white/30 text-xs">{method.desc}</p>
+                                <p className="text-theme-subtle text-xs">{method.desc}</p>
                             </a>
                         );
                     })}
@@ -93,26 +93,26 @@ export default function ContactPage() {
 
                 {/* Info Banner */}
                 <div className="max-w-3xl mx-auto">
-                    <div className="p-6 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-start gap-4">
+                    <div className="p-6 bg-theme-subtle border border-theme-soft rounded-2xl flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
                             <Clock className="w-5 h-5 text-gold" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-white/90 mb-1">أوقات العمل</h3>
-                            <p className="text-white/40 text-sm leading-relaxed">
-                                فريق الدعم متاح يومياً من <span className="text-white/70 font-bold">9 صباحاً</span> إلى <span className="text-white/70 font-bold">10 مساءً</span> بتوقيت السعودية.
+                            <h3 className="font-bold text-theme-strong mb-1">أوقات العمل</h3>
+                            <p className="text-theme-subtle text-sm leading-relaxed">
+                                فريق الدعم متاح يومياً من <span className="text-theme-soft font-bold">9 صباحاً</span> إلى <span className="text-theme-soft font-bold">10 مساءً</span> بتوقيت السعودية.
                                 <br />
                                 نرد على الرسائل خلال ساعتين كحد أقصى خلال أوقات العمل.
                             </p>
                         </div>
                     </div>
-                    <div className="mt-6 p-6 bg-white/[0.03] border border-white/[0.06] rounded-2xl flex items-start gap-4">
+                    <div className="mt-6 p-6 bg-theme-subtle border border-theme-soft rounded-2xl flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
                             <MapPin className="w-5 h-5 text-gold" />
                         </div>
                         <div>
-                            <h3 className="font-bold text-white/90 mb-1">موقعنا</h3>
-                            <p className="text-white/40 text-sm">المملكة العربية السعودية</p>
+                            <h3 className="font-bold text-theme-strong mb-1">موقعنا</h3>
+                            <p className="text-theme-subtle text-sm">المملكة العربية السعودية</p>
                         </div>
                     </div>
                 </div>

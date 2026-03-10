@@ -76,11 +76,11 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
     if (notFound || !order) {
         return (
             <div className="text-center py-32">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 rounded-2xl bg-theme-subtle border border-theme-subtle flex items-center justify-center mx-auto mb-4">
                     <XCircle className="w-8 h-8 text-red-400/50" />
                 </div>
-                <h2 className="text-xl font-bold text-white/60 mb-2">طلب غير موجود</h2>
-                <p className="text-white/30 text-sm mb-6">الرجاء التأكد من رابط الطلب.</p>
+                <h2 className="text-xl font-bold text-theme-soft mb-2">طلب غير موجود</h2>
+                <p className="text-theme-faint text-sm mb-6">الرجاء التأكد من رابط الطلب.</p>
                 <Link href="/account/orders" className="text-gold text-sm hover:underline">
                     العودة لطلباتي
                 </Link>
@@ -96,15 +96,15 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
     return (
         <div className="space-y-8">
             {/* ── Order Info Card ── */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6">
+            <div className="bg-theme-subtle border border-theme-subtle rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center">
                             <Brush className="w-6 h-6 text-gold" />
                         </div>
                         <div>
-                            <h2 className="font-bold text-white">طلب #{order.order_number}</h2>
-                            <p suppressHydrationWarning className="text-xs text-white/30">
+                            <h2 className="font-bold text-theme">طلب #{order.order_number}</h2>
+                            <p suppressHydrationWarning className="text-xs text-theme-faint">
                                 {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}
                             </p>
                         </div>
@@ -120,7 +120,7 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
                     <div className="flex items-center gap-1 mb-6">
                         {progressSteps.map((step, i) => (
                             <div key={step} className="flex-1">
-                                <div className={`h-1.5 rounded-full transition-colors ${i <= currentIdx ? "bg-gold" : "bg-white/[0.06]"}`} />
+                                <div className={`h-1.5 rounded-full transition-colors ${i <= currentIdx ? "bg-gold" : "bg-theme-soft"}`} />
                             </div>
                         ))}
                     </div>
@@ -131,36 +131,36 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
 
                 {/* Order Details */}
                 <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/[0.02] border border-white/[0.04] shrink-0 p-1">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-theme-faint border border-theme-faint shrink-0 p-1">
                         {order.garment_image_url ? (
                             <Image src={order.garment_image_url} alt="القطعة" width={64} height={64} className="object-contain w-full h-full" />
                         ) : (
-                            <Brush className="w-8 h-8 text-white/20 m-auto mt-3" />
+                            <Brush className="w-8 h-8 text-theme-faint m-auto mt-3" />
                         )}
                     </div>
                     <div>
-                        <p className="font-bold text-white/90">{order.garment_name}</p>
-                        <p className="text-xs text-white/40 mt-1">
+                        <p className="font-bold text-theme-strong">{order.garment_name}</p>
+                        <p className="text-xs text-theme-subtle mt-1">
                             {order.size_name} · {order.color_name}
                         </p>
                         {order.style_name && order.style_name !== "—" && (
-                            <p className="text-xs text-white/30 mt-0.5">نمط: {order.style_name}</p>
+                            <p className="text-xs text-theme-faint mt-0.5">نمط: {order.style_name}</p>
                         )}
                     </div>
                 </div>
 
                 {/* Text Prompt */}
                 {order.text_prompt && (
-                    <div className="mt-4 p-4 bg-white/[0.02] border border-white/[0.04] rounded-xl">
-                        <p className="text-xs text-white/30 mb-1">وصف التصميم:</p>
-                        <p className="text-sm text-white/60 leading-relaxed">{order.text_prompt}</p>
+                    <div className="mt-4 p-4 bg-theme-faint border border-theme-faint rounded-xl">
+                        <p className="text-xs text-theme-faint mb-1">وصف التصميم:</p>
+                        <p className="text-sm text-theme-soft leading-relaxed">{order.text_prompt}</p>
                     </div>
                 )}
 
                 {/* Result Preview */}
                 {order.result_mockup_url && (
                     <div className="mt-4">
-                        <p className="text-xs text-white/30 mb-2">نتيجة التصميم:</p>
+                        <p className="text-xs text-theme-faint mb-2">نتيجة التصميم:</p>
                         <div className="w-32 h-32 rounded-xl overflow-hidden border border-gold/20">
                             <Image src={order.result_mockup_url} alt="نتيجة التصميم" width={128} height={128} className="object-cover w-full h-full" />
                         </div>
@@ -169,17 +169,17 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
             </div>
 
             {/* ── Chat Section ── */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
-                <div className="p-4 border-b border-white/[0.06] flex items-center gap-2">
+            <div className="bg-theme-subtle border border-theme-subtle rounded-2xl overflow-hidden">
+                <div className="p-4 border-b border-theme-subtle flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-gold" />
-                    <h3 className="font-bold text-white/90">المحادثة مع فريق التصميم</h3>
-                    <span className="text-xs text-white/30 mr-auto">({messages.length} رسالة)</span>
+                    <h3 className="font-bold text-theme-strong">المحادثة مع فريق التصميم</h3>
+                    <span className="text-xs text-theme-faint mr-auto">({messages.length} رسالة)</span>
                 </div>
 
                 {/* Messages */}
                 <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
                     {messages.length === 0 && (
-                        <p className="text-center text-white/20 text-sm py-8">لا توجد رسائل بعد. أرسل رسالتك الأولى!</p>
+                        <p className="text-center text-theme-faint text-sm py-8">لا توجد رسائل بعد. أرسل رسالتك الأولى!</p>
                     )}
                     {messages.map((msg) => (
                         <div
@@ -187,14 +187,14 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
                             className={`flex ${msg.is_admin_reply ? "justify-start" : "justify-end"}`}
                         >
                             <div className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.is_admin_reply
-                                ? "bg-gold/10 text-white/80 rounded-tr-sm"
-                                : "bg-white/[0.06] text-white/70 rounded-tl-sm"
+                                ? "bg-gold/10 text-theme-strong rounded-tr-sm"
+                                : "bg-theme-soft text-theme-soft rounded-tl-sm"
                                 }`}>
-                                <p className="text-[10px] text-white/30 mb-1 font-bold">
+                                <p className="text-[10px] text-theme-faint mb-1 font-bold">
                                     {msg.is_admin_reply ? "فريق التصميم" : "أنت"}
                                 </p>
                                 {msg.message}
-                                <p suppressHydrationWarning className="text-[9px] text-white/20 mt-1.5">
+                                <p suppressHydrationWarning className="text-[9px] text-theme-faint mt-1.5">
                                     {new Date(msg.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
                                 </p>
                             </div>
@@ -205,12 +205,12 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
 
                 {/* Send Message */}
                 {!isCancelled && order.status !== "completed" && (
-                    <form onSubmit={handleSend} className="p-4 border-t border-white/[0.06] flex items-center gap-3">
+                    <form onSubmit={handleSend} className="p-4 border-t border-theme-subtle flex items-center gap-3">
                         <input
                             value={newMsg}
                             onChange={(e) => setNewMsg(e.target.value)}
                             placeholder="اكتب رسالتك..."
-                            className="flex-1 px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/20 focus:border-gold/30 focus:outline-none transition-colors"
+                            className="flex-1 px-4 py-3 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder-white/20 focus:border-gold/30 focus:outline-none transition-colors"
                         />
                         <button
                             type="submit"
@@ -225,7 +225,7 @@ export default function DesignTrackerClient({ orderId }: { orderId: string }) {
 
             {/* Back Link */}
             <div className="text-center">
-                <Link href="/account/orders" className="inline-flex items-center gap-2 text-white/30 text-sm hover:text-gold transition-colors">
+                <Link href="/account/orders" className="inline-flex items-center gap-2 text-theme-faint text-sm hover:text-gold transition-colors">
                     <ArrowRight className="w-4 h-4" />
                     العودة لطلباتي
                 </Link>

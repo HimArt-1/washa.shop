@@ -31,7 +31,7 @@ export function Sidebar() {
             {/* Mobile Hamburger Button */}
             <button
                 onClick={() => setIsMobileOpen(true)}
-                className="fixed top-4 right-4 z-50 md:hidden p-3 bg-surface/90 backdrop-blur-xl border border-white/[0.06] rounded-xl text-fg/60"
+                className="fixed top-4 right-4 z-50 md:hidden p-3 bg-surface/90 backdrop-blur-xl border border-theme-subtle rounded-xl text-theme-soft"
                 aria-label="فتح القائمة"
             >
                 <Menu className="w-5 h-5" />
@@ -53,7 +53,7 @@ export function Sidebar() {
             {/* Sidebar */}
             <motion.aside
                 className={`
-                    h-screen bg-surface/80 backdrop-blur-2xl border-l border-white/[0.06] 
+                    h-screen bg-surface/80 backdrop-blur-2xl border-l border-theme-subtle 
                     flex flex-col z-50 transition-all duration-300
                     fixed md:sticky top-0
                     ${isMobileOpen ? "right-0" : "-right-[280px] md:right-0"}
@@ -62,7 +62,7 @@ export function Sidebar() {
                 transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             >
                 {/* Header */}
-                <div className="p-5 flex items-center justify-between border-b border-white/[0.06]">
+                <div className="p-5 flex items-center justify-between border-b border-theme-subtle">
                     <AnimatePresence>
                         {!isCollapsed && (
                             <motion.div
@@ -78,17 +78,17 @@ export function Sidebar() {
                     {/* Desktop collapse toggle */}
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
-                        className="p-2 hover:bg-white/5 rounded-lg transition-colors hidden md:block"
+                        className="p-2 hover:bg-theme-subtle rounded-lg transition-colors hidden md:block"
                     >
-                        <ChevronRight className={`w-4 h-4 text-fg/40 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`} />
+                        <ChevronRight className={`w-4 h-4 text-theme-subtle transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`} />
                     </button>
 
                     {/* Mobile close button */}
                     <button
                         onClick={() => setIsMobileOpen(false)}
-                        className="p-2 hover:bg-white/5 rounded-lg transition-colors md:hidden"
+                        className="p-2 hover:bg-theme-subtle rounded-lg transition-colors md:hidden"
                     >
-                        <X className="w-5 h-5 text-fg/40" />
+                        <X className="w-5 h-5 text-theme-subtle" />
                     </button>
                 </div>
 
@@ -105,8 +105,8 @@ export function Sidebar() {
                 </div>
 
                 {/* Footer */}
-                <div className="p-3 border-t border-white/[0.06]">
-                    <div className={`flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] ${isCollapsed ? "justify-center" : ""}`}>
+                <div className="p-3 border-t border-theme-subtle">
+                    <div className={`flex items-center gap-3 p-3 rounded-xl bg-theme-faint border border-theme-faint ${isCollapsed ? "justify-center" : ""}`}>
                         <UserButton afterSignOutUrl="/" />
                         <AnimatePresence>
                             {!isCollapsed && (
@@ -116,8 +116,8 @@ export function Sidebar() {
                                     exit={{ opacity: 0 }}
                                     className="flex flex-col overflow-hidden"
                                 >
-                                    <span className="text-xs font-bold text-fg truncate">حسابي</span>
-                                    <span className="text-[10px] text-fg/30 truncate">إدارة الملف</span>
+                                    <span className="text-xs font-bold text-theme truncate">حسابي</span>
+                                    <span className="text-[10px] text-theme-faint truncate">إدارة الملف</span>
                                 </motion.div>
                             )}
                         </AnimatePresence>

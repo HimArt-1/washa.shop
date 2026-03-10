@@ -32,8 +32,8 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
             case "open": return { label: "مفتوحة", icon: MessageSquare, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" };
             case "in_progress": return { label: "جاري المعالجة", icon: Clock, color: "text-gold", bg: "bg-gold/10 border-gold/20" };
             case "resolved": return { label: "تم الحل", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20" };
-            case "closed": return { label: "مغلقة", icon: X, color: "text-white/40", bg: "bg-white/5 border-white/10" };
-            default: return { label: status, icon: MessageSquare, color: "text-white/60", bg: "bg-white/5 border-white/10" };
+            case "closed": return { label: "مغلقة", icon: X, color: "text-theme-subtle", bg: "bg-theme-subtle border-theme-soft" };
+            default: return { label: status, icon: MessageSquare, color: "text-theme-soft", bg: "bg-theme-subtle border-theme-soft" };
         }
     };
 
@@ -66,20 +66,20 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[500px] bg-[#111] border border-white/[0.05] rounded-3xl overflow-hidden relative shadow-xl">
+        <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[500px] bg-[#111] border border-theme-subtle rounded-3xl overflow-hidden relative shadow-xl">
             {/* Header */}
-            <div className="p-4 sm:p-6 border-b border-white/[0.05] bg-white/[0.02] flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
+            <div className="p-4 sm:p-6 border-b border-theme-subtle bg-theme-faint flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
                 <div className="flex items-center gap-4">
-                    <Link href="/dashboard/support" className="p-2 -ml-2 hover:bg-white/5 rounded-full transition-colors text-white/50 hover:text-white">
+                    <Link href="/dashboard/support" className="p-2 -ml-2 hover:bg-theme-subtle rounded-full transition-colors text-theme-subtle hover:text-theme">
                         <ArrowRight className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h2 className="text-lg font-bold text-white max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
+                        <h2 className="text-lg font-bold text-theme max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-white/40">بواسطة:</span>
-                            <span className="text-xs text-white/80">{ticket.profile?.display_name || "مستخدم"}</span>
-                            <span className="text-white/20">•</span>
-                            <span className="text-xs text-white/40">
+                            <span className="text-xs text-theme-subtle">بواسطة:</span>
+                            <span className="text-xs text-theme-strong">{ticket.profile?.display_name || "مستخدم"}</span>
+                            <span className="text-theme-faint">•</span>
+                            <span className="text-xs text-theme-subtle">
                                 {format(new Date(ticket.created_at), "dd MMM yyyy", { locale: ar })}
                             </span>
                         </div>
@@ -88,7 +88,7 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
 
                 {/* Status Controls */}
                 <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-xs text-white/40 ml-2">الحالة:</div>
+                    <div className="text-xs text-theme-subtle ml-2">الحالة:</div>
                     {[
                         { id: "open", label: "مفتوحة" },
                         { id: "in_progress", label: "جاري المعالجة" },
@@ -101,7 +101,7 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
                             onClick={() => handleUpdateStatus(st.id as SupportTicketStatus)}
                             className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${ticket.status === st.id
                                 ? statusObj.bg + " " + statusObj.color + " border cursor-default"
-                                : "bg-white/[0.05] text-white/50 hover:bg-white/10 hover:text-white border border-transparent disabled:opacity-50"
+                                : "bg-white/[0.05] text-theme-subtle hover:bg-white/10 hover:text-theme border border-transparent disabled:opacity-50"
                                 }`}
                         >
                             {st.label}
@@ -134,11 +134,11 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
                                     alt={senderName}
                                     width={36}
                                     height={36}
-                                    className="rounded-full object-cover border border-white/10"
+                                    className="rounded-full object-cover border border-theme-soft"
                                 />
                                 {isAdmin && (
                                     <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-0.5 border-2 border-[#111]">
-                                        <ShieldAlert className="w-3 h-3 text-white" />
+                                        <ShieldAlert className="w-3 h-3 text-theme" />
                                     </div>
                                 )}
                             </div>
@@ -146,18 +146,18 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
                                 "flex flex-col gap-1",
                                 isAdmin ? "items-end" : "items-start"
                             )}>
-                                <span className={clsx("text-xs px-1 font-medium", isAdmin ? "text-blue-400" : "text-white/40")}>
+                                <span className={clsx("text-xs px-1 font-medium", isAdmin ? "text-blue-400" : "text-theme-subtle")}>
                                     {senderName}
                                 </span>
                                 <div className={clsx(
                                     "p-3.5 sm:p-4 rounded-2xl text-sm leading-relaxed",
                                     isAdmin
                                         ? "bg-blue-500/10 border border-blue-500/20 text-blue-50 rounded-tr-sm"
-                                        : "bg-white/[0.04] border border-white/10 text-white/90 rounded-tl-sm"
+                                        : "bg-theme-subtle border border-theme-soft text-theme-strong rounded-tl-sm"
                                 )}>
                                     <p className="whitespace-pre-wrap">{msg.message}</p>
                                 </div>
-                                <span className="text-[10px] text-white/30 px-1 mt-0.5">
+                                <span className="text-[10px] text-theme-faint px-1 mt-0.5">
                                     {format(new Date(msg.created_at), "p", { locale: ar })}
                                 </span>
                             </div>
@@ -168,10 +168,10 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
             </div>
 
             {/* Input Area */}
-            <div className="p-4 sm:p-6 border-t border-white/[0.05] bg-[#0a0a0a]">
+            <div className="p-4 sm:p-6 border-t border-theme-subtle bg-[#0a0a0a]">
                 <form onSubmit={handleSubmit} className="relative flex items-center gap-3">
-                    <div className="shrink-0 hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/[0.05] border border-white/[0.05]">
-                        <ShieldAlert className="w-5 h-5 text-white/50" />
+                    <div className="shrink-0 hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/[0.05] border border-theme-subtle">
+                        <ShieldAlert className="w-5 h-5 text-theme-subtle" />
                     </div>
                     <div className="relative flex-1">
                         <input
@@ -180,12 +180,12 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: an
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="اكتب ردك كمدير دعم..."
-                            className="w-full bg-white/[0.03] border border-white/[0.08] disabled:opacity-50 text-white text-sm rounded-2xl pl-16 pr-4 py-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.05] transition-all"
+                            className="w-full bg-theme-subtle border border-theme-soft disabled:opacity-50 text-theme text-sm rounded-2xl pl-16 pr-4 py-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.05] transition-all"
                         />
                         <button
                             type="submit"
                             disabled={!newMessage.trim() || isSubmitting}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-blue-500 text-theme flex items-center justify-center hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

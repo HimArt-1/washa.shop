@@ -45,7 +45,7 @@ export function CreationProductPreview({
 
   return (
     <div
-      className={`relative flex items-center justify-center overflow-hidden rounded-2xl bg-surface border border-white/10 ${className}`}
+      className={`relative flex items-center justify-center overflow-hidden rounded-2xl bg-surface border border-theme-soft ${className}`}
     >
       <motion.div
         layout
@@ -66,7 +66,7 @@ export function CreationProductPreview({
 
             {/* منطقة الطباعة */}
             <div
-              className="absolute rounded-lg overflow-hidden bg-white/5 border border-gold/30"
+              className="absolute rounded-lg overflow-hidden bg-theme-subtle border border-gold/30"
               style={{
                 width: `${area.width * 100}%`,
                 height: `${area.height * 100}%`,
@@ -94,7 +94,7 @@ export function CreationProductPreview({
                 />
               )}
               {!designImageUrl && !isLoading && (
-                <div className="w-full h-full flex items-center justify-center text-fg/20 text-sm">
+                <div className="w-full h-full flex items-center justify-center text-theme-faint text-sm">
                   التصميم سيظهر هنا
                 </div>
               )}
@@ -102,7 +102,7 @@ export function CreationProductPreview({
           </div>
         </div>
 
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-fg/30 text-xs font-medium">
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-theme-faint text-xs font-medium">
           {garmentMeta?.label} — {colorMeta?.label}
         </div>
       </motion.div>

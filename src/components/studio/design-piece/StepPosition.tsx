@@ -23,8 +23,8 @@ export function StepPosition({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">موضع الطباعة</h2>
-        <p className="text-fg/60 text-sm">أين تريد ظهور التصميم على القطعة؟</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">موضع الطباعة</h2>
+        <p className="text-theme-soft text-sm">أين تريد ظهور التصميم على القطعة؟</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -37,12 +37,12 @@ export function StepPosition({
               relative p-5 rounded-2xl border-2 text-right transition-all duration-300
               ${selected === p.id
                 ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                : "border-white/10 bg-white/[0.03] hover:border-gold/30 hover:bg-white/[0.06]"
+                : "border-theme-soft bg-theme-subtle hover:border-gold/30 hover:bg-theme-soft"
               }
             `}
           >
-            <div className="font-bold text-fg">{p.label}</div>
-            <div className="text-xs text-fg/50 mt-1">{p.description}</div>
+            <div className="font-bold text-theme">{p.label}</div>
+            <div className="text-xs text-theme-subtle mt-1">{p.description}</div>
             {selected === p.id && (
               <motion.div
                 layoutId="position-check"

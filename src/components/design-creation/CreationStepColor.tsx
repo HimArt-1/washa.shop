@@ -23,8 +23,8 @@ export function CreationStepColor({
       className="space-y-8"
     >
       <div>
-        <h2 className="text-2xl font-bold text-fg mb-1">اختر اللون</h2>
-        <p className="text-fg/60 text-sm">لوحة ألوان احترافية — هوية سعودية معاصرة</p>
+        <h2 className="text-2xl font-bold text-theme mb-1">اختر اللون</h2>
+        <p className="text-theme-soft text-sm">لوحة ألوان احترافية — هوية سعودية معاصرة</p>
       </div>
 
       <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
@@ -39,7 +39,7 @@ export function CreationStepColor({
               ${
                 selected === c.id
                   ? "border-gold ring-2 ring-gold/30 scale-105"
-                  : "border-white/10 hover:border-gold/40"
+                  : "border-theme-soft hover:border-gold/40"
               }
             `}
             style={{ backgroundColor: c.hex }}
@@ -50,7 +50,7 @@ export function CreationStepColor({
             )}
             <span
               className={`text-xs font-medium ${
-                c.id === "white" || c.id === "sand" ? "text-ink" : "text-white"
+                c.id === "white" || c.id === "sand" ? "text-ink" : "text-theme"
               }`}
               style={{
                 textShadow:
@@ -79,7 +79,7 @@ export function CreationStepColor({
         <button
           type="button"
           onClick={onBack}
-          className="px-4 py-2 rounded-xl border border-white/20 text-fg/80 hover:bg-white/5"
+          className="px-4 py-2 rounded-xl border border-white/20 text-theme-strong hover:bg-theme-subtle"
         >
           رجوع
         </button>

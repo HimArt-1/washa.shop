@@ -18,10 +18,10 @@ export default function NotFound() {
                 </div>
 
                 {/* Message */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-fg mb-4">
+                <h1 className="text-2xl sm:text-3xl font-bold text-theme mb-4">
                     الصفحة غير موجودة
                 </h1>
-                <p className="text-fg/40 text-sm sm:text-base mb-8 leading-relaxed">
+                <p className="text-theme-subtle text-sm sm:text-base mb-8 leading-relaxed">
                     يبدو أن الصفحة التي تبحث عنها قد نُقلت أو حُذفت.
                     <br />
                     دعنا نعيدك للمكان الصحيح.

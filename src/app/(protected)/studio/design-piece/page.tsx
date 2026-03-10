@@ -16,8 +16,8 @@ export default async function DesignPiecePage() {
         return (
             <div className="h-full">
                 <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-fg">تصميم قطعة</h1>
-                    <p className="text-fg/60 mt-2">
+                    <h1 className="text-3xl font-bold text-theme">تصميم قطعة</h1>
+                    <p className="text-theme-soft mt-2">
                         أداة التصميم بالذكاء الاصطناعي وملفات PDF للطباعة
                     </p>
                 </div>
@@ -29,8 +29,8 @@ export default async function DesignPiecePage() {
     return (
         <div className="h-full">
             <div className="mb-6">
-                <h1 className="text-3xl font-bold text-fg">تصميم قطعة</h1>
-                <p className="text-fg/60 mt-2">
+                <h1 className="text-3xl font-bold text-theme">تصميم قطعة</h1>
+                <p className="text-theme-soft mt-2">
                     اختر القطعة، موضع الطباعة، وصف فكرتك أو ارفع صورة — ونولّد لك تصميماً جاهزاً للطباعة بدون خلفية
                 </p>
             </div>

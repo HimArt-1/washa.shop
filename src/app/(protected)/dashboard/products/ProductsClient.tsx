@@ -248,16 +248,16 @@ export function ProductsClient({
                     <div className="flex items-center gap-1.5 flex-wrap">
                         {Object.entries(typeLabels).map(([key, label]) => (
                             <button key={key} onClick={() => setFilter(key)}
-                                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${currentType === key ? "bg-gold text-bg shadow-[0_2px_10px_rgba(206,174,127,0.3)]" : "bg-white/[0.03] text-fg/40 hover:text-fg/60 hover:bg-white/[0.06] border border-white/[0.04]"}`}>
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${currentType === key ? "bg-gold text-bg shadow-[0_2px_10px_rgba(206,174,127,0.3)]" : "bg-theme-subtle text-theme-subtle hover:text-theme-soft hover:bg-theme-soft border border-theme-faint"}`}>
                                 {label}
                             </button>
                         ))}
-                        <span className="text-[10px] text-fg/20 mr-2">{count} منتج</span>
+                        <span className="text-[10px] text-theme-faint mr-2">{count} منتج</span>
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
-                        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.03] border border-white/[0.06] rounded-lg text-xs text-fg/50 hover:text-fg/80 hover:bg-white/[0.06] transition-all" title="تصدير CSV">
+                        <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-subtle border border-theme-subtle rounded-lg text-xs text-theme-subtle hover:text-theme-strong hover:bg-theme-soft transition-all" title="تصدير CSV">
                             <Download className="w-3.5 h-3.5" /> CSV
                         </button>
                         <button onClick={() => { setShowAddModal(true); setError(null); }}
@@ -271,10 +271,10 @@ export function ProductsClient({
                 <div className="flex items-center gap-3">
                     {/* Search */}
                     <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/30" />
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="بحث بالاسم، المتجر، الوشّاي..."
-                            className="w-full pr-10 pl-4 py-2 bg-white/[0.03] border border-white/[0.06] rounded-lg text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 transition-all" />
+                            className="w-full pr-10 pl-4 py-2 bg-theme-subtle border border-theme-subtle rounded-lg text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-all" />
                     </div>
 
                     {/* Bulk Actions (shown when items selected) */}
@@ -296,7 +296,7 @@ export function ProductsClient({
                                     className="text-[10px] px-2 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50">
                                     حذف
                                 </button>
-                                <button onClick={() => setSelectedIds(new Set())} className="p-0.5 text-fg/30 hover:text-fg/60">
+                                <button onClick={() => setSelectedIds(new Set())} className="p-0.5 text-theme-faint hover:text-theme-soft">
                                     <X className="w-3.5 h-3.5" />
                                 </button>
                                 {bulkLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gold" />}
@@ -307,87 +307,87 @@ export function ProductsClient({
             </div>
 
             {/* ─── Products Table ─── */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-white/[0.06] bg-white/[0.01]">
+                            <tr className="border-b border-theme-subtle bg-theme-faint">
                                 {/* Checkbox Header */}
                                 <th className="w-10 px-3 py-3">
-                                    <button onClick={toggleAll} className="p-1 rounded hover:bg-white/5 transition-colors">
-                                        {allSelected ? <CheckSquare className="w-4 h-4 text-gold" /> : <Square className="w-4 h-4 text-fg/20" />}
+                                    <button onClick={toggleAll} className="p-1 rounded hover:bg-theme-subtle transition-colors">
+                                        {allSelected ? <CheckSquare className="w-4 h-4 text-gold" /> : <Square className="w-4 h-4 text-theme-faint" />}
                                     </button>
                                 </th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">
-                                    <button onClick={() => handleSort("title")} className="flex items-center gap-1.5 hover:text-fg/60 transition-colors">
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">
+                                    <button onClick={() => handleSort("title")} className="flex items-center gap-1.5 hover:text-theme-soft transition-colors">
                                         المنتج <SortIcon col="title" />
                                     </button>
                                 </th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">الوشّاي</th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">
-                                    <button onClick={() => handleSort("type")} className="flex items-center gap-1.5 hover:text-fg/60 transition-colors">
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">الوشّاي</th>
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">
+                                    <button onClick={() => handleSort("type")} className="flex items-center gap-1.5 hover:text-theme-soft transition-colors">
                                         النوع <SortIcon col="type" />
                                     </button>
                                 </th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">
-                                    <button onClick={() => handleSort("price")} className="flex items-center gap-1.5 hover:text-fg/60 transition-colors">
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">
+                                    <button onClick={() => handleSort("price")} className="flex items-center gap-1.5 hover:text-theme-soft transition-colors">
                                         السعر <SortIcon col="price" />
                                     </button>
                                 </th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">
-                                    <button onClick={() => handleSort("stock_quantity")} className="flex items-center gap-1.5 hover:text-fg/60 transition-colors">
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">
+                                    <button onClick={() => handleSort("stock_quantity")} className="flex items-center gap-1.5 hover:text-theme-soft transition-colors">
                                         المخزون <SortIcon col="stock_quantity" />
                                     </button>
                                 </th>
-                                <th className="text-center px-3 py-3 text-fg/30 font-medium text-xs">SKU</th>
-                                <th className="text-center px-3 py-3 text-fg/30 font-medium text-xs">متوفر</th>
-                                <th className="text-center px-3 py-3 text-fg/30 font-medium text-xs">مميز</th>
-                                <th className="text-right px-4 py-3 text-fg/30 font-medium text-xs">إجراءات</th>
+                                <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">SKU</th>
+                                <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">متوفر</th>
+                                <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">مميز</th>
+                                <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredProducts.length > 0 ? filteredProducts.map((product: any) => {
                                 const sku = getProductSku(product.id);
                                 return (
-                                    <tr key={product.id} className={`border-b border-white/[0.03] transition-colors ${selectedIds.has(product.id) ? "bg-gold/[0.03]" : "hover:bg-white/[0.02]"}`}>
+                                    <tr key={product.id} className={`border-b border-theme-faint transition-colors ${selectedIds.has(product.id) ? "bg-gold/[0.03]" : "hover:bg-theme-faint"}`}>
                                         {/* Checkbox */}
                                         <td className="w-10 px-3 py-3">
-                                            <button onClick={() => toggleOne(product.id)} className="p-1 rounded hover:bg-white/5 transition-colors">
+                                            <button onClick={() => toggleOne(product.id)} className="p-1 rounded hover:bg-theme-subtle transition-colors">
                                                 {selectedIds.has(product.id)
                                                     ? <CheckSquare className="w-4 h-4 text-gold" />
-                                                    : <Square className="w-4 h-4 text-fg/15" />}
+                                                    : <Square className="w-4 h-4 text-theme-faint" />}
                                             </button>
                                         </td>
                                         {/* Product */}
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-lg bg-white/5 overflow-hidden shrink-0 relative">
+                                                <div className="w-10 h-10 rounded-lg bg-theme-subtle overflow-hidden shrink-0 relative">
                                                     {product.image_url && (
                                                         <Image src={product.image_url} alt="" fill className="object-cover" sizes="40px" />
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <span className="font-medium text-fg/80 truncate block max-w-[180px]">{product.title}</span>
+                                                    <span className="font-medium text-theme-strong truncate block max-w-[180px]">{product.title}</span>
                                                     {product.product_code && (
                                                         <span className="text-[9px] font-mono text-gold/70" dir="ltr">{product.product_code}</span>
                                                     )}
                                                     {product.sizes?.length > 0 && (
-                                                        <span className="text-[10px] text-fg/25">{product.sizes.join(" · ")}</span>
+                                                        <span className="text-[10px] text-theme-faint">{product.sizes.join(" · ")}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </td>
                                         {/* Artist */}
-                                        <td className="px-4 py-3 text-fg/40 text-xs">{product.store_name || product.artist?.display_name || "—"}</td>
+                                        <td className="px-4 py-3 text-theme-subtle text-xs">{product.store_name || product.artist?.display_name || "—"}</td>
                                         {/* Type */}
                                         <td className="px-4 py-3">
-                                            <span className="text-[10px] bg-white/5 px-2 py-1 rounded-lg text-fg/40">{typeLabels[product.type] || product.type}</span>
+                                            <span className="text-[10px] bg-theme-subtle px-2 py-1 rounded-lg text-theme-subtle">{typeLabels[product.type] || product.type}</span>
                                         </td>
                                         {/* Price */}
                                         <td className="px-4 py-3 font-bold text-gold text-xs">{Number(product.price).toLocaleString()} ر.س</td>
                                         {/* Stock */}
                                         <td className="px-4 py-3">
-                                            <span className={`font-mono text-xs ${product.stock_quantity != null && product.stock_quantity <= 5 ? "text-amber-400" : "text-fg/60"}`}>
+                                            <span className={`font-mono text-xs ${product.stock_quantity != null && product.stock_quantity <= 5 ? "text-amber-400" : "text-theme-soft"}`}>
                                                 {product.stock_quantity == null ? "∞" : product.stock_quantity}
                                             </span>
                                         </td>
@@ -395,12 +395,12 @@ export function ProductsClient({
                                         <td className="px-3 py-3 text-center">
                                             {sku ? (
                                                 <button onClick={() => setBarcodeProductId(product.id)} className="group flex flex-col items-center gap-0.5" title="عرض الباركود">
-                                                    <QrCode className="w-4 h-4 text-fg/30 group-hover:text-gold transition-colors" />
-                                                    <span className="text-[9px] font-mono text-fg/20 group-hover:text-gold/60 transition-colors">{sku.sku?.slice(0, 8)}</span>
+                                                    <QrCode className="w-4 h-4 text-theme-faint group-hover:text-gold transition-colors" />
+                                                    <span className="text-[9px] font-mono text-theme-faint group-hover:text-gold/60 transition-colors">{sku.sku?.slice(0, 8)}</span>
                                                 </button>
                                             ) : (
                                                 <button onClick={() => setBarcodeProductId(product.id)}
-                                                    className="p-1.5 rounded-lg text-fg/15 hover:text-gold hover:bg-gold/10 transition-all" title="إنشاء SKU">
+                                                    className="p-1.5 rounded-lg text-theme-faint hover:text-gold hover:bg-gold/10 transition-all" title="إنشاء SKU">
                                                     <QrCode className="w-4 h-4" />
                                                 </button>
                                             )}
@@ -409,7 +409,7 @@ export function ProductsClient({
                                         <td className="px-3 py-3 text-center">
                                             <button onClick={() => handleToggle(product.id, "in_stock", product.in_stock)}
                                                 disabled={loadingId === product.id}
-                                                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50">
+                                                className="p-1.5 rounded-lg hover:bg-theme-subtle transition-colors disabled:opacity-50">
                                                 {product.in_stock
                                                     ? <CheckCircle className="w-4 h-4 text-green-400" />
                                                     : <XCircle className="w-4 h-4 text-red-400/50" />}
@@ -419,17 +419,17 @@ export function ProductsClient({
                                         <td className="px-3 py-3 text-center">
                                             <button onClick={() => handleToggle(product.id, "is_featured", product.is_featured)}
                                                 disabled={loadingId === product.id}
-                                                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors disabled:opacity-50">
+                                                className="p-1.5 rounded-lg hover:bg-theme-subtle transition-colors disabled:opacity-50">
                                                 {product.is_featured
                                                     ? <Star className="w-4 h-4 text-gold fill-gold" />
-                                                    : <StarOff className="w-4 h-4 text-fg/15" />}
+                                                    : <StarOff className="w-4 h-4 text-theme-faint" />}
                                             </button>
                                         </td>
                                         {/* Actions */}
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1 justify-end">
                                                 <button onClick={() => { setEditingProduct(product); setError(null); }}
-                                                    className="p-2 rounded-lg text-fg/40 hover:text-gold hover:bg-gold/10 transition-all" title="تعديل">
+                                                    className="p-2 rounded-lg text-theme-subtle hover:text-gold hover:bg-gold/10 transition-all" title="تعديل">
                                                     <Pencil className="w-3.5 h-3.5" />
                                                 </button>
                                                 {confirmDeleteId === product.id ? (
@@ -439,14 +439,14 @@ export function ProductsClient({
                                                             تأكيد
                                                         </button>
                                                         <button onClick={() => setConfirmDeleteId(null)}
-                                                            className="px-2 py-1 rounded-lg text-[10px] text-fg/40 hover:bg-white/5 transition-all">
+                                                            className="px-2 py-1 rounded-lg text-[10px] text-theme-subtle hover:bg-theme-subtle transition-all">
                                                             إلغاء
                                                         </button>
                                                     </div>
                                                 ) : (
                                                     <button onClick={() => setConfirmDeleteId(product.id)}
                                                         disabled={loadingId === product.id}
-                                                        className="p-2 rounded-lg text-fg/40 hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50" title="حذف">
+                                                        className="p-2 rounded-lg text-theme-subtle hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50" title="حذف">
                                                         {loadingId === product.id
                                                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                             : <Trash2 className="w-3.5 h-3.5" />}
@@ -458,7 +458,7 @@ export function ProductsClient({
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={10} className="text-center py-16 text-fg/20">
+                                    <td colSpan={10} className="text-center py-16 text-theme-faint">
                                         <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm">{searchQuery ? "لا توجد نتائج للبحث" : "لا توجد منتجات"}</p>
                                         {!searchQuery && (
@@ -480,7 +480,7 @@ export function ProductsClient({
                     {[...Array(totalPages)].map((_, i) => (
                         <Link key={i}
                             href={`${basePath}?page=${i + 1}${currentType !== "all" ? `&type=${currentType}` : ""}${basePath.includes("products-inventory") ? "&tab=products" : ""}`}
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-medium transition-all ${currentPage === i + 1 ? "bg-gold text-bg" : "text-fg/30 hover:bg-white/5"}`}>
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-medium transition-all ${currentPage === i + 1 ? "bg-gold text-bg" : "text-theme-faint hover:bg-theme-subtle"}`}>
                             {i + 1}
                         </Link>
                     ))}
@@ -637,25 +637,25 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
             onClick={onClose}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-bg shadow-2xl p-6 space-y-5">
+                className="w-full max-w-md rounded-2xl border border-theme-soft bg-bg shadow-2xl p-6 space-y-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-fg flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-theme flex items-center gap-2">
                         <QrCode className="w-5 h-5 text-gold" />
                         {sku ? "باركود المنتج" : "إنشاء SKU"}
                     </h3>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40"><X className="w-5 h-5" /></button>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle"><X className="w-5 h-5" /></button>
                 </div>
 
                 {/* Product Info */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-theme-subtle border border-theme-subtle">
                     {product.image_url && (
                         <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 relative">
                             <Image src={product.image_url} alt="" fill className="object-cover" sizes="48px" />
                         </div>
                     )}
                     <div>
-                        <p className="font-medium text-fg/80 text-sm">{product.title}</p>
+                        <p className="font-medium text-theme-strong text-sm">{product.title}</p>
                         <p className="text-xs text-gold font-bold">{Number(product.price).toLocaleString()} ر.س</p>
                     </div>
                 </div>
@@ -665,16 +665,16 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                     <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1.5">المقاس (اختياري)</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">المقاس (اختياري)</label>
                                 <input type="text" value={size} onChange={e => setSize(e.target.value)}
                                     placeholder="مثال: XL"
-                                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" />
+                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1.5">اللون (اختياري)</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">اللون (اختياري)</label>
                                 <input type="text" value={colorCode} onChange={e => setColorCode(e.target.value)}
                                     placeholder="مثال: blu"
-                                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30" />
+                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" />
                             </div>
                         </div>
                         <div>
@@ -683,7 +683,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                 onChange={(e) => setCustomSku(e.target.value)} dir="ltr"
                                 placeholder="اتركه فارغاً للتوليد التلقائي (WSH-P-00001-NA-NA)"
                                 className="w-full px-4 py-2.5 bg-gold/5 border border-gold/20 text-gold rounded-xl text-sm font-mono tracking-wider focus:outline-none placeholder:text-gold/30" />
-                            <p className="text-[10px] text-fg/40 mt-1.5 leading-relaxed">
+                            <p className="text-[10px] text-theme-subtle mt-1.5 leading-relaxed">
                                 اترك الحقل فارغاً لاستخدام القالب التلقائي، أو أدخل رمزاً مخصصاً. القالب: WSH-{'{'}النوع{'}'}-{'{'}تسلسل{'}'}-{'{'}المقاس{'}'}-{'{'}اللون{'}'}
                             </p>
                         </div>
@@ -693,24 +693,24 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                         {/* Current SKU Info */}
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1.5">رمز SKU الحالي</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">رمز SKU الحالي</label>
                                 <input type="text" value={sku.sku} readOnly dir="ltr"
-                                    className="w-full px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg font-mono tracking-wider focus:outline-none opacity-60" />
+                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme font-mono tracking-wider focus:outline-none opacity-60" />
                             </div>
                             <div className="flex gap-2">
-                                {sku.size && <span className="px-2 py-1 text-xs bg-white/5 rounded-md border border-white/10 text-fg/60">المقاس: {sku.size}</span>}
-                                {sku.color_code && <span className="px-2 py-1 text-xs bg-white/5 rounded-md border border-white/10 text-fg/60">اللون: {sku.color_code}</span>}
+                                {sku.size && <span className="px-2 py-1 text-xs bg-theme-subtle rounded-md border border-theme-soft text-theme-soft">المقاس: {sku.size}</span>}
+                                {sku.color_code && <span className="px-2 py-1 text-xs bg-theme-subtle rounded-md border border-theme-soft text-theme-soft">اللون: {sku.color_code}</span>}
                             </div>
                         </div>
 
                         {/* Format Toggle */}
                         <div className="flex gap-2 border-t border-white/5 pt-4">
                             <button onClick={() => setCodeType("barcode")}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "barcode" ? "bg-gold/10 text-gold border-gold/30" : "bg-white/5 border-transparent text-fg/40"}`}>
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "barcode" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-subtle border-transparent text-theme-subtle"}`}>
                                 Code 128
                             </button>
                             <button onClick={() => setCodeType("qr")}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "qr" ? "bg-gold/10 text-gold border-gold/30" : "bg-white/5 border-transparent text-fg/40"}`}>
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "qr" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-subtle border-transparent text-theme-subtle"}`}>
                                 QR Code
                             </button>
                         </div>
@@ -775,15 +775,15 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                     <Printer className="w-4 h-4" /> طباعة ملصق
                                 </button>
                                 <button onClick={() => { navigator.clipboard.writeText(sku.sku); }}
-                                    className="py-2.5 px-4 rounded-xl bg-white/5 text-fg/60 hover:bg-white/10 transition-all text-sm border border-white/[0.06]">
+                                    className="py-2.5 px-4 rounded-xl bg-theme-subtle text-theme-soft hover:bg-white/10 transition-all text-sm border border-theme-subtle">
                                     نسخ
                                 </button>
                             </div>
                             <div className="flex gap-2 items-center border-t border-white/5 pt-3">
-                                <span className="text-xs text-fg/60 shrink-0">طباعة مجموعة:</span>
+                                <span className="text-xs text-theme-soft shrink-0">طباعة مجموعة:</span>
                                 <input type="number" min={1} max={999} placeholder="عدد الملصقات"
                                     value={batchCount} onChange={(e) => setBatchCount(e.target.value)}
-                                    className="w-20 px-2 py-1.5 text-sm rounded-lg bg-white/5 border border-white/10 text-fg placeholder:text-fg/40" />
+                                    className="w-20 px-2 py-1.5 text-sm rounded-lg bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-subtle" />
                                 <button onClick={handleBatchPrint} disabled={batchPrinting}
                                     className="py-1.5 px-4 rounded-lg bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 disabled:opacity-50 flex items-center gap-1">
                                     {batchPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
@@ -914,18 +914,18 @@ function ProductFormModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.08] bg-bg shadow-2xl styled-scrollbar">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] sticky top-0 bg-bg z-10">
-                    <h2 className="text-lg font-bold text-fg">{isEdit ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/5 text-fg/40"><X className="w-5 h-5" /></button>
+                className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-theme-soft bg-bg shadow-2xl styled-scrollbar">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle sticky top-0 bg-bg z-10">
+                    <h2 className="text-lg font-bold text-theme">{isEdit ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle"><X className="w-5 h-5" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {/* Artist Select */}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الوشّاي {!isEdit && "*"}</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الوشّاي {!isEdit && "*"}</label>
                         <select value={form.artist_id}
                             onChange={(e) => setForm((f) => ({ ...f, artist_id: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
                             required={!isEdit}>
                             {artistOptions.length === 0
                                 ? <option value="">— لا يوجد وشّايون —</option>
@@ -935,37 +935,37 @@ function ProductFormModal({
 
                     {/* Title */}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الاسم *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الاسم *</label>
                         <input type="text" value={form.title}
                             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                             placeholder="عنوان المنتج"
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                             required />
                     </div>
 
                     {/* Type + Price */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">النوع</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">النوع</label>
                             <select value={form.type}
                                 onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg focus:outline-none focus:border-gold/30">
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30">
                                 {typeOptions.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">السعر (ر.س) *</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">السعر (ر.س) *</label>
                             <input type="number" min="0" step="0.01" value={form.price}
                                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                                 placeholder="0"
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30"
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                                 required />
                         </div>
                     </div>
 
                     {/* Image Upload */}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">صورة المنتج {!isEdit && "*"}</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">صورة المنتج {!isEdit && "*"}</label>
                         <div className="space-y-2">
                             <div onClick={() => fileInputRef.current?.click()}
                                 onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-gold/40"); }}
@@ -977,57 +977,57 @@ function ProductFormModal({
                                         setUploadFile(f); setPreviewUrl(URL.createObjectURL(f));
                                     } else if (f) queueMicrotask(() => onError("الملف غير مدعوم أو أكبر من 5 ميجابايت"));
                                 }}
-                                className="border border-dashed border-white/[0.15] rounded-xl p-5 text-center cursor-pointer hover:border-gold/30 hover:bg-white/[0.02] transition-all">
+                                className="border border-dashed border-white/[0.15] rounded-xl p-5 text-center cursor-pointer hover:border-gold/30 hover:bg-theme-faint transition-all">
                                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileSelect} className="hidden" />
                                 {previewUrl ? (
                                     <div className="relative inline-block">
                                         <img src={previewUrl} alt="معاينة" className="max-h-28 rounded-lg object-contain" />
                                         <button type="button"
                                             onClick={(e) => { e.stopPropagation(); setUploadFile(null); setPreviewUrl((p) => { if (p) URL.revokeObjectURL(p); return null; }); }}
-                                            className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500/90 text-white flex items-center justify-center text-xs hover:bg-red-500">
+                                            className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500/90 text-theme flex items-center justify-center text-xs hover:bg-red-500">
                                             <X className="w-3 h-3" />
                                         </button>
                                     </div>
                                 ) : (
                                     <>
-                                        <Upload className="w-7 h-7 mx-auto mb-1.5 text-fg/30" />
-                                        <p className="text-sm text-fg/60">اسحب الصورة هنا أو انقر للاختيار</p>
-                                        <p className="text-[10px] text-fg/30 mt-1">JPG, PNG, WebP, GIF — حتى 5 ميجابايت</p>
+                                        <Upload className="w-7 h-7 mx-auto mb-1.5 text-theme-faint" />
+                                        <p className="text-sm text-theme-soft">اسحب الصورة هنا أو انقر للاختيار</p>
+                                        <p className="text-[10px] text-theme-faint mt-1">JPG, PNG, WebP, GIF — حتى 5 ميجابايت</p>
                                     </>
                                 )}
                             </div>
-                            <p className="text-[10px] text-fg/40">أو أدخل رابط الصورة:</p>
+                            <p className="text-[10px] text-theme-subtle">أو أدخل رابط الصورة:</p>
                             <input type="url" value={form.image_url}
                                 onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                                 placeholder="https://..."
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
                         </div>
                     </div>
 
                     {/* Description */}
                     <div>
-                        <label className="block text-xs font-medium text-fg/50 mb-1.5">الوصف</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الوصف</label>
                         <textarea value={form.description}
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                             placeholder="وصف المنتج..." rows={2}
-                            className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30 resize-none" />
+                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 resize-none" />
                     </div>
 
                     {/* Sizes + Store Name */}
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">المقاسات</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">المقاسات</label>
                             <input type="text" value={form.sizes}
                                 onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
                                 placeholder="S, M, L, XL"
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-fg/50 mb-1.5">اسم المتجر</label>
+                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المتجر</label>
                             <input type="text" value={form.store_name}
                                 onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
                                 placeholder="WASHA.STOR"
-                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-sm text-fg placeholder:text-fg/20 focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
                         </div>
                     </div>
 
@@ -1037,22 +1037,22 @@ function ProductFormModal({
                             <input type="checkbox" checked={form.in_stock}
                                 onChange={(e) => setForm((f) => ({ ...f, in_stock: e.target.checked }))}
                                 className="rounded border-white/20" />
-                            <span className="text-sm text-fg/70">متوفر للطلب</span>
+                            <span className="text-sm text-theme-soft">متوفر للطلب</span>
                         </label>
                         {mode === "add" ? (
                             <div>
-                                <label className="block text-xs font-medium text-fg/50 mb-1">المخزون الابتدائي (عند الإضافة فقط)</label>
+                                <label className="block text-xs font-medium text-theme-subtle mb-1">المخزون الابتدائي (عند الإضافة فقط)</label>
                                 <input type="number" min="0" value={form.stock_quantity}
                                     onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
                                     placeholder="مثال: 100"
-                                    className="w-full max-w-[120px] px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg text-sm text-fg"
+                                    className="w-full max-w-[120px] px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme"
                                     dir="ltr" />
-                                <p className="text-[10px] text-fg/40 mt-1">لتسجيل الكمية دفعة واحدة عند الإنشاء. أي تعديل لاحق من تبويب المخزون والجرد.</p>
+                                <p className="text-[10px] text-theme-subtle mt-1">لتسجيل الكمية دفعة واحدة عند الإنشاء. أي تعديل لاحق من تبويب المخزون والجرد.</p>
                             </div>
                         ) : (
                             <div className="p-3 rounded-xl bg-gold/5 border border-gold/20">
                                 <p className="text-xs text-gold font-medium">لتعديل الكمية أو الجرد</p>
-                                <p className="text-[10px] text-fg/50 mt-0.5">انتقل إلى تبويب «المخزون والجرد» لإضافة أو تعديل الكميات.</p>
+                                <p className="text-[10px] text-theme-subtle mt-0.5">انتقل إلى تبويب «المخزون والجرد» لإضافة أو تعديل الكميات.</p>
                             </div>
                         )}
                     </div>
@@ -1060,7 +1060,7 @@ function ProductFormModal({
                     {/* Submit */}
                     <div className="flex gap-3 pt-2">
                         <button type="button" onClick={onClose}
-                            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-fg/60 hover:bg-white/[0.03] transition-colors">
+                            className="flex-1 py-2.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle transition-colors">
                             إلغاء
                         </button>
                         <button type="submit" disabled={loading}

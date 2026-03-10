@@ -28,8 +28,8 @@ export default async function SmartStorePage() {
     return (
         <div>
             <div className="mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-fg">المتجر الذكي</h1>
-                <p className="text-fg/50 mt-1">إدارة قطع ومراحل &quot;صمم قطعتك بنفسك&quot;</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-theme">المتجر الذكي</h1>
+                <p className="text-theme-subtle mt-1">إدارة قطع ومراحل &quot;صمم قطعتك بنفسك&quot;</p>
             </div>
             <SmartStoreClient
                 garments={garments}

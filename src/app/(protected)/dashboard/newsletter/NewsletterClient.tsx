@@ -72,8 +72,8 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
                         <Mail className="w-5 h-5 text-gold" />
                     </div>
                     <div>
-                        <div className="text-2xl font-bold text-fg">{subscribers.length}</div>
-                        <div className="text-xs text-fg/30">مشترك في النشرة البريدية</div>
+                        <div className="text-2xl font-bold text-theme">{subscribers.length}</div>
+                        <div className="text-xs text-theme-faint">مشترك في النشرة البريدية</div>
                     </div>
                 </div>
                 <button
@@ -87,9 +87,9 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
             </div>
 
             {/* Subscribers List */}
-            <div className="rounded-2xl border border-white/[0.06] bg-surface/50 backdrop-blur-sm overflow-hidden divide-y divide-white/[0.04]">
+            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden divide-y divide-white/[0.04]">
                 {subscribers.length === 0 ? (
-                    <div className="p-12 text-center text-fg/20 text-sm">لا يوجد مشتركون بعد</div>
+                    <div className="p-12 text-center text-theme-faint text-sm">لا يوجد مشتركون بعد</div>
                 ) : (
                     subscribers.map((sub, i) => (
                         <motion.div
@@ -97,15 +97,15 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.02 }}
-                            className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition-colors"
+                            className="flex items-center justify-between px-5 py-3.5 hover:bg-theme-faint transition-colors"
                         >
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
                                     <Mail className="w-3.5 h-3.5 text-gold/60" />
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="text-sm text-fg/70 truncate" dir="ltr">{sub.email}</div>
-                                    <div className="text-[10px] text-fg/20" dir="ltr">
+                                    <div className="text-sm text-theme-soft truncate" dir="ltr">{sub.email}</div>
+                                    <div className="text-[10px] text-theme-faint" dir="ltr">
                                         {new Date(sub.subscribed_at).toLocaleDateString("ar-SA", {
                                             year: "numeric", month: "short", day: "numeric",
                                         })}
@@ -115,7 +115,7 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
                             <button
                                 onClick={() => handleDelete(sub.id)}
                                 disabled={deleting === sub.id}
-                                className="p-2 text-fg/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50 shrink-0"
+                                className="p-2 text-theme-faint hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50 shrink-0"
                             >
                                 {deleting === sub.id ? (
                                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

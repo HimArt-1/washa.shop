@@ -135,7 +135,7 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                                 className="object-cover"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <p className="text-white font-medium flex items-center gap-2">
+                                <p className="text-theme font-medium flex items-center gap-2">
                                     <Upload className="w-5 h-5" />
                                     تغيير الصورة
                                 </p>
@@ -147,7 +147,7 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                                     setFile(null);
                                     setPreviewUrl(null);
                                 }}
-                                className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                className="absolute top-4 right-4 p-2 bg-red-500 text-theme rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                             >
                                 <X className="w-4 h-4" />
                             </button>

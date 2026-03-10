@@ -313,7 +313,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
         return (
             <div className="flex flex-col items-center justify-center py-24">
                 <div className="w-10 h-10 border-2 border-gold/30 border-t-gold rounded-full animate-spin mb-4" />
-                <p className="text-fg/40 text-sm">جاري التحقق من الطلبات...</p>
+                <p className="text-theme-subtle text-sm">جاري التحقق من الطلبات...</p>
             </div>
         );
     }
@@ -340,7 +340,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
                     صمّم قطعتك بنفسك
                 </h1>
-                <p className="text-fg/50 mt-3 text-sm sm:text-base max-w-xl mx-auto">
+                <p className="text-theme-subtle mt-3 text-sm sm:text-base max-w-xl mx-auto">
                     اختر قطعتك ولونها، حدد نمط التصميم، وأرسل طلبك — ننفذه لك بالضبط
                 </p>
             </motion.div>
@@ -356,11 +356,11 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                             <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                                 <div className={`
                   w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all duration-500
-                  ${isDone ? "bg-gold text-bg" : isActive ? "bg-gold/20 text-gold border-2 border-gold" : "bg-white/[0.04] text-fg/30 border border-white/[0.08]"}
+                  ${isDone ? "bg-gold text-bg" : isActive ? "bg-gold/20 text-gold border-2 border-gold" : "bg-theme-subtle text-theme-faint border border-theme-soft"}
                 `}>
                                     {isDone ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                                 </div>
-                                <span className={`text-[10px] font-medium hidden sm:block ${isActive ? "text-gold" : "text-fg/30"}`}>
+                                <span className={`text-[10px] font-medium hidden sm:block ${isActive ? "text-gold" : "text-theme-faint"}`}>
                                     {s.label}
                                 </span>
                                 {i < STEP_INFO.length - 1 && (
@@ -371,7 +371,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                     })}
                 </div>
                 {/* Progress line */}
-                <div className="h-1 bg-white/[0.06] rounded-full mt-3 overflow-hidden">
+                <div className="h-1 bg-theme-soft rounded-full mt-3 overflow-hidden">
                     <motion.div
                         className="h-full bg-gradient-to-l from-gold to-gold-light rounded-full"
                         animate={{ width: `${(state.step / TOTAL_STEPS) * 100}%` }}
@@ -389,7 +389,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -40 }}
                         transition={{ duration: 0.3 }}
-                        className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl p-6 sm:p-8 lg:p-10 min-h-[400px]"
+                        className="rounded-3xl border border-theme-soft bg-theme-faint backdrop-blur-xl p-6 sm:p-8 lg:p-10 min-h-[400px]"
                     >
                         {state.step === 1 && (
                             <StepGarment garments={garments} selected={state.garment} onSelect={(g) => setState((s) => ({ ...s, garment: g, color: null, size: null }))} onNext={goNext} />
@@ -461,20 +461,20 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
 // ═══════════════════════════════════════════════════════════
 
 const btnPrimary = "flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all duration-300 disabled:opacity-40";
-const btnBack = "flex items-center gap-2 px-5 py-3 rounded-2xl border border-white/[0.08] text-fg/50 text-sm hover:bg-white/[0.04] transition-all";
+const btnBack = "flex items-center gap-2 px-5 py-3 rounded-2xl border border-theme-soft text-theme-subtle text-sm hover:bg-theme-subtle transition-all";
 
 function StepHeader({ title, desc }: { title: string; desc: string }) {
     return (
         <div className="mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-fg">{title}</h2>
-            <p className="text-fg/40 mt-1 text-sm">{desc}</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-theme">{title}</h2>
+            <p className="text-theme-subtle mt-1 text-sm">{desc}</p>
         </div>
     );
 }
 
 function NavButtons({ onBack, onNext, nextLabel, nextDisabled }: { onBack?: () => void; onNext: () => void; nextLabel?: string; nextDisabled?: boolean }) {
     return (
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/[0.06]">
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-theme-subtle">
             {onBack ? (
                 <button onClick={onBack} className={btnBack}>
                     <ArrowRight className="w-4 h-4" />
@@ -503,7 +503,7 @@ function StepGarment({ garments, selected, onSelect, onNext }: {
         <>
             <StepHeader title="اختر القطعة" desc="حدد نوع الملابس اللي تبغى تصمم عليها" />
             {garments.length === 0 ? (
-                <div className="text-center py-20 text-fg/30">
+                <div className="text-center py-20 text-theme-faint">
                     <Shirt className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p>لا توجد قطع متاحة حالياً</p>
                     <p className="text-xs mt-1">يتم إضافة القطع من لوحة الإدارة</p>
@@ -520,18 +520,18 @@ function StepGarment({ garments, selected, onSelect, onNext }: {
                                 onClick={() => onSelect(g)}
                                 className={`
                   relative rounded-2xl overflow-hidden border-2 transition-all duration-300 p-1
-                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-white/[0.08] hover:border-white/20"}
+                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
                                 {g.image_url ? (
-                                    <img src={g.image_url} alt={g.name} className="w-full aspect-[3/4] object-cover rounded-xl bg-white/5" />
+                                    <img src={g.image_url} alt={g.name} className="w-full aspect-[3/4] object-cover rounded-xl bg-theme-subtle" />
                                 ) : (
-                                    <div className="w-full aspect-[3/4] rounded-xl bg-white/[0.04] flex items-center justify-center">
-                                        <Shirt className="w-12 h-12 text-fg/20" />
+                                    <div className="w-full aspect-[3/4] rounded-xl bg-theme-subtle flex items-center justify-center">
+                                        <Shirt className="w-12 h-12 text-theme-faint" />
                                     </div>
                                 )}
                                 <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                                    <p className="text-sm font-bold text-white">{g.name}</p>
+                                    <p className="text-sm font-bold text-theme">{g.name}</p>
                                 </div>
                                 {isSelected && (
                                     <motion.div
@@ -572,7 +572,7 @@ function StepColor({ colors, loading, selected, onSelect, onBack, onNext }: {
                     <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
                 </div>
             ) : colors.length === 0 ? (
-                <div className="text-center py-20 text-fg/30">
+                <div className="text-center py-20 text-theme-faint">
                     <p>لا توجد ألوان متاحة لهذه القطعة</p>
                 </div>
             ) : (
@@ -587,18 +587,18 @@ function StepColor({ colors, loading, selected, onSelect, onBack, onNext }: {
                                 onClick={() => onSelect(c)}
                                 className={`
                   flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all
-                  ${isSelected ? "border-gold bg-gold/5" : "border-white/[0.06] hover:border-white/20"}
+                  ${isSelected ? "border-gold bg-gold/5" : "border-theme-subtle hover:border-white/20"}
                 `}
                             >
                                 {c.image_url ? (
                                     <img src={c.image_url} alt={c.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div
-                                        className="w-16 h-16 rounded-2xl border-2 border-white/10 shadow-inner"
+                                        className="w-16 h-16 rounded-2xl border-2 border-theme-soft shadow-inner"
                                         style={{ backgroundColor: c.hex_code }}
                                     />
                                 )}
-                                <span className={`text-xs font-medium ${isSelected ? "text-gold" : "text-fg/60"}`}>{c.name}</span>
+                                <span className={`text-xs font-medium ${isSelected ? "text-gold" : "text-theme-soft"}`}>{c.name}</span>
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-5 h-5 rounded-full bg-gold flex items-center justify-center">
                                         <Check className="w-3 h-3 text-bg" />
@@ -634,7 +634,7 @@ function StepSize({ sizes, loading, selected, onSelect, onBack, onNext }: {
                     <div className="w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
                 </div>
             ) : sizes.length === 0 ? (
-                <div className="text-center py-20 text-fg/30">
+                <div className="text-center py-20 text-theme-faint">
                     <p>لا توجد مقاسات متاحة</p>
                 </div>
             ) : (
@@ -649,10 +649,10 @@ function StepSize({ sizes, loading, selected, onSelect, onBack, onNext }: {
                                 onClick={() => onSelect(sz)}
                                 className={`
                   flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all
-                  ${isSelected ? "border-gold bg-gold/10 shadow-lg shadow-gold/10" : "border-white/[0.06] hover:border-white/20"}
+                  ${isSelected ? "border-gold bg-gold/10 shadow-lg shadow-gold/10" : "border-theme-subtle hover:border-white/20"}
                 `}
                             >
-                                <span className={`text-xl font-bold ${isSelected ? "text-gold" : "text-fg/60"}`}>{sz.name}</span>
+                                <span className={`text-xl font-bold ${isSelected ? "text-gold" : "text-theme-soft"}`}>{sz.name}</span>
                                 {isSelected && <Check className="w-4 h-4 text-gold" />}
                             </motion.button>
                         );
@@ -716,12 +716,12 @@ function StepMethod({
                             onClick={() => onSelect(m.id)}
                             className={`
                 relative p-5 sm:p-6 rounded-2xl border-2 text-right transition-all
-                ${isActive ? "border-gold bg-gold/5" : "border-white/[0.08] hover:border-white/20 hover:bg-white/[0.02]"}
+                ${isActive ? "border-gold bg-gold/5" : "border-theme-soft hover:border-white/20 hover:bg-theme-faint"}
               `}
                         >
                             <div className="text-4xl mb-4">{m.emoji}</div>
-                            <p className={`text-lg font-bold ${isActive ? "text-gold" : "text-fg"}`}>{m.label}</p>
-                            <p className="text-xs text-fg/40 mt-1">{m.desc}</p>
+                            <p className={`text-lg font-bold ${isActive ? "text-gold" : "text-theme"}`}>{m.label}</p>
+                            <p className="text-xs text-theme-subtle mt-1">{m.desc}</p>
                             {isActive && (
                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-4 left-4 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
                                     <Check className="w-3.5 h-3.5 text-bg" />
@@ -740,7 +740,7 @@ function StepMethod({
                             value={textPrompt}
                             onChange={(e) => onTextChange(e.target.value)}
                             placeholder="اكتب وصف التصميم اللي تبغاه... مثال: خط عربي بكلمة 'حلم' بلون ذهبي على خلفية سوداء"
-                            className="w-full px-5 py-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-fg placeholder:text-fg/25 focus:outline-none focus:border-gold/40 transition-colors text-sm resize-none"
+                            className="w-full px-5 py-4 rounded-2xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/40 transition-colors text-sm resize-none"
                             rows={4}
                         />
                     </motion.div>
@@ -753,18 +753,18 @@ function StepMethod({
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                         {imagePreview ? (
                             <div className="relative inline-block">
-                                <img src={imagePreview} alt="Preview" className="max-h-48 rounded-2xl border border-white/10" />
+                                <img src={imagePreview} alt="Preview" className="max-h-48 rounded-2xl border border-theme-soft" />
                                 <button
                                     onClick={() => onImageChange(null, null)}
                                     className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-red-500 flex items-center justify-center"
                                 >
-                                    <X className="w-4 h-4 text-white" />
+                                    <X className="w-4 h-4 text-theme" />
                                 </button>
                             </div>
                         ) : (
-                            <label className="flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border-2 border-dashed border-white/[0.1] hover:border-gold/30 cursor-pointer transition-colors bg-white/[0.02]">
-                                <Upload className="w-10 h-10 text-fg/30" />
-                                <span className="text-sm text-fg/40">اسحب الصورة هنا أو اضغط للرفع</span>
+                            <label className="flex flex-col items-center justify-center gap-3 py-12 rounded-2xl border-2 border-dashed border-white/[0.1] hover:border-gold/30 cursor-pointer transition-colors bg-theme-faint">
+                                <Upload className="w-10 h-10 text-theme-faint" />
+                                <span className="text-sm text-theme-subtle">اسحب الصورة هنا أو اضغط للرفع</span>
                                 <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
                             </label>
                         )}
@@ -777,7 +777,7 @@ function StepMethod({
                 {selected === "studio" && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                         {studioItems.length === 0 ? (
-                            <div className="text-center py-10 text-fg/40 border-2 border-dashed border-white/10 rounded-2xl">
+                            <div className="text-center py-10 text-theme-subtle border-2 border-dashed border-theme-soft rounded-2xl">
                                 <p>لا توجد تصاميم متاحة حالياً في ستيديو وشّى.</p>
                             </div>
                         ) : (
@@ -792,10 +792,10 @@ function StepMethod({
                                             onClick={() => onSelectStudioItem(item)}
                                             className={`
                                                 relative rounded-2xl overflow-hidden border-2 transition-all p-1 text-right
-                                                ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-white/[0.08] hover:border-white/20"}
+                                                ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                                             `}
                                         >
-                                            <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-white/5 mb-2">
+                                            <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-theme-subtle mb-2">
                                                 {(item.model_image_url || item.mockup_image_url || item.main_image_url) ? (
                                                     <img
                                                         src={item.model_image_url || item.mockup_image_url || item.main_image_url!}
@@ -804,7 +804,7 @@ function StepMethod({
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center">
-                                                        <Sparkles className="w-8 h-8 text-fg/20" />
+                                                        <Sparkles className="w-8 h-8 text-theme-faint" />
                                                     </div>
                                                 )}
                                                 {item.price > 0 && (
@@ -814,8 +814,8 @@ function StepMethod({
                                                 )}
                                             </div>
                                             <div className="px-2 pb-2">
-                                                <p className="font-bold text-sm text-fg truncate">{item.name}</p>
-                                                {item.description && <p className="text-xs text-fg/50 line-clamp-2 mt-1">{item.description}</p>}
+                                                <p className="font-bold text-sm text-theme truncate">{item.name}</p>
+                                                {item.description && <p className="text-xs text-theme-subtle line-clamp-2 mt-1">{item.description}</p>}
                                             </div>
                                             {isSelected && (
                                                 <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 right-3 w-6 h-6 rounded-full bg-gold flex items-center justify-center">
@@ -827,7 +827,7 @@ function StepMethod({
                                 })}
                             </div>
                         )}
-                        <p className="text-xs text-fg/40 mt-4 text-center">اختيارك لتصميم ستيديو وشّى سيأخذك مباشرة لتأكيد الطلب 🚀</p>
+                        <p className="text-xs text-theme-subtle mt-4 text-center">اختيارك لتصميم ستيديو وشّى سيأخذك مباشرة لتأكيد الطلب 🚀</p>
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -852,7 +852,7 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
         <>
             <StepHeader title="اختر النمط" desc="حدد نمط التصميم اللي يعجبك" />
             {items.length === 0 ? (
-                <div className="text-center py-20 text-fg/30"><p>لا توجد أنماط متاحة حالياً</p></div>
+                <div className="text-center py-20 text-theme-faint"><p>لا توجد أنماط متاحة حالياً</p></div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {items.map((s) => {
@@ -865,19 +865,19 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
                                 onClick={() => onSelect(s)}
                                 className={`
                   relative rounded-2xl overflow-hidden border-2 transition-all p-1
-                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-white/[0.08] hover:border-white/20"}
+                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
                                 {s.image_url ? (
                                     <img src={s.image_url} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center">
-                                        <Sparkles className="w-10 h-10 text-fg/15" />
+                                        <Sparkles className="w-10 h-10 text-theme-faint" />
                                     </div>
                                 )}
                                 <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                                    <p className="text-sm font-bold text-white">{s.name}</p>
-                                    {s.description && <p className="text-[10px] text-white/50 mt-0.5 line-clamp-1">{s.description}</p>}
+                                    <p className="text-sm font-bold text-theme">{s.name}</p>
+                                    {s.description && <p className="text-[10px] text-theme-subtle mt-0.5 line-clamp-1">{s.description}</p>}
                                 </div>
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 left-3 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
@@ -909,7 +909,7 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
         <>
             <StepHeader title="اختر الأسلوب" desc="حدد أسلوب الرسم للتصميم" />
             {items.length === 0 ? (
-                <div className="text-center py-20 text-fg/30"><p>لا توجد أساليب متاحة حالياً</p></div>
+                <div className="text-center py-20 text-theme-faint"><p>لا توجد أساليب متاحة حالياً</p></div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {items.map((a) => {
@@ -922,18 +922,18 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
                                 onClick={() => onSelect(a)}
                                 className={`
                   relative rounded-2xl overflow-hidden border-2 transition-all p-1
-                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-white/[0.08] hover:border-white/20"}
+                  ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
                                 {a.image_url ? (
                                     <img src={a.image_url} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center">
-                                        <Paintbrush className="w-10 h-10 text-fg/15" />
+                                        <Paintbrush className="w-10 h-10 text-theme-faint" />
                                     </div>
                                 )}
                                 <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                                    <p className="text-sm font-bold text-white">{a.name}</p>
+                                    <p className="text-sm font-bold text-theme">{a.name}</p>
                                 </div>
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 left-3 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
@@ -984,13 +984,13 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
                                 onClick={() => { onSelectPackage(isSelected ? null : pkg); setShowCustom(false); }}
                                 className={`
                   p-5 rounded-2xl border-2 transition-all text-right
-                  ${isSelected ? "border-gold bg-gold/5" : "border-white/[0.08] hover:border-white/20"}
+                  ${isSelected ? "border-gold bg-gold/5" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
-                                <p className={`font-bold text-sm mb-3 ${isSelected ? "text-gold" : "text-fg"}`}>{pkg.name}</p>
+                                <p className={`font-bold text-sm mb-3 ${isSelected ? "text-gold" : "text-theme"}`}>{pkg.name}</p>
                                 <div className="flex gap-1.5 flex-wrap">
                                     {(Array.isArray(pkg.colors) ? pkg.colors : []).map((c: any, i: number) => (
-                                        <div key={i} className="w-7 h-7 rounded-full border border-white/10 shadow-sm" style={{ backgroundColor: c.hex }} title={c.name} />
+                                        <div key={i} className="w-7 h-7 rounded-full border border-theme-soft shadow-sm" style={{ backgroundColor: c.hex }} title={c.name} />
                                     ))}
                                 </div>
                                 {isSelected && (
@@ -1007,7 +1007,7 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
             {/* Custom Colors Toggle */}
             <button
                 onClick={() => { setShowCustom(!showCustom); onSelectPackage(null); }}
-                className={`mb-4 text-sm font-medium transition-colors ${showCustom ? "text-gold" : "text-fg/40 hover:text-fg/60"}`}
+                className={`mb-4 text-sm font-medium transition-colors ${showCustom ? "text-gold" : "text-theme-subtle hover:text-theme-soft"}`}
             >
                 🎨 تخصيص ألوان يدوياً
             </button>
@@ -1027,7 +1027,7 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
                                     }}
                                     className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border-0"
                                 />
-                                <span className="text-sm text-fg/50 font-mono">{c}</span>
+                                <span className="text-sm text-theme-subtle font-mono">{c}</span>
                                 <button onClick={() => onCustomColorsChange(customColors.filter((_, j) => j !== i))} className="p-1.5 hover:bg-red-500/10 rounded-lg">
                                     <X className="w-4 h-4 text-red-400/60" />
                                 </button>
@@ -1111,7 +1111,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
 
             {/* Position Selector */}
             <div className="mb-6">
-                <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-gold" /> اختر موقع التصميم</p>
+                <p className="text-sm font-bold text-theme mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-gold" /> اختر موقع التصميم</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {PRINT_POSITIONS.map((pos) => {
                         const isActive = selectedPosition === pos.id;
@@ -1123,11 +1123,11 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                                 onClick={() => onSelectPosition(pos.id)}
                                 className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
                                     ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                    : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
+                                    : "border-theme-soft hover:border-white/20 bg-theme-faint"
                                     }`}
                             >
                                 <div className="text-3xl mb-2">{pos.emoji}</div>
-                                <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-fg"}`}>{pos.label}</p>
+                                <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme"}`}>{pos.label}</p>
                                 <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
                                 {isActive && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -1150,7 +1150,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                         exit={{ height: 0, opacity: 0 }}
                         className="mb-6 overflow-hidden"
                     >
-                        <p className="text-sm font-bold text-fg mb-3 flex items-center gap-2"><Maximize2 className="w-4 h-4 text-gold" /> اختر حجم التصميم</p>
+                        <p className="text-sm font-bold text-theme mb-3 flex items-center gap-2"><Maximize2 className="w-4 h-4 text-gold" /> اختر حجم التصميم</p>
                         <div className="grid grid-cols-2 gap-4">
                             {PRINT_SIZES.map((sz) => {
                                 const isActive = selectedSize === sz.id;
@@ -1164,23 +1164,23 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                                         onClick={() => onSelectSize(sz.id)}
                                         className={`relative p-5 rounded-2xl border-2 transition-all ${isActive
                                             ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                            : "border-white/[0.08] hover:border-white/20 bg-white/[0.02]"
+                                            : "border-theme-soft hover:border-white/20 bg-theme-faint"
                                             }`}
                                     >
                                         <div className="flex items-center gap-3 mb-2">
-                                            <SzIcon className={`w-8 h-8 ${isActive ? "text-gold" : "text-fg/30"}`} />
+                                            <SzIcon className={`w-8 h-8 ${isActive ? "text-gold" : "text-theme-faint"}`} />
                                             <div className="text-right">
-                                                <p className={`font-bold ${isActive ? "text-gold" : "text-fg"}`}>{sz.label}</p>
+                                                <p className={`font-bold ${isActive ? "text-gold" : "text-theme"}`}>{sz.label}</p>
                                                 <p className="text-[10px] text-fg/35">{sz.desc}</p>
                                             </div>
                                         </div>
                                         {!loadingPricing && price !== null && (
-                                            <div className={`text-xl font-bold mt-2 ${isActive ? "text-gold" : "text-fg/50"}`}>
+                                            <div className={`text-xl font-bold mt-2 ${isActive ? "text-gold" : "text-theme-subtle"}`}>
                                                 {price > 0 ? `${price} ر.س` : "مجاني"}
                                             </div>
                                         )}
                                         {loadingPricing && (
-                                            <div className="mt-2"><Loader2 className="w-5 h-5 animate-spin text-fg/20" /></div>
+                                            <div className="mt-2"><Loader2 className="w-5 h-5 animate-spin text-theme-faint" /></div>
                                         )}
                                         {isActive && (
                                             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -1208,8 +1208,8 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                     >
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-fg/50">سعر التصميم</p>
-                                <p className="text-xs text-fg/30 mt-0.5">
+                                <p className="text-sm text-theme-subtle">سعر التصميم</p>
+                                <p className="text-xs text-theme-faint mt-0.5">
                                     {PRINT_POSITIONS.find(p => p.id === selectedPosition)?.label} — {PRINT_SIZES.find(s => s.id === selectedSize)?.label}
                                 </p>
                             </div>
@@ -1244,15 +1244,15 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 >
                     <Check className="w-10 h-10 text-bg" />
                 </motion.div>
-                <h2 className="text-2xl font-bold text-fg mb-2">تم إرسال طلبك! 🎉</h2>
-                <p className="text-fg/50 max-w-md mx-auto">
+                <h2 className="text-2xl font-bold text-theme mb-2">تم إرسال طلبك! 🎉</h2>
+                <p className="text-theme-subtle max-w-md mx-auto">
                     تم إرسال تفاصيل طلبك لفريقنا. بيتواصل معاك موظفنا في أقرب وقت لتنفيذ التصميم.
                 </p>
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-fg/50 text-sm"
+                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-theme-subtle border border-theme-soft text-theme-subtle text-sm"
                 >
                     <MessageCircle className="w-4 h-4" />
                     تقدر تتابع طلبك من نافذة الدردشة
@@ -1282,30 +1282,30 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 <SummaryRow label="الأسلوب" value={state.artStyle?.name} />
                 {state.colorPackage && <SummaryRow label="باقة الألوان" value={state.colorPackage.name} />}
                 {state.customColors.length > 0 && (
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                        <span className="text-sm text-fg/50">ألوان مخصصة</span>
+                    <div className="flex items-center justify-between p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                        <span className="text-sm text-theme-subtle">ألوان مخصصة</span>
                         <div className="flex gap-1">
                             {state.customColors.map((c, i) => (
-                                <div key={i} className="w-6 h-6 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                                <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c }} />
                             ))}
                         </div>
                     </div>
                 )}
                 {state.textPrompt && (
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                        <span className="text-xs text-fg/40 block mb-1">وصف التصميم</span>
-                        <p className="text-sm text-fg/70">{state.textPrompt}</p>
+                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                        <span className="text-xs text-theme-subtle block mb-1">وصف التصميم</span>
+                        <p className="text-sm text-theme-soft">{state.textPrompt}</p>
                     </div>
                 )}
                 {state.imagePreview && (
-                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                        <span className="text-xs text-fg/40 block mb-2">الصورة المرجعية</span>
+                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                        <span className="text-xs text-theme-subtle block mb-2">الصورة المرجعية</span>
                         <img src={state.imagePreview} alt="Reference" className="max-h-32 rounded-xl" />
                     </div>
                 )}
             </div>
 
-            <div className="flex items-center justify-between pt-6 border-t border-white/[0.06]">
+            <div className="flex items-center justify-between pt-6 border-t border-theme-subtle">
                 <button onClick={onBack} className={btnBack}>
                     <ArrowRight className="w-4 h-4" />
                     السابق
@@ -1334,11 +1334,11 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
 
 function SummaryRow({ label, value, color }: { label: string; value?: string; color?: string }) {
     return (
-        <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-            <span className="text-sm text-fg/50">{label}</span>
+        <div className="flex items-center justify-between p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+            <span className="text-sm text-theme-subtle">{label}</span>
             <div className="flex items-center gap-2">
-                {color && <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: color }} />}
-                <span className="text-sm font-medium text-fg">{value ?? "—"}</span>
+                {color && <div className="w-4 h-4 rounded-full border border-theme-soft" style={{ backgroundColor: color }} />}
+                <span className="text-sm font-medium text-theme">{value ?? "—"}</span>
             </div>
         </div>
     );
