@@ -1,99 +1,71 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Wand2, RefreshCw, Heart } from "lucide-react";
+import { Sparkles, Wand2, Shirt, Stars, CheckCircle2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
-const aiSuggestions = [
+const steps = [
   {
     id: 1,
-    title: "بناءً على ذوقك الفني",
-    items: [
-      {
-        title: "أزهار الصحراء",
-        artist: "منى الحربي",
-        match: "٩٢%",
-        image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
-      },
-      {
-        title: "ليلة في الرياض",
-        artist: "عبدالله السالم",
-        match: "٨٨%",
-        image: "https://images.unsplash.com/photo-1549490349-8643362247b5?w=400&q=80",
-      },
-      {
-        title: "حروف نورانية",
-        artist: "هدى المنصور",
-        match: "٨٥%",
-        image: "https://images.unsplash.com/photo-1578926288207-a90a5366759d?w=400&q=80",
-      },
-    ],
+    title: "اختيار القطعة",
+    desc: "اختر الكانفاس المثالي لتصميمك",
+    icon: Shirt,
+  },
+  {
+    id: 2,
+    title: "إلهام الذكاء الاصطناعي",
+    desc: "صف خيالك، وسنحوله إلى لوحة",
+    icon: Wand2,
+  },
+  {
+    id: 3,
+    title: "تحفتك جاهزة",
+    desc: "تصميمك مطبوع بدقة وبجودة عالية",
+    icon: CheckCircle2,
   },
 ];
 
-const typingPhrases = [
-  "أبحث عن لوحات تراثية...",
-  "فنانون من الخليج...",
-  "أعمال بألوان دافئة...",
-  "خط عربي معاصر...",
-];
-
 export function AISection() {
-  const [displayText, setDisplayText] = useState("");
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const phraseIndexRef = useRef(0);
-  const charIndexRef = useRef(0);
-  const phaseRef = useRef<"typing" | "pausing" | "deleting">("typing");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const tick = useCallback(() => {
-    const phrase = typingPhrases[phraseIndexRef.current];
-
-    if (phaseRef.current === "typing") {
-      if (charIndexRef.current <= phrase.length) {
-        setDisplayText(phrase.slice(0, charIndexRef.current));
-        charIndexRef.current++;
-        timerRef.current = setTimeout(tick, 80);
-      } else {
-        phaseRef.current = "pausing";
-        timerRef.current = setTimeout(tick, 2000);
-      }
-    } else if (phaseRef.current === "pausing") {
-      phaseRef.current = "deleting";
-      timerRef.current = setTimeout(tick, 40);
-    } else if (phaseRef.current === "deleting") {
-      if (charIndexRef.current > 0) {
-        charIndexRef.current--;
-        setDisplayText(phrase.slice(0, charIndexRef.current));
-        timerRef.current = setTimeout(tick, 40);
-      } else {
-        phraseIndexRef.current = (phraseIndexRef.current + 1) % typingPhrases.length;
-        charIndexRef.current = 0;
-        phaseRef.current = "typing";
-        timerRef.current = setTimeout(tick, 300);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    timerRef.current = setTimeout(tick, 500);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [tick]);
-
-  const handleSearch = () => {
-    setIsSearching(true);
-    setTimeout(() => {
-      setIsSearching(false);
-      setShowResults(true);
-    }, 1500);
-  };
-
+  const [activeStep, setActiveStep] = useState(1);
   const [particles, setParticles] = useState<Array<{ id: number; top: number; left: number; duration: number; delay: number }>>([]);
+  const [promptText, setPromptText] = useState("");
 
+  const fullPrompt = "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...";
+
+  // Auto-play logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev >= 3 ? 1 : prev + 1));
+      if (activeStep === 3) {
+        setPromptText(""); // reset typing for next loop
+      }
+    }, 4000); // 4 seconds per step
+    return () => clearInterval(interval);
+  }, [activeStep]);
+
+  // Typing effect for step 2
+  useEffect(() => {
+    if (activeStep !== 2) {
+      setPromptText("");
+      return;
+    }
+    
+    let currentIndex = 0;
+    const typingInterval = setInterval(() => {
+      if (currentIndex <= fullPrompt.length) {
+        setPromptText(fullPrompt.slice(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(typingInterval);
+      }
+    }, 50);
+
+    return () => clearInterval(typingInterval);
+  }, [activeStep]);
+
+  // Particles
   useEffect(() => {
     setParticles(
       [...Array(15)].map((_, i) => ({
@@ -107,15 +79,15 @@ export function AISection() {
   }, []);
 
   return (
-    <section className="py-16 sm:py-24 relative overflow-hidden">
+    <section className="py-16 sm:py-24 relative overflow-hidden" id="ai-design-section">
       {/* Section Divider */}
-      <div className="section-divider mb-24" />
+      <div className="section-divider mb-16 sm:mb-24" />
 
-      {/* Subtle Background Gradient — theme-aware */}
+      {/* Subtle Background Gradient */}
       <div className="absolute inset-0 bg-theme-gradient" />
 
       {/* Gold Particles */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 z-0">
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
@@ -149,182 +121,236 @@ export function AISection() {
           <div className="flex items-center justify-center gap-3 mb-4">
             <Sparkles className="w-4 h-4 text-gold" />
             <span className="text-sm font-medium text-gold/60 tracking-[0.3em] uppercase">
-              مدعوم بالذكاء الاصطناعي
+              صممها بنفسك
             </span>
           </div>
-          <h2 className="text-4xl md:text-6xl font-bold mb-6">
-            <span className="text-gradient">اكتشف بذكاء</span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
+            <span className="text-gradient">صمم قطعتك بالذكاء الاصطناعي</span>
           </h2>
-          <p className="text-theme-subtle max-w-xl mx-auto">
-            خوارزميات متقدمة تفهم ذوقك وتقترح أعمالاً تناسبك
+          <p className="text-theme-subtle max-w-2xl mx-auto">
+            رحلة تحويل أفكارك إلى قطع فنية ملموسة في 3 خطوات بسيطة
           </p>
         </motion.div>
 
-        {/* AI Search Interface */}
-        <motion.div
-          className="max-w-3xl mx-auto"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-        >
-          {/* Search Box */}
-          <div className="relative mb-12">
-            <div className="glass-card rounded-2xl p-2 border-gold/15">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-                <div className="flex-1 relative">
-                  <Wand2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold" />
-                  <input
-                    type="text"
-                    value={displayText}
-                    readOnly
-                    className="w-full bg-transparent pr-12 pl-4 py-3 sm:py-4 text-base sm:text-lg focus:outline-none text-theme-strong placeholder:text-theme-subtle"
-                    placeholder="اسأل الذكاء الاصطناعي..."
-                  />
-                  <motion.span
-                    className="absolute left-4 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-gold"
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                  />
-                </div>
-                <motion.button
-                  onClick={handleSearch}
-                  className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold transition-all duration-500 shrink-0"
-                  style={{
-                    background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
-                    color: "var(--wusha-bg)",
-                  }}
-                  whileHover={{ scale: 1.02, boxShadow: "0 0 30px var(--neon-gold)" }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={isSearching}
-                >
-                  {isSearching ? (
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                    </motion.span>
-                  ) : (
-                    "ابحث"
-                  )}
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Quick Suggestions */}
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {["تراثي", "معاصر", "تجريدي", "طبيعة", "بورتريه"].map((tag) => (
+        {/* Interactive Interactive Carousel */}
+        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+          
+          {/* Stepper Navigation */}
+          <div className="w-full lg:w-1/3 flex flex-col gap-4">
+            {steps.map((step) => {
+              const Icon = step.icon;
+              const isActive = activeStep === step.id;
+              
+              return (
                 <button
-                  key={tag}
-                  className="px-4 py-2 bg-theme-subtle rounded-full text-sm text-theme-subtle hover:bg-[color-mix(in_srgb,var(--wusha-gold)_10%,transparent)] hover:text-[color-mix(in_srgb,var(--wusha-gold)_80%,transparent)] transition-all duration-300 border border-theme-soft"
+                  key={step.id}
+                  onClick={() => setActiveStep(step.id)}
+                  className={`flex items-start text-right gap-4 p-4 rounded-2xl transition-all duration-300 border ${
+                    isActive 
+                      ? "bg-gold/10 border-gold/30 shadow-[0_0_20px_rgba(202,160,82,0.15)]" 
+                      : "glass-card border-transparent hover:border-theme-soft opacity-60 hover:opacity-100"
+                  }`}
                 >
-                  {tag}
+                  <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isActive ? "bg-gold text-[#111]" : "bg-theme-subtle text-theme-subtle"}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className={`font-bold mb-1 transition-colors ${isActive ? "text-gold" : "text-theme-strong"}`}>
+                      {step.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-theme-subtle leading-relaxed">
+                      {step.desc}
+                    </p>
+                  </div>
                 </button>
-              ))}
+              );
+            })}
+
+            <div className="hidden lg:block mt-6">
+              <Link
+                href="/design"
+                className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all duration-500 group"
+                style={{
+                  background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
+                  color: "var(--wusha-bg)",
+                }}
+              >
+                <span>ابدأ رحلة التصميم الآن</span>
+                <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              </Link>
             </div>
           </div>
 
-          {/* Results */}
-          <AnimatePresence>
-            {showResults && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5 }}
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-theme-strong">
-                    {aiSuggestions[0].title}
-                  </h3>
-                  <button
-                    onClick={() => setShowResults(false)}
-                    className="text-sm text-gold hover:underline"
-                  >
-                    بحث جديد
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {aiSuggestions[0].items.map((item, index) => (
-                    <motion.div
-                      key={item.title}
-                      className="group glass-card rounded-xl overflow-hidden cursor-pointer hover:border-gold/30"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      whileHover={{ y: -5 }}
-                    >
-                      <div className="relative aspect-square">
-                        <Image
-                          src={item.image}
-                          alt={item.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <div className="absolute top-3 right-3 px-3 py-1 text-xs font-bold rounded-full" style={{ background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))", color: "var(--wusha-bg)" }}>
-                          تطابق {item.match}
-                        </div>
-                        <button className="absolute top-3 left-3 w-8 h-8 rounded-full bg-theme-subtle backdrop-blur-sm flex items-center justify-center hover:bg-[var(--wusha-gold)] hover:text-[var(--wusha-bg)] transition-all">
-                          <Heart className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <h4 className="font-bold mb-1 text-theme-strong">{item.title}</h4>
-                        <p className="text-sm text-theme-subtle">
-                          {item.artist}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* AI Features */}
-          {!showResults && (
-            <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 }}
-            >
-              {[
-                {
-                  icon: "🎨",
-                  title: "تحليل الذوق",
-                  desc: "نتعلم من تفاعلاتك لتحسين الاقتراحات",
-                },
-                {
-                  icon: "🔍",
-                  title: "بحث ذكي",
-                  desc: "اكتب ما تريد بأي طريقة وسنفهم",
-                },
-                {
-                  icon: "✨",
-                  title: "اكتشاف جديد",
-                  desc: "أعمال مخفية تناسب ذوقك تنتظرك",
-                },
-              ].map((feature, index) => (
+          {/* Visual Simulation Stage */}
+          <div className="w-full lg:w-2/3 aspect-[4/3] sm:aspect-[16/10] glass-card rounded-[2rem] border-gold/20 overflow-hidden relative shadow-2xl flex items-center justify-center p-6 sm:p-12">
+            <AnimatePresence mode="wait">
+              {/* STEP 1: Garment Selection */}
+              {activeStep === 1 && (
                 <motion.div
-                  key={feature.title}
-                  className="text-center p-6 glass-card rounded-xl"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 * index }}
+                  key="step1"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
+                  transition={{ duration: 0.5 }}
+                  className="flex flex-col items-center justify-center relative w-full h-full"
                 >
-                  <div className="text-4xl mb-4">{feature.icon}</div>
-                  <h4 className="font-bold mb-2 text-theme-strong">{feature.title}</h4>
-                  <p className="text-sm text-theme-subtle">{feature.desc}</p>
+                  <motion.div 
+                    initial={{ scale: 1 }}
+                    animate={{ scale: 1.15 }}
+                    transition={{ duration: 10, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
+                    className="relative w-48 h-48 sm:w-64 sm:h-64 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+                  >
+                    <Image
+                      src="/images/design/heavy-tshirt-black-front.png"
+                      alt="Garment"
+                      fill
+                      className="object-contain"
+                      priority
+                    />
+                  </motion.div>
+                  <motion.div
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute -right-4 sm:right-10 top-1/4 glass-card px-4 py-2 rounded-2xl border-gold/30 flex items-center gap-2"
+                  >
+                     <div className="w-3 h-3 rounded-full bg-black border border-white/20" />
+                     <span className="text-xs font-bold text-theme-strong">أسود كلاسيك</span>
+                  </motion.div>
                 </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </motion.div>
+              )}
+
+              {/* STEP 2: AI Inspiration */}
+              {activeStep === 2 && (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full max-w-lg mx-auto flex flex-col items-center"
+                >
+                   <div className="w-full glass-card border-gold/30 rounded-2xl p-4 sm:p-6 shadow-lg mb-8 relative overflow-hidden">
+                      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent opacity-50" />
+                      <div className="flex items-start gap-4">
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
+                          <Stars className="w-4 h-4 text-gold" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm sm:text-base text-theme-strong min-h-[48px] font-medium leading-relaxed">
+                            {promptText}
+                            <motion.span 
+                              animate={{ opacity: [1, 0] }}
+                              transition={{ duration: 0.8, repeat: Infinity }}
+                              className="inline-block w-1.5 h-4 ml-1 bg-gold align-middle"
+                            />
+                          </p>
+                        </div>
+                      </div>
+                   </div>
+
+                   {/* Generated Result Pop */}
+                   <motion.div
+                      initial={{ opacity: 0, scale: 0.8, y: 30 }}
+                      animate={promptText.length === fullPrompt.length ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.8, y: 30 }}
+                      transition={{ delay: 0.2, type: "spring", bounce: 0.5 }}
+                      className="relative w-40 h-40 sm:w-56 sm:h-56 rounded-2xl overflow-hidden glass-card p-2 border-gold/40 shadow-[0_0_40px_rgba(202,160,82,0.2)] mt-4"
+                   >
+                     <motion.div 
+                        initial={{ scale: 1 }}
+                        animate={{ scale: 1.1 }}
+                        transition={{ duration: 6, ease: "linear", repeat: Infinity, repeatType: "reverse" }}
+                        className="relative w-full h-full rounded-xl overflow-hidden"
+                     >
+                       <Image
+                         src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80"
+                         alt="AI Generated Wolf"
+                         fill
+                         className="object-cover"
+                       />
+                     </motion.div>
+                     <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 flex items-center gap-1">
+                       <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                       <span className="text-[10px] text-white">100% أصلي</span>
+                     </div>
+                   </motion.div>
+                </motion.div>
+              )}
+
+              {/* STEP 3: Final Product Merged */}
+              {activeStep === 3 && (
+                <motion.div
+                  key="step3"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+                  transition={{ duration: 0.6 }}
+                  className="flex flex-col items-center justify-center relative w-full h-full"
+                >
+                  <motion.div 
+                    initial={{ scale: 1.05 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 4, ease: "easeOut" }}
+                    className="relative w-56 h-56 sm:w-72 sm:h-72 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                  >
+                    <motion.div
+                      animate={{ y: [0, -5, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      className="w-full h-full relative"
+                    >
+                      <Image
+                        src="/images/design/heavy-tshirt-black-front.png"
+                        alt="Garment"
+                        fill
+                        className="object-contain"
+                        priority
+                      />
+                      {/* The Applied Design */}
+                      <motion.div 
+                         initial={{ opacity: 0, filter: "brightness(2)" }}
+                         animate={{ opacity: 0.9, filter: "brightness(1)" }}
+                         transition={{ delay: 0.4, duration: 1.2, ease: "easeOut" }}
+                         className="absolute top-[25%] left-1/2 -translate-x-1/2 w-[35%] aspect-[3/4] mix-blend-screen opacity-90"
+                      >
+                        <Image
+                          src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80"
+                           alt="Design applied"
+                           fill
+                           className="object-cover rounded-md"
+                        />
+                      </motion.div>
+                    </motion.div>
+                  </motion.div>
+                  
+                  {/* Floating celebration tag */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, type: "spring" }}
+                    className="absolute bottom-4 sm:bottom-12 glass-card px-6 py-3 rounded-full border-gold/40 flex items-center gap-2 shadow-[0_0_30px_rgba(202,160,82,0.3)]"
+                  >
+                    <Sparkles className="w-5 h-5 text-gold" />
+                    <span className="font-bold text-theme-strong text-sm sm:text-base">تحفتك الفنية جاهزة للإرتداء!</span>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          
+          {/* Mobile CTA */}
+          <div className="lg:hidden w-full mt-2">
+            <Link
+              href="/design"
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all duration-500 group"
+              style={{
+                background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
+                color: "var(--wusha-bg)",
+              }}
+            >
+              <span>ابدأ رحلة التصميم الآن</span>
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
       </div>
     </section>
   );
