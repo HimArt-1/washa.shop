@@ -27,12 +27,24 @@ const steps = [
   },
 ];
 
-export function AISection() {
+interface AISectionProps {
+  config?: {
+    step1_image?: string;
+    step1_color_name?: string;
+    step2_prompt?: string;
+    step2_result_image?: string;
+  };
+}
+
+export function AISection({ config }: AISectionProps) {
   const [activeStep, setActiveStep] = useState(1);
   const [particles, setParticles] = useState<Array<{ id: number; top: number; left: number; duration: number; delay: number }>>([]);
   const [promptText, setPromptText] = useState("");
 
-  const fullPrompt = "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...";
+  const fullPrompt = config?.step2_prompt || "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...";
+  const garmentImage = config?.step1_image || "/images/design/heavy-tshirt-black-front.png";
+  const garmentColorName = config?.step1_color_name || "أسود كلاسيك";
+  const resultImage = config?.step2_result_image || "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80";
 
   // Auto-play logic
   useEffect(() => {
@@ -201,7 +213,7 @@ export function AISection() {
                     className="relative w-48 h-48 sm:w-64 sm:h-64 drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]"
                   >
                     <Image
-                      src="/images/design/heavy-tshirt-black-front.png"
+                      src={garmentImage}
                       alt="Garment"
                       fill
                       className="object-contain"
@@ -214,7 +226,7 @@ export function AISection() {
                     className="absolute -right-4 sm:right-10 top-1/4 glass-card px-4 py-2 rounded-2xl border-gold/30 flex items-center gap-2"
                   >
                      <div className="w-3 h-3 rounded-full bg-black border border-white/20" />
-                     <span className="text-xs font-bold text-theme-strong">أسود كلاسيك</span>
+                     <span className="text-xs font-bold text-theme-strong">{garmentColorName}</span>
                   </motion.div>
                 </motion.div>
               )}
@@ -262,8 +274,8 @@ export function AISection() {
                         className="relative w-full h-full rounded-xl overflow-hidden"
                      >
                        <Image
-                         src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80"
-                         alt="AI Generated Wolf"
+                         src={resultImage}
+                         alt="AI Generated Result"
                          fill
                          className="object-cover"
                        />
@@ -298,7 +310,7 @@ export function AISection() {
                       className="w-full h-full relative"
                     >
                       <Image
-                        src="/images/design/heavy-tshirt-black-front.png"
+                        src={garmentImage}
                         alt="Garment"
                         fill
                         className="object-contain"
@@ -312,7 +324,7 @@ export function AISection() {
                          className="absolute top-[25%] left-1/2 -translate-x-1/2 w-[35%] aspect-[3/4] mix-blend-screen opacity-90"
                       >
                         <Image
-                          src="https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80"
+                          src={resultImage}
                            alt="Design applied"
                            fill
                            className="object-cover rounded-md"

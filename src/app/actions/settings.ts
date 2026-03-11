@@ -32,6 +32,28 @@ async function requireAdmin() {
     return user;
 }
 
+export type SiteSettingsType = {
+        visibility: {
+            gallery?: boolean;
+            store?: boolean;
+            signup?: boolean;
+            join?: boolean;
+            join_artist?: boolean;
+            ai_section?: boolean;
+            hero_auth_buttons?: boolean;
+        };
+        site_info: Record<string, string>;
+        shipping: Record<string, number>;
+        creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
+        product_identifiers?: { prefix?: string; product_code_template?: string; sku_template?: string; type_map?: Record<string, string> };
+        ai_simulation?: {
+            step1_image?: string;
+            step1_color_name?: string;
+            step2_prompt?: string;
+            step2_result_image?: string;
+        };
+};
+
 // ═══════════════════════════════════════════════════════════
 //  GET ALL SETTINGS
 // ═══════════════════════════════════════════════════════════
@@ -45,6 +67,12 @@ export async function getSiteSettings() {
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
             product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
+            ai_simulation: { 
+                step1_image: "/images/design/heavy-tshirt-black-front.png", 
+                step1_color_name: "أسود كلاسيك", 
+                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
+                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
+            },
         };
     }
     
@@ -62,6 +90,12 @@ export async function getSiteSettings() {
                 shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
             product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
+            ai_simulation: { 
+                step1_image: "/images/design/heavy-tshirt-black-front.png", 
+                step1_color_name: "أسود كلاسيك", 
+                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
+                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
+            },
         };
     }
 
@@ -73,6 +107,8 @@ export async function getSiteSettings() {
     const v = settings.visibility || {};
     const cp = settings.creation_prices || {};
     const pi = settings.product_identifiers || {};
+    const aiSim = settings.ai_simulation || {};
+    
     return {
         visibility: {
             gallery: v.gallery ?? false,
@@ -96,6 +132,12 @@ export async function getSiteSettings() {
             sku_template: pi.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
             type_map: pi.type_map ?? { print: "P", apparel: "T", digital: "D", nft: "N", original: "O" },
         },
+        ai_simulation: {
+            step1_image: aiSim.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
+            step1_color_name: aiSim.step1_color_name ?? "أسود كلاسيك",
+            step2_prompt: aiSim.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
+            step2_result_image: aiSim.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
+        },
     };
     } catch (error) {
         // Return defaults if Supabase is not configured (development mode)
@@ -106,6 +148,12 @@ export async function getSiteSettings() {
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
             product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
+            ai_simulation: { 
+                step1_image: "/images/design/heavy-tshirt-black-front.png", 
+                step1_color_name: "أسود كلاسيك", 
+                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
+                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
+            },
         };
     }
 }

@@ -4,26 +4,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
     Eye, EyeOff, Globe, Truck, Save, Loader2, Tag, QrCode,
-    Instagram, Twitter, Mail, Phone, type LucideIcon,
+    Instagram, Twitter, Mail, Phone, Sparkles, type LucideIcon,
 } from "lucide-react";
-import { updateSiteSetting } from "@/app/actions/settings";
+import { updateSiteSetting, uploadExclusiveDesignImage, type SiteSettingsType } from "@/app/actions/settings";
 
 interface SettingsProps {
-    settings: {
-        visibility: {
-            gallery?: boolean;
-            store?: boolean;
-            signup?: boolean;
-            join?: boolean;
-            join_artist?: boolean;
-            ai_section?: boolean;
-            hero_auth_buttons?: boolean;
-        };
-        site_info: Record<string, string>;
-        shipping: Record<string, number>;
-        creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
-        product_identifiers?: { prefix?: string; product_code_template?: string; sku_template?: string; type_map?: Record<string, string> };
-    };
+    settings: SiteSettingsType;
 }
 
 // ─── Toggle Switch ──────────────────────────────────────
@@ -120,6 +106,13 @@ export function SettingsClient({ settings }: SettingsProps) {
         sku_template: settings.product_identifiers?.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
     });
 
+    const [aiSimulation, setAiSimulation] = useState({
+        step1_image: settings.ai_simulation?.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
+        step1_color_name: settings.ai_simulation?.step1_color_name ?? "أسود كلاسيك",
+        step2_prompt: settings.ai_simulation?.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
+        step2_result_image: settings.ai_simulation?.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
+    });
+
     const [saving, setSaving] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
 
@@ -136,6 +129,30 @@ export function SettingsClient({ settings }: SettingsProps) {
             showToast("تم الحفظ بنجاح ✓");
         } else {
             showToast("خطأ: " + (result.error || "حدث خطأ"));
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldKey: "step1_image" | "step2_result_image") => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setSaving(`uploading_${fieldKey}`);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            // Using the same helper used for exclusive designs for general image uploads
+            const res = await uploadExclusiveDesignImage(formData);
+            if (res.success) {
+                setAiSimulation((prev) => ({ ...prev, [fieldKey]: res.url }));
+                showToast("تم رفع الصورة بنجاح");
+            } else {
+                showToast("فشل الرفع: " + res.error);
+            }
+        } catch (error) {
+            showToast("فشل الرفع");
+        } finally {
+            setSaving(null);
         }
     };
 
@@ -373,6 +390,72 @@ export function SettingsClient({ settings }: SettingsProps) {
                 >
                     {saving === "creation_prices" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     حفظ الأسعار
+                </button>
+            </SettingsCard>
+
+            {/* ─── 6. AI Simulation Config ─── */}
+            <SettingsCard title="إعدادات محاكاة الذكاء الاصطناعي" icon={Sparkles || Tag}>
+                <p className="text-theme-subtle text-sm mb-4">تتحكم هذه الإعدادات بالصور والنصوص التي تظهر في قسم "اكتشف بذكاء" (محاكاة التصميم) على الصفحة الرئيسية.</p>
+                
+                <div className="space-y-6">
+                    {/* Step 1 Settings */}
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme mb-2">الخطوة 1: اختيار القطعة</h4>
+                        <Field
+                            label="اسم اللون / الموديل"
+                            value={aiSimulation.step1_color_name}
+                            onChange={(v) => setAiSimulation({ ...aiSimulation, step1_color_name: v })}
+                            placeholder="أسود كلاسيك"
+                        />
+                        <div>
+                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة القطعة (Garment Image)</label>
+                            <div className="flex items-center gap-3">
+                                {aiSimulation.step1_image && (
+                                    <div className="w-12 h-12 rounded-lg border border-theme-soft bg-black flex-shrink-0 relative overflow-hidden">
+                                        <img src={aiSimulation.step1_image} alt="Step 1 Preview" className="absolute inset-0 w-full h-full object-contain" />
+                                    </div>
+                                )}
+                                <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step1_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
+                                    {saving === "uploading_step1_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة جديدة...</span>}
+                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step1_image"} onChange={(e) => handleImageUpload(e, "step1_image")} />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Step 2 Settings */}
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme mb-2">الخطوة 2 و 3: الإلهام والنتيجة</h4>
+                        <Field
+                            label="نص الطلب الوهمي (Prompt)"
+                            value={aiSimulation.step2_prompt}
+                            onChange={(v) => setAiSimulation({ ...aiSimulation, step2_prompt: v })}
+                            placeholder="صمم لي ذئب بستايل سايبربانك..."
+                        />
+                        <div>
+                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة التصميم المُولد (Result Image)</label>
+                            <div className="flex items-center gap-3">
+                                {aiSimulation.step2_result_image && (
+                                    <div className="w-12 h-12 rounded-lg border border-theme-soft bg-black flex-shrink-0 relative overflow-hidden">
+                                        <img src={aiSimulation.step2_result_image} alt="Step 2 Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step2_result_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
+                                    {saving === "uploading_step2_result_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة جديدة...</span>}
+                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step2_result_image"} onChange={(e) => handleImageUpload(e, "step2_result_image")} />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button
+                    onClick={() => handleSave("ai_simulation", aiSimulation)}
+                    disabled={saving === "ai_simulation"}
+                    className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {saving === "ai_simulation" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    حفظ إعدادات المحاكاة
                 </button>
             </SettingsCard>
         </div>

@@ -1,15 +1,15 @@
 import { Hero } from "@/components/sections/Hero";
 import { AISection } from "@/components/sections/AISection";
-import { getPublicVisibility } from "@/app/actions/settings";
+import { getSiteSettings } from "@/app/actions/settings";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
 
 export default async function Home() {
-    const visibility = await getPublicVisibility();
+    const settings = await getSiteSettings();
     return (
         <PublicPageWrapper>
             <main className="relative">
-                <Hero showAuthButtons={visibility.hero_auth_buttons} />
-                <AISection />
+                <Hero showAuthButtons={settings.visibility.hero_auth_buttons} />
+                <AISection config={settings.ai_simulation} />
             </main>
         </PublicPageWrapper>
     );
