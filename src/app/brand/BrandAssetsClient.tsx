@@ -219,11 +219,8 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   </div>
                 </div>
 
-                <div className="w-full flex items-center justify-between mt-auto pt-6 border-t border-white/10">
-                  <span className="text-gold font-bold tracking-widest text-xs">{config.thank_you_handle}</span>
-                  <div className="w-8 h-8 rounded-full border border-gold flex items-center justify-center">
-                    <span className="text-gold font-serif italic text-sm">W</span>
-                  </div>
+                <div className="w-full flex items-center justify-center mt-auto pt-6 border-t border-white/10">
+                  <span className="text-gold font-bold tracking-widest text-sm uppercase">washa.shop</span>
                 </div>
               </motion.div>
             </div>
