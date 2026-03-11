@@ -1,7 +1,16 @@
 import { getSiteSettings } from "@/app/actions/settings";
+import { getProfile } from "@/app/actions/profile";
+import { redirect } from "next/navigation";
 import BrandAssetsClient from "./BrandAssetsClient";
 
 export default async function BrandAssetsPage() {
+  const profile = await getProfile();
+
+  // السماح للمشرفين والمدراء فقط (admin)
+  if (!profile || profile.role !== "admin") {
+    redirect("/");
+  }
+
   const settings = await getSiteSettings();
   const config = settings.brand_assets || {
     business_card_name: "هشام الزهراني",

@@ -12,11 +12,32 @@ import {
   Sun,
   Thermometer,
   ShieldAlert,
-  Shirt
+  Shirt,
+  Download
 } from "lucide-react";
+import html2canvas from "html2canvas";
 import { Logo } from "@/components/ui/Logo";
 
 export default function BrandAssetsClient({ config }: { config: any }) {
+
+  const handleDownload = async (elementId: string, filename: string) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    try {
+      // Use a high scale for "High Quality" exports
+      const canvas = await html2canvas(element, { 
+        scale: 4, 
+        backgroundColor: null,
+        useCORS: true // allow external images like transparenttextures
+      } as any);
+      const link = document.createElement("a");
+      link.download = `${filename}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } catch (err) {
+      console.error("Failed to capture image:", err);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-theme-bg pt-24 pb-32 overflow-hidden selection:bg-gold/30 selection:text-gold">
@@ -59,6 +80,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               
               {/* Back of Card (Left / Top) */}
               <motion.div 
+                id="business-card-back"
                 initial={{ opacity: 0, x: -50, rotateY: -15, rotateZ: -5 }}
                 whileInView={{ opacity: 1, x: 0, rotateY: 10, rotateZ: -5 }}
                 viewport={{ once: true, margin: "-100px" }}
@@ -102,6 +124,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
 
               {/* Front of Card (Right / Bottom) */}
               <motion.div 
+                id="business-card-front"
                 initial={{ opacity: 0, x: 50, rotateY: 15, rotateZ: 5 }}
                 whileInView={{ opacity: 1, x: 0, rotateY: -10, rotateZ: 5 }}
                 viewport={{ once: true, margin: "-100px" }}
@@ -125,9 +148,25 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               <p className="text-theme-subtle leading-loose">
                 صُممت بطاقة العمل لتعكس فلسفة "وشّى" بمزج الأناقة الكلاسيكية بالتقنية الحديثة. يرمز اللون البني الغامق #322014 للغموض والفخامة، في حين يبرز الشعار الذهبي البصمة الفريدة، بالإضافة لمعلومات الاتصال المنسقة بعناية لسهولة الوصول.
               </p>
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-wrap gap-4 pt-4">
                 <span className="px-3 py-1 bg-theme-strong/5 border border-theme-strong/10 rounded-md text-xs font-semibold text-theme-subtle">الطباعة: رقائق الذهب الساخنة</span>
                 <span className="px-3 py-1 bg-theme-strong/5 border border-theme-strong/10 rounded-md text-xs font-semibold text-theme-subtle">الورق: بني غامق #322014 مطفي 600 جرام</span>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-theme-strong/10">
+                <button
+                  onClick={() => handleDownload("business-card-back", "wusha-business-card-back")}
+                  className="flex flex-1 items-center justify-center gap-2 px-4 py-3 bg-theme-strong/5 hover:bg-gold hover:text-white transition-colors text-theme-strong rounded-xl text-sm font-bold shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  حفظ الوجه الخلفي (معلومات)
+                </button>
+                <button
+                  onClick={() => handleDownload("business-card-front", "wusha-business-card-front")}
+                  className="flex flex-1 items-center justify-center gap-2 px-4 py-3 bg-theme-strong/5 hover:bg-gold hover:text-white transition-colors text-theme-strong rounded-xl text-sm font-bold shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  حفظ الوجه الأمامي (الشعار)
+                </button>
               </div>
             </div>
           </div>
@@ -143,10 +182,20 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               <p className="text-theme-subtle leading-loose">
                 بطاقة شخصية تُرفق مع كل طلب، نعبر فيها عن امتنانا الصادق لثقة العميل بنا. التصميم عمودي أنيق يُشبه رسائل الدعوات الفاخرة، مع رسالة مميزة تجعل من تجربة فتح الصندوق (Unboxing) لحظة لا تُنسى.
               </p>
+              <div className="pt-4 border-t border-theme-strong/10">
+                <button
+                  onClick={() => handleDownload("thank-you-card", "wusha-thank-you-card")}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-theme-strong/5 hover:bg-gold hover:text-white transition-colors text-theme-strong rounded-xl text-sm font-bold shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  حفظ بطاقة الشكر (جودة عالية)
+                </button>
+              </div>
             </div>
 
             <div className="w-full lg:w-3/5 flex justify-center perspective-1000">
               <motion.div 
+                id="thank-you-card"
                 initial={{ opacity: 0, y: 50, rotateX: 10 }}
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                 whileHover={{ y: -10, boxShadow: "0 30px 60px -15px rgba(202,160,82,0.2)" }}
@@ -184,6 +233,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <div className="w-full lg:w-3/5 flex justify-center">
                <motion.div 
+                 id="care-card"
                  initial={{ opacity: 0, scale: 0.95 }}
                  whileInView={{ opacity: 1, scale: 1 }}
                  viewport={{ once: true, margin: "-100px" }}
@@ -233,6 +283,15 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               <p className="text-theme-subtle leading-loose">
                 كل قطعة من وشّى ليست مجرد ملابس، بل هي لوحة فنية مطبوعة باستخدام أفضل تقنيات الطباعة المباشرة على القماش (DTG). لضمان بقاء الألوان نابضة بالحياة، قمنا بتصميم بطاقة تعليمات العناية التي تشرح بدقة وسهولة كيفية المحافظة على القطعة.
               </p>
+              <div className="pt-4 border-t border-theme-strong/10">
+                <button
+                  onClick={() => handleDownload("care-card", "wusha-care-instructions")}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-theme-strong/5 hover:bg-gold hover:text-white transition-colors text-theme-strong rounded-xl text-sm font-bold shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  حفظ بطاقة التعليمات (جودة عالية)
+                </button>
+              </div>
             </div>
           </div>
         </div>
