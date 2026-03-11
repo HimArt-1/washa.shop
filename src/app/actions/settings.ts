@@ -177,8 +177,8 @@ export async function getSiteSettings() {
             step2_result_image: aiSim.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
         },
         brand_assets: {
-            business_card_name: settings.brand_assets?.business_card_name ?? "حمزة آرت",
-            business_card_title: settings.brand_assets?.business_card_title ?? "المدير الإبداعي | Founder",
+            business_card_name: settings.brand_assets?.business_card_name ?? "هشام الزهراني",
+            business_card_title: settings.brand_assets?.business_card_title ?? "المدير التنفيذي",
             business_card_phone: settings.brand_assets?.business_card_phone ?? "+966 53 223 5005",
             business_card_email: settings.brand_assets?.business_card_email ?? "washaksa@hotmail.com",
             business_card_website: settings.brand_assets?.business_card_website ?? "www.washa.shop",

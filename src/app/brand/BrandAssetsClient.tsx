@@ -66,7 +66,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
                 className="relative w-full max-w-[400px] aspect-[1.75/1] rounded-xl shadow-2xl border border-white/5 overflow-hidden group cursor-pointer"
                 style={{
-                  background: "linear-gradient(135deg, #1A1A1A 0%, #0F0F0F 100%)",
+                  background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
                 }}
               >
@@ -109,7 +109,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                 transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.1 }}
                 className="relative w-full max-w-[400px] aspect-[1.75/1] rounded-xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/10 overflow-hidden flex items-center justify-center cursor-pointer"
                 style={{
-                  background: "linear-gradient(135deg, #222222 0%, #111111 100%)",
+                  background: "linear-gradient(135deg, #3D2719 0%, #20140D 100%)",
                 }}
               >
                 {/* Spot UV logic (hidden visually unless hovered) */}

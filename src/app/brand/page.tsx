@@ -4,8 +4,8 @@ import BrandAssetsClient from "./BrandAssetsClient";
 export default async function BrandAssetsPage() {
   const settings = await getSiteSettings();
   const config = settings.brand_assets || {
-    business_card_name: "حمزة آرت",
-    business_card_title: "المدير الإبداعي | Founder",
+    business_card_name: "هشام الزهراني",
+    business_card_title: "المدير التنفيذي",
     business_card_phone: "+966 53 223 5005",
     business_card_email: "washaksa@hotmail.com",
     business_card_website: "www.washa.shop",

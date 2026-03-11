@@ -116,8 +116,8 @@ export function SettingsClient({ settings }: SettingsProps) {
     });
 
     const [brandAssets, setBrandAssets] = useState({
-        business_card_name: settings.brand_assets?.business_card_name ?? "حمزة آرت",
-        business_card_title: settings.brand_assets?.business_card_title ?? "المدير الإبداعي | Founder",
+        business_card_name: settings.brand_assets?.business_card_name ?? "هشام الزهراني",
+        business_card_title: settings.brand_assets?.business_card_title ?? "المدير التنفيذي",
         business_card_phone: settings.brand_assets?.business_card_phone ?? "+966 53 223 5005",
         business_card_email: settings.brand_assets?.business_card_email ?? "washaksa@hotmail.com",
         business_card_website: settings.brand_assets?.business_card_website ?? "www.washa.shop",
@@ -497,13 +497,13 @@ export function SettingsClient({ settings }: SettingsProps) {
                                 label="الاسم"
                                 value={brandAssets.business_card_name}
                                 onChange={(v) => setBrandAssets({ ...brandAssets, business_card_name: v })}
-                                placeholder="حمزة آرت"
+                                placeholder="هشام الزهراني"
                             />
                             <Field
                                 label="المسمى الوظيفي"
                                 value={brandAssets.business_card_title}
                                 onChange={(v) => setBrandAssets({ ...brandAssets, business_card_title: v })}
-                                placeholder="المدير الإبداعي | Founder"
+                                placeholder="المدير التنفيذي"
                             />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
