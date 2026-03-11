@@ -34,6 +34,7 @@ const footerLinks = [
       { label: "المعرض", href: "/gallery" },
       { label: "المتجر", href: "/store" },
       { label: "البحث", href: "/search" },
+      { label: "التصاميم", href: "/brand" },
     ],
   },
   {
