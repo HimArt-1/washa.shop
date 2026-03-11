@@ -110,18 +110,18 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                       <Logo size="sm" />
                     </div>
                     
-                    <div className="space-y-3 mt-8">
-                      <div className="flex items-center gap-3 text-white/70 text-sm">
+                    <div className="space-y-3 mt-8 w-full overflow-hidden">
+                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full">
                         <Phone className="w-4 h-4 text-gold flex-shrink-0" />
-                        <span dir="ltr" className="tracking-wider">{config.business_card_phone}</span>
+                        <span dir="ltr" className="tracking-wider px-1 inline-block truncate min-w-0">{config.business_card_phone}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-white/70 text-sm">
+                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full">
                         <Mail className="w-4 h-4 text-gold flex-shrink-0" />
-                        <span dir="ltr">{config.business_card_email}</span>
+                        <span dir="ltr" className="px-1 inline-block truncate min-w-0">{config.business_card_email}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-white/70 text-sm">
+                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full overflow-hidden">
                         <Globe className="w-4 h-4 text-gold flex-shrink-0" />
-                        <span dir="ltr">{config.business_card_website}</span>
+                        <span dir="ltr" className="px-1 inline-block truncate min-w-0 text-left">{config.business_card_website}</span>
                       </div>
                     </div>
                   </div>
@@ -233,7 +233,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   </div>
 
                   <div className="w-full flex items-center justify-center mt-auto pt-6 border-t border-white/10 relative z-10">
-                    <span className="text-gold font-bold tracking-widest text-sm uppercase">washa.shop</span>
+                    <span dir="ltr" className="text-gold font-bold tracking-widest text-sm uppercase px-1 inline-block">washa.shop</span>
                   </div>
                 </div>
               </motion.div>
