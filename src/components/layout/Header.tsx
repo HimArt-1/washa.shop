@@ -8,6 +8,9 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { ShoppingBag } from "lucide-react";
+import { useCartStore } from "@/stores/cartStore";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 
 const navItems = [
   { label: "المعرض", href: "/gallery" },
@@ -19,6 +22,7 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { toggleCart, getCartCount } = useCartStore();
   const lastScrollY = useRef(0);
 
   useEffect(() => {
@@ -111,7 +115,26 @@ export function Header() {
 
               <SignedIn>
                 <div className="flex items-center gap-3">
-                  <NotificationBell />
+                  <div className="flex items-center gap-2">
+                    <NotificationBell />
+                    
+                    {/* Cart Icon Desktop */}
+                    <button
+                      onClick={() => toggleCart()}
+                      className="relative p-2.5 rounded-xl text-theme-soft hover:text-gold hover:bg-theme-subtle transition-all duration-300"
+                      aria-label="سلة المشتريات"
+                    >
+                      <ShoppingBag className="w-5 h-5" />
+                      {getCartCount() > 0 && (
+                        <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
+                          <span className="text-[10px] font-bold text-white leading-none">
+                            {getCartCount() > 99 ? "99+" : getCartCount()}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  </div>
+                  
                   <Link href="/account">
                     <motion.button
                       className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer"
@@ -173,8 +196,24 @@ export function Header() {
                 </span>
               </Link>
               <SignedIn>
-                <div className="flex items-center [&>div]:flex [&>div]:items-center">
+                <div className="flex items-center gap-2 [&>div]:flex [&>div]:items-center">
                   <NotificationBell />
+                  
+                  {/* Cart Icon Mobile */}
+                  <button
+                    onClick={() => toggleCart()}
+                    className="relative p-2.5 rounded-xl text-theme-soft hover:text-gold hover:bg-theme-subtle transition-all duration-300"
+                    aria-label="سلة المشتريات"
+                  >
+                    <ShoppingBag className="w-5 h-5" />
+                    {getCartCount() > 0 && (
+                      <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
+                        <span className="text-[10px] font-bold text-white leading-none">
+                          {getCartCount() > 99 ? "99+" : getCartCount()}
+                        </span>
+                      </div>
+                    )}
+                  </button>
                 </div>
               </SignedIn>
               <button
@@ -304,7 +343,9 @@ export function Header() {
           </motion.div>
         )}
       </AnimatePresence>
-
+      
+      {/* Global Cart Drawer */}
+      <CartDrawer />
     </>
   );
 }
