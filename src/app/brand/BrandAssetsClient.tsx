@@ -201,7 +201,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                 whileHover={{ y: -10, boxShadow: "0 30px 60px -15px rgba(202,160,82,0.2)" }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.6 }}
-                className="relative w-full max-w-[320px] aspect-[1/1.4] bg-[#322014] rounded-sm p-8 shadow-2xl border border-white/10 flex flex-col items-center text-center overflow-hidden"
+                className="relative w-full max-w-[320px] aspect-[1/1.4] rounded-sm p-8 shadow-2xl border border-white/5 flex flex-col items-center text-center overflow-hidden"
+                style={{
+                  background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
+                }}
               >
                 {/* Paper Texture Overlay */}
                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none mix-blend-overlay" />
@@ -237,7 +241,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                  initial={{ opacity: 0, scale: 0.95 }}
                  whileInView={{ opacity: 1, scale: 1 }}
                  viewport={{ once: true, margin: "-100px" }}
-                 className="relative w-full max-w-[450px] bg-[#322014] border border-white/10 rounded-2xl p-8 sm:p-10 shadow-xl overflow-hidden glass-card"
+                 className="relative w-full max-w-[450px] border border-white/5 rounded-2xl p-8 sm:p-10 shadow-2xl overflow-hidden"
+                 style={{
+                   background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
+                   boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
+                 }}
                >
                  <div className="text-center mb-10 border-b border-white/10 pb-6">
                    <h3 className="text-2xl font-bold tracking-wide text-white mb-2">تعليمات الغسيل والكي</h3>
