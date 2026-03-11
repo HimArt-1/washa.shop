@@ -15,7 +15,7 @@ import {
   Shirt,
   Download
 } from "lucide-react";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { Logo } from "@/components/ui/Logo";
 
 export default function BrandAssetsClient({ config }: { config: any }) {
@@ -24,15 +24,14 @@ export default function BrandAssetsClient({ config }: { config: any }) {
     const element = document.getElementById(elementId);
     if (!element) return;
     try {
-      // Use a high scale for "High Quality" exports
-      const canvas = await html2canvas(element, { 
-        scale: 4, 
-        backgroundColor: null,
-        useCORS: true // allow external images like transparenttextures
-      } as any);
+      // Use toPng from html-to-image which renders DOM properly including SVGs and Arabic Fonts
+      const dataUrl = await toPng(element, { 
+        cacheBust: true,
+        pixelRatio: 4 // High Quality equivalent to scale
+      });
       const link = document.createElement("a");
       link.download = `${filename}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error("Failed to capture image:", err);
