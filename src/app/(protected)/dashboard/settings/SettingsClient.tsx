@@ -109,7 +109,9 @@ export function SettingsClient({ settings }: SettingsProps) {
     const [aiSimulation, setAiSimulation] = useState({
         step1_image: settings.ai_simulation?.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
         step1_color_name: settings.ai_simulation?.step1_color_name ?? "أسود كلاسيك",
+        step1_pattern: settings.ai_simulation?.step1_pattern ?? "بدون نمط",
         step2_prompt: settings.ai_simulation?.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
+        step2_art_style: settings.ai_simulation?.step2_art_style ?? "رسم رقمي (Digital Art)",
         step2_result_image: settings.ai_simulation?.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
     });
 
@@ -407,6 +409,12 @@ export function SettingsClient({ settings }: SettingsProps) {
                             onChange={(v) => setAiSimulation({ ...aiSimulation, step1_color_name: v })}
                             placeholder="أسود كلاسيك"
                         />
+                        <Field
+                            label="النمط (Pattern)"
+                            value={aiSimulation.step1_pattern}
+                            onChange={(v) => setAiSimulation({ ...aiSimulation, step1_pattern: v })}
+                            placeholder="بدون نمط"
+                        />
                         <div>
                             <label className="text-xs text-theme-subtle font-medium block mb-2">صورة القطعة (Garment Image)</label>
                             <div className="flex items-center gap-3">
@@ -431,6 +439,12 @@ export function SettingsClient({ settings }: SettingsProps) {
                             value={aiSimulation.step2_prompt}
                             onChange={(v) => setAiSimulation({ ...aiSimulation, step2_prompt: v })}
                             placeholder="صمم لي ذئب بستايل سايبربانك..."
+                        />
+                        <Field
+                            label="أسلوب الرسم (Art Style)"
+                            value={aiSimulation.step2_art_style}
+                            onChange={(v) => setAiSimulation({ ...aiSimulation, step2_art_style: v })}
+                            placeholder="رسم رقمي (Digital Art)"
                         />
                         <div>
                             <label className="text-xs text-theme-subtle font-medium block mb-2">صورة التصميم المُولد (Result Image)</label>

@@ -49,7 +49,9 @@ export type SiteSettingsType = {
         ai_simulation?: {
             step1_image?: string;
             step1_color_name?: string;
+            step1_pattern?: string;
             step2_prompt?: string;
+            step2_art_style?: string;
             step2_result_image?: string;
         };
 };
@@ -135,7 +137,9 @@ export async function getSiteSettings() {
         ai_simulation: {
             step1_image: aiSim.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
             step1_color_name: aiSim.step1_color_name ?? "أسود كلاسيك",
+            step1_pattern: aiSim.step1_pattern ?? "بدون نمط",
             step2_prompt: aiSim.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
+            step2_art_style: aiSim.step2_art_style ?? "رسم رقمي (Digital Art)",
             step2_result_image: aiSim.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
         },
     };

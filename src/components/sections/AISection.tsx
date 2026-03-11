@@ -31,7 +31,9 @@ interface AISectionProps {
   config?: {
     step1_image?: string;
     step1_color_name?: string;
+    step1_pattern?: string;
     step2_prompt?: string;
+    step2_art_style?: string;
     step2_result_image?: string;
   };
 }
@@ -44,17 +46,26 @@ export function AISection({ config }: AISectionProps) {
   const fullPrompt = config?.step2_prompt || "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...";
   const garmentImage = config?.step1_image || "/images/design/heavy-tshirt-black-front.png";
   const garmentColorName = config?.step1_color_name || "أسود كلاسيك";
+  const garmentPattern = config?.step1_pattern || "بدون نمط";
+  const artStyle = config?.step2_art_style || "رسم رقمي (Digital Art)";
   const resultImage = config?.step2_result_image || "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80";
 
-  // Auto-play logic
+  // Auto-play logic with variable timing
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep((prev) => (prev >= 3 ? 1 : prev + 1));
-      if (activeStep === 3) {
-        setPromptText(""); // reset typing for next loop
-      }
-    }, 4000); // 4 seconds per step
-    return () => clearInterval(interval);
+    let timeoutId: NodeJS.Timeout;
+
+    if (activeStep === 1) {
+      timeoutId = setTimeout(() => setActiveStep(2), 4000);
+    } else if (activeStep === 2) {
+      timeoutId = setTimeout(() => setActiveStep(3), 4000);
+    } else if (activeStep === 3) {
+      timeoutId = setTimeout(() => {
+        setActiveStep(1);
+        setPromptText("");
+      }, 7000); // give step 3 more time (7 seconds)
+    }
+
+    return () => clearTimeout(timeoutId);
   }, [activeStep]);
 
   // Typing effect for step 2
@@ -220,14 +231,24 @@ export function AISection({ config }: AISectionProps) {
                       priority
                     />
                   </motion.div>
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute -right-4 sm:right-10 top-1/4 glass-card px-4 py-2 rounded-2xl border-gold/30 flex items-center gap-2"
-                  >
-                     <div className="w-3 h-3 rounded-full bg-black border border-white/20" />
-                     <span className="text-xs font-bold text-theme-strong">{garmentColorName}</span>
-                  </motion.div>
+                  <div className="absolute -right-4 sm:right-10 top-1/4 flex flex-col gap-2">
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      className="glass-card px-4 py-2 rounded-2xl border-gold/30 flex items-center gap-2"
+                    >
+                       <div className="w-3 h-3 rounded-full bg-black border border-white/20" />
+                       <span className="text-xs font-bold text-theme-strong">{garmentColorName}</span>
+                    </motion.div>
+                    <motion.div
+                      animate={{ y: [0, -8, 0] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+                      className="glass-card px-4 py-2 rounded-2xl border-gold/30 flex items-center gap-2"
+                    >
+                       <Shirt className="w-3 h-3 text-theme-subtle" />
+                       <span className="text-xs font-bold text-theme-strong">{garmentPattern}</span>
+                    </motion.div>
+                  </div>
                 </motion.div>
               )}
 
@@ -241,7 +262,7 @@ export function AISection({ config }: AISectionProps) {
                   transition={{ duration: 0.5 }}
                   className="w-full max-w-lg mx-auto flex flex-col items-center"
                 >
-                   <div className="w-full glass-card border-gold/30 rounded-2xl p-4 sm:p-6 shadow-lg mb-8 relative overflow-hidden">
+                   <div className="w-full glass-card border-gold/30 rounded-2xl p-4 sm:p-6 shadow-lg mb-4 relative overflow-hidden">
                       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-gold to-transparent opacity-50" />
                       <div className="flex items-start gap-4">
                         <div className="shrink-0 w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
@@ -259,6 +280,19 @@ export function AISection({ config }: AISectionProps) {
                         </div>
                       </div>
                    </div>
+
+                   {/* Art Style Badge */}
+                   <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="flex items-center gap-3 mb-6"
+                   >
+                     <span className="text-xs text-theme-subtle">الأسلوب:</span>
+                     <div className="glass-card px-3 py-1.5 rounded-full border-gold/30 text-xs font-bold text-gold">
+                       {artStyle}
+                     </div>
+                   </motion.div>
 
                    {/* Generated Result Pop */}
                    <motion.div
@@ -302,7 +336,7 @@ export function AISection({ config }: AISectionProps) {
                     initial={{ scale: 1.05 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 4, ease: "easeOut" }}
-                    className="relative w-56 h-56 sm:w-72 sm:h-72 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+                    className="relative w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                   >
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
