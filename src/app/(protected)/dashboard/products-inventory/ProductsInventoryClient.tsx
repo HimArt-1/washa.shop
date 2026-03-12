@@ -144,19 +144,18 @@ export function ProductsInventoryClient({
                     </button>
                 ))}
             </div>
+            
+            <div className="flex justify-end block mt-[-45px] mb-2 pointer-events-auto relative z-10 w-full">
+                 <button
+                    onClick={() => setShowSmartImport(true)}
+                    className="px-6 py-2.5 bg-wusha-gold/10 text-wusha-gold border border-wusha-gold/20 rounded-xl text-sm font-bold hover:bg-yellow-500/20 transition-all flex items-center gap-2 shadow-sm"
+                >
+                    <Package className="w-5 h-5" />
+                    الاستيراد الذكي (Excel/CSV)
+                </button>
+            </div>
 
-            {/* Smart Import Button Tracker */}
-            {(tab === "inventory" || tab === "products") && (
-                <div className="flex justify-end mb-2">
-                     <button
-                        onClick={() => setShowSmartImport(true)}
-                        className="px-6 py-2.5 bg-wusha-gold/10 text-wusha-gold border border-wusha-gold/20 rounded-xl text-sm font-bold hover:bg-yellow-500/20 transition-all flex items-center gap-2 shadow-sm"
-                    >
-                        <Package className="w-5 h-5" />
-                        الاستيراد الذكي (Excel/CSV)
-                    </button>
-                </div>
-            )}
+
 
             {/* ─── Tab Content ─── */}
             <AnimatePresence mode="wait">
