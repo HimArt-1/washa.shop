@@ -127,35 +127,39 @@ export function ProductsInventoryClient({
                 </div>
             </div>
 
-            {/* ─── Tabs & Actions Row ─── */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
-                {/* Tabs */}
-                <div className="flex gap-2 p-1 rounded-2xl bg-theme-faint border border-theme-subtle w-fit">
-                    {tabs.map((t) => (
-                        <button
-                            key={t.id}
-                            onClick={() => switchTab(t.id)}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                                tab === t.id
-                                    ? "bg-gold/20 text-gold border border-gold/30 shadow-[0_2px_12px_rgba(206,174,127,0.15)]"
-                                    : "text-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"
-                            }`}
-                        >
-                            <t.icon className="w-4 h-4" />
-                            {t.label}
-                        </button>
-                    ))}
+            {/* ─── Tabs & Actions Row (sticky when scrolling) ─── */}
+            <div className="sticky top-0 z-30 py-4 bg-bg/95 backdrop-blur-md border-b border-theme-faint -mb-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                    {/* Tabs */}
+                    <div className="flex gap-2 p-1 rounded-2xl bg-theme-faint border border-theme-subtle w-fit">
+                        {tabs.map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={() => switchTab(t.id)}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                                    tab === t.id
+                                        ? "bg-gold/20 text-gold border border-gold/30 shadow-[0_2px_12px_rgba(206,174,127,0.15)]"
+                                        : "text-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"
+                                }`}
+                            >
+                                <t.icon className="w-4 h-4" />
+                                {t.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Smart Import Button */}
+                    <button
+                        onClick={() => setShowSmartImport(true)}
+                        className="px-6 py-2.5 bg-gold/20 text-gold border-2 border-gold/40 rounded-xl text-sm font-bold hover:bg-gold/30 hover:border-gold/60 transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap shrink-0"
+                    >
+                        <Package className="w-5 h-5" />
+                        الاستيراد الذكي (Excel/CSV)
+                    </button>
                 </div>
-                
-                {/* Smart Import Button */}
-                <button
-                    onClick={() => setShowSmartImport(true)}
-                    className="px-6 py-2.5 bg-wusha-gold/10 text-wusha-gold border border-wusha-gold/20 rounded-xl text-sm font-bold hover:bg-yellow-500/20 transition-all flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
-                >
-                    <Package className="w-5 h-5" />
-                    الاستيراد الذكي (Excel/CSV)
-                </button>
-            </div>            {/* ─── Tab Content ─── */}
+            </div>
+
+            {/* ─── Tab Content ─── */}
             <AnimatePresence mode="wait">
                 {tab === "products" ? (
                     <motion.div
@@ -175,6 +179,7 @@ export function ProductsInventoryClient({
                             categories={categories}
                             skus={skus}
                             basePath="/dashboard/products-inventory"
+                            onSmartImportClick={() => setShowSmartImport(true)}
                         />
                     </motion.div>
                 ) : (
@@ -189,6 +194,7 @@ export function ProductsInventoryClient({
                             initialInventory={inventory}
                             warehouses={warehouses}
                             skus={skus}
+                            onSmartImportClick={() => setShowSmartImport(true)}
                         />
                     </motion.div>
                 )}

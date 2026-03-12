@@ -41,6 +41,8 @@ interface ProductsClientProps {
     skus?: any[];
     /** Base path for links (e.g. /dashboard/products-inventory for unified view) */
     basePath?: string;
+    /** Callback to open Smart Import modal (products-inventory page) */
+    onSmartImportClick?: () => void;
 }
 
 // ─── Main Component ─────────────────────────────────────────
@@ -55,6 +57,7 @@ export function ProductsClient({
     categories = [],
     skus = [],
     basePath = "/dashboard/products",
+    onSmartImportClick,
 }: ProductsClientProps) {
     const router = useRouter();
     const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -257,6 +260,12 @@ export function ProductsClient({
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
+                        {onSmartImportClick && (
+                            <button onClick={onSmartImportClick}
+                                className="flex items-center gap-2 px-4 py-2 bg-gold/20 text-gold border-2 border-gold/40 rounded-lg text-sm font-bold hover:bg-gold/30 transition-all">
+                                <Upload className="w-4 h-4" /> الاستيراد الذكي
+                            </button>
+                        )}
                         <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 bg-theme-subtle border border-theme-subtle rounded-lg text-xs text-theme-subtle hover:text-theme-strong hover:bg-theme-soft transition-all" title="تصدير CSV">
                             <Download className="w-3.5 h-3.5" /> CSV
                         </button>

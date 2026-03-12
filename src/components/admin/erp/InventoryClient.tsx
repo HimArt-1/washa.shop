@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Loader2, PackagePlus, AlertCircle } from "lucide-react";
+import { Plus, Search, Loader2, PackagePlus, AlertCircle, Upload } from "lucide-react";
 import Image from "next/image";
 import { adjustInventory } from "@/app/actions/erp/inventory";
 
 export default function InventoryClient({
-    initialInventory, warehouses, skus
+    initialInventory, warehouses, skus, onSmartImportClick
 }: {
-    initialInventory: any[], warehouses: any[], skus: any[]
+    initialInventory: any[], warehouses: any[], skus: any[], onSmartImportClick?: () => void
 }) {
     const [inventory, setInventory] = useState(initialInventory);
     const [searchQuery, setSearchQuery] = useState("");
@@ -64,13 +64,24 @@ export default function InventoryClient({
                         onChange={d => setSearchQuery(d.target.value)}
                     />
                 </div>
-                <button
-                    onClick={() => setIsAdjusting(true)}
-                    className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
-                >
-                    <PackagePlus className="w-5 h-5" />
-                    <span>تعديل/إضافة كمية</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    {onSmartImportClick && (
+                        <button
+                            onClick={onSmartImportClick}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gold/20 text-gold border-2 border-gold/40 rounded-xl font-bold hover:bg-gold/30 transition-colors"
+                        >
+                            <Upload className="w-5 h-5" />
+                            <span>الاستيراد الذكي</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setIsAdjusting(true)}
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gold text-black font-semibold rounded-xl hover:bg-gold/90 transition-colors"
+                    >
+                        <PackagePlus className="w-5 h-5" />
+                        <span>تعديل/إضافة كمية</span>
+                    </button>
+                </div>
             </div>
 
             {/* List */}
