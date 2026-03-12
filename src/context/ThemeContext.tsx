@@ -15,7 +15,7 @@ interface ThemeContextValue {
 export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
@@ -23,10 +23,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(stored);
       document.documentElement.setAttribute("data-theme", stored);
     } else {
-      const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-      const initial = prefersLight ? "light" : "dark";
-      setThemeState(initial);
-      document.documentElement.setAttribute("data-theme", initial);
+      // النمط الفاتح هو الافتراضي عند أول زيارة
+      setThemeState("light");
+      document.documentElement.setAttribute("data-theme", "light");
     }
   }, []);
 

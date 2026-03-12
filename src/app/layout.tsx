@@ -106,11 +106,11 @@ export default function RootLayout({
       appearance={clerkAppearance}
       dynamic
     >
-      <html lang="ar" dir="rtl" suppressHydrationWarning>
+      <html lang="ar" dir="rtl" suppressHydrationWarning data-theme="light">
         <head>
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){var t=localStorage.getItem('wusha-theme');var p=window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t||p);})();`,
+              __html: `(function(){var t=localStorage.getItem('wusha-theme');document.documentElement.setAttribute('data-theme',t==='dark'||t==='light'?t:'light');})();`,
             }}
           />
           {/* JSON-LD Structured Data */}
