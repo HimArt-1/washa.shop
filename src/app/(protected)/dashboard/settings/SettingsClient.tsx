@@ -131,6 +131,12 @@ export function SettingsClient({ settings }: SettingsProps) {
         social_whatsapp: settings.brand_assets?.social_whatsapp ?? "+966532235005",
         linktree_title: settings.brand_assets?.linktree_title ?? "وشّى منصة الفن",
         linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? "الإبداع بين يديك",
+        show_instagram: settings.brand_assets?.show_instagram ?? true,
+        show_twitter: settings.brand_assets?.show_twitter ?? true,
+        show_tiktok: settings.brand_assets?.show_tiktok ?? true,
+        show_snapchat: settings.brand_assets?.show_snapchat ?? true,
+        show_whatsapp: settings.brand_assets?.show_whatsapp ?? true,
+        show_website: settings.brand_assets?.show_website ?? true,
     });
 
     const [saving, setSaving] = useState<string | null>(null);
@@ -584,44 +590,143 @@ export function SettingsClient({ settings }: SettingsProps) {
                             />
                         </div>
 
-                        <h4 className="font-semibold text-sm text-theme mb-2">روابط المنصات والحسابات</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field
-                                label="Instagram"
-                                value={brandAssets.social_instagram}
-                                onChange={(v) => setBrandAssets({ ...brandAssets, social_instagram: v })}
-                                placeholder="@wusha.art"
-                                dir="ltr"
-                            />
-                            <Field
-                                label="Twitter (X)"
-                                value={brandAssets.social_twitter}
-                                onChange={(v) => setBrandAssets({ ...brandAssets, social_twitter: v })}
-                                placeholder="@wusha_art"
-                                dir="ltr"
-                            />
-                            <Field
-                                label="TikTok"
-                                value={brandAssets.social_tiktok}
-                                onChange={(v) => setBrandAssets({ ...brandAssets, social_tiktok: v })}
-                                placeholder="@wusha.art"
-                                dir="ltr"
-                            />
-                            <Field
-                                label="Snapchat"
-                                value={brandAssets.social_snapchat}
-                                onChange={(v) => setBrandAssets({ ...brandAssets, social_snapchat: v })}
-                                placeholder="@wusha.art"
-                                dir="ltr"
-                            />
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-semibold text-sm text-theme">روابط المنصات والحسابات</h4>
+                            <span className="text-xs text-theme-subtle">الغي التحديد لإخفاء المنصة من صفحة الروابط</span>
                         </div>
-                        <Field
-                            label="رقم الواتساب (للرابط)"
-                            value={brandAssets.social_whatsapp}
-                            onChange={(v) => setBrandAssets({ ...brandAssets, social_whatsapp: v })}
-                            placeholder="+966532235005"
-                            dir="ltr"
-                        />
+                        <div className="grid grid-cols-1 gap-6">
+                            
+                            {/* Instagram */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_instagram !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_instagram: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">Instagram</span>
+                                </label>
+                                <div className="flex-1 opacity-100 transition-opacity" style={{ opacity: brandAssets.show_instagram === false ? 0.5 : 1 }}>
+                                    <input
+                                        className="w-full px-4 py-2 bg-theme-strong/5 border border-theme-strong/10 rounded-lg text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors"
+                                        value={brandAssets.social_instagram}
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, social_instagram: e.target.value })}
+                                        placeholder="@wusha.art"
+                                        dir="ltr"
+                                        disabled={brandAssets.show_instagram === false}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Twitter */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_twitter !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_twitter: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">Twitter (X)</span>
+                                </label>
+                                <div className="flex-1 transition-opacity" style={{ opacity: brandAssets.show_twitter === false ? 0.5 : 1 }}>
+                                    <input
+                                        className="w-full px-4 py-2 bg-theme-strong/5 border border-theme-strong/10 rounded-lg text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors"
+                                        value={brandAssets.social_twitter}
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, social_twitter: e.target.value })}
+                                        placeholder="@wusha_art"
+                                        dir="ltr"
+                                        disabled={brandAssets.show_twitter === false}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* TikTok */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_tiktok !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_tiktok: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">TikTok</span>
+                                </label>
+                                <div className="flex-1 transition-opacity" style={{ opacity: brandAssets.show_tiktok === false ? 0.5 : 1 }}>
+                                    <input
+                                        className="w-full px-4 py-2 bg-theme-strong/5 border border-theme-strong/10 rounded-lg text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors"
+                                        value={brandAssets.social_tiktok}
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, social_tiktok: e.target.value })}
+                                        placeholder="@wusha.art"
+                                        dir="ltr"
+                                        disabled={brandAssets.show_tiktok === false}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Snapchat */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_snapchat !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_snapchat: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">Snapchat</span>
+                                </label>
+                                <div className="flex-1 transition-opacity" style={{ opacity: brandAssets.show_snapchat === false ? 0.5 : 1 }}>
+                                    <input
+                                        className="w-full px-4 py-2 bg-theme-strong/5 border border-theme-strong/10 rounded-lg text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors"
+                                        value={brandAssets.social_snapchat}
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, social_snapchat: e.target.value })}
+                                        placeholder="@wusha.art"
+                                        dir="ltr"
+                                        disabled={brandAssets.show_snapchat === false}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* WhatsApp */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_whatsapp !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_whatsapp: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">WhatsApp</span>
+                                </label>
+                                <div className="flex-1 transition-opacity" style={{ opacity: brandAssets.show_whatsapp === false ? 0.5 : 1 }}>
+                                    <input
+                                        className="w-full px-4 py-2 bg-theme-strong/5 border border-theme-strong/10 rounded-lg text-theme-strong text-sm focus:border-gold focus:outline-none transition-colors"
+                                        value={brandAssets.social_whatsapp}
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, social_whatsapp: e.target.value })}
+                                        placeholder="+966532235005"
+                                        dir="ltr"
+                                        disabled={brandAssets.show_whatsapp === false}
+                                    />
+                                </div>
+                            </div>
+                            
+                            {/* Website Link (using existing website field) */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-theme-strong/10 bg-theme-base/50">
+                                <label className="flex items-center gap-2 cursor-pointer w-32 shrink-0">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={brandAssets.show_website !== false} 
+                                        onChange={(e) => setBrandAssets({ ...brandAssets, show_website: e.target.checked })} 
+                                        className="w-4 h-4 rounded text-gold focus:ring-gold border-theme-strong/20"
+                                    />
+                                    <span className="text-sm font-bold text-theme">الموقع الإلكتروني</span>
+                                </label>
+                                <div className="flex-1 transition-opacity" style={{ opacity: brandAssets.show_website === false ? 0.5 : 1 }}>
+                                    <div className="text-xs text-theme-subtle px-2">مستمد من إعدادات بطاقة العمل الأساسية أعلاه</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

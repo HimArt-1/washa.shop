@@ -109,7 +109,7 @@ export default function LinkClient({ config }: { config: any }) {
               animate="show"
               className="w-full flex flex-col gap-4"
             >
-              {config.social_instagram && (
+              {config.social_instagram && config.show_instagram !== false && (
                 <motion.a
                   variants={itemVariants}
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(202,160,82,0.4)" }}
@@ -128,7 +128,7 @@ export default function LinkClient({ config }: { config: any }) {
                 </motion.a>
               )}
               
-              {config.social_twitter && (
+              {config.social_twitter && config.show_twitter !== false && (
                 <motion.a
                   variants={itemVariants}
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(202,160,82,0.4)" }}
@@ -147,7 +147,7 @@ export default function LinkClient({ config }: { config: any }) {
                 </motion.a>
               )}
               
-              {config.social_tiktok && (
+              {config.social_tiktok && config.show_tiktok !== false && (
                 <motion.a
                   variants={itemVariants}
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(202,160,82,0.4)" }}
@@ -166,7 +166,7 @@ export default function LinkClient({ config }: { config: any }) {
                 </motion.a>
               )}
               
-              {config.social_snapchat && (
+              {config.social_snapchat && config.show_snapchat !== false && (
                 <motion.a
                   variants={itemVariants}
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(202,160,82,0.4)" }}
@@ -185,7 +185,7 @@ export default function LinkClient({ config }: { config: any }) {
                 </motion.a>
               )}
 
-              {config.brand_assets?.business_card_website && (
+              {config.brand_assets?.business_card_website && config.show_website !== false && (
                  <motion.a
                  variants={itemVariants}
                  whileHover={{ scale: 1.03, backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(202,160,82,0.4)" }}
@@ -204,7 +204,7 @@ export default function LinkClient({ config }: { config: any }) {
                </motion.a>
               )}
 
-              {config.social_whatsapp && (
+              {config.social_whatsapp && config.show_whatsapp !== false && (
                 <motion.a
                   variants={itemVariants}
                   whileHover={{ scale: 1.03, backgroundColor: "rgba(34,197,94,0.1)", borderColor: "rgba(34,197,94,0.4)" }}

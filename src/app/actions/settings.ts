@@ -70,6 +70,12 @@ export type SiteSettingsType = {
             social_whatsapp?: string;
             linktree_title?: string;
             linktree_subtitle?: string;
+            show_instagram?: boolean;
+            show_twitter?: boolean;
+            show_tiktok?: boolean;
+            show_snapchat?: boolean;
+            show_whatsapp?: boolean;
+            show_website?: boolean;
         };
 };
 
@@ -209,6 +215,12 @@ export async function getSiteSettings() {
             social_whatsapp: settings.brand_assets?.social_whatsapp ?? "+966532235005",
             linktree_title: settings.brand_assets?.linktree_title ?? "وشّى منصة الفن",
             linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? "الإبداع بين يديك",
+            show_instagram: settings.brand_assets?.show_instagram ?? true,
+            show_twitter: settings.brand_assets?.show_twitter ?? true,
+            show_tiktok: settings.brand_assets?.show_tiktok ?? true,
+            show_snapchat: settings.brand_assets?.show_snapchat ?? true,
+            show_whatsapp: settings.brand_assets?.show_whatsapp ?? true,
+            show_website: settings.brand_assets?.show_website ?? true,
         },
     };
     } catch (error) {
