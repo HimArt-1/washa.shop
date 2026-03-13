@@ -190,23 +190,48 @@ export async function sendApplicationRejectedEmail(to: string, name: string) {
     });
 }
 
+export interface OrderEmailItem {
+    title: string;
+    quantity: number;
+    size?: string | null;
+    unit_price: number;
+}
+
 export async function sendOrderConfirmationEmail(
     to: string,
     name: string,
     orderNumber: string,
-    total: number
+    total: number,
+    items?: OrderEmailItem[]
 ) {
+    const itemsHtml = items && items.length > 0 ? `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse;">
+          <tr>
+            <td style="color:rgba(240,235,227,0.35);font-size:11px;padding:6px 0 8px;border-bottom:1px solid rgba(206,174,127,0.12);">المنتج</td>
+            <td style="color:rgba(240,235,227,0.35);font-size:11px;padding:6px 0 8px;border-bottom:1px solid rgba(206,174,127,0.12);text-align:center;" width="40">الكمية</td>
+            <td style="color:rgba(240,235,227,0.35);font-size:11px;padding:6px 0 8px;border-bottom:1px solid rgba(206,174,127,0.12);text-align:left;" dir="ltr" width="100">السعر</td>
+          </tr>
+          ${items.map(item => `<tr>
+            <td style="color:#f0ebe3;font-size:13px;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);">
+              ${item.title}${item.size ? ` <span style="color:#ceae7f;font-size:11px;">(${item.size})</span>` : ""}
+            </td>
+            <td style="color:rgba(240,235,227,0.5);font-size:13px;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);text-align:center;">${item.quantity}</td>
+            <td style="color:#ceae7f;font-size:13px;font-weight:600;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);text-align:left;" dir="ltr">${(item.unit_price * item.quantity).toLocaleString()} ر.س</td>
+          </tr>`).join("")}
+        </table>` : "";
+
     return send({
         to,
         subject: `تم استلام طلبك #${orderNumber} ✅`,
         html: wushaTemplate(`
             ${heading(`شكراً لطلبك، ${name} ✅`)}
-            ${paragraph("تم استلام طلبك بنجاح وسيتم معالجته قريباً.")}
+            ${paragraph("تم استلام طلبك بنجاح. فيما يلي تفاصيل طلبك:")}
 
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.06);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.05);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
               <tr><td>
+                ${itemsHtml}
                 ${infoBlock("رقم الطلب", `#${orderNumber}`)}
-                ${infoBlock("الإجمالي", `${total.toLocaleString()} ر.س`)}
+                ${infoBlock("الإجمالي", `<strong style="color:#ceae7f;font-size:17px;">${total.toLocaleString()} ر.س</strong>`)}
               </td></tr>
             </table>
 

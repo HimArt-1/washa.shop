@@ -7,7 +7,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
-import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail } from "@/lib/email";
+import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, type OrderEmailItem } from "@/lib/email";
 import { sendPushToAll } from "@/lib/push";
 import { checkStockAvailability, decrementStockForOrder } from "@/lib/inventory";
 import { createAdminNotification } from "@/app/actions/notifications";
@@ -179,7 +179,13 @@ export async function createOrder(
         const email = user.emailAddresses?.[0]?.emailAddress;
         const name = shippingAddress.name || user.firstName || "عميل";
         if (email) {
-            sendOrderConfirmationEmail(email, name, order.order_number, total).catch(console.error);
+            const emailItems: OrderEmailItem[] = items.map(i => ({
+                title: i.custom_title || `منتج`,
+                quantity: i.quantity,
+                size: i.size,
+                unit_price: i.unit_price,
+            }));
+            sendOrderConfirmationEmail(email, name, order.order_number, total, emailItems).catch(console.error);
         }
     }
 
@@ -288,7 +294,18 @@ export async function confirmOrderPayment(
         const email = options?.customerEmail;
         if (ord && email) {
             const name = ord.shipping_address?.name || "عميل";
-            sendOrderConfirmationEmail(email, name, ord.order_number, ord.total).catch(console.error);
+            // Fetch order items to include in email
+            const { data: orderItems } = await supabase
+                .from("order_items")
+                .select("quantity, size, unit_price, custom_title, product:products(title)")
+                .eq("order_id", orderId);
+            const emailItems: OrderEmailItem[] = (orderItems || []).map((i: any) => ({
+                title: i.product?.title || i.custom_title || "منتج",
+                quantity: i.quantity,
+                size: i.size,
+                unit_price: i.unit_price,
+            }));
+            sendOrderConfirmationEmail(email, name, ord.order_number, ord.total, emailItems).catch(console.error);
         }
 
         return { success: true };

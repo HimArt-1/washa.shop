@@ -8,6 +8,7 @@ import { VisitLogger } from "@/components/ops/VisitLogger";
 import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
 import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerRegister";
+import { CartSyncProvider } from "@/components/store/CartSyncProvider";
 import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
@@ -167,6 +168,7 @@ export default function RootLayout({
 
           {/* Main Content */}
           <ThemeProvider>
+            <CartSyncProvider />
             <VisitLogger />
             <ClientErrorLogger />
             <main id="main-content">

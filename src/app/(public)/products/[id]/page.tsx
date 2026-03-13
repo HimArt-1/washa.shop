@@ -7,6 +7,8 @@ import { Metadata } from "next";
 import { ProductActions } from "./ProductActions";
 import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { getSupabaseServerClient } from "@/lib/supabase";
+import { RecentlyViewedTracker } from "@/components/store/RecentlyViewedTracker";
+import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection";
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -67,12 +69,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     // Determine final stock status
     const isCurrentlyInStock = hasErpStock;
 
-    // Related products
-    const related = await getProducts(1, product.type || "all");
-    const relatedProducts = related.data?.filter((p: any) => p.id !== product.id).slice(0, 4) || [];
+    // Smart related products: same artist first, then same type sorted by rating
+    const supabase2 = getSupabaseServerClient();
+    const [byArtist, byType] = await Promise.all([
+        product.artist_id
+            ? supabase2.from("products").select("id, title, price, image_url, type, rating")
+                .eq("artist_id", product.artist_id).neq("id", id).eq("in_stock", true)
+                .order("rating", { ascending: false }).limit(2)
+            : Promise.resolve({ data: [] }),
+        supabase2.from("products").select("id, title, price, image_url, type, rating")
+            .eq("type", product.type).neq("id", id).eq("in_stock", true)
+            .order("rating", { ascending: false }).limit(6),
+    ]);
+    const artistIds = new Set((byArtist.data || []).map((p: any) => p.id));
+    const relatedProducts = [
+        ...(byArtist.data || []),
+        ...(byType.data || []).filter((p: any) => !artistIds.has(p.id)),
+    ].slice(0, 4);
 
     return (
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
+            {/* Track this visit in localStorage */}
+            <RecentlyViewedTracker product={{ id: product.id, title: product.title, price: product.price, image_url: product.image_url, type: product.type }} />
             <div className="max-w-7xl mx-auto px-6">
                 {/* ─── Breadcrumb ─── */}
                 <nav className="flex items-center gap-2 text-xs text-theme-faint mb-8">
@@ -165,6 +183,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     initialRating={Number(product.rating) || 0}
                     initialReviewsCount={Number(product.reviews_count) || 0}
                 />
+
+                {/* ─── Recently Viewed ─── */}
+                <RecentlyViewedSection excludeId={id} />
 
                 {/* ─── Related Products ─── */}
                 {relatedProducts.length > 0 && (
