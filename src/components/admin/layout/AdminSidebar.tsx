@@ -25,7 +25,13 @@ interface NavGroup {
     items: NavItem[];
 }
 
-export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
+export function AdminSidebar({ 
+    pendingApps = 0,
+    pendingDesignOrders = 0 
+}: { 
+    pendingApps?: number;
+    pendingDesignOrders?: number;
+}) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const pathname = usePathname();
@@ -51,13 +57,14 @@ export function AdminSidebar({ pendingApps = 0 }: { pendingApps?: number }) {
             title: "الطلبات",
             items: [
                 { icon: ShoppingCart, label: "إدارة الطلبات", href: "/dashboard/orders" },
-                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders" },
+                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders },
             ],
         },
         {
             title: "العملاء والمستخدمون",
             items: [
                 { icon: UserCheck, label: "المستخدمون", href: "/dashboard/users-clerk" },
+
                 { icon: Users, label: "الملفات الشخصية", href: "/dashboard/users" },
                 { icon: UserCog, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
             ],

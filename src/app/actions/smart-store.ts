@@ -19,6 +19,8 @@ import type {
     CustomDesignColorPackage,
     CustomDesignStudioItem,
 } from "@/types/database";
+import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
+
 
 function getSmartStoreSb() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -524,13 +526,25 @@ export async function submitDesignOrder(orderData: {
 
     if (error || !data) return { error: error?.message || "فشل إنشاء الطلب" };
 
-    // Notify all admins about the new design order
+    // Notify all admins about the new design order via in-app notification
     await createAdminNotification({
         type: "order_alert",
         title: "طلب تصميم جديد 🎨",
         message: `طلب تصميم جديد #${data.order_number} — ${orderData.garment_name} (${orderData.color_name}) من ${orderData.customer_name || "عميل"}`,
         link: "/dashboard/design-orders",
     });
+
+    // Fire email notification asynchronously so it doesn't block the user
+    sendAdminDesignOrderNotificationEmail(
+        data.order_number,
+        orderData.customer_name || '',
+        orderData.customer_email || '',
+        orderData.customer_phone || '',
+        orderData.garment_name,
+        orderData.color_name,
+        orderData.design_method,
+        data.id
+    ).catch(err => console.error("Failed to send design order email async", err));
 
     return { success: true, orderId: data.id, orderNumber: data.order_number };
 }

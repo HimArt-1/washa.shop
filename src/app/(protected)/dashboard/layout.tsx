@@ -53,12 +53,23 @@ export default async function DashboardLayout({
             pendingApps = 0;
         }
 
+        let pendingDesignOrders = 0;
+        try {
+            const { count } = await supabase
+                .from("custom_design_orders")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "new");
+            pendingDesignOrders = count ?? 0;
+        } catch {
+            pendingDesignOrders = 0;
+        }
+
         return (
             <div className="flex min-h-screen bg-bg relative" dir="rtl">
                 {/* Cyber grid + gradient overlay */}
                 <div className="fixed inset-0 pointer-events-none cyber-grid opacity-40" />
                 <div className="fixed inset-0 pointer-events-none bg-gradient-to-b from-gold/[0.02] via-transparent to-transparent opacity-60" />
-                <AdminSidebar pendingApps={pendingApps} />
+                <AdminSidebar pendingApps={pendingApps} pendingDesignOrders={pendingDesignOrders} />
                 <div className="flex-1 flex flex-col min-w-0 relative">
                     <AdminTopBar />
                     <main className="flex-1 overflow-y-auto">

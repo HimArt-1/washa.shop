@@ -281,3 +281,45 @@ export async function sendAdminApplicationNotificationEmail(
         `),
     });
 }
+
+export async function sendAdminDesignOrderNotificationEmail(
+    orderNumber: number,
+    customerName: string,
+    customerEmail: string,
+    customerPhone: string,
+    garmentName: string,
+    colorName: string,
+    designMethod: string,
+    orderId: string
+) {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail?.trim()) return { success: false };
+
+    const methodAr = designMethod === 'from_text' ? 'صورة بالذكاء الاصطناعي' 
+                   : designMethod === 'from_image' ? 'صورة مرجعية مرفقة' 
+                   : 'تصميم من الاستوديو';
+
+    return send({
+        to: adminEmail,
+        subject: `[${SITE_NAME}] طلب تصميم جديد 🎨 — #${orderNumber}`,
+        html: wushaTemplate(`
+            ${heading("طلب تصميم جديد 🎨")}
+            ${paragraph("لقد استلمت طلب تصميم جديد عبر خدمة 'صمم قطعتك'. يرجى مراجعة تفاصيل الطلب.")}
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.06);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
+              <tr><td>
+                ${infoBlock("رقم الطلب", `#${orderNumber}`)}
+                ${infoBlock("العميل", customerName || '—')}
+                ${infoBlock("البريد", customerEmail || '—')}
+                ${infoBlock("الجوال", customerPhone || '—')}
+                <div style="height:12px;"></div>
+                ${infoBlock("القطعة المحددة", garmentName)}
+                ${infoBlock("اللون", colorName)}
+                ${infoBlock("طريقة التصميم", methodAr)}
+              </td></tr>
+            </table>
+
+            ${ctaButton("عرض تفاصيل الطلب", `${BASE_URL}/dashboard/design-orders?id=${orderId}`)}
+        `),
+    });
+}

@@ -233,10 +233,13 @@ export function DesignOrdersClient({ orders, count, totalPages, currentPage, cur
                                     <tr
                                         key={order.id}
                                         onClick={() => setSelectedOrder(order)}
-                                        className="border-b border-theme-faint hover:bg-theme-subtle transition-colors cursor-pointer group"
+                                        className={`border-b border-theme-faint hover:bg-theme-subtle transition-colors cursor-pointer group ${order.status === "new" ? "bg-blue-500/5" : ""}`}
                                     >
                                         {/* Order Number */}
-                                        <td className="px-4 py-3">
+                                        <td className="px-4 py-3 relative pl-6">
+                                            {order.status === "new" && (
+                                                <span className="absolute right-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)]" title="طلب جديد" />
+                                            )}
                                             <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gold/10 text-gold text-xs font-bold">
                                                 {order.order_number}
                                             </span>
