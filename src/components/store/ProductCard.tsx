@@ -25,11 +25,33 @@ interface ProductCardProps {
         type: string;
         store_name?: string;
         artist?: { display_name: string };
+        in_stock?: boolean;
+        stock_quantity?: number;
+        product_skus?: any[];
     };
 }
 
 export function ProductCard({ product }: ProductCardProps) {
     const router = useRouter();
+
+    // Calculate Stock
+    const skus = product.product_skus;
+    let hasErpStock = false;
+    let erpTotalStock = 0;
+
+    if (skus && skus.length > 0) {
+        skus.forEach((sku: any) => {
+            const skuStock = sku.inventory_levels?.reduce((sum: number, level: any) => sum + (level.quantity || 0), 0) || 0;
+            erpTotalStock += skuStock;
+        });
+        hasErpStock = erpTotalStock > 0;
+    } else {
+        hasErpStock = product.in_stock !== false && (product.stock_quantity === undefined || product.stock_quantity > 0);
+        erpTotalStock = product.stock_quantity ?? 999;
+    }
+
+    const isCurrentlyInStock = hasErpStock;
+    const isLowStock = isCurrentlyInStock && erpTotalStock > 0 && erpTotalStock <= 5;
     const [inWishlist, setInWishlist] = useState(false);
     const [liked, setLiked] = useState(false);
     const [likesCount, setLikesCount] = useState(0);
@@ -101,12 +123,25 @@ export function ProductCard({ product }: ProductCardProps) {
                         src={product.image_url}
                         alt={product.title}
                         fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-700"
+                        className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? 'group-hover:scale-105' : 'grayscale opacity-70'}`}
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     />
-                    <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
-                        {product.type}
-                    </span>
+                    
+                    {/* Status Badges */}
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                        <span className="text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
+                            {product.type}
+                        </span>
+                        {!isCurrentlyInStock ? (
+                            <span className="text-[9px] bg-red-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold">
+                                نفدت الكمية
+                            </span>
+                        ) : isLowStock ? (
+                            <span className="text-[9px] bg-amber-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                                {erpTotalStock} قطع فقط!
+                            </span>
+                        ) : null}
+                    </div>
                 </div>
                 <div className="p-3">
                     <h3 className="text-sm font-bold truncate group-hover:text-gold transition-colors" style={{ color: "var(--wusha-text)" }}>
@@ -131,12 +166,25 @@ export function ProductCard({ product }: ProductCardProps) {
                     src={product.image_url}
                     alt={product.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700"
+                    className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? 'group-hover:scale-105' : 'grayscale opacity-70'}`}
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
-                <span className="absolute top-2 right-2 text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
-                    {product.type}
-                </span>
+                
+                {/* Status Badges */}
+                <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                    <span className="text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
+                        {product.type}
+                    </span>
+                    {!isCurrentlyInStock ? (
+                        <span className="text-[9px] bg-red-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold">
+                            نفدت الكمية
+                        </span>
+                    ) : isLowStock ? (
+                        <span className="text-[9px] bg-amber-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                            {erpTotalStock} قطع فقط!
+                        </span>
+                    ) : null}
+                </div>
 
                 {/* Action buttons on hover */}
                 <div className="absolute bottom-2 left-2 right-2 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

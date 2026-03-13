@@ -12,7 +12,8 @@ import { currentUser } from "@clerk/nextjs/server";
 
 export async function getProducts(
     page = 1,
-    type = "all"
+    type = "all",
+    inStockOnly = false
 ) {
     noStore();
     const supabase = getSupabaseServerClient();
@@ -24,9 +25,15 @@ export async function getProducts(
         .from("products")
         .select(`
       *,
-      artist:profiles(id, display_name, username, avatar_url)
-    `, { count: "exact" })
-        .eq("in_stock", true);
+      artist:profiles(id, display_name, username, avatar_url),
+      product_skus(
+        inventory_levels(quantity)
+      )
+    `, { count: "exact" });
+
+    if (inStockOnly) {
+        query = query.eq("in_stock", true); // We keep the legacy fast filter, but we'll also filter locally if needed
+    }
 
     if (type !== "all") {
         query = query.eq("type", type as ProductType);

@@ -1,18 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Search, Loader2, DollarSign, Store, Computer } from "lucide-react";
-import Image from "next/image";
+import { useState, useMemo } from "react";
+import { Plus, Search, Loader2, DollarSign, Store, Computer, TrendingUp, ShoppingBag, BarChart2 } from "lucide-react";
 import { recordManualSale } from "@/app/actions/erp/sales";
+
+type Period = "today" | "week" | "month" | "all";
+
+function filterByPeriod(sales: any[], period: Period) {
+    if (period === "all") return sales;
+    const now = new Date();
+    const start = new Date();
+    if (period === "today") { start.setHours(0, 0, 0, 0); }
+    else if (period === "week") { start.setDate(now.getDate() - 7); }
+    else if (period === "month") { start.setDate(now.getDate() - 30); }
+    return sales.filter(s => new Date(s.created_at) >= start);
+}
 
 export default function SalesClient({
     initialSales, warehouses, skus
 }: {
     initialSales: any[], warehouses: any[], skus: any[]
 }) {
-    const [sales, setSales] = useState(initialSales);
+    const [sales] = useState(initialSales);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSelling, setIsSelling] = useState(false);
+    const [period, setPeriod] = useState<Period>("month");
 
     // Form State
     const [selectedSkuId, setSelectedSkuId] = useState("");
@@ -22,6 +34,35 @@ export default function SalesClient({
     const [notes, setNotes] = useState("");
 
     const [isSaving, setIsSaving] = useState(false);
+
+    // ── Analytics ──────────────────────────────────────────────
+    const filteredByPeriod = useMemo(() => filterByPeriod(sales, period), [sales, period]);
+
+    const stats = useMemo(() => {
+        const totalRevenue = filteredByPeriod.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
+        const totalItems = filteredByPeriod.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+        const aov = filteredByPeriod.length > 0 ? totalRevenue / filteredByPeriod.length : 0;
+
+        // By channel
+        const online = filteredByPeriod.filter(r => r.sales_method === "online_store");
+        const booth = filteredByPeriod.filter(r => r.sales_method !== "online_store");
+        const onlineRevenue = online.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
+        const boothRevenue = booth.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
+
+        // Top 5 products
+        const byProduct: Record<string, { title: string; revenue: number; qty: number }> = {};
+        filteredByPeriod.forEach(r => {
+            const title = r.sku?.product?.title || "غير محدد";
+            const id = r.sku?.product_id || title;
+            if (!byProduct[id]) byProduct[id] = { title, revenue: 0, qty: 0 };
+            byProduct[id].revenue += Number(r.total_price) || 0;
+            byProduct[id].qty += Number(r.quantity) || 0;
+        });
+        const top5 = Object.values(byProduct).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+        const maxRevenue = top5[0]?.revenue || 1;
+
+        return { totalRevenue, totalItems, aov, onlineRevenue, boothRevenue, top5, maxRevenue, totalTx: filteredByPeriod.length };
+    }, [filteredByPeriod]);
 
     // Auto-fill suggested price when SKU is selected
     const handleSkuChange = (skuId: string) => {
@@ -78,8 +119,100 @@ export default function SalesClient({
         }
     };
 
+    const PERIODS: { id: Period; label: string }[] = [
+        { id: "today", label: "اليوم" },
+        { id: "week", label: "هذا الأسبوع" },
+        { id: "month", label: "هذا الشهر" },
+        { id: "all", label: "الكل" },
+    ];
+
     return (
         <div className="space-y-6">
+
+            {/* ── Date Filter ── */}
+            <div className="flex flex-wrap gap-2">
+                {PERIODS.map(p => (
+                    <button
+                        key={p.id}
+                        onClick={() => setPeriod(p.id)}
+                        className={`px-4 py-2 rounded-xl text-xs font-medium transition-all border ${period === p.id ? "bg-gold/10 text-gold border-gold/30" : "text-theme-faint border-transparent hover:bg-theme-subtle"}`}
+                    >
+                        {p.label}
+                    </button>
+                ))}
+            </div>
+
+            {/* ── Stat Cards ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-5 rounded-2xl bg-theme-subtle border border-theme-faint">
+                    <div className="flex items-center gap-2 text-theme-subtle text-xs mb-2"><DollarSign className="w-4 h-4" />إجمالي المبيعات</div>
+                    <p className="text-2xl font-bold text-gold">{stats.totalRevenue.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} ر.س</p>
+                </div>
+                <div className="p-5 rounded-2xl bg-theme-subtle border border-theme-faint">
+                    <div className="flex items-center gap-2 text-theme-subtle text-xs mb-2"><ShoppingBag className="w-4 h-4" />القطع المباعة</div>
+                    <p className="text-2xl font-bold text-theme">{stats.totalItems.toLocaleString()}</p>
+                </div>
+                <div className="p-5 rounded-2xl bg-theme-subtle border border-theme-faint">
+                    <div className="flex items-center gap-2 text-theme-subtle text-xs mb-2"><TrendingUp className="w-4 h-4" />متوسط قيمة الطلب</div>
+                    <p className="text-2xl font-bold text-theme">{stats.aov.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} ر.س</p>
+                </div>
+                <div className="p-5 rounded-2xl bg-theme-subtle border border-theme-faint">
+                    <div className="flex items-center gap-2 text-theme-subtle text-xs mb-2"><BarChart2 className="w-4 h-4" />عدد المعاملات</div>
+                    <p className="text-2xl font-bold text-theme">{stats.totalTx}</p>
+                </div>
+            </div>
+
+            {/* ── Charts Row ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Channel Breakdown */}
+                <div className="p-5 rounded-2xl bg-surface/30 border border-theme-faint">
+                    <h3 className="text-sm font-bold text-theme mb-4 flex items-center gap-2"><Store className="w-4 h-4 text-gold" />المبيعات حسب القناة</h3>
+                    {stats.totalRevenue > 0 ? (
+                        <div className="space-y-3">
+                            {[
+                                { label: "المتجر الإلكتروني", value: stats.onlineRevenue, color: "bg-emerald-500" },
+                                { label: "يدوي (بوث/معرض)", value: stats.boothRevenue, color: "bg-gold" },
+                            ].map(ch => (
+                                <div key={ch.label}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-theme-soft">{ch.label}</span>
+                                        <span className="font-bold text-theme">{ch.value.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} ر.س</span>
+                                    </div>
+                                    <div className="h-2 bg-theme-faint rounded-full overflow-hidden">
+                                        <div className={`h-full ${ch.color} rounded-full transition-all duration-500`} style={{ width: `${stats.totalRevenue > 0 ? (ch.value / stats.totalRevenue) * 100 : 0}%` }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-theme-subtle text-xs text-center py-8">لا توجد بيانات</p>
+                    )}
+                </div>
+
+                {/* Top 5 Products */}
+                <div className="p-5 rounded-2xl bg-surface/30 border border-theme-faint">
+                    <h3 className="text-sm font-bold text-theme mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-gold" />أفضل 5 منتجات</h3>
+                    {stats.top5.length > 0 ? (
+                        <div className="space-y-3">
+                            {stats.top5.map((p, i) => (
+                                <div key={i}>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="text-theme-soft truncate max-w-[60%]">{p.title}</span>
+                                        <span className="font-bold text-gold">{p.revenue.toLocaleString("ar-SA", { maximumFractionDigits: 0 })} ر.س</span>
+                                    </div>
+                                    <div className="h-2 bg-theme-faint rounded-full overflow-hidden">
+                                        <div className="h-full bg-gold/60 rounded-full transition-all duration-500" style={{ width: `${(p.revenue / stats.maxRevenue) * 100}%` }} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-theme-subtle text-xs text-center py-8">لا توجد بيانات</p>
+                    )}
+                </div>
+            </div>
+
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="relative max-w-sm w-full">
