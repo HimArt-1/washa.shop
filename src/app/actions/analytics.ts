@@ -90,13 +90,23 @@ export async function getDashboardMetrics(): Promise<{
         const totalRevenue = validOrders.reduce((sum, order) => sum + Number(order.total), 0);
         const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
-        // Calculate this month's revenue vs last month's to simulate growth
+        // Real month-over-month growth calculation
         const now = new Date();
-        const thisMonthOrders = validOrders.filter(o => new Date(o.created_at).getMonth() === now.getMonth() && new Date(o.created_at).getFullYear() === now.getFullYear());
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+        const thisMonthOrders = validOrders.filter(o => new Date(o.created_at) >= thisMonthStart);
+        const lastMonthOrders = validOrders.filter(o => {
+            const d = new Date(o.created_at);
+            return d >= lastMonthStart && d < thisMonthStart;
+        });
+
         const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + Number(o.total), 0);
-        
-        // Just hardcoding 12.5% positive growth for the UI presentation for now since previous month logic is verbose
-        const revenueGrowth = thisMonthRevenue > 0 ? 12.5 : 0; 
+        const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + Number(o.total), 0);
+
+        const revenueGrowth = lastMonthRevenue > 0
+            ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+            : thisMonthRevenue > 0 ? 100 : 0;
 
         return {
             totalRevenue,

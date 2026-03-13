@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Package, Warehouse, BarChart3, AlertTriangle, XCircle } from "lucide-react";
+import { Package, Warehouse, BarChart3, AlertTriangle, XCircle, RefreshCw } from "lucide-react";
 import { ProductsClient } from "../products/ProductsClient";
 import InventoryClient from "@/components/admin/erp/InventoryClient";
 import { SmartImportModal } from "@/components/admin/inventory/SmartImportModal";
+import { syncProductStockFromERP } from "@/app/actions/products";
 
 type TabId = "products" | "inventory";
 
@@ -45,6 +46,22 @@ export function ProductsInventoryClient({
     const searchParams = useSearchParams();
     const [tab, setTab] = useState<TabId>((activeTab as TabId) || "products");
     const [showSmartImport, setShowSmartImport] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState<string | null>(null);
+
+    const handleSyncStock = async () => {
+        setSyncing(true);
+        setSyncResult(null);
+        const result = await syncProductStockFromERP();
+        setSyncing(false);
+        if (result.success) {
+            setSyncResult(`تم تحديث ${result.updated} منتج بنجاح`);
+            router.refresh();
+        } else {
+            setSyncResult(`خطأ: ${result.error}`);
+        }
+        setTimeout(() => setSyncResult(null), 4000);
+    };
 
     useEffect(() => {
         const t = searchParams.get("tab") as TabId | null;
@@ -152,14 +169,35 @@ export function ProductsInventoryClient({
                         ))}
                     </div>
 
-                    {/* Smart Import Button */}
-                    <button
-                        onClick={() => setShowSmartImport(true)}
-                        className="px-6 py-2.5 bg-gold/20 text-gold border-2 border-gold/40 rounded-xl text-sm font-bold hover:bg-gold/30 hover:border-gold/60 transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap shrink-0"
-                    >
-                        <Package className="w-5 h-5" />
-                        الاستيراد الذكي (Excel/CSV)
-                    </button>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {/* Sync Stock Button */}
+                        <div className="flex flex-col items-end gap-1">
+                            <button
+                                onClick={handleSyncStock}
+                                disabled={syncing}
+                                title="مزامنة in_stock مع مخزون ERP الفعلي"
+                                className="px-4 py-2.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-medium hover:bg-emerald-500/20 transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap shrink-0"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                                {syncing ? "جارٍ المزامنة..." : "مزامنة المخزون"}
+                            </button>
+                            {syncResult && (
+                                <span className={`text-[11px] font-medium ${syncResult.startsWith("خطأ") ? "text-red-400" : "text-emerald-400"}`}>
+                                    {syncResult}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Smart Import Button */}
+                        <button
+                            onClick={() => setShowSmartImport(true)}
+                            className="px-6 py-2.5 bg-gold/20 text-gold border-2 border-gold/40 rounded-xl text-sm font-bold hover:bg-gold/30 hover:border-gold/60 transition-all flex items-center justify-center gap-2 shadow-md whitespace-nowrap shrink-0"
+                        >
+                            <Package className="w-5 h-5" />
+                            الاستيراد الذكي (Excel/CSV)
+                        </button>
+                    </div>
                 </div>
             </div>
 

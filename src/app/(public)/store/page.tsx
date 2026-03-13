@@ -1,4 +1,4 @@
-import { getProducts } from "@/app/actions/products";
+import { getProducts, SortOption } from "@/app/actions/products";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { StoreFilters } from "./StoreFilters";
@@ -12,14 +12,15 @@ export const metadata: Metadata = {
 export default async function StorePage({
     searchParams,
 }: {
-    searchParams: Promise<{ type?: string; page?: string; inStock?: string }>;
+    searchParams: Promise<{ type?: string; page?: string; inStock?: string; sort?: string }>;
 }) {
     const params = await searchParams;
     const type = params.type || "all";
     const page = parseInt(params.page || "1");
-    const inStockOnly = params.inStock === "1"; // "1" means true
+    const inStockOnly = params.inStock === "1";
+    const sort = (params.sort as SortOption) || "newest";
 
-    const { data: products, count, totalPages } = await getProducts(page, type, inStockOnly);
+    const { data: products, count, totalPages } = await getProducts(page, type, inStockOnly, sort);
 
     return (
         <div className="min-h-[60vh] pt-6 sm:pt-8 pb-12 sm:pb-16" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
@@ -35,7 +36,7 @@ export default async function StorePage({
                 </div>
 
                 {/* ─── Filters (Client Component) ─── */}
-                <StoreFilters currentType={type} inStockOnly={inStockOnly} />
+                <StoreFilters currentType={type} inStockOnly={inStockOnly} currentSort={sort} />
 
                 {/* ─── Grid ─── */}
                 {products && products.length > 0 ? (
@@ -53,6 +54,7 @@ export default async function StorePage({
                                     const params = new URLSearchParams();
                                     if (type !== "all") params.set("type", type);
                                     if (inStockOnly) params.set("inStock", "1");
+                                    if (sort !== "newest") params.set("sort", sort);
                                     params.set("page", String(i + 1));
 
                                     return (
