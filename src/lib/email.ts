@@ -9,7 +9,7 @@ const resend = process.env.RESEND_API_KEY
     ? new Resend(process.env.RESEND_API_KEY)
     : null;
 
-const FROM_EMAIL = process.env.EMAIL_FROM || "وشّى <no-reply@washa.shop>";
+const FROM_EMAIL = process.env.EMAIL_FROM || "وشّى <info@washa.shop>";
 const SITE_NAME = "وشّى";
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
