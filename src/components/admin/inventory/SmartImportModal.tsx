@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, X, ArrowRight, ArrowLeft, CheckCircle, AlertTriangle, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Upload, X, ArrowLeft, CheckCircle, AlertTriangle, FileSpreadsheet, Loader2, Pencil, Plus, Trash2, Check } from "lucide-react";
 import Papa from "papaparse";
 import { processSmartImport } from "@/app/actions/erp/inventory-import";
 
@@ -15,8 +15,11 @@ interface SmartImportModalProps {
 type Step = "upload" | "mapping" | "preview" | "importing" | "success" | "error";
 
 interface MappedColumn {
-    header: string; // Header from CSV
-    dbField: string | null; // e.g. "title", "sku", "price", "size_xs", "size_s" ... or null if ignoring
+    header: string;
+    dbField: string | null;
+    isCustom?: boolean;       // Column added manually (not from CSV)
+    defaultValue?: string;    // Default value for custom columns
+    renamedHeader?: string;   // If the user renamed the original header
 }
 
 export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModalProps) {
@@ -26,7 +29,15 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
     const [headers, setHeaders] = useState<string[]>([]);
     const [mappedColumns, setMappedColumns] = useState<MappedColumn[]>([]);
     const [importResult, setImportResult] = useState<{ success: number; errors: number; log: string[] } | null>(null);
-    
+
+    // Column editing state
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [editingName, setEditingName] = useState("");
+    const [showAddColumn, setShowAddColumn] = useState(false);
+    const [newColName, setNewColName] = useState("");
+    const [newColField, setNewColField] = useState("ignore");
+    const [newColDefault, setNewColDefault] = useState("");
+
     // Valid mapping targets
     const dbFields = [
         { id: "ignore", label: "تجاهل هذا العمود" },
@@ -42,7 +53,7 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
         { id: "size_xxl", label: "مخزون مقاس (XXL)" },
         { id: "size_xxxl", label: "مخزون مقاس (XXXL)" },
         { id: "size_xxxxl", label: "مخزون مقاس (XXXXL)" },
-        { id: "total", label: "المجموع (مخزون عام كلي)" }, // if non-apparel
+        { id: "total", label: "المجموع (مخزون عام كلي)" },
     ];
 
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +65,8 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
         setHeaders([]);
         setMappedColumns([]);
         setImportResult(null);
+        setEditingIndex(null);
+        setShowAddColumn(false);
     };
 
     const handleClose = () => {
@@ -107,6 +120,44 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
         });
     };
 
+    // ─── Column Editing Handlers ─────────────────────────
+
+    const handleRenameStart = (index: number) => {
+        setEditingIndex(index);
+        setEditingName(mappedColumns[index].renamedHeader || mappedColumns[index].header);
+    };
+
+    const handleRenameConfirm = () => {
+        if (editingIndex === null || !editingName.trim()) return;
+        const updated = [...mappedColumns];
+        updated[editingIndex].renamedHeader = editingName.trim();
+        setMappedColumns(updated);
+        setEditingIndex(null);
+        setEditingName("");
+    };
+
+    const handleDeleteColumn = (index: number) => {
+        const updated = mappedColumns.filter((_, i) => i !== index);
+        setMappedColumns(updated);
+    };
+
+    const handleAddColumn = () => {
+        if (!newColName.trim()) return;
+        const newCol: MappedColumn = {
+            header: newColName.trim(),
+            dbField: newColField,
+            isCustom: true,
+            defaultValue: newColDefault.trim(),
+        };
+        setMappedColumns([...mappedColumns, newCol]);
+        setNewColName("");
+        setNewColField("ignore");
+        setNewColDefault("");
+        setShowAddColumn(false);
+    };
+
+    // ─── Import Executor ─────────────────────────────────
+
     const executeImport = async () => {
         setStep("importing");
         
@@ -116,13 +167,16 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                 const constructedObj: any = {};
                 mappedColumns.forEach(map => {
                     if (map.dbField && map.dbField !== "ignore") {
-                        constructedObj[map.dbField] = row[map.header];
+                        if (map.isCustom) {
+                            constructedObj[map.dbField] = map.defaultValue || "";
+                        } else {
+                            constructedObj[map.dbField] = row[map.header];
+                        }
                     }
                 });
                 return constructedObj;
             });
 
-            // Need to make sure title exists AT LEAST
             const validPayload = payload.filter(p => !!p.title);
 
             if (validPayload.length === 0) {
@@ -152,6 +206,8 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
     };
 
     if (!isOpen) return null;
+
+    const getDisplayName = (col: MappedColumn) => col.renamedHeader || col.header;
 
     return (
         <AnimatePresence>
@@ -218,17 +274,66 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                                     <div>
                                         <h4 className="font-bold">مطابقة الأعمدة</h4>
                                         <p className="text-sm opacity-80 mt-1">
-                                            لقد وجدنا {headers.length} أعمده في الجدول. يرجى تأكيد إلى ماذا يرمز كل عمود في قاعدة البيانات. 
-                                            إذا كان العمود غير مهم، اختر "تجاهل".
+                                            لقد وجدنا {mappedColumns.filter(c => !c.isCustom).length} أعمده في الجدول. 
+                                            يمكنك تعديل الاسم، حذف عمود، أو إضافة عمود جديد بقيمة افتراضية.
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {mappedColumns.map((col, index) => (
-                                        <div key={index} className="bg-theme-bg p-4 rounded-xl border border-theme-faint">
-                                            <p className="text-xs text-theme-subtle font-mono mb-1">عمود الجدول:</p>
-                                            <p className="font-bold text-theme text-lg mb-3 truncate" title={col.header}>{col.header}</p>
+                                        <div key={index} className={`bg-theme-bg p-4 rounded-xl border ${col.isCustom ? 'border-gold/30 bg-gold/[0.03]' : 'border-theme-faint'} relative group`}>
+                                            
+                                            {/* Delete button */}
+                                            <button 
+                                                onClick={() => handleDeleteColumn(index)}
+                                                className="absolute top-2 left-2 p-1.5 rounded-lg text-theme-faint hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                                                title="حذف العمود"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+
+                                            {/* Column Name (with rename) */}
+                                            <p className="text-xs text-theme-subtle font-mono mb-1">
+                                                {col.isCustom ? "عمود مُضاف يدوياً:" : "عمود الجدول:"}
+                                            </p>
+                                            
+                                            {editingIndex === index ? (
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <input
+                                                        value={editingName}
+                                                        onChange={(e) => setEditingName(e.target.value)}
+                                                        onKeyDown={(e) => e.key === "Enter" && handleRenameConfirm()}
+                                                        className="flex-1 px-2 py-1.5 bg-theme-subtle border border-gold/30 rounded-lg text-sm text-theme font-bold focus:outline-none"
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={handleRenameConfirm} className="p-1.5 rounded-lg bg-gold/10 text-gold hover:bg-gold/20">
+                                                        <Check className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => setEditingIndex(null)} className="p-1.5 rounded-lg text-theme-faint hover:bg-theme-subtle">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <p className="font-bold text-theme text-lg truncate flex-1" title={getDisplayName(col)}>
+                                                        {getDisplayName(col)}
+                                                    </p>
+                                                    {!col.isCustom && (
+                                                        <button
+                                                            onClick={() => handleRenameStart(index)}
+                                                            className="p-1.5 rounded-lg text-theme-faint hover:text-gold hover:bg-gold/10 opacity-0 group-hover:opacity-100 transition-all"
+                                                            title="تعديل الاسم"
+                                                        >
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {col.renamedHeader && !col.isCustom && (
+                                                <p className="text-[10px] text-theme-faint mb-2 font-mono">الأصلي: {col.header}</p>
+                                            )}
                                             
                                             <p className="text-xs wusha-gold mb-1">يُسجل في قاعدة البيانات كـ:</p>
                                             <select 
@@ -244,8 +349,86 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                                                     <option key={field.id} value={field.id}>{field.label}</option>
                                                 ))}
                                             </select>
+
+                                            {/* Default value for custom columns */}
+                                            {col.isCustom && (
+                                                <div className="mt-3">
+                                                    <p className="text-xs text-theme-subtle mb-1">القيمة الافتراضية:</p>
+                                                    <input
+                                                        value={col.defaultValue || ""}
+                                                        onChange={(e) => {
+                                                            const updated = [...mappedColumns];
+                                                            updated[index].defaultValue = e.target.value;
+                                                            setMappedColumns(updated);
+                                                        }}
+                                                        className="w-full px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30"
+                                                        placeholder="مثال: 100"
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
+
+                                    {/* Add Column Card */}
+                                    {!showAddColumn ? (
+                                        <button
+                                            onClick={() => setShowAddColumn(true)}
+                                            className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-theme-faint hover:border-gold/40 text-theme-faint hover:text-gold transition-all min-h-[160px]"
+                                        >
+                                            <Plus className="w-8 h-8" />
+                                            <span className="text-sm font-bold">إضافة عمود</span>
+                                        </button>
+                                    ) : (
+                                        <div className="bg-gold/[0.03] p-4 rounded-xl border border-gold/20 space-y-3">
+                                            <p className="text-sm font-bold text-gold">عمود جديد</p>
+                                            <div>
+                                                <p className="text-xs text-theme-subtle mb-1">اسم العمود</p>
+                                                <input
+                                                    value={newColName}
+                                                    onChange={(e) => setNewColName(e.target.value)}
+                                                    placeholder="مثال: السعر الثابت"
+                                                    className="w-full px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-theme-subtle mb-1">يُسجل كـ:</p>
+                                                <select
+                                                    value={newColField}
+                                                    onChange={(e) => setNewColField(e.target.value)}
+                                                    className="w-full bg-theme-surface border border-theme-soft rounded-lg px-3 py-2 text-sm text-theme focus:ring-1 focus:ring-wusha-gold outline-none"
+                                                >
+                                                    {dbFields.map(field => (
+                                                        <option key={field.id} value={field.id}>{field.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-theme-subtle mb-1">القيمة الافتراضية لجميع الصفوف</p>
+                                                <input
+                                                    value={newColDefault}
+                                                    onChange={(e) => setNewColDefault(e.target.value)}
+                                                    placeholder="مثال: 150"
+                                                    className="w-full px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme focus:outline-none focus:border-gold/30"
+                                                />
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={handleAddColumn}
+                                                    disabled={!newColName.trim()}
+                                                    className="flex-1 py-2 rounded-lg bg-gold/20 text-gold font-bold text-sm hover:bg-gold/30 disabled:opacity-40 transition-all"
+                                                >
+                                                    إضافة
+                                                </button>
+                                                <button
+                                                    onClick={() => { setShowAddColumn(false); setNewColName(""); setNewColField("ignore"); setNewColDefault(""); }}
+                                                    className="px-4 py-2 rounded-lg text-theme-subtle hover:bg-theme-subtle text-sm transition-colors"
+                                                >
+                                                    إلغاء
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -261,8 +444,11 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                                         <thead className="bg-theme-faint text-theme-soft font-bold text-xs uppercase">
                                             <tr>
                                                 {mappedColumns.filter(m => m.dbField !== "ignore").map(m => (
-                                                    <th key={m.header} className="px-4 py-3 border-b border-theme-soft/50">
-                                                        {dbFields.find(db => db.id === m.dbField)?.label || m.dbField}
+                                                    <th key={getDisplayName(m)} className="px-4 py-3 border-b border-theme-soft/50">
+                                                        <div>
+                                                            <span>{dbFields.find(db => db.id === m.dbField)?.label || m.dbField}</span>
+                                                            {m.isCustom && <span className="text-gold text-[9px] block mt-0.5">قيمة ثابتة</span>}
+                                                        </div>
                                                     </th>
                                                 ))}
                                             </tr>
@@ -271,8 +457,11 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                                             {parsedData.slice(0, 5).map((row, rIdx) => (
                                                 <tr key={rIdx} className="hover:bg-theme-faint/30">
                                                     {mappedColumns.filter(m => m.dbField !== "ignore").map(m => (
-                                                        <td key={m.header} className="px-4 py-3 truncate max-w-[200px]" title={row[m.header]}>
-                                                            {row[m.header] || <span className="text-theme-faint italic">-</span>}
+                                                        <td key={getDisplayName(m)} className="px-4 py-3 truncate max-w-[200px]" title={m.isCustom ? m.defaultValue : row[m.header]}>
+                                                            {m.isCustom 
+                                                                ? <span className="text-gold/70 italic">{m.defaultValue || "—"}</span>
+                                                                : (row[m.header] || <span className="text-theme-faint italic">-</span>)
+                                                            }
                                                         </td>
                                                     ))}
                                                 </tr>

@@ -198,3 +198,73 @@ export async function adjustInventory(
         return { error: err.message || "حدث خطأ" };
     }
 }
+
+// ─── Enhanced Inventory with Sales Data ─────────────────
+
+export async function getInventoryWithSales(warehouseId?: string) {
+    const { isAdmin } = await verifyAdmin();
+    if (!isAdmin) return { inventory: [], stats: null };
+
+    const supabase = getAdminSb();
+
+    // Fetch inventory levels with product & warehouse info
+    let query = supabase
+        .from("inventory_levels")
+        .select("*, sku:product_skus(id, sku, size, color_code, product_id, product:products(id, title, image_url, price, type, stock_quantity)), warehouse:warehouses(name)");
+
+    if (warehouseId) query = query.eq("warehouse_id", warehouseId);
+
+    const { data: inventory, error } = await query.order("updated_at", { ascending: false });
+    if (error) {
+        console.error("[getInventoryWithSales]", error.message);
+        return { inventory: [], stats: null };
+    }
+
+    // Fetch sales counts per product from order_items
+    const productIds = Array.from(new Set((inventory || []).map((i: any) => i.sku?.product_id).filter(Boolean)));
+    let salesMap: Record<string, number> = {};
+
+    if (productIds.length > 0) {
+        const { data: salesData } = await supabase
+            .from("order_items")
+            .select("product_id, quantity")
+            .in("product_id", productIds);
+
+        if (salesData) {
+            for (const item of salesData) {
+                const pid = item.product_id as string;
+                if (pid) salesMap[pid] = (salesMap[pid] || 0) + (item.quantity || 1);
+            }
+        }
+    }
+
+    // Enrich inventory with sales count
+    const enriched = (inventory || []).map((item: any) => ({
+        ...item,
+        sold_count: salesMap[item.sku?.product_id] || 0,
+    }));
+
+    // Calculate stats
+    const totalItems = enriched.reduce((sum: number, i: any) => sum + (i.quantity || 0), 0);
+    const totalProducts = new Set(enriched.map((i: any) => i.sku?.product_id)).size;
+    const lowStock = enriched.filter((i: any) => i.quantity > 0 && i.quantity <= 5).length;
+    const outOfStock = enriched.filter((i: any) => i.quantity === 0).length;
+    const estimatedValue = enriched.reduce((sum: number, i: any) => sum + ((i.quantity || 0) * (Number(i.sku?.product?.price) || 0)), 0);
+    const totalSold = enriched.reduce((sum: number, i: any) => sum + (i.sold_count || 0), 0);
+
+    return {
+        inventory: enriched,
+        stats: { totalItems, totalProducts, lowStock, outOfStock, estimatedValue, totalSold },
+    };
+}
+
+/**
+ * Quick inline adjust — increment or decrement by a given amount
+ */
+export async function quickAdjustInventory(
+    skuId: string,
+    warehouseId: string,
+    delta: number,
+) {
+    return adjustInventory(skuId, warehouseId, delta, delta > 0 ? "addition" : "adjustment", "تعديل سريع");
+}

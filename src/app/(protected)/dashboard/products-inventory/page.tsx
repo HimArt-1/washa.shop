@@ -1,5 +1,5 @@
 import { getAdminProducts, getAdminArtistsForSelect, getCategories } from "@/app/actions/settings";
-import { getSKUs, getInventoryLevels, getWarehouses } from "@/app/actions/erp/inventory";
+import { getSKUs, getWarehouses, getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { ProductsInventoryClient } from "./ProductsInventoryClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
@@ -30,13 +30,14 @@ export default async function ProductsInventoryPage({ searchParams }: PageProps)
         getAdminArtistsForSelect(),
         getCategories(),
         getSKUs(),
-        getInventoryLevels(),
+        getInventoryWithSales(),
         getWarehouses(),
     ]);
 
     const skus = ('skus' in skusResult && Array.isArray(skusResult.skus)) ? skusResult.skus : [];
     const inventory = invRes?.inventory || [];
     const warehouses = whRes?.warehouses || [];
+    const inventoryStats = invRes?.stats || null;
 
     return (
         <div className="space-y-6">
@@ -57,6 +58,7 @@ export default async function ProductsInventoryPage({ searchParams }: PageProps)
                 skus={skus}
                 inventory={inventory}
                 warehouses={warehouses}
+                inventoryStats={inventoryStats}
             />
         </div>
     );
