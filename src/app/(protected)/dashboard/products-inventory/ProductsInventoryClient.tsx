@@ -23,6 +23,7 @@ interface ProductsInventoryClientProps {
     inventory: any[];
     warehouses: any[];
     inventoryStats: any;
+    salesMap: Record<string, number>;
 }
 
 export function ProductsInventoryClient({
@@ -38,6 +39,7 @@ export function ProductsInventoryClient({
     inventory,
     warehouses,
     inventoryStats,
+    salesMap,
 }: ProductsInventoryClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -182,6 +184,7 @@ export function ProductsInventoryClient({
                             skus={skus}
                             basePath="/dashboard/products-inventory"
                             onSmartImportClick={() => setShowSmartImport(true)}
+                            salesMap={salesMap}
                         />
                     </motion.div>
                 ) : (

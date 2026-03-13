@@ -27,7 +27,7 @@ const typeOptions = [
     { value: "digital", label: "رقمي" }, { value: "nft", label: "NFT" }, { value: "original", label: "أصلي" },
 ];
 
-type SortKey = "title" | "price" | "stock_quantity" | "created_at" | "type";
+type SortKey = "title" | "price" | "stock_quantity" | "created_at" | "type" | "sold";
 type SortDir = "asc" | "desc";
 
 interface ProductsClientProps {
@@ -43,6 +43,8 @@ interface ProductsClientProps {
     basePath?: string;
     /** Callback to open Smart Import modal (products-inventory page) */
     onSmartImportClick?: () => void;
+    /** Sales data: productId → sold count */
+    salesMap?: Record<string, number>;
 }
 
 // ─── Main Component ─────────────────────────────────────────
@@ -58,6 +60,7 @@ export function ProductsClient({
     skus = [],
     basePath = "/dashboard/products",
     onSmartImportClick,
+    salesMap = {},
 }: ProductsClientProps) {
     const router = useRouter();
     const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -95,9 +98,15 @@ export function ProductsClient({
         // Sort
         if (sortKey) {
             result.sort((a, b) => {
-                let aVal = a[sortKey];
-                let bVal = b[sortKey];
-                if (sortKey === "price" || sortKey === "stock_quantity") {
+                let aVal: any, bVal: any;
+                if (sortKey === "sold") {
+                    aVal = salesMap[a.id] || 0;
+                    bVal = salesMap[b.id] || 0;
+                } else {
+                    aVal = a[sortKey];
+                    bVal = b[sortKey];
+                }
+                if (sortKey === "price" || sortKey === "stock_quantity" || sortKey === "sold") {
                     aVal = Number(aVal) || 0;
                     bVal = Number(bVal) || 0;
                 } else {
@@ -111,7 +120,7 @@ export function ProductsClient({
         }
 
         return result;
-    }, [products, searchQuery, sortKey, sortDir]);
+    }, [products, searchQuery, sortKey, sortDir, salesMap]);
 
     // ─── Sort Handler
     const handleSort = (key: SortKey) => {
@@ -179,9 +188,10 @@ export function ProductsClient({
 
     // ─── CSV Export
     const exportCSV = () => {
-        const headers = ["المنتج", "النوع", "السعر", "المخزون", "متوفر", "مميز", "المتجر"];
+        const headers = ["المنتج", "النوع", "السعر", "المخزون", "المباع", "متوفر", "مميز", "المتجر"];
         const rows = filteredProducts.map((p) => [
             p.title, typeLabels[p.type] || p.type, p.price, p.stock_quantity ?? "∞",
+            salesMap[p.id] || 0,
             p.in_stock ? "نعم" : "لا", p.is_featured ? "نعم" : "لا", p.store_name || "",
         ]);
         const bom = "\uFEFF"; // UTF-8 BOM for Arabic
@@ -349,6 +359,11 @@ export function ProductsClient({
                                     </button>
                                 </th>
                                 <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">SKU</th>
+                                <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">
+                                    <button onClick={() => handleSort("sold")} className="flex items-center gap-1.5 justify-center hover:text-theme-soft transition-colors">
+                                        المباع <SortIcon col="sold" />
+                                    </button>
+                                </th>
                                 <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">متوفر</th>
                                 <th className="text-center px-3 py-3 text-theme-faint font-medium text-xs">مميز</th>
                                 <th className="text-right px-4 py-3 text-theme-faint font-medium text-xs">إجراءات</th>
@@ -414,6 +429,12 @@ export function ProductsClient({
                                                 </button>
                                             )}
                                         </td>
+                                        {/* Sold Count */}
+                                        <td className="px-3 py-3 text-center">
+                                            <span className={`text-xs font-bold font-mono ${(salesMap[product.id] || 0) > 0 ? 'text-purple-400' : 'text-theme-faint'}`}>
+                                                {salesMap[product.id] || 0}
+                                            </span>
+                                        </td>
                                         {/* In Stock */}
                                         <td className="px-3 py-3 text-center">
                                             <button onClick={() => handleToggle(product.id, "in_stock", product.in_stock)}
@@ -467,7 +488,7 @@ export function ProductsClient({
                                 );
                             }) : (
                                 <tr>
-                                    <td colSpan={10} className="text-center py-16 text-theme-faint">
+                                    <td colSpan={11} className="text-center py-16 text-theme-faint">
                                         <Package className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm">{searchQuery ? "لا توجد نتائج للبحث" : "لا توجد منتجات"}</p>
                                         {!searchQuery && (
@@ -857,6 +878,8 @@ function ProductFormModal({
         }
     }, [open, mode, product?.id, artists]);
 
+
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0];
         if (f && f.size <= 5 * 1024 * 1024 && /^image\/(jpeg|png|webp|gif)$/.test(f.type)) {
@@ -996,6 +1019,11 @@ function ProductFormModal({
                                             className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500/90 text-theme flex items-center justify-center text-xs hover:bg-red-500">
                                             <X className="w-3 h-3" />
                                         </button>
+                                    </div>
+                                ) : isEdit && product?.image_url ? (
+                                    <div className="relative inline-block">
+                                        <img src={product.image_url} alt="الصورة الحالية" className="max-h-28 rounded-lg object-contain opacity-70" />
+                                        <span className="absolute bottom-1 right-1 text-[9px] bg-black/50 px-1.5 py-0.5 rounded text-white/80">انقر لتغيير</span>
                                     </div>
                                 ) : (
                                     <>

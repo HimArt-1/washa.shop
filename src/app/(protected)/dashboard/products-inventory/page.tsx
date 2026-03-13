@@ -1,4 +1,4 @@
-import { getAdminProducts, getAdminArtistsForSelect, getCategories } from "@/app/actions/settings";
+import { getAdminProducts, getAdminArtistsForSelect, getCategories, getProductSalesMap } from "@/app/actions/settings";
 import { getSKUs, getWarehouses, getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { ProductsInventoryClient } from "./ProductsInventoryClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -25,6 +25,7 @@ export default async function ProductsInventoryPage({ searchParams }: PageProps)
         skusResult,
         invRes,
         whRes,
+        salesMap,
     ] = await Promise.all([
         getAdminProducts(page, type),
         getAdminArtistsForSelect(),
@@ -32,6 +33,7 @@ export default async function ProductsInventoryPage({ searchParams }: PageProps)
         getSKUs(),
         getInventoryWithSales(),
         getWarehouses(),
+        getProductSalesMap(),
     ]);
 
     const skus = ('skus' in skusResult && Array.isArray(skusResult.skus)) ? skusResult.skus : [];
@@ -59,6 +61,7 @@ export default async function ProductsInventoryPage({ searchParams }: PageProps)
                 inventory={inventory}
                 warehouses={warehouses}
                 inventoryStats={inventoryStats}
+                salesMap={salesMap}
             />
         </div>
     );

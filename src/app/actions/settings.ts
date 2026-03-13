@@ -467,6 +467,28 @@ export async function getAdminProducts(page = 1, type = "all") {
     };
 }
 
+/**
+ * Fetch sold count per product from order_items table.
+ * Returns a map: { [product_id]: sold_count }
+ */
+export async function getProductSalesMap() {
+    await requireAdmin();
+    const supabase = getAdminSupabase();
+
+    const { data, error } = await supabase
+        .from("order_items")
+        .select("product_id, quantity");
+
+    if (error || !data) return {};
+
+    const map: Record<string, number> = {};
+    for (const item of data) {
+        const pid = item.product_id as string;
+        if (pid) map[pid] = (map[pid] || 0) + (item.quantity || 1);
+    }
+    return map;
+}
+
 export async function updateProduct(id: string, updates: Partial<{
     title: string;
     description: string | null;
