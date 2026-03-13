@@ -95,7 +95,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                 <label className="cursor-pointer">
                                     <input
                                         type="file"
-                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        accept="image/*"
                                         className="hidden"
                                         disabled={uploadingAvatar}
                                         onChange={async (e) => {
@@ -103,9 +103,14 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                             if (!file) return;
                                             setUploadingAvatar(true);
                                             try {
-                                                const compressed = await compressImage(file, "avatar");
+                                                let fileToUpload: File = file;
+                                                try {
+                                                    fileToUpload = await compressImage(file, "avatar");
+                                                } catch {
+                                                    // Compression not supported for this format, use original
+                                                }
                                                 const fd = new FormData();
-                                                fd.append("file", compressed);
+                                                fd.append("file", fileToUpload);
                                                 const res = await uploadProfileImage(fd, "avatar");
                                                 if (res.success) setAvatarUrl(res.url);
                                                 else setState({ success: false, message: res.error });
@@ -147,7 +152,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                 <label className="cursor-pointer">
                                     <input
                                         type="file"
-                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        accept="image/*"
                                         className="hidden"
                                         disabled={uploadingCover}
                                         onChange={async (e) => {
@@ -155,9 +160,14 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                             if (!file) return;
                                             setUploadingCover(true);
                                             try {
-                                                const compressed = await compressImage(file, "cover");
+                                                let fileToUpload: File = file;
+                                                try {
+                                                    fileToUpload = await compressImage(file, "cover");
+                                                } catch {
+                                                    // Compression not supported for this format, use original
+                                                }
                                                 const fd = new FormData();
-                                                fd.append("file", compressed);
+                                                fd.append("file", fileToUpload);
                                                 const res = await uploadProfileImage(fd, "cover");
                                                 if (res.success) setCoverUrl(res.url);
                                                 else setState({ success: false, message: res.error });

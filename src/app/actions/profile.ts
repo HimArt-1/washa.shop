@@ -6,8 +6,15 @@ import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { STORAGE_BUCKETS } from "@/lib/constants";
 
-const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2MB
-const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_AVATAR_SIZE = 10 * 1024 * 1024; // 10MB — phone camera photos can be large, they get compressed client-side
+const ALLOWED_AVATAR_TYPES = [
+    "image/jpeg", "image/png", "image/webp", "image/gif",
+    "image/heic", "image/heif",       // iPhone photos
+    "image/bmp", "image/tiff",        // classic formats
+    "image/svg+xml",                   // vector
+    "image/avif",                      // modern format
+    "image/x-icon", "image/vnd.microsoft.icon", // icons
+];
 
 export type ProfileActionState = {
     message?: string;
@@ -133,15 +140,31 @@ export async function uploadProfileImage(
         return { success: false, error: "لم يتم اختيار ملف" };
     }
     if (file.size > MAX_AVATAR_SIZE) {
-        return { success: false, error: "حجم الملف يجب أن لا يتجاوز 2 ميجابايت" };
+        return { success: false, error: "حجم الملف يجب أن لا يتجاوز 10 ميجابايت" };
     }
-    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-        return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF فقط)" };
+
+    // Check MIME type — fallback to extension if browser doesn't report type (e.g. HEIC on some browsers)
+    const fileType = file.type || "";
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    const imageExtensions = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "bmp", "tiff", "tif", "svg", "avif", "ico"];
+    const isAllowedByType = ALLOWED_AVATAR_TYPES.includes(fileType);
+    const isAllowedByExt = imageExtensions.includes(ext);
+
+    if (!isAllowedByType && !isAllowedByExt) {
+        return { success: false, error: `نوع الملف غير مدعوم. الأنواع المدعومة: JPG, PNG, WebP, GIF, HEIC, BMP, TIFF, SVG, AVIF` };
     }
 
     const adminSupabase = getSupabaseAdminClient();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `${clerkUser.id}/${type}-${Date.now()}.${ext}`;
+    const fileName = `${clerkUser.id}/${type}-${Date.now()}.${ext || "jpg"}`;
+
+    // Determine the correct contentType for upload
+    const extToMime: Record<string, string> = {
+        jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
+        gif: "image/gif", heic: "image/heic", heif: "image/heif", bmp: "image/bmp",
+        tiff: "image/tiff", tif: "image/tiff", svg: "image/svg+xml", avif: "image/avif",
+        ico: "image/x-icon",
+    };
+    const contentType = fileType || extToMime[ext] || "application/octet-stream";
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -151,7 +174,7 @@ export async function uploadProfileImage(
         .upload(fileName, buffer, {
             cacheControl: "3600",
             upsert: true,
-            contentType: file.type,
+            contentType,
         });
 
     if (error) {
