@@ -18,12 +18,23 @@ const navItems = [
   { label: "صمّم قطعتك", href: "/design" },
 ];
 
-export function Header() {
+export function Header({ visibility }: { visibility?: { gallery?: boolean; store?: boolean; design_piece?: boolean; hero_auth_buttons?: boolean; join_artist?: boolean; signup?: boolean; join?: boolean; ai_section?: boolean; } }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { toggleCart, getCartCount } = useCartStore();
   const lastScrollY = useRef(0);
+
+  // Filter Nav Items according to visibility settings
+  const filteredNavItems = navItems.filter((item) => {
+    if (visibility === undefined) return true; // Show all by default if not passed
+    
+    if (item.href === "/gallery" && visibility.gallery === false) return false;
+    if (item.href === "/store" && visibility.store === false) return false;
+    if (item.href === "/design" && visibility.design_piece === false) return false;
+    
+    return true;
+  });
 
   useEffect(() => {
     const handleScroll = () => {
@@ -84,7 +95,7 @@ export function Header() {
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center justify-center gap-6 lg:gap-8 flex-1">
-              {navItems.map((item, index) => (
+              {filteredNavItems.map((item, index) => (
                 <Link key={item.href} href={item.href} className="group">
                   <motion.span
                     className="relative inline-block transition-colors duration-300 text-sm font-medium py-2 group-hover:text-[var(--wusha-gold)]"
@@ -174,16 +185,18 @@ export function Header() {
                 </div>
               </SignedIn>
               <SignedOut>
-                <Link href="/sign-in">
-                  <motion.button
-                    className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <User className="w-4 h-4" />
-                    تسجيل الدخول
-                  </motion.button>
-                </Link>
+                {visibility?.hero_auth_buttons !== false && (
+                  <Link href="/sign-in">
+                    <motion.button
+                      className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <User className="w-4 h-4" />
+                      تسجيل الدخول
+                    </motion.button>
+                  </Link>
+                )}
               </SignedOut>
             </div>
 
@@ -259,7 +272,7 @@ export function Header() {
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
-              {navItems.map((item, index) => (
+              {filteredNavItems.map((item, index) => (
                 <motion.div
                   key={item.href}
                   initial={{ opacity: 0, x: 24 }}
@@ -326,18 +339,20 @@ export function Header() {
                 </motion.div>
               </SignedIn>
               <SignedOut>
-                <motion.div
-                  initial={{ opacity: 0, x: 24 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25 }}
-                >
-                  <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)}>
-                    <button className="btn-gold flex items-center gap-2 cursor-pointer py-3 px-6">
-                      <User className="w-5 h-5" />
-                      تسجيل الدخول
-                    </button>
-                  </Link>
-                </motion.div>
+                {visibility?.hero_auth_buttons !== false && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 }}
+                  >
+                    <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)}>
+                      <button className="btn-gold flex items-center gap-2 cursor-pointer py-3 px-6">
+                        <User className="w-5 h-5" />
+                        تسجيل الدخول
+                      </button>
+                    </Link>
+                  </motion.div>
+                )}
               </SignedOut>
             </motion.div>
           </motion.div>

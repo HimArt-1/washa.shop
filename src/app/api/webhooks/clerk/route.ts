@@ -26,10 +26,12 @@ export async function POST(req: NextRequest) {
         }
 
         if (evt.type === "user.created") {
-            const { id, first_name, last_name, username, image_url, email_addresses } = evt.data;
+            const { id, first_name, last_name, username, image_url, email_addresses, phone_numbers } = evt.data;
 
             const displayName = [first_name, last_name].filter(Boolean).join(" ") || username || "مستخدم وشّى";
-            const email = email_addresses?.[0]?.email_address;
+            const email = email_addresses?.find(e => e.id === evt.data.primary_email_address_id)?.email_address || email_addresses?.[0]?.email_address || null;
+            const phone = phone_numbers?.find(p => p.id === evt.data.primary_phone_number_id)?.phone_number || phone_numbers?.[0]?.phone_number || null;
+            
             const baseUsername = (username || email?.split("@")[0] || "user")
                 .toLowerCase()
                 .replace(/[^a-z0-9_-]/g, "_")
@@ -42,6 +44,8 @@ export async function POST(req: NextRequest) {
                 username: usernameUnique,
                 role: "subscriber",
                 avatar_url: image_url || null,
+                email: email,
+                phone: phone,
             });
 
             if (error) {
@@ -60,13 +64,17 @@ export async function POST(req: NextRequest) {
         }
 
         if (evt.type === "user.updated") {
-            const { id, first_name, last_name, username, image_url } = evt.data;
+            const { id, first_name, last_name, username, image_url, email_addresses, phone_numbers } = evt.data;
 
             const displayName = [first_name, last_name].filter(Boolean).join(" ") || username || undefined;
+            const email = email_addresses?.find(e => e.id === evt.data.primary_email_address_id)?.email_address || email_addresses?.[0]?.email_address || null;
+            const phone = phone_numbers?.find(p => p.id === evt.data.primary_phone_number_id)?.phone_number || phone_numbers?.[0]?.phone_number || null;
 
             const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
             if (displayName) updates.display_name = displayName;
             if (image_url !== undefined) updates.avatar_url = image_url;
+            if (email !== undefined) updates.email = email;
+            if (phone !== undefined) updates.phone = phone;
 
             const { error } = await supabase
                 .from("profiles")

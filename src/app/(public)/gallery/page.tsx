@@ -2,8 +2,10 @@ import { getArtworks } from "@/app/actions/artworks";
 import { getCategories } from "@/app/actions/search";
 import Image from "next/image";
 import Link from "next/link";
-import type { Metadata } from "next";
 import { GalleryFilters } from "./GalleryFilters";
+import { getPublicVisibility } from "@/app/actions/settings";
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
     title: "المعرض — وشّى",
@@ -19,6 +21,11 @@ export default async function GalleryPage({
     const category = params.category || "all";
     const page = parseInt(params.page || "1");
     const search = params.search || "";
+
+    const visibility = await getPublicVisibility();
+    if (visibility.gallery === false) {
+        redirect("/");
+    }
 
     const [{ data: artworks, count, totalPages }, categories] = await Promise.all([
         getArtworks(page, category, search),

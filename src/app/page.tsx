@@ -9,7 +9,9 @@ export default async function Home() {
         <PublicPageWrapper>
             <main className="relative">
                 <Hero showAuthButtons={settings.visibility.hero_auth_buttons} />
-                <AISection config={settings.ai_simulation} />
+                {settings.visibility.ai_section !== false && (
+                    <AISection config={settings.ai_simulation} />
+                )}
             </main>
         </PublicPageWrapper>
     );

@@ -29,6 +29,9 @@ import {
     X,
     AlertTriangle,
     Eye,
+    Download,
+    Copy,
+    Check,
 } from "lucide-react";
 
 interface UsersClientProps {
@@ -75,6 +78,7 @@ export function UsersClient({
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -169,6 +173,40 @@ export function UsersClient({
         setSuccess(null);
     };
 
+    const handleCopy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const exportToCSV = () => {
+        const headers = ["ID", "Clerk ID", "Name", "Username", "Email", "Phone", "Role", "Wushsha Level", "Verified", "Created At"];
+        const rows = users.map(u => [
+            u.id, 
+            u.clerk_id, 
+            `"${u.display_name || ""}"`, 
+            u.username, 
+            u.email || "", 
+            u.phone || "", 
+            u.role, 
+            u.wushsha_level || "", 
+            u.is_verified ? "Yes" : "No", 
+            u.created_at
+        ]);
+        
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+            + headers.join(",") + "\n" 
+            + rows.map(e => e.join(",")).join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `wusha_users_export_${new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="space-y-6">
             {/* ─── Stats Cards ─── */}
@@ -228,6 +266,15 @@ export function UsersClient({
                     >
                         <Plus className="w-4 h-4" />
                         إضافة مستخدم
+                    </button>
+
+                    {/* Export CSV */}
+                    <button
+                        onClick={exportToCSV}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-theme-subtle text-theme hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all"
+                    >
+                        <Download className="w-4 h-4" />
+                        تصدير (CSV)
                     </button>
 
                     {/* Bulk Delete */}
@@ -306,6 +353,7 @@ export function UsersClient({
                                     />
                                 </th>
                                 <th className="text-right px-6 py-3.5 text-theme-faint font-medium text-xs">المستخدم</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">معلومات الاتصال</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">اسم المستخدم</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الدور</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">التحقق</th>
@@ -337,8 +385,35 @@ export function UsersClient({
                                             </div>
                                             <div>
                                                 <span className="font-medium text-theme truncate max-w-[140px] block">{user.display_name}</span>
-                                                <span className="text-theme-faint text-[10px] font-mono truncate max-w-[120px] block">{user.clerk_id?.slice(0, 16)}…</span>
+                                                <div className="flex items-center gap-1 mt-0.5 group/id">
+                                                    <span className="text-theme-faint text-[10px] font-mono truncate max-w-[120px] block" dir="ltr">{user.clerk_id?.slice(0, 16)}…</span>
+                                                    <button onClick={() => handleCopy(user.clerk_id, `clerk_${user.id}`)} className="opacity-0 group-hover/id:opacity-100 transition-opacity">
+                                                        {copiedId === `clerk_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
+                                                    </button>
+                                                </div>
                                             </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex flex-col gap-1 text-xs">
+                                            {user.email ? (
+                                                <div className="flex items-center gap-1.5 group/email">
+                                                    <a href={`mailto:${user.email}`} className="text-theme-soft hover:text-gold truncate max-w-[160px]" dir="ltr">{user.email}</a>
+                                                    <button onClick={() => handleCopy(user.email, `email_${user.id}`)} className="opacity-0 group-hover/email:opacity-100 transition-opacity">
+                                                        {copiedId === `email_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-theme-faint">—</span>
+                                            )}
+                                            {user.phone && (
+                                                <div className="flex items-center gap-1.5 group/phone mt-0.5">
+                                                    <span className="text-theme-soft font-mono" dir="ltr">{user.phone}</span>
+                                                    <button onClick={() => handleCopy(user.phone, `phone_${user.id}`)} className="opacity-0 group-hover/phone:opacity-100 transition-opacity">
+                                                        {copiedId === `phone_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3.5 text-theme-subtle font-mono text-xs">@{user.username}</td>
@@ -426,7 +501,7 @@ export function UsersClient({
                             ))}
                             {users.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-20 text-theme-faint">
+                                    <td colSpan={8} className="text-center py-20 text-theme-faint">
                                         <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm">لا يوجد مستخدمون</p>
                                         <button
@@ -516,6 +591,8 @@ function AddUserModal({
         clerk_id: "",
         display_name: "",
         username: "",
+        email: "",
+        phone: "",
         role: "subscriber",
         bio: "",
         wushsha_level: 1,
@@ -533,13 +610,15 @@ function AddUserModal({
             clerk_id: form.clerk_id,
             display_name: form.display_name,
             username: form.username,
-            role: form.role,
+            email: form.email || undefined,
+            phone: form.phone || undefined,
+            role: form.role as any,
             bio: form.bio || undefined,
             wushsha_level: form.role === "wushsha" ? form.wushsha_level : undefined,
         });
         setLoading(false);
         if (res.success) {
-            setForm({ clerk_id: "", display_name: "", username: "", role: "subscriber", bio: "", wushsha_level: 1 });
+            setForm({ clerk_id: "", display_name: "", username: "", email: "", phone: "", role: "subscriber", bio: "", wushsha_level: 1 });
             onSuccess();
         } else {
             onError(res.error || "فشل الإضافة");
@@ -564,7 +643,7 @@ function AddUserModal({
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">معرف Clerk (clerk_id) *</label>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الحساب المربوط بـ Clerk (clerk_id) *</label>
                         <input
                             type="text"
                             value={form.clerk_id}
@@ -573,7 +652,7 @@ function AddUserModal({
                             className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
                             dir="ltr"
                         />
-                        <p className="text-[10px] text-theme-faint mt-1">من Clerk Dashboard → Users → User ID</p>
+                        <p className="text-[10px] text-theme-faint mt-1">يُربط تلقائيًا إذا لم تقم بتحديده</p>
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-theme-subtle mb-1.5">الاسم *</label>
@@ -677,6 +756,8 @@ function EditUserModal({
     const [form, setForm] = useState({
         display_name: "",
         username: "",
+        email: "",
+        phone: "",
         bio: "",
         role: "",
         wushsha_level: 1,
@@ -689,6 +770,8 @@ function EditUserModal({
             setForm({
                 display_name: user.display_name || "",
                 username: user.username || "",
+                email: user.email || "",
+                phone: user.phone || "",
                 bio: user.bio || "",
                 role: user.role || "subscriber",
                 wushsha_level: user.wushsha_level ?? 1,
@@ -708,8 +791,10 @@ function EditUserModal({
         const res = await updateUser(user.id, {
             display_name: form.display_name,
             username: form.username,
+            email: form.email || null,
+            phone: form.phone || null,
             bio: form.bio || undefined,
-            role: form.role,
+            role: form.role as any,
             wushsha_level: form.role === "wushsha" ? form.wushsha_level : null,
             is_verified: form.is_verified,
             website: form.website || null,

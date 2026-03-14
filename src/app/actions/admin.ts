@@ -481,8 +481,49 @@ export async function getAdminUsers(
         return { data: [], count: 0, totalPages: 0 };
     }
 
+    let users = data || [];
+
+    // --- Backfill missing emails and phones from Clerk --- //
+    try {
+        const usersNeedingSync = users.filter((u) => u.email === null);
+        if (usersNeedingSync.length > 0) {
+            const clerkIds = usersNeedingSync.map((u) => u.clerk_id);
+            const client = await clerkClient();
+            const { data: clerkUsers } = await client.users.getUserList({
+                userId: clerkIds,
+                limit: 100,
+            });
+
+            const updates: Promise<any>[] = [];
+
+            users = users.map((user) => {
+                if (user.email === null) {
+                    const clerkData = clerkUsers.find((cu) => cu.id === user.clerk_id);
+                    if (clerkData) {
+                        const email = clerkData.emailAddresses?.find((e) => e.id === clerkData.primaryEmailAddressId)?.emailAddress || clerkData.emailAddresses?.[0]?.emailAddress || null;
+                        const phone = clerkData.phoneNumbers?.find((p) => p.id === clerkData.primaryPhoneNumberId)?.phoneNumber || clerkData.phoneNumbers?.[0]?.phoneNumber || null;
+                        
+                        user.email = email;
+                        user.phone = phone;
+
+                        // Async update back to DB so it doesn't block the request too much
+                        updates.push(
+                            supabase.from("profiles").update({ email, phone }).eq("id", user.id) as unknown as Promise<any>
+                        );
+                    }
+                }
+                return user;
+            });
+
+            // Fire and forget
+            Promise.all(updates).catch((err) => console.error("Backfill update error:", err));
+        }
+    } catch (err) {
+        console.error("Error during Clerk backfill:", err);
+    }
+
     return {
-        data: data || [],
+        data: users,
         count: count || 0,
         totalPages: count ? Math.ceil(count / perPage) : 0,
     };
@@ -579,7 +620,9 @@ export async function createUser(data: {
     clerk_id: string;
     display_name: string;
     username: string;
-    role: string;
+    email?: string;
+    phone?: string;
+    role: UserRole;
     bio?: string;
     wushsha_level?: number;
 }) {
@@ -603,6 +646,8 @@ export async function createUser(data: {
         role,
         bio: data.bio?.trim() || null,
     };
+    if (data.email !== undefined) insertData.email = data.email.trim();
+    if (data.phone !== undefined) insertData.phone = data.phone.trim();
 
     if (role === "wushsha" && data.wushsha_level) {
         const lvl = Math.min(5, Math.max(1, Math.floor(data.wushsha_level)));
@@ -633,7 +678,9 @@ export async function updateUser(
         display_name?: string;
         username?: string;
         bio?: string;
-        role?: string;
+        role?: UserRole;
+        email?: string | null;
+        phone?: string | null;
         wushsha_level?: number | null;
         is_verified?: boolean;
         website?: string | null;
@@ -654,6 +701,8 @@ export async function updateUser(
     if (data.username !== undefined) updateData.username = data.username.trim().toLowerCase().replace(/\s+/g, "_");
     if (data.bio !== undefined) updateData.bio = data.bio?.trim() || null;
     if (roleValue !== undefined) updateData.role = roleValue;
+    if (data.email !== undefined) updateData.email = data.email?.trim() || null;
+    if (data.phone !== undefined) updateData.phone = data.phone?.trim() || null;
     if (data.wushsha_level !== undefined) updateData.wushsha_level = data.wushsha_level;
     if (data.is_verified !== undefined) updateData.is_verified = data.is_verified;
     if (data.website !== undefined) updateData.website = data.website?.trim() || null;

@@ -29,6 +29,8 @@ export type Profile = Timestamps & {
     clerk_id: string;              // Clerk user ID
     display_name: string;
     username: string;              // unique slug
+    email: string | null;
+    phone: string | null;
     bio: string | null;
     avatar_url: string | null;
     cover_url: string | null;
@@ -433,7 +435,7 @@ export type Database = {
         Tables: {
             profiles: {
                 Row: Profile;
-                Insert: Omit<Profile, "id" | "created_at" | "updated_at" | "total_sales" | "total_artworks" | "is_verified" | "social_links"> & { is_verified?: boolean; social_links?: SocialLinks | null };
+                Insert: Omit<Profile, "id" | "created_at" | "updated_at" | "total_sales" | "total_artworks" | "is_verified" | "social_links" | "email" | "phone"> & { is_verified?: boolean; social_links?: SocialLinks | null; email?: string | null; phone?: string | null };
                 Update: Partial<Omit<Profile, "id" | "created_at">>;
                 Relationships: any[];
             };

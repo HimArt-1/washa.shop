@@ -92,6 +92,7 @@ export function SettingsClient({ settings }: SettingsProps) {
         join_artist: settings.visibility.join_artist ?? true,
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
+        design_piece: settings.visibility.design_piece ?? true,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -233,6 +234,11 @@ export function SettingsClient({ settings }: SettingsProps) {
                         label="أزرار تسجيل الدخول/اشتراك في الهيرو"
                         checked={visibility.hero_auth_buttons ?? true}
                         onChange={(v) => setVisibility({ ...visibility, hero_auth_buttons: v })}
+                    />
+                    <Toggle
+                        label="صمم قطعتك (Design Your Piece)"
+                        checked={visibility.design_piece ?? true}
+                        onChange={(v) => setVisibility({ ...visibility, design_piece: v })}
                     />
                 </div>
                 <button

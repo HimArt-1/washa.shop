@@ -2,6 +2,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { CartSheet } from "@/components/store/CartSheet";
 import { ensureProfile } from "@/lib/ensure-profile";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 /**
  * Wrapper for pages that need the public layout (Header, Footer, CartSheet).
@@ -9,9 +10,11 @@ import { ensureProfile } from "@/lib/ensure-profile";
  */
 export async function PublicPageWrapper({ children }: { children: React.ReactNode }) {
     await ensureProfile();
+    const visibility = await getPublicVisibility();
+    
     return (
         <>
-            <Header />
+            <Header visibility={visibility} />
             <CartSheet />
             <div className="relative bg-theme min-h-screen">
                 <div className="absolute inset-0 pointer-events-none cyber-grid opacity-[0.15]" aria-hidden />
@@ -19,7 +22,7 @@ export async function PublicPageWrapper({ children }: { children: React.ReactNod
                     {children}
                 </div>
             </div>
-            <Footer />
+            <Footer visibility={visibility} />
         </>
     );
 }

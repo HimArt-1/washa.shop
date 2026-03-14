@@ -20,7 +20,7 @@ interface Props {
     isSubscriber: boolean;
     isArtist: boolean;
     isAdmin: boolean;
-    visibility: { join_artist: boolean };
+    visibility: { join_artist?: boolean; design_piece?: boolean; store?: boolean; gallery?: boolean; };
     applicationStatus: string | null;
     ordersCount: number;
 }
@@ -48,43 +48,56 @@ export function AccountDashboardClient({
         });
     }
 
-    links.push(
-        {
+    if (visibility.design_piece !== false) {
+        links.push({
             title: "صمّم قطعتك",
             description: "صمّم تيشيرت أو هودي بالذكاء الاصطناعي",
             href: "/design",
             icon: Sparkles,
             color: "from-gold/20 to-amber-600/10",
-        },
-        {
-            title: "طلباتي",
-            description: "تتبع حالة طلباتك",
-            href: "/account/orders",
-            icon: Package,
-            badge: ordersCount || 0,
-            color: "from-blue-500/20 to-blue-600/10",
-        },
-        {
+        });
+    }
+
+    links.push({
+        title: "طلباتي",
+        description: "تتبع حالة طلباتك",
+        href: "/account/orders",
+        icon: Package,
+        badge: ordersCount || 0,
+        color: "from-blue-500/20 to-blue-600/10",
+    });
+
+    if (visibility.store !== false) {
+        links.push({
             title: "المتجر",
             description: "تصفح المنتجات والأعمال",
             href: "/store",
             icon: ShoppingBag,
             color: "from-emerald-500/20 to-emerald-600/10",
-        },
+        });
+    }
+
+    links.push(
         {
             title: "محفوظاتي",
             description: "المنتجات المحفوظة",
             href: "/account/wishlist",
             icon: Heart,
             color: "from-red-500/20 to-red-600/10",
-        },
-        {
+        }
+    );
+
+    if (visibility.gallery !== false) {
+        links.push({
             title: "المعرض",
             description: "اكتشف أعمالاً فنية جديدة",
             href: "/gallery",
             icon: Brush,
             color: "from-purple-500/20 to-purple-600/10",
-        },
+        });
+    }
+
+    links.push(
         {
             title: "الإعدادات",
             description: "تعديل الملف الشخصي",

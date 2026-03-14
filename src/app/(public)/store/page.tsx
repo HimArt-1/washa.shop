@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { StoreFilters } from "./StoreFilters";
 import { ProductCard } from "@/components/store/ProductCard";
+import { getPublicVisibility } from "@/app/actions/settings";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
     title: "المتجر — وشّى",
@@ -19,6 +21,11 @@ export default async function StorePage({
     const page = parseInt(params.page || "1");
     const inStockOnly = params.inStock === "1";
     const sort = (params.sort as SortOption) || "newest";
+
+    const visibility = await getPublicVisibility();
+    if (visibility.store === false) {
+        redirect("/");
+    }
 
     const { data: products, count, totalPages } = await getProducts(page, type, inStockOnly, sort);
 

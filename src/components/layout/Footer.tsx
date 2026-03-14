@@ -69,7 +69,7 @@ const socialLinks = [
   { icon: SnapchatIcon, href: "https://snapchat.com/t/iqNmyrCp", label: "Snapchat" },
 ];
 
-export function Footer() {
+export function Footer({ visibility }: { visibility?: { gallery?: boolean; store?: boolean; design_piece?: boolean; join?: boolean; } }) {
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [isJoinModalOpen, setJoinModalOpen] = useState(false);
@@ -89,6 +89,19 @@ export function Footer() {
       setSubmitting(false);
     }
   };
+
+  const filteredFooterLinks = footerLinks.map(column => {
+    // Filter links within the column based on visibility
+    const filteredLinks = column.links.filter(link => {
+      if ('href' in link && link.href === "/gallery" && visibility?.gallery === false) return false;
+      if ('href' in link && link.href === "/store" && visibility?.store === false) return false;
+      if ('href' in link && link.href === "/design" && visibility?.design_piece === false) return false;
+      if ('action' in link && link.action === "openJoinModal" && visibility?.join === false) return false;
+      return true;
+    });
+
+    return { ...column, links: filteredLinks };
+  }).filter(column => column.links.length > 0); // Remove columns with no links
 
   return (
     <footer
@@ -162,7 +175,7 @@ export function Footer() {
           </div>
 
           {/* Links Columns */}
-          {footerLinks.map((column) => (
+          {filteredFooterLinks.map((column) => (
             <div key={column.title}>
               <h4 className="font-bold mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>{column.title}</h4>
               <ul className="space-y-3">

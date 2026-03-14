@@ -14,6 +14,9 @@ import {
     LogIn,
     ExternalLink,
     UserCog,
+    Copy,
+    Check,
+    Download,
 } from "lucide-react";
 import type { ClerkUserWithProfile } from "@/app/actions/clerk-users";
 
@@ -55,9 +58,43 @@ export function ClerkUsersClient({
     const [isPending, startTransition] = useTransition();
     const [mounted, setMounted] = useState(false);
 
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    const handleCopy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const exportToCSV = () => {
+        const headers = ["Clerk ID", "Name", "Email", "Platform Role", "Created At", "Last Sign In"];
+        const rows = users.map((u) => [
+            u.id,
+            `"${u.name || ""}"`,
+            u.email || "",
+            u.profile?.role || "Not registered in platform",
+            new Date(u.createdAt).toLocaleString("ar-SA"),
+            u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString("ar-SA") : "Never",
+        ]);
+
+        const csvContent =
+            "data:text/csv;charset=utf-8,\uFEFF" +
+            headers.join(",") +
+            "\n" +
+            rows.map((e) => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `wusha_clerk_users_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const navigate = (params: { page?: string; search?: string }) => {
         const sp = new URLSearchParams();
@@ -112,7 +149,25 @@ export function ClerkUsersClient({
                         className="w-64 pl-4 pr-10 py-2.5 bg-surface/50 border border-theme-subtle rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-colors"
                     />
                 </form>
+                
+                {/* Export CSV Desktop */}
+                <button
+                    onClick={exportToCSV}
+                    className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-theme-subtle text-theme hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all mr-auto"
+                >
+                    <Download className="w-4 h-4" />
+                    تصدير (CSV)
+                </button>
             </div>
+
+            {/* Export CSV Mobile */}
+            <button
+                onClick={exportToCSV}
+                className="flex sm:hidden w-full justify-center items-center gap-2 px-4 py-2.5 bg-theme-subtle text-theme hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all"
+            >
+                <Download className="w-4 h-4" />
+                تصدير (CSV)
+            </button>
 
             {/* ─── Table ─── */}
             <motion.div
@@ -169,20 +224,27 @@ export function ClerkUsersClient({
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-medium text-theme">
-                                                            {user.profile?.display_name || user.name}
-                                                        </p>
-                                                        <p className="text-xs text-theme-subtle font-mono truncate max-w-[140px]">
-                                                            {user.id.slice(0, 20)}…
-                                                        </p>
+                                                        <span className="font-medium text-theme truncate max-w-[140px] block">
+                                                            {user.name}
+                                                        </span>
+                                                        <div className="flex items-center gap-1 mt-0.5 group/id">
+                                                            <span className="text-theme-faint text-[10px] font-mono truncate max-w-[120px] block" dir="ltr">
+                                                                {user.id?.slice(0, 16)}…
+                                                            </span>
+                                                            <button onClick={() => handleCopy(user.id, `clerk_${user.id}`)} className="opacity-0 group-hover/id:opacity-100 transition-opacity">
+                                                                {copiedId === `clerk_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="py-4 px-4">
-                                                <span className="flex items-center gap-1.5 text-theme-soft">
-                                                    <Mail className="w-3.5 h-3.5 text-theme-subtle" />
-                                                    {user.email || "—"}
-                                                </span>
+                                                <div className="flex items-center gap-1.5 group/email text-xs">
+                                                    <a href={`mailto:${user.email}`} className="text-theme-soft hover:text-gold truncate max-w-[160px]" dir="ltr">{user.email || "—"}</a>
+                                                    <button onClick={() => handleCopy(user.email || '', `email_${user.id}`)} className="opacity-0 group-hover/email:opacity-100 transition-opacity">
+                                                        {copiedId === `email_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
+                                                    </button>
+                                                </div>
                                             </td>
                                             <td className="py-4 px-4">
                                                 {user.profile ? (

@@ -41,6 +41,7 @@ export type SiteSettingsType = {
             join_artist?: boolean;
             ai_section?: boolean;
             hero_auth_buttons?: boolean;
+            design_piece?: boolean;
         };
         site_info: Record<string, string>;
         shipping: Record<string, number>;
@@ -87,7 +88,7 @@ export async function getSiteSettings() {
     // Check if Supabase is configured before attempting to use it
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return {
-            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true },
+            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
             site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -127,7 +128,7 @@ export async function getSiteSettings() {
         if (error || !data) {
             // Return defaults if table doesn't exist yet
             return {
-                visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true },
+                visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
                 site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
                 shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -177,6 +178,7 @@ export async function getSiteSettings() {
             join_artist: v.join_artist ?? true,
             ai_section: v.ai_section ?? true,
             hero_auth_buttons: v.hero_auth_buttons ?? true,
+            design_piece: v.design_piece ?? true,
         },
         site_info: settings.site_info || { name: "وشّى", description: "", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
         shipping: settings.shipping || { flat_rate: 30, free_above: 500, tax_rate: 15 },
@@ -227,7 +229,7 @@ export async function getSiteSettings() {
         // Return defaults if Supabase is not configured (development mode)
         console.warn("getSiteSettings: Supabase not configured, returning defaults");
         return {
-            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true },
+            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
             site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
             shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
             creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -308,6 +310,7 @@ export async function getPublicVisibility() {
             join_artist: true,
             ai_section: true,
             hero_auth_buttons: true,
+            design_piece: true,
         };
     }
     
@@ -328,6 +331,7 @@ export async function getPublicVisibility() {
             join_artist: visibility?.join_artist ?? true,
             ai_section: visibility?.ai_section ?? true,
             hero_auth_buttons: visibility?.hero_auth_buttons ?? true,
+            design_piece: visibility?.design_piece ?? true,
         };
     } catch (error) {
         // Return defaults if Supabase is not configured
@@ -339,6 +343,7 @@ export async function getPublicVisibility() {
             join_artist: true,
             ai_section: true,
             hero_auth_buttons: true,
+            design_piece: true,
         };
     }
 }

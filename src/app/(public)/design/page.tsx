@@ -6,6 +6,8 @@ import {
     getColorPackages,
     getStudioItems,
 } from "@/app/actions/smart-store";
+import { getPublicVisibility } from "@/app/actions/settings";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -22,6 +24,11 @@ export default async function DesignYourPiecePage() {
         getColorPackages(),
         getStudioItems(),
     ]);
+
+    const visibility = await getPublicVisibility();
+    if (visibility.design_piece === false) {
+        redirect("/");
+    }
 
     return (
         <div className="min-h-screen relative overflow-hidden">
