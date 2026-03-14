@@ -28,7 +28,12 @@ import {
     Maximize2,
     Minimize2,
     Loader2,
+    UserCircle,
+    Lock
 } from "lucide-react";
+import { useAuth, SignInButton, SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
+import { useCartStore } from "@/stores/cartStore";
 import { getGarmentColors, getColorSizes } from "@/app/actions/smart-store";
 import type {
     CustomDesignGarment,
@@ -60,6 +65,7 @@ interface WizardState {
     printSize: string | null;
     isSending: boolean;
     sent: boolean;
+    studioCartAdded: boolean;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -80,6 +86,7 @@ const INITIAL_STATE: WizardState = {
     printSize: null,
     isSending: false,
     sent: false,
+    studioCartAdded: false,
 };
 
 const TOTAL_STEPS = 9;
@@ -110,6 +117,8 @@ import { OrderTracker, getStoredOrderId, storeOrderId, clearOrderId } from "./Or
 import { getDesignOrderPublic } from "@/app/actions/smart-store";
 
 export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackages, studioItems }: Props) {
+    const { isSignedIn } = useAuth();
+    const { addItem, toggleCart } = useCartStore();
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [colors, setColors] = useState<CustomDesignColor[]>([]);
     const [sizes, setSizes] = useState<CustomDesignSize[]>([]);
@@ -117,6 +126,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
     const [loadingSizes, setLoadingSizes] = useState(false);
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [checkingOrder, setCheckingOrder] = useState(true);
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     // Check for existing active order on mount
     useEffect(() => {
@@ -175,12 +185,68 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
         return { ...s, step: Math.max(s.step - 1, 1) };
     });
 
+    const triggerSend = () => {
+        if (!isSignedIn) {
+            setShowAuthModal(true);
+            return;
+        }
+        handleSend();
+    };
+
     const handleSend = useCallback(async () => {
         setState((s) => ({ ...s, isSending: true }));
 
         let orderNumber: number | undefined;
 
-        // 0. Upload reference image if exists
+        // 0. Studio Cart Injection
+        if (state.method === "studio" && state.studioItem) {
+            let finalPrice = state.studioItem.price || 0;
+            if (state.garment) {
+                try {
+                    const { getGarmentPricing } = await import("@/app/actions/smart-store");
+                    const pricing = await getGarmentPricing(state.garment.name);
+                    let printP = pricing.base_price;
+                    if (state.printPosition === "chest") printP = state.printSize === "large" ? pricing.price_chest_large : pricing.price_chest_small;
+                    else if (state.printPosition === "back") printP = state.printSize === "large" ? pricing.price_back_large : pricing.price_back_small;
+                    else if (state.printPosition?.startsWith("shoulder")) printP = state.printSize === "large" ? pricing.price_shoulder_large : pricing.price_shoulder_small;
+                    finalPrice += printP;
+                } catch (e) {
+                    console.error("Failed to fetch accurate pricing for Studio add to cart", e);
+                }
+            }
+
+            addItem({
+                id: `studio-${state.studioItem.id}-${Date.now()}`,
+                title: `تصميم ستيديو: ${state.studioItem.name}`,
+                price: finalPrice,
+                image_url: state.studioItem.main_image_url || state.garment?.image_url || "",
+                artist_name: "ستيديو وشّى",
+                type: "custom_design",
+                customGarment: `${state.garment?.name} (${state.color?.name})`,
+                customPosition: `${state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : "أخرى"} - ${state.size?.name || state.printSize}`,
+            });
+
+            try {
+                const { submitDesignOrder } = await import("@/app/actions/smart-store");
+                await submitDesignOrder({
+                    garment_name: state.garment?.name ?? "—",
+                    color_name: state.color?.name ?? "—",
+                    color_hex: state.color?.hex_code ?? "#000000",
+                    size_name: state.size?.name ?? "—",
+                    design_method: "studio",
+                    text_prompt: state.studioItem?.name ?? undefined,
+                    reference_image_url: state.studioItem?.mockup_image_url || state.studioItem?.main_image_url || undefined,
+                    print_position: state.printPosition ?? undefined,
+                    print_size: state.printSize ?? undefined,
+                });
+            } catch (err) {}
+
+            toggleCart(true);
+            setState((s) => ({ ...s, isSending: false, studioCartAdded: true }));
+            return;
+        }
+
+        // 1. Upload reference image if exists
         let referenceImageUrl: string | undefined;
         if (state.imageFile) {
             try {
@@ -201,7 +267,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
             }
         }
 
-        // 1. Submit design order to database
+        // 2. Submit design order to database
         try {
             const { submitDesignOrder } = await import("@/app/actions/smart-store");
             const result = await submitDesignOrder({
@@ -212,14 +278,14 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 color_image_url: state.color?.image_url ?? undefined,
                 size_name: state.size?.name ?? "—",
                 design_method: state.method ?? "from_text",
-                text_prompt: state.method === "studio" ? state.studioItem?.name : (state.textPrompt || undefined),
-                reference_image_url: state.method === "studio" ? (state.studioItem?.mockup_image_url || state.studioItem?.main_image_url || undefined) : referenceImageUrl,
-                style_name: state.method === "studio" ? "—" : (state.style?.name ?? "—"),
-                style_image_url: state.method === "studio" ? undefined : (state.style?.image_url ?? undefined),
-                art_style_name: state.method === "studio" ? "—" : (state.artStyle?.name ?? "—"),
-                art_style_image_url: state.method === "studio" ? undefined : (state.artStyle?.image_url ?? undefined),
-                color_package_name: state.method === "studio" ? undefined : (state.colorPackage?.name ?? undefined),
-                custom_colors: state.method === "studio" ? undefined : (state.customColors.length > 0 ? state.customColors : undefined),
+                text_prompt: state.textPrompt || undefined,
+                reference_image_url: referenceImageUrl,
+                style_name: state.style?.name ?? "—",
+                style_image_url: state.style?.image_url ?? undefined,
+                art_style_name: state.artStyle?.name ?? "—",
+                art_style_image_url: state.artStyle?.image_url ?? undefined,
+                color_package_name: state.colorPackage?.name ?? undefined,
+                custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
                 print_position: state.printPosition ?? undefined,
                 print_size: state.printSize ?? undefined,
             });
@@ -1229,6 +1295,38 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
 // ═══════════════════════════════════════════════════════════
 
 function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () => void; onSend: () => void }) {
+    if (state.studioCartAdded) {
+        return (
+            <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-16"
+            >
+                <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring" }}
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-gold to-gold-light mx-auto mb-6 flex items-center justify-center"
+                >
+                    <Check className="w-10 h-10 text-bg" />
+                </motion.div>
+                <h2 className="text-2xl font-bold text-theme mb-2">تمت الإضافة للسلة! 🛒</h2>
+                <p className="text-theme-subtle max-w-md mx-auto">
+                    تم تحويل تصميمك الحصري من وشّى ستيديو إلى السلة بنجاح. يمكنك استكمال الدفع الآن!
+                </p>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mt-6 flex gap-4 justify-center">
+                    <Link
+                        href="/cart"
+                        className="inline-flex items-center gap-2 px-8 py-3 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all duration-300"
+                    >
+                        إتمام الطلب
+                        <ArrowLeft className="w-4 h-4 ml-1" />
+                    </Link>
+                </motion.div>
+            </motion.div>
+        );
+    }
+
     if (state.sent) {
         return (
             <motion.div
@@ -1248,67 +1346,99 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 <p className="text-theme-subtle max-w-md mx-auto">
                     تم إرسال تفاصيل طلبك لفريقنا. بيتواصل معاك موظفنا في أقرب وقت لتنفيذ التصميم.
                 </p>
-                <motion.button
+                <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
-                    onClick={() => {
-                        document.body.classList.add("reamaze-active");
-                        const reamazeWidget = document.querySelector("[data-reamaze-widget], [data-reamaze-lightbox]") as HTMLElement;
-                        if (reamazeWidget) reamazeWidget.click();
-                    }}
-                    className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-theme-subtle border border-theme-soft text-theme-subtle text-sm hover:text-gold hover:border-gold/30 hover:bg-gold/5 transition-all duration-300 cursor-pointer"
+                    className="mt-6 inline-block"
                 >
-                    <MessageCircle className="w-4 h-4" />
-                    تقدر تتابع طلبك من خلال المحادثة
-                </motion.button>
+                    <Link
+                        href="/support"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-theme-subtle border border-theme-soft text-theme-subtle text-sm hover:text-gold hover:border-gold/30 hover:bg-gold/5 transition-all duration-300 cursor-pointer"
+                    >
+                        <MessageCircle className="w-4 h-4" />
+                        تقدر تتابع طلبك وتتواصل مع فريق الدعم من هنا
+                    </Link>
+                </motion.div>
             </motion.div>
         );
     }
 
     return (
         <>
-            <StepHeader title="مراجعة وإرسال" desc="تأكد من تفاصيل طلبك قبل الإرسال" />
+            <StepHeader title="مراجعة وإرسال" desc={state.method === "studio" ? "احصل على قطعتك بلمسة استيديو وشّى" : "تأكد من تفاصيل طلبك قبل الإرسال"} />
 
-            <div className="space-y-4 mb-8">
-                <SummaryRow label="القطعة" value={state.garment?.name} />
-                <SummaryRow label="اللون" value={state.color?.name} color={state.color?.hex_code} />
-                <SummaryRow label="المقاس" value={state.size?.name} />
-                <SummaryRow
-                    label="مكان وحجم التصميم"
-                    value={
-                        (state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : state.printPosition === "shoulder_right" ? "الكتف الأيمن" : state.printPosition === "shoulder_left" ? "الكتف الأيسر" : "—")
-                        + " — " +
-                        (state.printSize === "large" ? "مقاس كبير" : state.printSize === "small" ? "مقاس صغير" : "—")
-                    }
-                />
-                <SummaryRow label="طريقة التصميم" value={state.method === "from_text" ? "من نص" : state.method === "from_image" ? "من صورة" : undefined} />
-                <SummaryRow label="النمط" value={state.style?.name} />
-                <SummaryRow label="الأسلوب" value={state.artStyle?.name} />
-                {state.colorPackage && <SummaryRow label="باقة الألوان" value={state.colorPackage.name} />}
-                {state.customColors.length > 0 && (
-                    <div className="flex items-center justify-between p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
-                        <span className="text-sm text-theme-subtle">ألوان مخصصة</span>
-                        <div className="flex gap-1">
-                            {state.customColors.map((c, i) => (
-                                <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c }} />
-                            ))}
+            {state.method === "studio" ? (
+                <div className="mb-8">
+                    <div className="relative w-full max-w-sm mx-auto aspect-square rounded-3xl overflow-hidden border border-gold/20 bg-theme-subtle/30 backdrop-blur-md mb-6 shadow-2xl shadow-gold/10">
+                        {state.color?.image_url && (
+                            <img src={state.color.image_url} alt="Garment" className="absolute inset-0 w-full h-full object-cover opacity-90" />
+                        )}
+                        {state.studioItem?.main_image_url && (
+                            <motion.img 
+                                initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                                src={state.studioItem.main_image_url} 
+                                alt="Overlay" 
+                                className={`absolute z-10 drop-shadow-2xl mix-blend-multiply dark:mix-blend-screen transition-all ${
+                                    state.printPosition === "chest" && state.printSize === "large" ? "w-1/2 left-1/4 top-1/4" :
+                                    state.printPosition === "chest" && state.printSize === "small" ? "w-1/4 left-[60%] top-1/4" :
+                                    state.printPosition === "back" && state.printSize === "large" ? "w-[55%] left-[22.5%] top-1/4" :
+                                    state.printPosition === "back" && state.printSize === "small" ? "w-1/3 left-1/3 top-1/4" :
+                                    "w-1/3 left-1/3 top-1/4" // default
+                                }`} 
+                            />
+                        )}
+                        <div className="absolute top-4 right-4 z-20 px-3 py-1.5 bg-black/40 backdrop-blur-md text-white text-xs font-bold rounded-lg border border-white/10 uppercase tracking-widest">WUSHA STUDIO</div>
+                    </div>
+                    <div className="space-y-4">
+                        <SummaryRow label="القطعة واللون" value={`${state.garment?.name} (${state.color?.name})`} color={state.color?.hex_code} />
+                        <SummaryRow label="التصميم" value={state.studioItem?.name} />
+                        <SummaryRow label="مكان الطباعة" value={`${state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : "أخرى"} - ${state.size?.name}`} />
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4 mb-8">
+                    <SummaryRow label="القطعة" value={state.garment?.name} />
+                    <SummaryRow label="اللون" value={state.color?.name} color={state.color?.hex_code} />
+                    <SummaryRow label="المقاس" value={state.size?.name} />
+                    <SummaryRow
+                        label="مكان وحجم التصميم"
+                        value={
+                            (state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : state.printPosition === "shoulder_right" ? "الكتف الأيمن" : state.printPosition === "shoulder_left" ? "الكتف الأيسر" : "—")
+                            + " — " +
+                            (state.printSize === "large" ? "مقاس كبير" : state.printSize === "small" ? "مقاس صغير" : "—")
+                        }
+                    />
+                    <SummaryRow label="طريقة التصميم" value={state.method === "from_text" ? "من نص" : state.method === "from_image" ? "من صورة" : undefined} />
+                    <SummaryRow label="النمط" value={state.style?.name} />
+                    <SummaryRow label="الأسلوب" value={state.artStyle?.name} />
+                    {state.colorPackage && <SummaryRow label="باقة الألوان" value={state.colorPackage.name} />}
+                    {state.customColors.length > 0 && (
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                            <span className="text-sm text-theme-subtle">ألوان مخصصة</span>
+                            <div className="flex gap-1">
+                                {state.customColors.map((c, i) => (
+                                    <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c }} />
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
-                {state.textPrompt && (
-                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
-                        <span className="text-xs text-theme-subtle block mb-1">وصف التصميم</span>
-                        <p className="text-sm text-theme-soft">{state.textPrompt}</p>
-                    </div>
-                )}
-                {state.imagePreview && (
-                    <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
-                        <span className="text-xs text-theme-subtle block mb-2">الصورة المرجعية</span>
-                        <img src={state.imagePreview} alt="Reference" className="max-h-32 rounded-xl" />
-                    </div>
-                )}
-            </div>
+                    )}
+                    {state.textPrompt && (
+                        <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                            <span className="text-xs text-theme-subtle block mb-1">وصف التصميم</span>
+                            <p className="text-sm text-theme-soft">{state.textPrompt}</p>
+                        </div>
+                    )}
+                    {state.imagePreview && (
+                        <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
+                            <span className="text-xs text-theme-subtle block mb-2">الصورة المرجعية</span>
+                            <img src={state.imagePreview} alt="Reference" className="max-h-32 rounded-xl" />
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="flex items-center justify-between pt-6 border-t border-theme-subtle">
                 <button onClick={onBack} className={btnBack}>
@@ -1318,17 +1448,30 @@ function StepSubmit({ state, onBack, onSend }: { state: WizardState; onBack: () 
                 <button
                     onClick={onSend}
                     disabled={state.isSending}
-                    className="flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-xl hover:shadow-gold/30 transition-all duration-300 disabled:opacity-50"
+                    className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 disabled:opacity-50 ${
+                        state.method === "studio" 
+                        ? "bg-theme text-bg hover:bg-gold hover:text-bg" 
+                        : "bg-gradient-to-r from-gold to-gold-light text-bg hover:shadow-xl hover:shadow-gold/30"
+                    }`}
                 >
                     {state.isSending ? (
                         <>
                             <div className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />
-                            جاري الإرسال...
+                            {state.method === "studio" ? "جاري الإضافة..." : "جاري الإرسال..."}
                         </>
                     ) : (
                         <>
-                            <Send className="w-4 h-4" />
-                            إرسال الطلب
+                            {state.method === "studio" ? (
+                                <>
+                                    <Send className="w-4 h-4" />
+                                    إضافة للسلة
+                                </>
+                            ) : (
+                                <>
+                                    <Send className="w-4 h-4" />
+                                    إرسال الطلب
+                                </>
+                            )}
                         </>
                     )}
                 </button>

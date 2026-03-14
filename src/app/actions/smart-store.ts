@@ -475,10 +475,24 @@ export async function submitDesignOrder(orderData: {
 
     // Lookup authenticated user if they exist
     let userId: string | null = null;
+    let finalCustomerName = orderData.customer_name;
+    let finalCustomerEmail = orderData.customer_email;
+    let finalCustomerPhone = orderData.customer_phone;
+
     const user = await currentUser();
     if (user) {
         const { data: profile } = await sb.from("profiles").select("id").eq("clerk_id", user.id).single();
         if (profile) userId = profile.id;
+
+        if (!finalCustomerName) {
+            finalCustomerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "عميل مسجل";
+        }
+        if (!finalCustomerEmail) {
+            finalCustomerEmail = user.emailAddresses?.[0]?.emailAddress;
+        }
+        if (!finalCustomerPhone) {
+            finalCustomerPhone = user.phoneNumbers?.[0]?.phoneNumber;
+        }
     }
 
     // 4. Generate AI prompt
@@ -511,9 +525,9 @@ export async function submitDesignOrder(orderData: {
         color_package_name: orderData.color_package_name || null,
         custom_colors: orderData.custom_colors ?? [],
         ai_prompt: aiPrompt,
-        customer_name: orderData.customer_name || null,
-        customer_email: orderData.customer_email || null,
-        customer_phone: orderData.customer_phone || null,
+        customer_name: finalCustomerName || null,
+        customer_email: finalCustomerEmail || null,
+        customer_phone: finalCustomerPhone || null,
         print_position: orderData.print_position || null,
         print_size: orderData.print_size || null,
     };
@@ -530,16 +544,16 @@ export async function submitDesignOrder(orderData: {
     await createAdminNotification({
         type: "order_alert",
         title: "طلب تصميم جديد 🎨",
-        message: `طلب تصميم جديد #${data.order_number} — ${orderData.garment_name} (${orderData.color_name}) من ${orderData.customer_name || "عميل"}`,
+        message: `طلب تصميم جديد #${data.order_number} — ${orderData.garment_name} (${orderData.color_name}) من ${finalCustomerName || "عميل"}`,
         link: "/dashboard/design-orders",
     });
 
     // Fire email notification asynchronously so it doesn't block the user
     sendAdminDesignOrderNotificationEmail(
         data.order_number,
-        orderData.customer_name || '',
-        orderData.customer_email || '',
-        orderData.customer_phone || '',
+        finalCustomerName || '',
+        finalCustomerEmail || '',
+        finalCustomerPhone || '',
         orderData.garment_name,
         orderData.color_name,
         orderData.design_method,

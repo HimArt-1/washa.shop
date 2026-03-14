@@ -22,6 +22,9 @@ export async function createSupportTicket(data: { subject: string; message: stri
             user_id: profile.id,
             subject: data.subject,
             priority: data.priority,
+            name: user.firstName || "مستخدم",
+            email: user.emailAddresses?.[0]?.emailAddress || "",
+            message: data.message,
         })
         .select("id")
         .single();
@@ -132,7 +135,7 @@ export async function createSupportMessage(ticketId: string, message: string) {
     // Notifications
     const { data: ticketBase } = await supabase.from("support_tickets").select("user_id, subject").eq("id", ticketId).single();
 
-    if (isAdminReply && ticketBase) {
+    if (isAdminReply && ticketBase && ticketBase.user_id) {
         await createUserNotification({
             userId: ticketBase.user_id,
             type: "support_reply",

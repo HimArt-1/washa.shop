@@ -3,12 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { StoreFilters } from "./StoreFilters";
 import { ProductCard } from "@/components/store/ProductCard";
+import { Suspense } from "react";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-    title: "المتجر — وشّى",
-    description: "تسوق منتجات فنية فريدة من فناني وشّى",
+    title: "المتجر | WUSHA",
+    description: "اكتشف مجموعة WUSHA الحصرية من القطع الفنية والملابس المصممة بعناية.",
 };
 
 export default async function StorePage({
@@ -23,7 +24,7 @@ export default async function StorePage({
     const sort = (params.sort as SortOption) || "newest";
 
     const visibility = await getPublicVisibility();
-    if (visibility.store === false) {
+    if (!visibility.store) {
         redirect("/");
     }
 

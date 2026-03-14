@@ -11,12 +11,16 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "صمّم قطعتك بنفسك — وشّى",
-    description:
-        "اختر قطعتك ولونها ومقاسها، حدد نمط التصميم وأسلوبه، ودعنا ننفذ طلبك. تجربة تصميم تفاعلية مميزة.",
+    title: "صمّم قطعتك بنفسك | وشّى",
+    description: "اختر قطعتك ولونها ومقاسها، حدد نمط التصميم وأسلوبه، ودعنا ننفذ طلبك. تجربة تصميم تفاعلية مميزة.",
 };
 
 export default async function DesignYourPiecePage() {
+    const visibility = await getPublicVisibility();
+    if (!visibility.design_piece) {
+        redirect("/");
+    }
+
     const [garments, styles, artStyles, colorPackages, studioItems] = await Promise.all([
         getActiveGarments(),
         getDesignStyles(),
@@ -24,11 +28,6 @@ export default async function DesignYourPiecePage() {
         getColorPackages(),
         getStudioItems(),
     ]);
-
-    const visibility = await getPublicVisibility();
-    if (visibility.design_piece === false) {
-        redirect("/");
-    }
 
     return (
         <div className="min-h-screen relative overflow-hidden">

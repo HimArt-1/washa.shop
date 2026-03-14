@@ -18,9 +18,9 @@ export default async function AdminSupportTicketPage({ params }: { params: { id:
         <div className="space-y-6">
             <AdminHeader
                 title={`تذكرة: ${details.ticket.subject}`}
-                subtitle={`#${details.ticket.id.slice(0, 8)} — ${details.ticket.profile?.display_name || "مستخدم"}`}
+                subtitle={`#${details.ticket.id.slice(0, 8)} — ${(details.ticket.profile as any)?.display_name || "مستخدم"}`}
             />
-            <AdminSupportTicketChat ticket={details.ticket} initialMessages={details.messages} />
+            <AdminSupportTicketChat ticket={details.ticket as any} initialMessages={details.messages as any} />
         </div>
     );
 }

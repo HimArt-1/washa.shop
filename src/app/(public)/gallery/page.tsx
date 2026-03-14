@@ -5,11 +5,11 @@ import Link from "next/link";
 import { GalleryFilters } from "./GalleryFilters";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
-import type { Metadata } from "next";
+import { Suspense } from "react";
 
-export const metadata: Metadata = {
-    title: "المعرض — وشّى",
-    description: "استكشف أجمل الأعمال الفنية العربية على منصة وشّى",
+export const metadata = {
+    title: "المعرض | WUSHA",
+    description: "استكشف معرض WUSHA للأعمال الفنية المتنوعة.",
 };
 
 export default async function GalleryPage({
@@ -23,7 +23,7 @@ export default async function GalleryPage({
     const search = params.search || "";
 
     const visibility = await getPublicVisibility();
-    if (visibility.gallery === false) {
+    if (!visibility.gallery) {
         redirect("/");
     }
 
