@@ -24,6 +24,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { toggleCart, getCartCount } = useCartStore();
   const lastScrollY = useRef(0);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   // Filter Nav Items according to visibility settings
   const filteredNavItems = navItems.filter((item) => {
@@ -136,7 +139,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       aria-label="سلة المشتريات"
                     >
                       <ShoppingBag className="w-5 h-5" />
-                      {getCartCount() > 0 && (
+                      {hasMounted && getCartCount() > 0 && (
                         <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
                           <span className="text-[10px] font-bold text-white leading-none">
                             {getCartCount() > 99 ? "99+" : getCartCount()}
@@ -219,7 +222,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     aria-label="سلة المشتريات"
                   >
                     <ShoppingBag className="w-5 h-5" />
-                    {getCartCount() > 0 && (
+                    {hasMounted && getCartCount() > 0 && (
                       <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
                         <span className="text-[10px] font-bold text-white leading-none">
                           {getCartCount() > 99 ? "99+" : getCartCount()}
