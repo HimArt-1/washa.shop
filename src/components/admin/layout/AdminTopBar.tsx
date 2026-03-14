@@ -229,7 +229,7 @@ export function AdminTopBar() {
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -20 }}
-                            className="fixed top-16 left-4 right-4 sm:left-auto sm:right-8 sm:w-[400px] z-50 rounded-2xl border border-theme-soft bg-[var(--wusha-surface)]/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
+                        className="fixed left-3 right-3 top-16 sm:left-auto sm:right-6 sm:w-[400px] z-50 rounded-2xl border border-theme-soft bg-[var(--wusha-surface)]/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
                         >
                             <div className="flex items-center justify-between px-4 py-3 border-b border-theme-subtle">
                                 <h3 className="font-bold text-theme">الإشعارات</h3>

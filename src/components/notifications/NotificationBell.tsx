@@ -109,7 +109,7 @@ export function NotificationBell() {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 8, scale: 0.97 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute right-0 sm:right-0 mt-2 w-[min(calc(100vw-2rem),360px)] sm:w-96 bg-[var(--wusha-surface)] border border-[var(--wusha-border)] rounded-2xl shadow-2xl z-[120] overflow-hidden"
+                        className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:top-auto sm:right-0 sm:mt-2 w-auto sm:w-96 bg-[var(--wusha-surface)] border border-[var(--wusha-border)] rounded-2xl shadow-2xl z-[120] overflow-hidden"
                         style={{ boxShadow: "0 20px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px color-mix(in srgb, var(--wusha-text) 6%, transparent)" }}
                     >
                         {/* Header */}
