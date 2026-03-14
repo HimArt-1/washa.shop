@@ -160,7 +160,7 @@ export function SettingsClient({ settings }: SettingsProps) {
         }
     };
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldKey: "step1_image" | "step2_result_image") => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, fieldKey: "step1_image" | "step2_result_image" | "step3_final_image") => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -172,8 +172,15 @@ export function SettingsClient({ settings }: SettingsProps) {
             // Using the same helper used for exclusive designs for general image uploads
             const res = await uploadExclusiveDesignImage(formData);
             if (res.success) {
-                setAiSimulation((prev) => ({ ...prev, [fieldKey]: res.url }));
-                showToast("تم رفع الصورة بنجاح");
+                const updatedSimulation = { ...aiSimulation, [fieldKey]: res.url };
+                setAiSimulation(updatedSimulation);
+                // Auto-save to database immediately
+                const saveResult = await updateSiteSetting("ai_simulation", updatedSimulation);
+                if (saveResult.success) {
+                    showToast("تم رفع الصورة وحفظها بنجاح ✓");
+                } else {
+                    showToast("تم الرفع لكن فشل الحفظ: " + saveResult.error);
+                }
             } else {
                 showToast("فشل الرفع: " + res.error);
             }
@@ -456,7 +463,7 @@ export function SettingsClient({ settings }: SettingsProps) {
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step1_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
                                     {saving === "uploading_step1_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة جديدة...</span>}
-                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step1_image"} onChange={(e) => handleImageUpload(e, "step1_image" as any)} />
+                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step1_image"} onChange={(e) => handleImageUpload(e, "step1_image")} />
                                 </label>
                             </div>
                         </div>
@@ -487,7 +494,7 @@ export function SettingsClient({ settings }: SettingsProps) {
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step2_result_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
                                     {saving === "uploading_step2_result_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة جديدة...</span>}
-                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step2_result_image"} onChange={(e) => handleImageUpload(e, "step2_result_image" as any)} />
+                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step2_result_image"} onChange={(e) => handleImageUpload(e, "step2_result_image")} />
                                 </label>
                             </div>
                         </div>
@@ -506,7 +513,7 @@ export function SettingsClient({ settings }: SettingsProps) {
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 h-16 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step3_final_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
                                     {saving === "uploading_step3_final_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة الموك أب...</span>}
-                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step3_final_image"} onChange={(e) => handleImageUpload(e, "step3_final_image" as any)} />
+                                    <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step3_final_image"} onChange={(e) => handleImageUpload(e, "step3_final_image")} />
                                 </label>
                             </div>
                         </div>
