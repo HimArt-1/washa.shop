@@ -40,9 +40,10 @@ const footerLinks = [
   {
     title: "الدعم",
     links: [
+      { label: "مركز المساعدة", href: "/support" },
+      { label: "تذاكر الدعم الفني", href: "/account/support" },
       { label: "الأسئلة الشائعة", href: "/faq" },
       { label: "الشحن والتوصيل", href: "/shipping" },
-      { label: "تواصل معنا", href: "/contact" },
     ],
   },
   {

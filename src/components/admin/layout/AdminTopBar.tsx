@@ -67,7 +67,7 @@ export function AdminTopBar() {
 
     useEffect(() => {
         getUnreadNotificationsCount().then(setUnreadCount);
-        const interval = setInterval(() => getUnreadNotificationsCount().then(setUnreadCount), 60000);
+        const interval = setInterval(() => getUnreadNotificationsCount().then(setUnreadCount), 15000);
         return () => clearInterval(interval);
     }, []);
 

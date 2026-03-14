@@ -27,10 +27,12 @@ interface NavGroup {
 
 export function AdminSidebar({ 
     pendingApps = 0,
-    pendingDesignOrders = 0 
+    pendingDesignOrders = 0,
+    pendingSupportTickets = 0,
 }: { 
     pendingApps?: number;
     pendingDesignOrders?: number;
+    pendingSupportTickets?: number;
 }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -82,7 +84,7 @@ export function AdminSidebar({
             items: [
                 { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications" },
                 { icon: Megaphone, label: "الإعلانات والعروض", href: "/dashboard/announcements" },
-                { icon: HeadphonesIcon, label: "مركز الدعم الفني", href: "/dashboard/support" },
+                { icon: HeadphonesIcon, label: "مركز الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets },
                 { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter" },
             ],
         },
