@@ -375,6 +375,18 @@ export type CustomDesignStudioItem = {
     updated_at: string;
 }
 
+export type GarmentStudioMockup = {
+    id: string;
+    garment_id: string;
+    studio_item_id: string;
+    mockup_front_url: string | null;
+    mockup_back_url: string | null;
+    mockup_model_url: string | null;
+    sort_order: number;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── ERP (Inventory, SKUs, Sales) ────────────────────────
 
 export type ProductSKU = Timestamps & {
@@ -609,6 +621,12 @@ export type Database = {
                 Row: CustomDesignStudioItem;
                 Insert: Omit<CustomDesignStudioItem, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "price"> & { sort_order?: number; is_active?: boolean; price?: number };
                 Update: Partial<Omit<CustomDesignStudioItem, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            garment_studio_mockups: {
+                Row: GarmentStudioMockup;
+                Insert: Omit<GarmentStudioMockup, "id" | "created_at" | "updated_at" | "sort_order"> & { sort_order?: number };
+                Update: Partial<Omit<GarmentStudioMockup, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_orders: {

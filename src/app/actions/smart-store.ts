@@ -18,6 +18,7 @@ import type {
     CustomDesignArtStyle,
     CustomDesignColorPackage,
     CustomDesignStudioItem,
+    GarmentStudioMockup,
 } from "@/types/database";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 
@@ -364,6 +365,67 @@ export async function deleteColorPackage(id: string) {
 export async function deleteStudioItem(id: string) {
     const sb = getSmartStoreSb();
     const { error } = await sb.from("custom_design_studio_items").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Garment × Studio Mockups — موكبات التصاميم الجاهزة
+// ═══════════════════════════════════════════════════════════
+
+export async function getAllGarmentStudioMockups(): Promise<GarmentStudioMockup[]> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("garment_studio_mockups")
+        .select("*")
+        .order("sort_order");
+    return (data as GarmentStudioMockup[]) ?? [];
+}
+
+export async function getStudioMockupForGarment(
+    garmentId: string,
+    studioItemId: string
+): Promise<GarmentStudioMockup | null> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("garment_studio_mockups")
+        .select("*")
+        .eq("garment_id", garmentId)
+        .eq("studio_item_id", studioItemId)
+        .single();
+    return (data as GarmentStudioMockup) ?? null;
+}
+
+export async function upsertGarmentStudioMockup(formData: FormData) {
+    const sb = getSmartStoreSb();
+    const id = formData.get("id") as string | null;
+    const payload = {
+        garment_id: formData.get("garment_id") as string,
+        studio_item_id: formData.get("studio_item_id") as string,
+        mockup_front_url: (formData.get("mockup_front_url") as string) || null,
+        mockup_back_url: (formData.get("mockup_back_url") as string) || null,
+        mockup_model_url: (formData.get("mockup_model_url") as string) || null,
+        sort_order: Number(formData.get("sort_order") ?? 0),
+    };
+
+    if (id) {
+        const { error } = await sb.from("garment_studio_mockups").update(payload).eq("id", id);
+        if (error) return { error: error.message };
+    } else {
+        const { error } = await sb.from("garment_studio_mockups").insert(payload);
+        if (error) {
+            if (error.code === "23505") {
+                return { error: "يوجد موكب مسبقاً لهذه القطعة مع هذا التصميم. عدّله بدلاً من إضافته." };
+            }
+            return { error: error.message };
+        }
+    }
+    return { success: true };
+}
+
+export async function deleteGarmentStudioMockup(id: string) {
+    const sb = getSmartStoreSb();
+    const { error } = await sb.from("garment_studio_mockups").delete().eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }

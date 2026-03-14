@@ -1,6 +1,6 @@
 "use server";
 
-import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
 import { SupportTicketPriority, SupportTicketStatus } from "@/types/database";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
@@ -79,7 +79,7 @@ export async function getUserSupportTickets() {
 }
 
 export async function getSupportTicketDetails(ticketId: string) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
     // Fetch Ticket + User Profile
     const { data: ticket, error: ticketError } = await supabase
@@ -158,7 +158,7 @@ export async function adminGetSupportTickets() {
         return [];
     }
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getSupabaseAdminClient();
         const { data, error } = await supabase
             .from("support_tickets")
             .select("*, profile:profiles!user_id(display_name, avatar_url)")
@@ -176,7 +176,7 @@ export async function adminGetSupportTickets() {
 }
 
 export async function adminUpdateSupportTicketStatus(ticketId: string, status: SupportTicketStatus) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const { error } = await supabase.from("support_tickets").update({
         status,
         updated_at: new Date().toISOString()

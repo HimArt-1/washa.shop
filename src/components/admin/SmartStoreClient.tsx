@@ -20,6 +20,8 @@ import {
     Image as ImageIcon,
     Loader2,
     Camera,
+    ImagePlus,
+    Layers,
 } from "lucide-react";
 import {
     upsertGarment,
@@ -36,6 +38,8 @@ import {
     deleteColorPackage,
     upsertStudioItem,
     deleteStudioItem,
+    upsertGarmentStudioMockup,
+    deleteGarmentStudioMockup,
 } from "@/app/actions/smart-store";
 import type {
     CustomDesignGarment,
@@ -45,6 +49,7 @@ import type {
     CustomDesignArtStyle,
     CustomDesignColorPackage,
     CustomDesignStudioItem,
+    GarmentStudioMockup,
 } from "@/types/database";
 
 // ─── Supabase Storage Upload ────────────────────────────
@@ -74,7 +79,7 @@ async function uploadToStorage(file: File, folder: string): Promise<string | nul
 
 // ─── Types ──────────────────────────────────────────────
 
-type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems";
+type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems" | "mockups";
 
 interface Props {
     garments: CustomDesignGarment[];
@@ -84,6 +89,7 @@ interface Props {
     artStyles: CustomDesignArtStyle[];
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
+    garmentStudioMockups: GarmentStudioMockup[];
 }
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
@@ -94,11 +100,12 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
     { id: "artStyles", label: "الأساليب", icon: Paintbrush },
     { id: "colorPackages", label: "باقات الألوان", icon: SwatchBook },
     { id: "studioItems", label: "ستيديو وشّى", icon: Camera },
+    { id: "mockups", label: "موكبات التصاميم", icon: ImagePlus },
 ];
 
 // ─── Component ──────────────────────────────────────────
 
-export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems }: Props) {
+export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups }: Props) {
     const [activeTab, setActiveTab] = useState<TabId>("garments");
     const router = useRouter();
 
@@ -129,6 +136,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                     {activeTab === "artStyles" && <ArtStylesTab items={artStyles} onRefresh={() => router.refresh()} />}
                     {activeTab === "colorPackages" && <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />}
                     {activeTab === "studioItems" && <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />}
+                    {activeTab === "mockups" && <MockupsTab items={garmentStudioMockups} garments={garments} studioItems={studioItems} onRefresh={() => router.refresh()} />}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -939,3 +947,191 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
     );
 }
 
+// ═══════════════════════════════════════════════════════════
+//  Garment × Studio Mockups Tab — موكبات التصاميم الجاهزة
+// ═══════════════════════════════════════════════════════════
+
+function MockupsTab({ items, garments, studioItems, onRefresh }: {
+    items: GarmentStudioMockup[];
+    garments: CustomDesignGarment[];
+    studioItems: CustomDesignStudioItem[];
+    onRefresh: () => void;
+}) {
+    const [editing, setEditing] = useState<GarmentStudioMockup | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [filterGarment, setFilterGarment] = useState<string>("all");
+    const [frontUrl, setFrontUrl] = useState("");
+    const [backUrl, setBackUrl] = useState("");
+    const [modelUrl, setModelUrl] = useState("");
+
+    const filtered = filterGarment === "all" ? items : items.filter(m => m.garment_id === filterGarment);
+
+    const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); setModelUrl(""); };
+    const openEdit = (m: GarmentStudioMockup) => {
+        setEditing(m);
+        setFrontUrl(m.mockup_front_url ?? "");
+        setBackUrl(m.mockup_back_url ?? "");
+        setModelUrl(m.mockup_model_url ?? "");
+    };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setFrontUrl(""); setBackUrl(""); setModelUrl(""); };
+
+    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        const fd = new FormData(e.currentTarget);
+        if (editing) fd.set("id", editing.id);
+        fd.set("mockup_front_url", frontUrl);
+        fd.set("mockup_back_url", backUrl);
+        fd.set("mockup_model_url", modelUrl);
+
+        const result = await upsertGarmentStudioMockup(fd);
+        setLoading(false);
+        if (result.error) {
+            alert(`خطأ: ${result.error}`);
+            return;
+        }
+        closeModal();
+        onRefresh();
+    }, [editing, onRefresh, frontUrl, backUrl, modelUrl]);
+
+    const handleDelete = useCallback(async (id: string) => {
+        if (!confirm("حذف هذا الموكب؟")) return;
+        await deleteGarmentStudioMockup(id);
+        onRefresh();
+    }, [onRefresh]);
+
+    const getGarmentName = (id: string) => garments.find(g => g.id === id)?.name ?? "—";
+    const getStudioName = (id: string) => studioItems.find(s => s.id === id)?.name ?? "—";
+    const getStudioThumb = (id: string) => studioItems.find(s => s.id === id)?.main_image_url;
+    const getGarmentThumb = (id: string) => garments.find(g => g.id === id)?.image_url;
+
+    const form = (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField label="القطعة">
+                <select name="garment_id" defaultValue={editing?.garment_id ?? garments[0]?.id ?? ""} required className={inputCls}>
+                    {garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+            </FormField>
+            <FormField label="تصميم ستيديو وشّى">
+                <select name="studio_item_id" defaultValue={editing?.studio_item_id ?? studioItems[0]?.id ?? ""} required className={inputCls}>
+                    {studioItems.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+            </FormField>
+
+            <div className="p-3 rounded-xl bg-gold/5 border border-gold/15">
+                <p className="text-xs text-gold font-bold mb-1 flex items-center gap-1.5">
+                    <ImagePlus className="w-3.5 h-3.5" />
+                    صور الموكب الجاهزة
+                </p>
+                <p className="text-[10px] text-theme-faint leading-relaxed">ارفع صور الموكب المجهّزة مسبقاً (التصميم مطبوع على القطعة). هذه الصور ستظهر للعميل مباشرة.</p>
+            </div>
+
+            <FormField label="صورة الموكب — أمام (مطلوب)">
+                <ImageUploader value={frontUrl} onChange={setFrontUrl} folder="garment-mockups" label="صورة أمام" />
+            </FormField>
+            <FormField label="صورة الموكب — خلف (اختياري)">
+                <ImageUploader value={backUrl} onChange={setBackUrl} folder="garment-mockups" label="صورة خلف" />
+            </FormField>
+            <FormField label="صورة على موديل (اختياري)">
+                <ImageUploader value={modelUrl} onChange={setModelUrl} folder="garment-mockups" label="صورة المودل" />
+            </FormField>
+
+            <FormField label="الترتيب">
+                <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
+            </FormField>
+            <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "جاري الحفظ..." : "حفظ"}</button>
+                <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
+            </div>
+        </form>
+    );
+
+    return (
+        <SectionCard title="موكبات التصاميم الجاهزة" onAdd={openAdd}>
+            {/* Info Banner */}
+            <div className="mb-4 p-3 rounded-xl bg-gradient-to-l from-gold/5 to-transparent border border-gold/10">
+                <p className="text-xs text-theme-soft leading-relaxed flex items-start gap-2">
+                    <Layers className="w-4 h-4 text-gold shrink-0 mt-0.5" />
+                    لكل قطعة مع كل تصميم من ستيديو وشّى، ارفع صورة موكب جاهزة. العميل سيرى الموكب المحترف مباشرة بدلاً من التركيب التلقائي.
+                </p>
+            </div>
+
+            {/* Filter */}
+            <div className="mb-4">
+                <select value={filterGarment} onChange={(e) => setFilterGarment(e.target.value)} className={inputCls + " max-w-xs"}>
+                    <option value="all">جميع القطع</option>
+                    {garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                </select>
+            </div>
+
+            {/* Stats */}
+            {garments.length > 0 && studioItems.length > 0 && (
+                <div className="mb-4 flex items-center gap-4 text-[10px] text-theme-faint">
+                    <span>إجمالي التركيبات الممكنة: <strong className="text-gold">{garments.length * studioItems.length}</strong></span>
+                    <span>الموكبات المرفقة: <strong className="text-emerald-400">{items.length}</strong></span>
+                    <span>المتبقية: <strong className="text-amber-400">{Math.max(0, garments.length * studioItems.length - items.length)}</strong></span>
+                </div>
+            )}
+
+            {filtered.length === 0 ? <EmptyState text="لا توجد موكبات بعد. أضف أول موكب جاهز!" /> : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {filtered.map((m) => (
+                        <div key={m.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group overflow-hidden relative">
+                            {/* Mockup Image Preview */}
+                            <div className="relative mb-3 aspect-[4/5] rounded-lg overflow-hidden bg-theme-subtle">
+                                {m.mockup_front_url ? (
+                                    <img
+                                        src={m.mockup_front_url}
+                                        alt={`${getGarmentName(m.garment_id)} × ${getStudioName(m.studio_item_id)}`}
+                                        className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700"
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <ImagePlus className="w-8 h-8 text-theme-faint" />
+                                    </div>
+                                )}
+                                {/* Overlay badges */}
+                                <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/70 to-transparent">
+                                    <div className="flex items-center gap-1.5">
+                                        {getGarmentThumb(m.garment_id) && (
+                                            <img src={getGarmentThumb(m.garment_id)!} alt="" className="w-7 h-7 rounded-md object-cover border border-white/20" />
+                                        )}
+                                        <span className="text-white/90 text-[10px] font-bold truncate">{getGarmentName(m.garment_id)}</span>
+                                        <span className="text-white/40 text-[10px]">×</span>
+                                        {getStudioThumb(m.studio_item_id) && (
+                                            <img src={getStudioThumb(m.studio_item_id)!} alt="" className="w-7 h-7 rounded-md object-cover border border-white/20" />
+                                        )}
+                                        <span className="text-white/90 text-[10px] font-bold truncate">{getStudioName(m.studio_item_id)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Image count indicators */}
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.mockup_front_url ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                    أمام {m.mockup_front_url ? "✓" : "✗"}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.mockup_back_url ? "bg-emerald-500/10 text-emerald-400" : "bg-theme-faint text-theme-faint"}`}>
+                                    خلف {m.mockup_back_url ? "✓" : "—"}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${m.mockup_model_url ? "bg-emerald-500/10 text-emerald-400" : "bg-theme-faint text-theme-faint"}`}>
+                                    موديل {m.mockup_model_url ? "✓" : "—"}
+                                </span>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end">
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => openEdit(m)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
+                                    <button onClick={() => handleDelete(m.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل الموكب" : "إضافة موكب جاهز جديد"}>{form}</Modal>
+        </SectionCard>
+    );
+}
