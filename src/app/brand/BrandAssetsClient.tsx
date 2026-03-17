@@ -16,7 +16,8 @@ import {
   Twitter,
   Music,
   Ghost,
-  MessageCircle
+  MessageCircle,
+  Link as LinkIcon
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { Logo } from "@/components/ui/Logo";
@@ -51,8 +52,8 @@ export default function BrandAssetsClient({ config }: { config: any }) {
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/10 blur-[150px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-theme-strong/5 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold/10 blur-[150px] rounded-full mix-blend-multiply dark:mix-blend-screen opacity-60 dark:opacity-20" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-theme-strong/5 blur-[150px] rounded-full mix-blend-multiply dark:mix-blend-screen opacity-40 dark:opacity-20" />
         <div className="absolute inset-0 bg-[url('/images/noise.png')] opacity-[0.03] mix-blend-overlay" />
       </div>
 
@@ -96,10 +97,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="business-card-back"
-                  className="w-full h-full rounded-xl shadow-2xl border border-gold/40 overflow-hidden relative"
+                  className="w-full h-full rounded-xl border overflow-hidden relative"
                   style={{
-                    background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
-                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
+                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
+                    borderColor: "var(--card-border)",
+                    boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
                   }}
                 >
                   {/* Gold Edge shine */}
@@ -109,22 +111,22 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   <div className="h-full flex flex-col justify-between p-6 sm:px-8 sm:py-6 relative z-10">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h2 className="text-2xl font-bold text-white mb-1">{config.business_card_name}</h2>
+                        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--card-text)" }}>{config.business_card_name}</h2>
                         <p className="text-gold text-sm font-medium tracking-wide">{config.business_card_title}</p>
                       </div>
                       <Logo size="sm" />
                     </div>
                     
                     <div className="space-y-1 sm:space-y-1.5 mt-2 mb-1 w-full">
-                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full">
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
                         <Phone className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="tracking-wider px-1 pb-1 inline-block truncate min-w-0">{config.business_card_phone}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full">
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
                         <Mail className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="px-1 pb-1 inline-block truncate min-w-0">{config.business_card_email}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-white/70 text-xs sm:text-sm w-full">
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
                         <Globe className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="px-1 pb-1.5 inline-block truncate min-w-0 text-left leading-relaxed">{config.business_card_website}</span>
                       </div>
@@ -144,9 +146,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="business-card-front"
-                  className="w-full h-full rounded-xl shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-gold/40 overflow-hidden flex items-center justify-center relative"
+                  className="w-full h-full rounded-xl border overflow-hidden flex items-center justify-center relative"
                   style={{
-                    background: "linear-gradient(135deg, #3D2719 0%, #20140D 100%)",
+                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
+                    borderColor: "var(--card-border)",
+                    boxShadow: "0 30px 60px -12px var(--card-shadow)"
                   }}
                 >
                   {/* Spot UV logic (hidden visually unless hovered) */}
@@ -219,10 +223,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="thank-you-card"
-                  className="w-full h-full rounded-sm p-8 shadow-2xl border border-white/5 flex flex-col items-center text-center overflow-hidden relative"
+                  className="w-full h-full rounded-sm p-8 shadow-2xl border flex flex-col items-center text-center overflow-hidden relative"
                   style={{
-                    background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
-                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
+                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
+                    borderColor: "var(--card-border)",
+                    boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
                   }}
                 >
                   {/* Paper Texture Overlay */}
@@ -231,8 +236,8 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   <Logo size="sm" className="mb-8 relative z-10" />
                   
                   <div className="flex-1 flex flex-col justify-center relative z-10 w-full text-center">
-                    <h3 className="text-2xl font-serif text-white mb-6">{config.thank_you_title}</h3>
-                    <div className="text-white/70 text-sm leading-8 mb-8 whitespace-pre-line px-2">
+                    <h3 className="text-2xl font-serif mb-6" style={{ color: "var(--card-text)" }}>{config.thank_you_title}</h3>
+                    <div className="text-sm leading-8 mb-8 whitespace-pre-line px-2" style={{ color: "var(--card-text-muted)" }}>
                       {config.thank_you_message}
                     </div>
                   </div>
@@ -260,10 +265,11 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                >
                  <div
                    id="care-card"
-                   className="w-full h-full border border-white/5 rounded-2xl p-8 sm:p-10 shadow-2xl overflow-hidden relative"
+                   className="w-full h-full border rounded-2xl p-8 sm:p-10 shadow-2xl overflow-hidden relative"
                    style={{
-                     background: "linear-gradient(135deg, #322014 0%, #1A110A 100%)",
-                     boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(202, 160, 82, 0.1) inset"
+                     background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
+                     borderColor: "var(--card-border)",
+                     boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
                    }}
                  >
                    <div className="text-center mb-10 border-b border-white/10 pb-6 relative z-10">
@@ -349,72 +355,84 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               <motion.div 
                 initial={{ opacity: 0, y: 50, rotateX: -10 }}
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
-                whileHover={{ scale: 1.02, boxShadow: "0 30px 60px -15px rgba(202,160,82,0.2)" }}
+                whileHover={{ scale: 1.02 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.6 }}
                 className="relative w-full max-w-[320px] aspect-[9/16]"
               >
                 <div
                   id="social-card"
-                  className="w-full h-full rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-start overflow-hidden relative shadow-2xl border border-white/10"
-                  style={{
-                    background: "linear-gradient(135deg, #1A110A 0%, #322014 100%)",
-                    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 60px rgba(202, 160, 82, 0.15) inset"
-                  }}
+                  className="w-full h-full rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-start overflow-hidden relative shadow-2xl border glass-premium hover-glow transition-all duration-700"
                 >
-                  {/* Subtle Top Glow */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-gold/10 blur-[80px] z-0 rounded-full" />
+                  
+                  {/* Subtle Top Glow & Shimmers */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
                   
                   {/* Grainy Texture */}
-                  <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
                   
                   <div className="relative z-10 w-full flex flex-col items-center pt-4">
-                    <Logo size="md" className="mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-1 tracking-wide">وشّى منصة الفن</h2>
-                    <p className="text-gold/80 text-xs tracking-widest uppercase mb-8">@washha.sa</p>
+                    <Logo size="md" className="mb-4 drop-shadow-xl" />
+                    <h2 className="text-xl font-bold text-theme-strong mb-1 tracking-wide">وشّى منصة الفن</h2>
+                    <p className="text-gold text-xs tracking-widest uppercase mb-8">@washha.sa</p>
 
                     {/* Social Buttons List */}
                     <div className="w-full flex flex-col gap-3">
                       {config.social_instagram && (
-                        <div className="w-full px-5 py-3.5 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
-                          <Instagram className="w-5 h-5 text-gold" />
-                          <span className="text-white/90 text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_instagram}</span>
+                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Instagram className="w-4.5 h-4.5 text-gold" />
+                          </div>
+                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_instagram}</span>
+                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_twitter && (
-                        <div className="w-full px-5 py-3.5 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
-                          <Twitter className="w-5 h-5 text-gold" />
-                          <span className="text-white/90 text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_twitter}</span>
+                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Twitter className="w-4.5 h-4.5 text-gold" />
+                          </div>
+                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_twitter}</span>
+                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_tiktok && (
-                        <div className="w-full px-5 py-3.5 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
-                          <Music className="w-5 h-5 text-gold" />
-                          <span className="text-white/90 text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_tiktok}</span>
+                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Music className="w-4.5 h-4.5 text-gold" />
+                          </div>
+                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_tiktok}</span>
+                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_snapchat && (
-                        <div className="w-full px-5 py-3.5 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3">
-                          <Ghost className="w-5 h-5 text-gold" />
-                          <span className="text-white/90 text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_snapchat}</span>
+                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Ghost className="w-4.5 h-4.5 text-gold" />
+                          </div>
+                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_snapchat}</span>
+                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
 
                       {config.social_whatsapp && (
-                        <div className="w-full px-5 py-3.5 rounded-xl border border-white/10 bg-white/5 flex items-center gap-3 mt-4">
-                          <MessageCircle className="w-5 h-5 text-green-400" />
-                          <span className="text-white/90 text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_whatsapp}</span>
+                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300 mt-1">
+                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <MessageCircle className="w-4.5 h-4.5 text-green-500" />
+                          </div>
+                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_whatsapp}</span>
+                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Web URL Footer */}
+                  {/* Web URL Footer Wrapper */}
                   <div className="mt-auto relative z-10 w-full text-center pb-2">
-                    <span dir="ltr" className="text-white/40 text-xs tracking-[0.2em] uppercase block">www.washa.shop</span>
+                    <span dir="ltr" className="text-theme-subtle text-xs tracking-[0.2em] uppercase block">www.washa.shop</span>
                   </div>
                 </div>
               </motion.div>
@@ -444,11 +462,11 @@ function CareItem({ icon: Icon, title, desc }: { icon: any, title: string, desc:
   return (
     <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
       <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5 text-white" />
+        <Icon className="w-5 h-5" style={{ color: "var(--card-text)" }} />
       </div>
       <div>
-        <h4 className="font-bold text-white text-sm sm:text-base mb-1">{title}</h4>
-        <p className="text-xs sm:text-sm text-white/70">{desc}</p>
+        <h4 className="font-bold text-sm sm:text-base mb-1" style={{ color: "var(--card-text)" }}>{title}</h4>
+        <p className="text-xs sm:text-sm" style={{ color: "var(--card-text-muted)" }}>{desc}</p>
       </div>
     </div>
   );
