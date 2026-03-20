@@ -27,17 +27,19 @@ export default async function OrdersPage() {
 
     return (
         <div className="pt-8 pb-16">
-            <div className="max-w-4xl mx-auto px-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-theme">طلباتي</h1>
-                        <p className="text-theme-faint text-sm mt-1">{totalCount} طلب</p>
+            <div className="mx-auto max-w-5xl px-4 sm:px-6">
+                <div className="theme-surface-panel mb-8 rounded-[2rem] px-6 py-6 sm:px-8">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">ACCOUNT ORDERS</p>
+                            <h1 className="mt-2 text-2xl font-bold text-theme sm:text-3xl">طلباتي</h1>
+                            <p className="mt-2 text-sm text-theme-faint">{totalCount} طلب بين الشراء والتصميم المخصص</p>
+                        </div>
+                        <Link href="/account" className="inline-flex items-center gap-2 self-start rounded-2xl border border-theme-soft bg-theme-faint px-4 py-2.5 text-xs text-theme-faint transition-colors hover:border-gold/25 hover:text-gold sm:self-auto">
+                            <ArrowLeft className="w-4 h-4" />
+                            حسابي
+                        </Link>
                     </div>
-                    <Link href="/account" className="flex items-center gap-2 text-xs text-theme-faint hover:text-gold transition-colors">
-                        <ArrowLeft className="w-4 h-4" />
-                        حسابي
-                    </Link>
                 </div>
 
                 <Suspense fallback={<div className="py-12 text-center text-theme-subtle">جاري التحميل...</div>}>

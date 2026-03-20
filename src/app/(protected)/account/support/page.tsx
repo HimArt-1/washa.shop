@@ -10,9 +10,16 @@ export default async function UserSupportPage() {
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-theme">رسائل الدعم الفني</h1>
-                <p className="text-theme-soft text-sm">تواصل مع فريق الدعم لحل أي مشكلة تواجهك أو للإجابة على استفساراتك.</p>
+            <div className="theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-7">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">ACCOUNT SUPPORT</p>
+                        <h1 className="mt-2 text-2xl font-bold text-theme md:text-3xl">رسائل الدعم الفني</h1>
+                    </div>
+                    <p className="max-w-2xl text-sm text-theme-soft">
+                        تواصل مع فريق الدعم، افتح تذكرة جديدة، أو تابع المحادثات الحالية من مكان واحد.
+                    </p>
+                </div>
             </div>
 
             <SupportDashboardClient initialTickets={tickets} />

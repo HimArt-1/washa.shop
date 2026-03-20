@@ -11,7 +11,7 @@ export function SettingsThemeSection() {
 
     return (
         <div
-            className="p-6 rounded-2xl border backdrop-blur-sm transition-all duration-300"
+            className="theme-surface-panel rounded-[2rem] p-6 transition-all duration-300"
             style={{
                 backgroundColor: "color-mix(in srgb, var(--wusha-surface) 50%, transparent)",
                 borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",
@@ -24,7 +24,7 @@ export function SettingsThemeSection() {
             <p className="text-sm mb-4" style={{ color: "color-mix(in srgb, var(--wusha-text) 50%, transparent)" }}>
                 اختر مظهر الواجهة المناسب لك
             </p>
-            <div className="flex gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
                 <button
                     onClick={() => setTheme("dark")}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 ${

@@ -31,14 +31,19 @@ export default async function SettingsPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-theme">إعدادات الملف الشخصي</h1>
-                <p className="text-theme-subtle mt-2">
-                    {profile.role === "wushsha"
-                        ? "قم بتحديث بياناتك لتظهر بشكل احترافي في معرضك الخاص"
-                        : "قم بتحديث بياناتك الشخصية وحساباتك لتخصيص تجربتك في المنصة"}
-                </p>
+        <div className="mx-auto max-w-5xl">
+            <div className="theme-surface-panel mb-8 rounded-[2rem] px-6 py-6 sm:px-8 sm:py-7">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">ACCOUNT SETTINGS</p>
+                        <h1 className="mt-2 text-3xl font-bold text-theme">إعدادات الملف الشخصي</h1>
+                    </div>
+                    <p className="max-w-2xl text-sm text-theme-subtle">
+                        {profile.role === "wushsha"
+                            ? "قم بتحديث بياناتك لتظهر بشكل احترافي في معرضك الخاص"
+                            : "قم بتحديث بياناتك الشخصية وحساباتك لتخصيص تجربتك في المنصة"}
+                    </p>
+                </div>
             </div>
 
             <div className="space-y-8">

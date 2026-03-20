@@ -15,7 +15,13 @@ export default async function SupportTicketPage({ params }: { params: { id: stri
 
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl md:text-3xl font-bold text-theme">تذكرة #{details.ticket.id.slice(0, 8)}</h1>
+            <div className="theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-7">
+                <div className="flex flex-col gap-2">
+                    <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">SUPPORT THREAD</p>
+                    <h1 className="text-2xl font-bold text-theme md:text-3xl">تذكرة #{details.ticket.id.slice(0, 8)}</h1>
+                    <p className="text-sm text-theme-subtle">هذه المساحة مخصصة لمتابعة الردود بينك وبين فريق الدعم.</p>
+                </div>
+            </div>
             <SupportTicketChat ticket={details.ticket} initialMessages={details.messages} />
         </div>
     );

@@ -103,7 +103,7 @@ export function OrdersClient({
 
     if (hasNoOrders) {
         return (
-            <div className="text-center py-24 rounded-2xl border border-theme-faint bg-surface/20">
+            <div className="theme-surface-panel rounded-[2rem] py-20 text-center sm:py-24">
                 <div className="w-20 h-20 rounded-2xl bg-theme-subtle border border-theme-subtle flex items-center justify-center mx-auto mb-5">
                     <Package className="w-10 h-10 text-theme-faint" />
                 </div>
@@ -119,7 +119,7 @@ export function OrdersClient({
     return (
         <div className="space-y-12">
             {actionError && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
                     {actionError}
                 </div>
             )}
@@ -130,40 +130,40 @@ export function OrdersClient({
                         <Brush className="w-5 h-5 text-gold" />
                         طلبات التصميم المخصص
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         {designOrders.map((dOrder) => {
                             const conf = designStatusConfig[dOrder.status];
                             const isAwaiting = dOrder.status === "awaiting_review";
 
                             return (
-                                <div key={dOrder.id} data-design-id={dOrder.id} className="p-5 border border-theme-subtle rounded-2xl bg-surface/30 hover:border-gold/20 transition-all flex flex-col justify-between">
+                                <div key={dOrder.id} data-design-id={dOrder.id} className="flex flex-col justify-between rounded-[1.75rem] border border-theme-subtle bg-surface/30 p-4 transition-all hover:border-gold/20 sm:p-5">
                                     <div>
-                                        <div className="flex items-center justify-between mb-4">
+                                        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                             <span className="text-xs text-theme-faint">تصميم #{dOrder.order_number}</span>
                                             <span className={`text-[10px] px-2.5 py-1 rounded-full ${conf.bg} ${conf.color} font-bold`}>
                                                 {conf.label}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-4 mb-4">
+                                        <div className="mb-4 flex items-center gap-3 sm:gap-4">
                                             <div className="w-16 h-16 rounded-xl overflow-hidden bg-theme-faint border border-theme-faint shrink-0 p-1">
                                                 {dOrder.garment_image_url ? (
                                                     <Image src={dOrder.garment_image_url} alt="Garment" width={64} height={64} className="object-contain w-full h-full" />
                                                 ) : <Brush className="w-8 h-8 text-theme-faint m-auto mt-3" />}
                                             </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-theme">{dOrder.garment_name}</p>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-theme">{dOrder.garment_name}</p>
                                                 <p className="text-xs text-theme-subtle mt-1">{dOrder.size_name} · {dOrder.color_name}</p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-theme-faint">
+                                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-theme-faint pt-4">
                                         {isAwaiting ? (
                                             <>
                                                 <button
                                                     onClick={() => setSelectedDesignOrder(dOrder)}
-                                                    className={`flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600" : "bg-gold hover:bg-gold-light"} text-bg py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 shadow-lg ${dOrder.is_sent_to_customer ? "shadow-emerald-500/20" : ""}`}
+                                                    className={`flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold text-bg shadow-lg transition-colors sm:flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20" : "bg-gold hover:bg-gold-light"}`}
                                                 >
                                                     {dOrder.is_sent_to_customer ? (
                                                         <>
@@ -205,23 +205,23 @@ export function OrdersClient({
                                                         };
                                                         openInvoicePrint(invoiceOrder);
                                                     }}
-                                                    className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-gold/10 hover:text-gold transition-colors flex items-center justify-center gap-2 text-center border border-transparent hover:border-gold/20"
+                                                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:border-gold/20 hover:bg-gold/10 hover:text-gold sm:flex-1"
                                                 >
                                                     <FileText className="w-4 h-4" /> الفاتورة الذكية
                                                 </button>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-theme-soft transition-colors flex items-center justify-center gap-2 text-center">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft sm:flex-1">
                                                     تفاصيل الطلب <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                             </>
                                         ) : dOrder.status !== "cancelled" ? (
                                             <>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex-1 bg-theme-subtle text-theme py-2 rounded-xl text-xs font-bold hover:bg-theme-soft transition-colors flex items-center justify-center gap-2 text-center">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft">
                                                     تتبع الطلب والحوار <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                                 <button
                                                     onClick={() => handleCancelDesign(dOrder.id)}
                                                     disabled={cancelingId === dOrder.id}
-                                                    className="px-4 py-2 bg-red-500/10 text-red-400 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors disabled:opacity-50 flex items-center justify-center"
+                                                    className="flex min-h-[44px] items-center justify-center rounded-xl bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
                                                     title="إلغاء الطلب"
                                                 >
                                                     {cancelingId === dOrder.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
@@ -251,10 +251,10 @@ export function OrdersClient({
                             <div
                                 key={order.id}
                                 data-order-id={order.id}
-                                className="p-5 border border-theme-subtle rounded-2xl bg-surface/30 hover:border-gold/20 hover:bg-surface/40 transition-all duration-300"
+                                className="rounded-[1.75rem] border border-theme-subtle bg-surface/30 p-4 transition-all duration-300 hover:border-gold/20 hover:bg-surface/40 sm:p-5"
                             >
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
+                                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex flex-wrap items-center gap-3">
                                         <span className="text-xs text-theme-faint">#{order.order_number || order.id.slice(0, 8)}</span>
                                         <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${config.bgColor} ${config.color}`}>
                                             <StatusIcon className="w-3 h-3" />
@@ -275,24 +275,24 @@ export function OrdersClient({
                                             const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                             return (
-                                                <div key={item.id} className="flex items-center gap-3">
+                                                <div key={item.id} className="flex items-center gap-3 sm:gap-4">
                                                     <div className="w-12 h-12 rounded-xl overflow-hidden border border-theme-faint bg-theme-faint shrink-0">
                                                         {imageUrl && <Image src={imageUrl} alt={title} width={48} height={48} className="object-cover w-full h-full" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm text-theme truncate">{title}</p>
+                                                        <p className="truncate text-sm text-theme">{title}</p>
                                                         <p className="text-[10px] text-theme-faint">
                                                             {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
                                                         </p>
                                                     </div>
-                                                    <span className="text-xs font-bold text-theme-subtle">{Number(item.total_price).toLocaleString()} ر.س</span>
+                                                    <span className="shrink-0 text-xs font-bold text-theme-subtle">{Number(item.total_price).toLocaleString()} ر.س</span>
                                                 </div>
                                             );
                                         })}
                                     </div>
                                 )}
 
-                                <div className="flex items-center justify-between mt-4 pt-3 border-t border-theme-faint">
+                                <div className="mt-4 flex flex-col gap-3 border-t border-theme-faint pt-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-4">
                                         <div>
                                             <span className="text-xs text-theme-subtle block mb-0.5">الإجمالي</span>
@@ -301,7 +301,7 @@ export function OrdersClient({
                                         {/* Invoice Button */}
                                         <button
                                             onClick={() => openInvoicePrint(order)}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold rounded-lg border border-theme-soft text-theme-soft hover:text-gold hover:border-gold/20 hover:bg-gold/5 transition-all"
+                                            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-theme-soft px-3 py-1.5 text-[10px] font-bold text-theme-soft transition-all hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
                                             title="عرض الفاتورة"
                                         >
                                             <FileText className="w-4 h-4" />

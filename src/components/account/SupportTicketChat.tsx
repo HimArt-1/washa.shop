@@ -82,30 +82,32 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
     const isClosed = ticket.status === "closed" || ticket.status === "resolved";
 
     return (
-        <div className="flex flex-col h-[calc(100vh-12rem)] min-h-[500px] bg-theme-faint border border-theme-subtle rounded-3xl overflow-hidden relative">
+        <div className="relative flex min-h-[540px] flex-col overflow-hidden rounded-3xl border border-theme-subtle bg-theme-faint h-[calc(100vh-11rem)] sm:h-[calc(100vh-12rem)]">
             {/* Header */}
-            <div className="p-4 sm:p-6 border-b border-theme-subtle bg-theme-faint flex items-center justify-between z-10">
-                <div className="flex items-center gap-4">
-                    <Link href="/account/support" className="p-2 -ml-2 hover:bg-theme-subtle rounded-full transition-colors text-theme-subtle hover:text-theme">
-                        <ArrowRight className="w-5 h-5" />
-                    </Link>
-                    <div>
-                        <h2 className="text-lg font-bold text-theme max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
-                        <div className="flex items-center gap-2 mt-1">
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${statusObj.bg} ${statusObj.color}`}>
-                                <statusObj.icon className="w-2.5 h-2.5" />
-                                <span>{statusObj.label}</span>
+            <div className="z-10 border-b border-theme-subtle bg-theme-faint p-4 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-4">
+                        <Link href="/account/support" className="p-2 -ml-2 hover:bg-theme-subtle rounded-full transition-colors text-theme-subtle hover:text-theme">
+                            <ArrowRight className="w-5 h-5" />
+                        </Link>
+                        <div>
+                            <h2 className="text-lg font-bold text-theme max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${statusObj.bg} ${statusObj.color}`}>
+                                    <statusObj.icon className="w-2.5 h-2.5" />
+                                    <span>{statusObj.label}</span>
+                                </div>
+                                <span className="text-xs text-theme-subtle">
+                                    {format(new Date(ticket.created_at), "dd MMM yyyy, p", { locale: ar })}
+                                </span>
                             </div>
-                            <span className="text-xs text-theme-subtle">
-                                {format(new Date(ticket.created_at), "dd MMM yyyy, p", { locale: ar })}
-                            </span>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 scrollbar-hide">
+            <div className="scrollbar-hide flex-1 overflow-y-auto space-y-6 p-4 sm:p-6">
                 {messages.map((msg, idx) => {
                     const isUser = !msg.is_admin_reply;
                     const avatarUrl = msg.sender?.avatar_url || "/images/default-avatar.png";
@@ -118,7 +120,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
                             className={clsx(
-                                "flex gap-3 max-w-[85%] sm:max-w-[75%]",
+                                "flex max-w-[92%] gap-3 sm:max-w-[75%]",
                                 isUser ? "mr-auto flex-row-reverse" : "ml-auto"
                             )}
                         >
@@ -132,9 +134,9 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                                 />
                             </div>
                             <div className={clsx(
-                                "flex flex-col gap-1",
-                                isUser ? "items-end" : "items-start"
-                            )}>
+                                    "flex min-w-0 flex-col gap-1",
+                                    isUser ? "items-end" : "items-start"
+                                )}>
                                 <span className="text-xs text-theme-subtle px-1">
                                     {isUser ? "أنت" : "دعم وشّى"}
                                 </span>
@@ -175,7 +177,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}
                             placeholder="اكتب ردك هنا..."
-                            className="w-full bg-theme-subtle border border-theme-soft disabled:opacity-50 text-theme text-sm rounded-2xl pl-16 pr-4 py-4 focus:outline-none focus:border-gold/50 focus:bg-theme-soft transition-all"
+                            className="w-full rounded-2xl border border-theme-soft bg-theme-subtle py-4 pl-16 pr-4 text-sm text-theme transition-all focus:border-gold/50 focus:bg-theme-soft focus:outline-none disabled:opacity-50"
                         />
                         <button
                             type="submit"

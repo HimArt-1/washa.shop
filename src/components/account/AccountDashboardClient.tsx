@@ -135,13 +135,13 @@ export function AccountDashboardClient({
 
     return (
         <div className="pt-8 pb-16">
-            <div className="max-w-4xl mx-auto px-6">
+            <div className="mx-auto max-w-5xl px-4 sm:px-6">
                 <OnboardingBanner />
 
                 <motion.div variants={containerVariants} initial="hidden" animate="show">
                     {/* ─── Profile Header ─── */}
-                    <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                        <div className="flex items-center gap-5">
+                    <motion.div variants={itemVariants} className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                             <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-theme-soft bg-surface shrink-0 relative group">
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
                                     <Link href="/account/settings" className="text-theme text-xs font-bold px-2 py-1 bg-white/20 rounded-lg backdrop-blur-md">تعديل</Link>
@@ -170,7 +170,7 @@ export function AccountDashboardClient({
                         </div>
 
                         {/* Completeness Widget */}
-                        <div className="p-4 rounded-2xl border border-theme-subtle bg-surface/30 flex items-center gap-4 w-full md:w-auto">
+                        <div className="flex w-full items-center gap-4 rounded-2xl border border-theme-subtle bg-surface/30 p-4 md:w-auto">
                             <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                     <path className="text-white/[0.05]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -250,7 +250,7 @@ export function AccountDashboardClient({
                     )}
 
                     {/* ─── Quick Links Grid ─── */}
-                    <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <motion.div variants={containerVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         {links.map((link) => (
                             <motion.div key={link.href} variants={itemVariants}>
                                 <Link

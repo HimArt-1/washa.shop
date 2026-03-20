@@ -18,16 +18,17 @@ export default function AccountLayout({
                     borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",
                 }}
             >
-                <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
+                <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
                     <Logo size="sm" />
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
                         <Link
                             href="/"
-                            className="flex items-center gap-2 text-sm transition-colors hover:text-[var(--wusha-gold)]"
+                            className="inline-flex items-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-3 py-2 text-sm transition-colors hover:border-gold/25 hover:text-[var(--wusha-gold)]"
                             style={{ color: "color-mix(in srgb, var(--wusha-text) 50%, transparent)" }}
                         >
-                            <span>العودة للموقع</span>
+                            <span className="hidden sm:inline">العودة للموقع</span>
+                            <span className="sm:hidden">الموقع</span>
                             <ArrowRight className="w-4 h-4" />
                         </Link>
                     </div>

@@ -67,24 +67,33 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-theme-faint border border-theme-subtle p-6 rounded-2xl">
-                <div>
-                    <h3 className="text-lg font-bold text-theme">تذاكر الدعم</h3>
-                    <p className="text-theme-subtle text-sm mt-1">تابع حالة تذاكرك الحالية أو افتح تذكرة جديدة</p>
+            <div className="theme-surface-panel rounded-[2rem] p-6 sm:p-7">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">SUPPORT DESK</p>
+                        <h3 className="mt-2 text-lg font-bold text-theme">تذاكر الدعم</h3>
+                        <p className="mt-1 text-sm text-theme-subtle">تابع حالة تذاكرك الحالية أو افتح تذكرة جديدة</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-center">
+                            <p className="text-[11px] font-bold tracking-[0.18em] text-theme-faint">OPEN THREADS</p>
+                            <p className="mt-1 text-lg font-bold text-theme">{initialTickets.length}</p>
+                        </div>
+                        <motion.button
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="btn-gold py-2.5 px-5 flex items-center gap-2 text-sm"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>تذكرة جديدة</span>
+                        </motion.button>
+                    </div>
                 </div>
-                <motion.button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="btn-gold py-2.5 px-5 flex items-center gap-2 text-sm"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                >
-                    <Plus className="w-4 h-4" />
-                    <span>تذكرة جديدة</span>
-                </motion.button>
             </div>
 
             {initialTickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-4 bg-theme-faint border border-theme-subtle rounded-3xl text-center">
+                <div className="theme-surface-panel flex flex-col items-center justify-center rounded-[2rem] px-4 py-16 text-center">
                     <div className="w-20 h-20 rounded-full bg-theme-subtle flex items-center justify-center mb-6 border border-theme-subtle">
                         <MessageSquare className="w-8 h-8 text-theme-faint" />
                     </div>
@@ -110,10 +119,11 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
-                                    className="bg-theme-faint hover:bg-theme-subtle border border-theme-subtle hover:border-gold/30 rounded-2xl p-5 sm:p-6 transition-all duration-300 group cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                                    className="group cursor-pointer rounded-[1.75rem] border border-theme-subtle bg-theme-faint p-5 transition-all duration-300 hover:border-gold/30 hover:bg-theme-subtle sm:p-6"
                                 >
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-3 mb-2">
+                                        <div className="mb-2 flex flex-wrap items-center gap-3">
                                             <div className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${status.bg} ${status.color}`}>
                                                 <status.icon className="w-3 h-3" />
                                                 <span>{status.label}</span>
@@ -125,7 +135,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                         </h4>
                                     </div>
 
-                                    <div className="flex items-center gap-6 sm:justify-end shrink-0">
+                                    <div className="flex flex-wrap items-center gap-5 sm:justify-end shrink-0">
                                         <div className="flex flex-col gap-1 items-start sm:items-end">
                                             <span className="text-xs text-theme-subtle">الأهمية</span>
                                             <span className={`text-sm font-medium ${prio.color}`}>{prio.label}</span>
@@ -136,6 +146,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                                 {formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true, locale: ar })}
                                             </span>
                                         </div>
+                                    </div>
                                     </div>
                                 </motion.div>
                             </Link>
@@ -159,14 +170,14 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative bg-surface border border-theme-soft rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+                            className="theme-surface-panel relative w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl"
                         >
                             <div className="p-6 sm:p-8">
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-xl font-bold text-theme">إنشاء تذكرة دعم</h3>
                                     <button
                                         onClick={() => !isSubmitting && setIsCreateModalOpen(false)}
-                                        className="p-2 text-theme-subtle hover:text-theme bg-theme-subtle hover:bg-white/10 rounded-full transition-colors"
+                                        className="rounded-full bg-theme-subtle p-2 text-theme-subtle transition-colors hover:bg-theme-soft hover:text-theme"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -188,13 +199,13 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                             value={subject}
                                             onChange={e => setSubject(e.target.value)}
                                             placeholder="بخصوص ماذا تريد التواصل معنا؟"
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all"
+                                            className="input-dark w-full rounded-xl px-4 py-3 text-theme"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-theme-soft">مستوى الأهمية</label>
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                             {[
                                                 { id: "low", label: "منخفضة" },
                                                 { id: "normal", label: "عادية" },
@@ -223,11 +234,11 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                             onChange={e => setMessage(e.target.value)}
                                             placeholder="اشرح مشكلتك أو استفسارك بالتفصيل..."
                                             rows={5}
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:outline-none focus:border-gold/50 focus:bg-white/[0.05] transition-all resize-none"
+                                            className="input-dark w-full resize-none rounded-xl px-4 py-3 text-theme"
                                         />
                                     </div>
 
-                                    <div className="pt-2 flex gap-3">
+                                    <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                                         <button
                                             type="submit"
                                             disabled={isSubmitting || !subject.trim() || !message.trim()}
@@ -239,7 +250,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                             type="button"
                                             disabled={isSubmitting}
                                             onClick={() => setIsCreateModalOpen(false)}
-                                            className="px-6 py-3.5 rounded-xl border border-theme-soft text-theme-soft hover:bg-theme-subtle hover:text-theme transition-all disabled:opacity-50"
+                                            className="rounded-xl border border-theme-soft px-6 py-3.5 text-theme-soft transition-all hover:bg-theme-subtle hover:text-theme disabled:opacity-50"
                                         >
                                             إلغاء
                                         </button>

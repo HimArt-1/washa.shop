@@ -68,7 +68,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-3xl">
+        <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-8">
             {/* Success/Error Message */}
             {state.message && (
                 <div className={`p-4 rounded-xl text-sm font-medium ${state.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
@@ -77,13 +77,13 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             )}
 
             {/* Avatar & Cover */}
-            <div className="p-6 rounded-2xl bg-theme-faint border border-theme-subtle space-y-6">
+            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
                 <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">الصور</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block text-sm font-medium text-theme-soft mb-2">صورة الملف الشخصي</label>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                             <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-theme-soft bg-theme-subtle flex items-center justify-center shrink-0">
                                 {avatarUrl ? (
                                     <Image src={avatarUrl} alt="" width={96} height={96} className="object-cover w-full h-full" />
@@ -140,7 +140,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
 
                     <div>
                         <label className="block text-sm font-medium text-theme-soft mb-2">صورة الغلاف</label>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                             <div className="w-full max-w-[180px] h-24 rounded-2xl overflow-hidden border-2 border-theme-soft bg-theme-subtle flex items-center justify-center shrink-0">
                                 {coverUrl ? (
                                     <Image src={coverUrl} alt="" width={180} height={96} className="object-cover w-full h-full" />
@@ -198,7 +198,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             </div>
 
             {/* Basic Info */}
-            <div className="p-6 rounded-2xl bg-theme-faint border border-theme-subtle space-y-6">
+            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
                 <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">البيانات الأساسية</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -206,7 +206,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                         <label className="block text-sm font-medium text-theme-soft mb-2">الاسم المعروض</label>
                         <input
                             {...register("display_name")}
-                            className="w-full p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all"
+                            className="input-dark w-full rounded-xl p-3"
                             placeholder={userRole === "wushsha" ? "اسمك الفني أو الحقيقي" : "أدخل اسمك"}
                         />
                         {errors.display_name && <p className="text-red-500 text-xs mt-1">{errors.display_name.message}</p>}
@@ -218,7 +218,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                             <AtSign className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                             <input
                                 {...register("username")}
-                                className="w-full p-3 pr-10 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr text-right"
+                                className="input-dark w-full rounded-xl p-3 pr-10 dir-ltr text-right"
                                 placeholder="username"
                             />
                         </div>
@@ -231,7 +231,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                     <label className="block text-sm font-medium text-theme-soft mb-2">نبذة عنك (Bio)</label>
                     <textarea
                         {...register("bio")}
-                        className="w-full h-32 p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none resize-none transition-all"
+                        className="input-dark h-32 w-full resize-none rounded-xl p-3"
                         placeholder={userRole === "wushsha" ? "اخبرنا قليلاً عن نفسك وفنك..." : "نبذة قصيرة عنك..."}
                     />
                     {errors.bio && <p className="text-red-500 text-xs mt-1">{errors.bio.message}</p>}
@@ -240,7 +240,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
 
             {/* Social Links (Only for Wushsha & Admin) */}
             {(userRole === "wushsha" || userRole === "admin") && (
-                <div className="p-6 rounded-2xl bg-theme-faint border border-theme-subtle space-y-6">
+                <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
                     <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">التواجد الرقمي</h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -250,7 +250,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                             </label>
                             <input
                                 {...register("website")}
-                                className="w-full p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
+                                className="input-dark w-full rounded-xl p-3 dir-ltr"
                                 placeholder="https://your-portfolio.com"
                             />
                             {errors.website && <p className="text-red-500 text-xs mt-1">{errors.website.message}</p>}
@@ -262,7 +262,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                             </label>
                             <input
                                 {...register("social_links.instagram")}
-                                className="w-full p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
+                                className="input-dark w-full rounded-xl p-3 dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
@@ -273,7 +273,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                             </label>
                             <input
                                 {...register("social_links.twitter")}
-                                className="w-full p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
+                                className="input-dark w-full rounded-xl p-3 dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
@@ -284,7 +284,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                             </label>
                             <input
                                 {...register("social_links.dribbble")}
-                                className="w-full p-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:border-gold/40 focus:ring-1 focus:ring-gold/30 outline-none transition-all dir-ltr"
+                                className="input-dark w-full rounded-xl p-3 dir-ltr"
                                 placeholder="@username or URL"
                             />
                         </div>
@@ -293,11 +293,11 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             )}
 
             {/* Actions */}
-            <div className="flex justify-end pt-4">
+            <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="btn-gold px-8 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 shadow-lg shadow-gold/20"
+                    className="btn-gold flex items-center justify-center gap-2 rounded-xl px-8 py-3 font-bold shadow-lg shadow-gold/20 disabled:opacity-50"
                 >
                     {isPending ? (
                         <>
