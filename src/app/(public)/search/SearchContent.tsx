@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useTransition } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Palette, ShoppingBag, Users, SlidersHorizontal, X, Loader2 } from "lucide-react";
+import { Search, Palette, ShoppingBag, Users, SlidersHorizontal, X, Loader2, ArrowRight, Home, Compass } from "lucide-react";
 import { globalSearch, getCategories, type SearchTab, type SearchFilters, type SearchResult } from "@/app/actions/search";
 import { useCartStore } from "@/stores/cartStore";
 import Image from "next/image";
@@ -225,6 +225,15 @@ export default function SearchContent() {
     });
     const [page, setPage] = useState(1);
 
+    const handleLeaveSearch = useCallback(() => {
+        if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+            return;
+        }
+
+        router.push("/");
+    }, [router]);
+
     // Load categories
     useEffect(() => {
         getCategories().then(setCategories);
@@ -262,10 +271,32 @@ export default function SearchContent() {
                 <div className="absolute inset-0 bg-gradient-to-b from-gold/[0.03] via-transparent to-transparent" />
                 <div className="max-w-4xl mx-auto px-6 py-12 relative">
                     <div className="theme-surface-panel rounded-[2rem] px-6 py-10 sm:px-10">
+                        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] font-bold tracking-[0.22em] text-theme-subtle">
+                                <Compass className="h-3.5 w-3.5 text-gold" />
+                                DISCOVER
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    onClick={handleLeaveSearch}
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-4 py-2.5 text-sm font-semibold text-theme transition-colors hover:border-gold/25 hover:bg-theme-subtle"
+                                >
+                                    <ArrowRight className="h-4 w-4 text-gold" />
+                                    رجوع
+                                </button>
+                                <Link
+                                    href="/"
+                                    className="inline-flex items-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-4 py-2.5 text-sm font-semibold text-theme transition-colors hover:border-gold/25 hover:bg-theme-subtle"
+                                >
+                                    <Home className="h-4 w-4 text-gold" />
+                                    الرئيسية
+                                </Link>
+                            </div>
+                        </div>
                         <motion.h1
                             initial={{ opacity: 0, y: -20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="text-4xl md:text-5xl font-bold text-theme text-center mb-2"
+                            className="text-3xl md:text-5xl font-bold text-theme text-center mb-2"
                         >
                             اكتشف الفن
                         </motion.h1>
@@ -309,19 +340,36 @@ export default function SearchContent() {
                                 <Loader2 className="absolute left-12 top-1/2 -translate-y-1/2 w-4 h-4 text-gold animate-spin" />
                             )}
                         </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 14 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.28 }}
+                            className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs"
+                        >
+                            <Link href="/gallery" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
+                                المعرض
+                            </Link>
+                            <Link href="/store" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
+                                المتجر
+                            </Link>
+                            <Link href="/design" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
+                                صمّم قطعتك
+                            </Link>
+                        </motion.div>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-6">
                 {/* ─── Tabs + Filter Toggle ─── */}
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex gap-2">
+                <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                         {tabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => { setActiveTab(tab.id); setPage(1); }}
-                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab.id
+                                className={`shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab.id
                                     ? "theme-surface-panel text-gold border-gold/30"
                                     : "text-theme-faint hover:text-theme-soft hover:bg-theme-subtle border border-transparent"
                                     }`}
@@ -339,7 +387,7 @@ export default function SearchContent() {
 
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all ${showFilters ? "theme-surface-panel text-gold border-gold/30" : "text-theme-faint hover:bg-theme-subtle"
+                        className={`inline-flex items-center justify-center gap-2 self-start rounded-xl px-4 py-2.5 text-sm transition-all lg:self-auto ${showFilters ? "theme-surface-panel text-gold border-gold/30" : "text-theme-faint hover:bg-theme-subtle"
                             }`}
                     >
                         <SlidersHorizontal className="w-4 h-4" />
@@ -356,7 +404,7 @@ export default function SearchContent() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden mb-8"
                         >
-                            <div className="theme-surface-panel p-6 rounded-[1.75rem] grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="theme-surface-panel grid grid-cols-1 gap-4 rounded-[1.75rem] p-6 sm:grid-cols-2 xl:grid-cols-4">
                                 {/* Sort */}
                                 <div>
                                     <label className="text-xs text-theme-faint mb-2 block">الترتيب</label>
@@ -456,7 +504,7 @@ export default function SearchContent() {
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2 mt-12">
+                            <div className="mt-12 flex flex-wrap items-center justify-center gap-2">
                                 {[...Array(totalPages)].map((_, i) => (
                                     <button
                                         key={i}
