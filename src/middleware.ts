@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from "next/server";
 import { shouldBypassClerkForDashboardPath } from "@/lib/dev-auth";
 
 const isProtectedRoute = createRouteMatcher([
@@ -20,7 +21,16 @@ export default clerkMiddleware(async (auth, req) => {
         if (shouldBypassClerkForDashboardPath(req.nextUrl.pathname)) {
             return;
         }
-        await auth.protect();
+
+        const { userId } = await auth();
+        if (!userId) {
+            const signInUrl = new URL("/sign-in", req.url);
+            signInUrl.searchParams.set(
+                "redirect_url",
+                `${req.nextUrl.pathname}${req.nextUrl.search}`
+            );
+            return NextResponse.redirect(signInUrl);
+        }
     }
 });
 
