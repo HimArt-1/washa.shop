@@ -71,7 +71,7 @@ function CheckoutContent() {
 
     if (items.length === 0 && !success) {
         return (
-            <div className="min-h-screen pt-32 pb-20 container-wusha flex flex-col items-center justify-center text-center">
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pt-28 pb-16 text-center sm:pt-32 sm:pb-20">
                 <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
                     <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6 mx-auto">
                         <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
@@ -183,7 +183,7 @@ function CheckoutContent() {
 
     if (success) {
         return (
-            <div className="min-h-screen pt-32 pb-20 container-wusha flex flex-col items-center justify-center text-center">
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pt-28 pb-16 text-center sm:pt-32 sm:pb-20">
                 <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
                     <motion.div
                         initial={{ scale: 0 }}
@@ -213,13 +213,13 @@ function CheckoutContent() {
     // ─── خطوة الدفع المدمج ────────────────────────────────────
     if (checkoutStep === "paying" && stripeClientSecret && pendingOrderNumber) {
         return (
-            <div className="min-h-screen pt-32 pb-20 bg-theme">
+            <div className="min-h-screen bg-theme pt-28 pb-16 sm:pt-32 sm:pb-20">
                 <div className="container-wusha max-w-2xl">
                     <button
                         onClick={() => { setCheckoutStep("address"); setError(null); }}
-                        className="flex items-center gap-2 text-theme-subtle hover:text-theme text-sm mb-8 transition-colors"
+                        className="mb-8 flex items-center gap-2 text-sm text-theme-subtle transition-colors hover:text-theme"
                     >
-                        <ArrowRight className="w-4 h-4 rotate-180" />
+                        <ArrowRight className="h-4 w-4" />
                         العودة للطلب
                     </button>
 
@@ -249,7 +249,17 @@ function CheckoutContent() {
     return (
         <div className="min-h-screen pt-32 pb-20 bg-theme">
             <div className="container-wusha">
-                <h1 className="text-3xl md:text-4xl font-bold mb-8">إتمام الطلب</h1>
+                <div className="mb-8 theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-7">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">CHECKOUT</p>
+                            <h1 className="mt-2 text-3xl font-bold md:text-4xl">إتمام الطلب</h1>
+                        </div>
+                        <p className="max-w-xl text-sm text-theme-subtle">
+                            راجع عناصر السلة، أكمل عنوان الشحن، ثم اختر طريقة الدفع الأنسب قبل تثبيت الطلب.
+                        </p>
+                    </div>
+                </div>
 
                 <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
                     {/* Form Section */}
@@ -348,38 +358,38 @@ function CheckoutContent() {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod("cod")}
-                                    className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all text-right ${paymentMethod === "cod"
+                                        className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "cod"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
-                                >
-                                    <div className="flex items-center gap-3">
+                                    >
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-white/30"
                                             }`}>
                                             {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                         </div>
                                         <span className="font-bold">الدفع عند الاستلام</span>
                                     </div>
-                                    <span className="text-xs bg-gold/20 text-gold px-2 py-1 rounded">متاح</span>
+                                    <span className="mt-3 inline-flex w-fit rounded px-2 py-1 text-xs text-gold sm:mt-0 sm:self-center bg-gold/20">متاح</span>
                                 </button>
 
                                 {process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY && (
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod("stripe")}
-                                        className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all text-right ${paymentMethod === "stripe"
+                                        className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "stripe"
                                             ? "border-gold/40 bg-gold/10"
                                             : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                             }`}
                                     >
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "stripe" ? "border-gold bg-gold" : "border-white/30"
                                                 }`}>
                                                 {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                             </div>
                                             <span className="font-bold">الدفع الإلكتروني</span>
                                         </div>
-                                        <span className="text-xs text-theme-subtle flex items-center gap-1">
+                                        <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs text-theme-subtle sm:mt-0 sm:self-center">
                                             <Smartphone className="w-3.5 h-3.5" />
                                             Visa · Mada · Apple Pay
                                         </span>
@@ -391,12 +401,12 @@ function CheckoutContent() {
 
                     {/* Order Summary */}
                     <div className="lg:col-span-5">
-                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8 sticky top-32">
+                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8 xl:sticky xl:top-32">
                             <h2 className="text-xl font-bold mb-6">ملخص الطلب</h2>
 
                             <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size}`} className="flex gap-4 rounded-2xl bg-theme-faint p-3">
+                                    <div key={`${item.id}-${item.size}`} className="flex gap-3 rounded-2xl bg-theme-faint p-3 sm:gap-4">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -408,8 +418,8 @@ function CheckoutContent() {
                                                 x{item.quantity}
                                             </span>
                                         </div>
-                                        <div>
-                                            <h4 className="font-medium text-sm line-clamp-1">{item.title}</h4>
+                                        <div className="min-w-0">
+                                            <h4 className="line-clamp-1 text-sm font-medium">{item.title}</h4>
                                             <p className="text-theme-subtle text-xs">{item.artist_name}</p>
                                             {item.size && <p className="text-theme-subtle text-xs mt-0.5">الحجم: {item.size}</p>}
                                             <p className="text-gold text-sm font-bold mt-1">{(item.price * item.quantity).toLocaleString()} ر.س</p>

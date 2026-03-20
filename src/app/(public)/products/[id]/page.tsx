@@ -91,9 +91,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
             {/* Track this visit in localStorage */}
             <RecentlyViewedTracker product={{ id: product.id, title: product.title, price: product.price, image_url: product.image_url, type: product.type }} />
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Breadcrumb ─── */}
-                <nav className="flex items-center gap-2 text-xs text-theme-faint mb-8">
+                <nav className="mb-8 flex flex-wrap items-center gap-2 text-xs text-theme-faint">
                     <Link href="/" className="hover:text-gold transition-colors">الرئيسية</Link>
                     <span>/</span>
                     <Link href="/store" className="hover:text-gold transition-colors">المتجر</Link>
@@ -102,9 +102,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </nav>
 
                 {/* ─── Main Content ─── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
                     {/* Image */}
-                    <div className="theme-surface-panel rounded-[2rem] p-4">
+                    <div className="theme-surface-panel rounded-[2rem] p-3 sm:p-4">
                         <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle">
                             <Image
                                 src={product.image_url}
@@ -121,7 +121,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     </div>
 
                     {/* Info */}
-                    <div className="theme-surface-panel rounded-[2rem] p-8 lg:p-10 flex flex-col justify-center">
+                    <div className="theme-surface-panel flex flex-col justify-center rounded-[2rem] p-6 sm:p-8 lg:p-10">
                         <h1 className="text-3xl md:text-4xl font-bold text-theme mb-3">{product.title}</h1>
 
                         {/* Artist */}
@@ -145,18 +145,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         )}
 
                         {/* Product Details */}
-                        <div className="space-y-3 mb-8">
-                            <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
+                        <div className="mb-8 space-y-3">
+                            <div className="flex items-center justify-between gap-3 border-b border-theme-subtle py-3">
                                 <span className="text-xs text-theme-faint">النوع</span>
-                                <span className="text-sm text-theme-soft">{product.type}</span>
+                                <span className="text-right text-sm text-theme-soft">{product.type}</span>
                             </div>
                             {availableSizes.size > 0 && (
-                                <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
+                                <div className="flex items-center justify-between gap-3 border-b border-theme-subtle py-3">
                                     <span className="text-xs text-theme-faint">المقاسات المتاحة المتوفرة</span>
-                                    <span className="text-sm text-theme-soft font-semibold">{Array.from(availableSizes).join(" ، ")}</span>
+                                    <span className="text-right text-sm font-semibold text-theme-soft">{Array.from(availableSizes).join(" ، ")}</span>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
+                            <div className="flex items-center justify-between gap-3 border-b border-theme-subtle py-3">
                                 <span className="text-xs text-theme-faint">الحالة</span>
                                 <span className={`text-sm font-medium ${isCurrentlyInStock ? "text-emerald-400" : "text-red-400"}`}>
                                     {isCurrentlyInStock ? "متوفر" : "غير متوفر"}
@@ -193,7 +193,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {relatedProducts.length > 0 && (
                     <div className="mt-20">
                         <h2 className="text-2xl font-bold text-theme mb-8">منتجات مشابهة</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
                             {relatedProducts.map((item: any) => (
                                 <Link
                                     key={item.id}

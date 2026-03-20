@@ -45,35 +45,46 @@ export function StoreFilters({
     };
 
     return (
-        <div className="flex flex-col items-center gap-4 mb-8">
+        <div className="mb-8 space-y-4">
+            <div className="theme-surface-panel rounded-[1.75rem] p-4 sm:p-5">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">STORE FILTERS</p>
+                        <h2 className="mt-1 text-base font-bold text-theme sm:text-lg">فلترة أكثر سرعة ووضوحًا</h2>
+                    </div>
+                    <div className="text-xs text-theme-faint">
+                        اختر النوع، الترتيب، أو اعرض المتوفر فقط
+                    </div>
+                </div>
 
-            {/* ── Category Pills ── */}
-            <div className="flex flex-wrap justify-center gap-2">
-                {productTypes.map((t) => (
-                    <button
-                        key={t.value}
-                        onClick={() => router.push(`/store?${buildParams({ type: t.value })}`)}
-                        className={`px-4 py-2 rounded-xl text-xs font-medium transition-all border ${
-                            currentType === t.value
-                                ? "bg-gold/10 text-gold border-gold/30"
-                                : "text-theme-faint hover:bg-theme-subtle border-transparent"
-                        }`}
-                    >
-                        {t.label}
-                    </button>
-                ))}
+                {/* ── Category Pills ── */}
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible">
+                    {productTypes.map((t) => (
+                        <button
+                            key={t.value}
+                            onClick={() => router.push(`/store?${buildParams({ type: t.value })}`)}
+                            className={`shrink-0 rounded-2xl border px-4 py-2.5 text-xs font-medium transition-all ${
+                                currentType === t.value
+                                    ? "border-gold/30 bg-gold/10 text-gold"
+                                    : "border-transparent text-theme-faint hover:bg-theme-subtle"
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ── Sort + Stock Row ── */}
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <div className="theme-surface-panel flex flex-col gap-4 rounded-[1.75rem] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
 
                 {/* Sort Select */}
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                     <SlidersHorizontal className="w-3.5 h-3.5 text-theme-subtle" />
                     <select
                         value={currentSort}
                         onChange={(e) => router.push(`/store?${buildParams({ sort: e.target.value })}`)}
-                        className="text-xs bg-transparent border border-theme-soft rounded-xl px-3 py-2 text-theme-soft focus:outline-none focus:border-gold/50 cursor-pointer transition-colors hover:border-gold/30"
+                        className="input-dark h-11 w-full rounded-2xl px-4 text-sm sm:min-w-[220px]"
                     >
                         {sortOptions.map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
@@ -82,7 +93,10 @@ export function StoreFilters({
                 </div>
 
                 {/* In-Stock Toggle */}
-                <label className="flex items-center gap-2 cursor-pointer group">
+                <label className="flex items-center justify-between gap-3 rounded-2xl border border-theme-soft bg-theme-faint px-4 py-3 sm:min-w-[220px]">
+                    <span className="text-sm font-medium text-theme-subtle transition-colors group-hover:text-theme">
+                        المتوفر فقط
+                    </span>
                     <div className="relative">
                         <input
                             type="checkbox"
@@ -93,9 +107,6 @@ export function StoreFilters({
                         <div className={`block w-10 h-6 rounded-full transition-colors ${inStockOnly ? "bg-emerald-500" : "bg-theme-soft"}`} />
                         <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${inStockOnly ? "translate-x-4" : ""}`} />
                     </div>
-                    <span className="text-xs font-medium text-theme-subtle group-hover:text-theme transition-colors">
-                        المتوفر فقط
-                    </span>
                 </label>
             </div>
         </div>

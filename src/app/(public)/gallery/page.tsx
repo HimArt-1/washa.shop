@@ -5,8 +5,6 @@ import Link from "next/link";
 import { GalleryFilters } from "./GalleryFilters";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
-
 export const metadata = {
     title: "المعرض | WUSHA",
     description: "استكشف معرض WUSHA للأعمال الفنية المتنوعة.",
@@ -34,7 +32,7 @@ export default async function GalleryPage({
 
     return (
         <div className="min-h-[60vh] bg-theme pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Header ─── */}
                 <div className="theme-surface-panel relative overflow-hidden rounded-[2rem] px-6 py-10 text-center mb-12 sm:px-10">
                     <div className="absolute inset-x-10 top-0 h-24 rounded-full bg-gold/10 blur-3xl" />
@@ -60,7 +58,7 @@ export default async function GalleryPage({
                 {/* ─── Grid ─── */}
                 {artworks && artworks.length > 0 ? (
                     <>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
                             {artworks.map((artwork: any) => (
                                 <Link
                                     key={artwork.id}
@@ -101,7 +99,7 @@ export default async function GalleryPage({
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="flex items-center justify-center gap-2 mt-12">
+                            <div className="mt-12 flex flex-wrap items-center justify-center gap-2">
                                 {[...Array(totalPages)].map((_, i) => {
                                     const params = new URLSearchParams();
                                     if (category !== "all") params.set("category", category);

@@ -33,7 +33,8 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
     const [loadingWishlist, setLoadingWishlist] = useState(false);
     const [loadingLike, setLoadingLike] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const utilityButtonBase = "p-3.5 rounded-2xl border border-theme-soft bg-theme-faint text-theme-subtle transition-colors hover:bg-theme-subtle";
+    const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
+    const utilityButtonBase = "inline-flex items-center justify-center p-3.5 rounded-2xl border border-theme-soft bg-theme-faint text-theme-subtle transition-colors hover:bg-theme-subtle";
 
     useEffect(() => {
         setMounted(true);
@@ -54,6 +55,8 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
     }, [mounted, product.id]);
 
     const handleShare = async () => {
+        if (typeof window === "undefined") return;
+
         if (navigator.share) {
             await navigator.share({
                 title: product.title,
@@ -62,7 +65,8 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             });
         } else {
             await navigator.clipboard.writeText(window.location.href);
-            alert("تم نسخ الرابط!");
+            setShareFeedback("copied");
+            window.setTimeout(() => setShareFeedback("idle"), 1800);
         }
     };
 
@@ -113,7 +117,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             )}
 
             {/* Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
                 <motion.button
                     onClick={() => addItem({
                         id: product.id,
@@ -126,7 +130,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                         maxQuantity: product.stock_quantity || 99,
                     })}
                     disabled={!inStock}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gold text-[var(--wusha-bg)] font-bold rounded-2xl hover:bg-gold-light transition-colors shadow-[0_18px_40px_rgba(154,123,61,0.2)] disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex min-h-[56px] min-w-[220px] flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30"
                     whileHover={inStock ? { scale: 1.02 } : {}}
                     whileTap={inStock ? { scale: 0.98 } : {}}
                 >
@@ -138,7 +142,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleWishlist}
                         disabled={loadingWishlist}
-                        className={`${utilityButtonBase} ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "hover:text-gold hover:border-gold/30"
+                        className={`min-h-[56px] ${utilityButtonBase} ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "hover:text-gold hover:border-gold/30"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -149,7 +153,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleLike}
                         disabled={loadingLike}
-                        className={`${utilityButtonBase} flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "hover:text-red-400 hover:border-red-500/20"
+                        className={`min-h-[56px] ${utilityButtonBase} flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "hover:text-red-400 hover:border-red-500/20"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -162,14 +166,14 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                 <SignedOut>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className={`${utilityButtonBase} hover:text-gold hover:border-gold/30 inline-block`}
+                        className={`min-h-[56px] ${utilityButtonBase} inline-flex items-center justify-center hover:border-gold/30 hover:text-gold`}
                         title="إضافة للمحفوظات"
                     >
                         <Bookmark className="w-5 h-5" />
                     </Link>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className={`${utilityButtonBase} hover:text-red-400 hover:border-red-500/20 inline-flex items-center gap-1`}
+                        className={`min-h-[56px] ${utilityButtonBase} inline-flex items-center gap-1 hover:border-red-500/20 hover:text-red-400`}
                         title="إعجاب"
                     >
                         <Heart className="w-5 h-5" />
@@ -179,7 +183,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
 
                 <motion.button
                     onClick={handleShare}
-                    className={`${utilityButtonBase} hover:text-gold hover:border-gold/30`}
+                    className={`min-h-[56px] ${utilityButtonBase} hover:border-gold/30 hover:text-gold`}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     title="مشاركة الرابط"
@@ -187,6 +191,12 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <Share2 className="w-5 h-5" />
                 </motion.button>
             </div>
+
+            {shareFeedback === "copied" && (
+                <div className="rounded-2xl border border-gold/20 bg-gold/10 px-4 py-3 text-sm text-gold">
+                    تم نسخ رابط المنتج
+                </div>
+            )}
         </div>
     );
 }
