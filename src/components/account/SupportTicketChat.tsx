@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Send, ArrowRight, Loader2, CheckCircle2, Clock, X, MessageSquare } from "lucide-react";
 import Link from "next/link";
@@ -11,15 +12,21 @@ import { createSupportMessage } from "@/app/actions/support-tickets";
 import clsx from "clsx";
 
 export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, initialMessages: any[] }) {
+    const router = useRouter();
     const [messages, setMessages] = useState(initialMessages);
     const [newMessage, setNewMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errorMsg, setErrorMsg] = useState("");
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     };
+
+    useEffect(() => {
+        setMessages(initialMessages);
+    }, [initialMessages]);
 
     useEffect(() => {
         scrollToBottom();
@@ -41,16 +48,35 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
         e.preventDefault();
         if (!newMessage.trim() || isSubmitting) return;
 
+        const messageText = newMessage.trim();
+        setErrorMsg("");
         setIsSubmitting(true);
-        const res = await createSupportMessage(ticket.id, newMessage);
-        if (res.success) {
-            // Optimistic approach wrapper
+
+        try {
+            const res = await createSupportMessage(ticket.id, messageText);
+            if (!res.success) {
+                setErrorMsg(res.error || "تعذر إرسال الرسالة.");
+                return;
+            }
+
+            setMessages((current) => [
+                ...current,
+                {
+                    id: `temp-${Date.now()}`,
+                    message: messageText,
+                    created_at: new Date().toISOString(),
+                    is_admin_reply: false,
+                    sender: null,
+                },
+            ]);
             setNewMessage("");
-            window.location.reload();
-        } else {
-            console.error("Failed to send message", res.error);
+            router.refresh();
+        } catch (error) {
+            console.error("Failed to send message", error);
+            setErrorMsg(error instanceof Error ? error.message : "تعذر إرسال الرسالة.");
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     const isClosed = ticket.status === "closed" || ticket.status === "resolved";
@@ -132,6 +158,11 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
 
             {/* Input Area */}
             <div className="p-4 sm:p-6 border-t border-theme-subtle bg-theme-surface">
+                {errorMsg && (
+                    <div className="mb-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {errorMsg}
+                    </div>
+                )}
                 {isClosed ? (
                     <div className="text-center p-4 bg-theme-faint rounded-xl border border-theme-subtle">
                         <p className="text-theme-subtle text-sm">هذه التذكرة مغلقة ولا يمكن الرد عليها.</p>

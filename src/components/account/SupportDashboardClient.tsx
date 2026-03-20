@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MessageSquare, Clock, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { createSupportTicket } from "@/app/actions/support-tickets";
 import { SupportTicketPriority } from "@/types/database";
 
 export function SupportDashboardClient({ initialTickets }: { initialTickets: any[] }) {
-    const [tickets, setTickets] = useState(initialTickets);
+    const router = useRouter();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Form state
@@ -44,16 +45,24 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
         setErrorMsg("");
         setIsSubmitting(true);
 
-        const res = await createSupportTicket({ subject, message, priority });
+        try {
+            const res = await createSupportTicket({ subject, message, priority });
 
-        if (!res.success) {
-            setErrorMsg(res.error || "حدث خطأ ما.");
+            if (!res.success) {
+                setErrorMsg(res.error || "حدث خطأ ما.");
+                return;
+            }
+
+            setSubject("");
+            setMessage("");
+            setPriority("normal");
+            setIsCreateModalOpen(false);
+            router.refresh();
+        } catch (error) {
+            setErrorMsg(error instanceof Error ? error.message : "تعذر إنشاء التذكرة الآن.");
+        } finally {
             setIsSubmitting(false);
-            return;
         }
-
-        // Optimistic refresh (in real app, either revalidatePath works or we manually add it)
-        window.location.reload();
     };
 
     return (
@@ -74,7 +83,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                 </motion.button>
             </div>
 
-            {tickets.length === 0 ? (
+            {initialTickets.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-4 bg-theme-faint border border-theme-subtle rounded-3xl text-center">
                     <div className="w-20 h-20 rounded-full bg-theme-subtle flex items-center justify-center mb-6 border border-theme-subtle">
                         <MessageSquare className="w-8 h-8 text-theme-faint" />
@@ -92,7 +101,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {tickets.map((ticket, i) => {
+                    {initialTickets.map((ticket, i) => {
                         const status = getStatusInfo(ticket.status);
                         const prio = getPriorityInfo(ticket.priority);
                         return (

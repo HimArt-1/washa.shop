@@ -51,6 +51,8 @@ export async function createSupportTicket(data: { subject: string; message: stri
 
     if (msgError) {
         console.error("[createSupportTicket] Error creating initial message:", msgError);
+        await supabase.from("support_tickets").delete().eq("id", ticket.id);
+        return { success: false, error: "تعذر إنشاء الرسالة الأولى داخل التذكرة. حاول مرة أخرى." };
     }
 
     // Notify admin about new support ticket

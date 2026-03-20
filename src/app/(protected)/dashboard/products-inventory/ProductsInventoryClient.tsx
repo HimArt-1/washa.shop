@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { ProductsClient } from "../products/ProductsClient";
 import InventoryClient from "@/components/admin/erp/InventoryClient";
-import { SmartImportModal } from "@/components/admin/inventory/SmartImportModal";
+import SmartImportWizard from "@/components/admin/erp/SmartImportWizard";
 import { syncProductStockFromERP } from "@/app/actions/products";
 import { bulkExecuteRestockPlan } from "@/app/actions/erp/inventory";
 
@@ -1347,13 +1347,14 @@ export function ProductsInventoryClient({
                 ) : null}
             </AnimatePresence>
 
-            <SmartImportModal
-                isOpen={showSmartImport}
+            <SmartImportWizard
+                open={showSmartImport}
                 onClose={() => setShowSmartImport(false)}
                 onSuccess={() => {
                     setShowSmartImport(false);
                     router.refresh();
                 }}
+                warehouses={warehouses}
             />
         </div>
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2, FileText } from "lucide-react";
@@ -57,9 +57,11 @@ export function OrdersClient({
     orders: any[];
     designOrders: CustomDesignOrder[];
 }) {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const [selectedDesignOrder, setSelectedDesignOrder] = useState<CustomDesignOrder | null>(null);
     const [cancelingId, setCancelingId] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const hasNoOrders = orders.length === 0 && designOrders.length === 0;
 
@@ -82,8 +84,21 @@ export function OrdersClient({
     const handleCancelDesign = async (id: string) => {
         if (!confirm("هل أنت متأكد من إلغاء طلب التصميم؟")) return;
         setCancelingId(id);
-        await cancelDesignOrderByCustomer(id);
-        window.location.reload();
+        setActionError(null);
+
+        try {
+            const result = await cancelDesignOrderByCustomer(id);
+            if (result?.error) {
+                setActionError(result.error);
+                return;
+            }
+
+            router.refresh();
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر إلغاء الطلب الآن.");
+        } finally {
+            setCancelingId(null);
+        }
     };
 
     if (hasNoOrders) {
@@ -103,6 +118,11 @@ export function OrdersClient({
 
     return (
         <div className="space-y-12">
+            {actionError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {actionError}
+                </div>
+            )}
             {/* ====== Custom Design Orders Section ====== */}
             {designOrders.length > 0 && (
                 <div className="space-y-4">
@@ -302,12 +322,19 @@ export function OrdersClient({
                     onClose={() => setSelectedDesignOrder(null)}
                     onConfirm={() => {
                         setSelectedDesignOrder(null);
-                        window.location.reload();
+                        setActionError(null);
+                        router.refresh();
                     }}
                     onCancel={async () => {
-                        await cancelDesignOrderByCustomer(selectedDesignOrder.id);
+                        setActionError(null);
+                        const result = await cancelDesignOrderByCustomer(selectedDesignOrder.id);
+                        if (result?.error) {
+                            setActionError(result.error);
+                            return;
+                        }
+
                         setSelectedDesignOrder(null);
-                        window.location.reload();
+                        router.refresh();
                     }}
                 />
             )}
