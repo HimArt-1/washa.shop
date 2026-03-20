@@ -34,12 +34,13 @@ export default async function StorePage({
         <div className="min-h-[60vh] pt-6 sm:pt-8 pb-12 sm:pb-16" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
             <div className="max-w-7xl mx-auto px-6">
                 {/* ─── Header ─── */}
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-bold mb-3" style={{ color: "var(--wusha-text)" }}>
+                <div className="text-center mb-12 theme-surface-panel rounded-[2rem] px-6 py-10 sm:px-10">
+                    <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">STORE</p>
+                    <h1 className="text-4xl md:text-5xl font-black mb-3" style={{ color: "var(--wusha-text)" }}>
                         المتجر
                     </h1>
-                    <p className="text-sm text-theme-subtle">
-                        {count || 0} منتج فني فريد
+                    <p className="text-sm text-theme-subtle max-w-2xl mx-auto">
+                        اكتشف قطع وشّى الفنية بتجربة قراءة أوضح في الفاتح والداكن. لدينا الآن {count || 0} منتجًا فنيًا فريدًا.
                     </p>
                 </div>
 
@@ -69,9 +70,9 @@ export default async function StorePage({
                                         <Link
                                             key={i}
                                             href={`/store?${params.toString()}`}
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-medium transition-all ${page === i + 1
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-medium transition-all border ${page === i + 1
                                                     ? "bg-[var(--wusha-gold)] text-[var(--wusha-bg)]"
-                                                    : "text-theme-subtle hover:bg-theme-subtle"
+                                                    : "text-theme-subtle hover:bg-theme-subtle border-theme-strong/10"
                                                 }`}
                                         >
                                             {i + 1}

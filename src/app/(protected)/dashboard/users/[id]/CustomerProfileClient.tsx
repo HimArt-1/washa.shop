@@ -1,218 +1,567 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-    ShoppingCart, DollarSign, Ticket, User, Mail, Calendar, Globe,
-    Shield, Star, Package, Clock, CheckCircle2, AlertTriangle, X,
-    MessageSquare,
-} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import type { ElementType } from "react";
+import { formatDistanceToNow } from "date-fns";
+import { ar } from "date-fns/locale";
+import {
+    BadgeCheck,
+    Calendar,
+    Clock3,
+    ExternalLink,
+    FileText,
+    Globe,
+    Mail,
+    MailWarning,
+    MessageSquare,
+    Package,
+    Phone,
+    ShieldAlert,
+    ShoppingCart,
+    Sparkles,
+    Ticket,
+    User,
+    UserCog,
+} from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 
-// ─── Helpers ────────────────────────────────────────────
-
-function getRoleBadge(role: string) {
+function getRoleMeta(role: string) {
     switch (role) {
-        case "admin": return { label: "مدير النظام", color: "text-red-400 bg-red-500/10 border-red-500/20" };
-        case "wushsha": return { label: "وشّاي", color: "text-purple-400 bg-purple-500/10 border-purple-500/20" };
-        case "subscriber": return { label: "مشترك", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" };
-        default: return { label: role, color: "text-theme-subtle bg-theme-subtle border-theme-soft" };
+        case "admin":
+            return {
+                label: "مدير النظام",
+                className: "border-red-500/20 bg-red-500/10 text-red-300",
+            };
+        case "wushsha":
+            return {
+                label: "وشّاي",
+                className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
+            };
+        case "subscriber":
+            return {
+                label: "مشترك",
+                className: "border-blue-500/20 bg-blue-500/10 text-blue-300",
+            };
+        default:
+            return {
+                label: role,
+                className: "border-white/10 bg-white/[0.03] text-theme-subtle",
+            };
     }
 }
 
-function getTicketStatusInfo(status: string) {
+function getTicketStatusMeta(status: string) {
     switch (status) {
-        case "open": return { label: "مفتوحة", color: "text-blue-400" };
-        case "in_progress": return { label: "قيد المعالجة", color: "text-amber-400" };
-        case "resolved": return { label: "تم الحل", color: "text-emerald-400" };
-        case "closed": return { label: "مغلقة", color: "text-theme-faint" };
-        default: return { label: status, color: "text-theme-subtle" };
+        case "open":
+            return "text-blue-300";
+        case "in_progress":
+            return "text-amber-300";
+        case "resolved":
+            return "text-emerald-300";
+        default:
+            return "text-theme-subtle";
     }
 }
 
-// ─── Props ──────────────────────────────────────────────
+const panelClass =
+    "relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,8,8,0.92))] backdrop-blur-xl";
+
+const subtlePanelClass =
+    "rounded-[24px] border border-white/8 bg-white/[0.03] backdrop-blur-xl";
+
+function SummaryCard({
+    title,
+    value,
+    subtitle,
+    icon: Icon,
+    accent,
+}: {
+    title: string;
+    value: string;
+    subtitle: string;
+    icon: ElementType;
+    accent: string;
+}) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${subtlePanelClass} p-5`}
+        >
+            <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
+                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                </div>
+                <div
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl border"
+                    style={{
+                        backgroundColor: `${accent}18`,
+                        borderColor: `${accent}33`,
+                        color: accent,
+                    }}
+                >
+                    <Icon className="h-5 w-5" />
+                </div>
+            </div>
+            <p className="text-sm leading-6 text-theme-subtle">{subtitle}</p>
+        </motion.div>
+    );
+}
 
 interface Props {
-    profile: Record<string, unknown>;
+    profile: any;
     orders: any[];
     tickets: any[];
+    application: any | null;
+    identity: {
+        isTempProfile: boolean;
+        hasContactInfo: boolean;
+        hasLinkedApplication: boolean;
+    };
     stats: {
         totalOrders: number;
         totalSpent: number;
         paidOrders: number;
+        activeOrders: number;
         openTickets: number;
     };
 }
 
-// ─── Main Component ─────────────────────────────────────
-
-export function CustomerProfileClient({ profile, orders, tickets, stats }: Props) {
-    const role = getRoleBadge(String(profile.role || "subscriber"));
+export function CustomerProfileClient({
+    profile,
+    orders,
+    tickets,
+    application,
+    identity,
+    stats,
+}: Props) {
+    const role = getRoleMeta(String(profile.role || "subscriber"));
     const avatarUrl = profile.avatar_url ? String(profile.avatar_url) : null;
     const joinDate = profile.created_at
-        ? new Date(String(profile.created_at)).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
+        ? new Date(String(profile.created_at)).toLocaleDateString("ar-SA", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        })
         : "—";
+
+    const missionTone =
+        identity.isTempProfile || !identity.hasContactInfo
+            ? "critical"
+            : !identity.hasLinkedApplication
+              ? "warning"
+              : "calm";
+
+    const missionToneClass =
+        missionTone === "critical"
+            ? "border-red-500/20 bg-red-500/10 text-red-200"
+            : missionTone === "warning"
+              ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
+              : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200";
 
     return (
         <div className="space-y-6">
-            {/* ─── Profile Card ─── */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm p-6">
-                <div className="flex items-start gap-5">
-                    {/* Avatar */}
-                    <div className="w-20 h-20 rounded-2xl border-2 border-gold/20 bg-theme-subtle overflow-hidden shrink-0 flex items-center justify-center">
-                        {avatarUrl ? (
-                            <Image src={avatarUrl} alt="" width={80} height={80} className="object-cover w-full h-full" />
+            <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+                <motion.section
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`${panelClass} p-6 md:p-7`}
+                >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
+                    <div className="relative space-y-6">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-sky-200 uppercase">
+                                Identity Case Workspace
+                            </span>
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
+                                {missionTone === "critical" ? "ملف يحتاج تدخلًا" : missionTone === "warning" ? "هوية تحتاج مراجعة" : "هوية مستقرة"}
+                            </span>
+                        </div>
+
+                        <div className="flex items-start gap-5">
+                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-black/20">
+                                {avatarUrl ? (
+                                    <Image src={avatarUrl} alt="" width={96} height={96} className="h-full w-full object-cover" />
+                                ) : (
+                                    <User className="h-10 w-10 text-theme-faint" />
+                                )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
+                                        {String(profile.display_name || "مستخدم")}
+                                    </h2>
+                                    <span className={`rounded-full border px-3 py-1 text-xs font-bold ${role.className}`}>
+                                        {role.label}
+                                    </span>
+                                    {profile.is_verified ? (
+                                        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
+                                            موثّق
+                                        </span>
+                                    ) : null}
+                                </div>
+
+                                <p className="mt-2 text-sm text-theme-subtle">
+                                    @{String(profile.username || "—")} · انضم {joinDate}
+                                </p>
+
+                                {profile.bio ? (
+                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-theme-subtle">
+                                        {String(profile.bio)}
+                                    </p>
+                                ) : (
+                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-theme-faint">
+                                        لا توجد نبذة مكتوبة لهذا المستخدم حتى الآن.
+                                    </p>
+                                )}
+
+                                <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-theme-subtle">
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                        {joinDate}
+                                    </span>
+                                    {profile.wushsha_level ? (
+                                        <span className="inline-flex items-center gap-1.5 text-violet-300">
+                                            <Sparkles className="h-3.5 w-3.5" />
+                                            مستوى وشّى {String(profile.wushsha_level)}
+                                        </span>
+                                    ) : null}
+                                    {profile.website ? (
+                                        <a
+                                            href={String(profile.website)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-gold hover:text-gold-light"
+                                        >
+                                            <Globe className="h-3.5 w-3.5" />
+                                            {String(profile.website).replace(/https?:\/\//, "")}
+                                        </a>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">حالة Clerk</p>
+                                <p className="mt-3 text-2xl font-black text-theme">
+                                    {identity.isTempProfile ? "مؤقت" : "مربوط"}
+                                </p>
+                                <p className="mt-2 text-sm text-theme-subtle">
+                                    {String(profile.clerk_id || "—")}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">بيانات التواصل</p>
+                                <p className="mt-3 text-2xl font-black text-theme">
+                                    {identity.hasContactInfo ? "مكتملة" : "ناقصة"}
+                                </p>
+                                <p className="mt-2 text-sm text-theme-subtle">
+                                    {profile.email && profile.phone ? "البريد والهاتف متوفران" : "ينقص البريد أو الهاتف أو كلاهما"}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">أصل الهوية</p>
+                                <p className="mt-3 text-2xl font-black text-theme">
+                                    {application ? "من طلب انضمام" : "مستخدم مباشر"}
+                                </p>
+                                <p className="mt-2 text-sm text-theme-subtle">
+                                    {application ? `آخر تحديث ${formatDistanceToNow(new Date(application.updated_at || application.created_at), { addSuffix: true, locale: ar })}` : "لا يوجد طلب انضمام مرتبط بهذا الملف"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </motion.section>
+
+                <motion.aside
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`${subtlePanelClass} p-6`}
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                            <ShieldAlert className="h-5 w-5 text-gold" />
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Mission Pulse</p>
+                            <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 space-y-3">
+                        <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
+                            <div className="flex items-center gap-2 text-red-200">
+                                <UserCog className="h-4 w-4" />
+                                <span className="text-sm font-bold">سلامة الهوية</span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
+                                {identity.isTempProfile
+                                    ? "الملف ما زال يحمل clerk_id مؤقتًا ويحتاج إكمال الربط."
+                                    : "ربط Clerk مستقر داخل هذا الملف."}
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
+                            <div className="flex items-center gap-2 text-amber-200">
+                                <MailWarning className="h-4 w-4" />
+                                <span className="text-sm font-bold">جودة البيانات</span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
+                                {identity.hasContactInfo
+                                    ? "بيانات التواصل مكتملة."
+                                    : "الملف يحتاج استكمال البريد أو الهاتف قبل الاعتماد التشغيلي الكامل."}
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
+                            <div className="flex items-center gap-2 text-emerald-200">
+                                <BadgeCheck className="h-4 w-4" />
+                                <span className="text-sm font-bold">مسار المراجعة</span>
+                            </div>
+                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
+                                {application
+                                    ? `هذا الملف مرتبط بطلب انضمام حالته الحالية: ${application.status}.`
+                                    : "لا يوجد طلب انضمام مرتبط، والمسار بدأ مباشرة من إنشاء المستخدم."}
+                            </p>
+                            {application ? (
+                                <Link
+                                    href={`/dashboard/applications/${application.id}`}
+                                    className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-gold hover:text-gold-light"
+                                >
+                                    فتح طلب الانضمام
+                                    <ExternalLink className="h-4 w-4" />
+                                </Link>
+                            ) : null}
+                        </div>
+                    </div>
+                </motion.aside>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                <SummaryCard
+                    title="Orders"
+                    value={String(stats.totalOrders)}
+                    subtitle="إجمالي الطلبات المرتبطة بهذا المستخدم."
+                    icon={ShoppingCart}
+                    accent="#60a5fa"
+                />
+                <SummaryCard
+                    title="Active Orders"
+                    value={String(stats.activeOrders)}
+                    subtitle="طلبات ما زالت في دورة التنفيذ أو الشحن."
+                    icon={Clock3}
+                    accent="#f59e0b"
+                />
+                <SummaryCard
+                    title="Paid Orders"
+                    value={String(stats.paidOrders)}
+                    subtitle="عدد الطلبات المدفوعة بنجاح."
+                    icon={BadgeCheck}
+                    accent="#34d399"
+                />
+                <SummaryCard
+                    title="Revenue"
+                    value={`${stats.totalSpent.toLocaleString()} ر.س`}
+                    subtitle="إجمالي ما أنفقه هذا المستخدم على المنصة."
+                    icon={Sparkles}
+                    accent="#d4af37"
+                />
+                <SummaryCard
+                    title="Open Tickets"
+                    value={String(stats.openTickets)}
+                    subtitle="تذاكر دعم مفتوحة أو قيد المعالجة الآن."
+                    icon={Ticket}
+                    accent="#c084fc"
+                />
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
+                <section className="space-y-5">
+                    <div className={`${panelClass} p-5`}>
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Identity Rail</p>
+                        <div className="mt-4 space-y-3">
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-theme-faint">البريد الإلكتروني</p>
+                                <p className="mt-2 text-sm font-semibold text-theme">{profile.email || "غير متوفر"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-theme-faint">رقم الهاتف</p>
+                                <p className="mt-2 text-sm font-semibold text-theme">{profile.phone || "غير متوفر"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-theme-faint">Clerk ID</p>
+                                <p className="mt-2 break-all font-mono text-xs text-theme">{profile.clerk_id || "—"}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs text-theme-faint">معرّف الملف</p>
+                                <p className="mt-2 break-all font-mono text-xs text-theme">{profile.id || "—"}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {application ? (
+                        <div className={`${panelClass} p-5`}>
+                            <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Application Context</p>
+                            <div className="mt-4 space-y-3">
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-sm font-bold text-theme">طلب الانضمام المرتبط</p>
+                                        <StatusBadge status={application.status} type="application" />
+                                    </div>
+                                    <p className="mt-3 text-sm leading-7 text-theme-subtle">
+                                        {application.motivation || "لا توجد رسالة دافع محفوظة مع الطلب."}
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <a
+                                        href={application.portfolio_url || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={`rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-theme transition-colors ${application.portfolio_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <FileText className="h-4 w-4 text-gold" />
+                                            معرض الأعمال
+                                        </span>
+                                    </a>
+                                    <a
+                                        href={application.instagram_url || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={`rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-theme transition-colors ${application.instagram_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <Globe className="h-4 w-4 text-accent" />
+                                            انستقرام
+                                        </span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+                </section>
+
+                <section className="space-y-5">
+                    <div className={`${panelClass} overflow-hidden`}>
+                        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+                            <div>
+                                <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Commerce Rail</p>
+                                <h3 className="mt-2 text-xl font-bold text-theme">سجل الطلبات</h3>
+                            </div>
+                            <span className="text-xs font-bold text-theme-faint">{orders.length} طلب</span>
+                        </div>
+
+                        {orders.length > 0 ? (
+                            <div className="divide-y divide-white/6">
+                                {orders.map((order) => (
+                                    <div key={order.id} className="px-5 py-4 transition-colors hover:bg-white/[0.02]">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="font-mono text-xs font-bold text-gold">#{order.order_number}</p>
+                                                <p className="mt-2 text-sm font-bold text-theme">
+                                                    {Number(order.total).toLocaleString()} ر.س
+                                                </p>
+                                                <p className="mt-1 text-xs text-theme-subtle">
+                                                    {formatDistanceToNow(new Date(order.created_at), { addSuffix: true, locale: ar })}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <StatusBadge status={order.status} type="order" />
+                                                <span className={`text-xs font-bold ${order.payment_status === "paid" ? "text-emerald-300" : order.payment_status === "failed" ? "text-red-300" : "text-amber-300"}`}>
+                                                    {order.payment_status === "paid" ? "مدفوع" : order.payment_status === "failed" ? "فشل الدفع" : "بانتظار الدفع"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 text-xs text-theme-faint">
+                                            {order.order_items?.length || 0} عنصر
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         ) : (
-                            <User className="w-8 h-8 text-theme-faint" />
+                            <div className="px-5 py-14 text-center text-theme-subtle">
+                                <Package className="mx-auto mb-3 h-8 w-8 text-theme-faint" />
+                                لا توجد طلبات مرتبطة بهذا المستخدم.
+                            </div>
                         )}
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                            <h2 className="text-xl font-black text-theme">{String(profile.display_name || "مستخدم")}</h2>
-                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${role.color}`}>
-                                {role.label}
-                            </span>
-                            {Boolean(profile.is_verified) && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                    ✓ موثّق
-                                </span>
-                            )}
+                    <div className={`${panelClass} overflow-hidden`}>
+                        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+                            <div>
+                                <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Support Rail</p>
+                                <h3 className="mt-2 text-xl font-bold text-theme">تذاكر الدعم</h3>
+                            </div>
+                            <span className="text-xs font-bold text-theme-faint">{tickets.length} تذكرة</span>
                         </div>
-                        <p className="text-sm text-theme-subtle">@{String(profile.username || "—")}</p>
-                        {profile.bio ? <p className="text-xs text-theme-faint mt-2 line-clamp-2">{String(profile.bio)}</p> : null}
 
-                        <div className="flex items-center gap-4 mt-3 flex-wrap">
-                            <span className="text-[11px] text-theme-faint flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> انضم {joinDate}
-                            </span>
-                            {profile.website ? (
-                                <a href={String(profile.website)} target="_blank" rel="noopener"
-                                    className="text-[11px] text-gold hover:text-gold-light flex items-center gap-1">
-                                    <Globe className="w-3 h-3" /> {String(profile.website).replace(/https?:\/\//, "")}
-                                </a>
-                            ) : null}
-                            {profile.wushsha_level ? (
-                                <span className="text-[11px] text-purple-400 flex items-center gap-1">
-                                    <Star className="w-3 h-3" /> مستوى {String(profile.wushsha_level)}
-                                </span>
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* ─── Stats Cards ─── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                    { label: "إجمالي الطلبات", value: stats.totalOrders, icon: ShoppingCart, color: "text-blue-400", bg: "bg-blue-500/5 border-blue-500/20" },
-                    { label: "المدفوعة", value: stats.paidOrders, icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/5 border-emerald-500/20" },
-                    { label: "إجمالي الإنفاق", value: `${stats.totalSpent.toLocaleString()} ر.س`, icon: DollarSign, color: "text-gold", bg: "bg-gold/5 border-gold/20" },
-                    { label: "تذاكر مفتوحة", value: stats.openTickets, icon: Ticket, color: stats.openTickets > 0 ? "text-amber-400" : "text-theme-faint", bg: stats.openTickets > 0 ? "bg-amber-500/5 border-amber-500/20" : "bg-theme-faint border-theme-subtle" },
-                ].map((s, i) => (
-                    <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05 }}
-                        className={`p-4 rounded-2xl border backdrop-blur-sm ${s.bg}`}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <s.icon className={`w-4 h-4 ${s.color}`} />
-                            <span className="text-[11px] text-theme-subtle font-medium">{s.label}</span>
-                        </div>
-                        <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-                    </motion.div>
-                ))}
-            </div>
-
-            {/* ─── Two-Column Layout ─── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Order History */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-                    className="lg:col-span-2 rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-theme-faint flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-theme-strong flex items-center gap-2">
-                            <ShoppingCart className="w-4 h-4 text-gold" /> سجل الطلبات
-                        </h3>
-                        <span className="text-[10px] text-theme-faint">{orders.length} طلب</span>
-                    </div>
-                    {orders.length > 0 ? (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-theme-faint">
-                                        <th className="text-right px-5 py-2.5 text-theme-faint font-medium text-[11px]">رقم الطلب</th>
-                                        <th className="text-right px-4 py-2.5 text-theme-faint font-medium text-[11px]">المبلغ</th>
-                                        <th className="text-right px-4 py-2.5 text-theme-faint font-medium text-[11px]">الحالة</th>
-                                        <th className="text-right px-4 py-2.5 text-theme-faint font-medium text-[11px]">الدفع</th>
-                                        <th className="text-right px-4 py-2.5 text-theme-faint font-medium text-[11px]">العناصر</th>
-                                        <th className="text-right px-5 py-2.5 text-theme-faint font-medium text-[11px]">التاريخ</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {orders.map((order: any) => (
-                                        <tr key={order.id} className="border-b border-theme-faint hover:bg-theme-faint transition-colors">
-                                            <td className="px-5 py-3 font-mono text-xs text-gold">{order.order_number}</td>
-                                            <td className="px-4 py-3 font-bold text-theme text-xs">{Number(order.total).toLocaleString()} ر.س</td>
-                                            <td className="px-4 py-3"><StatusBadge status={order.status} type="order" /></td>
-                                            <td className="px-4 py-3">
-                                                <span className={`text-xs font-bold ${order.payment_status === "paid" ? "text-emerald-400" : "text-amber-400"}`}>
-                                                    {order.payment_status === "paid" ? "مدفوع" : order.payment_status === "failed" ? "فشل" : "معلق"}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-theme-subtle text-xs">{order.order_items?.length || 0} عنصر</td>
-                                            <td className="px-5 py-3 text-theme-faint text-[11px]" dir="ltr">
-                                                {new Date(order.created_at).toLocaleDateString("ar-SA", { month: "short", day: "numeric", year: "numeric" })}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    ) : (
-                        <div className="p-12 text-center text-theme-faint">
-                            <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                            <p className="text-sm">لا توجد طلبات</p>
-                        </div>
-                    )}
-                </motion.div>
-
-                {/* Support Tickets */}
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-                    className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
-                    <div className="px-5 py-4 border-b border-theme-faint flex items-center justify-between">
-                        <h3 className="text-sm font-bold text-theme-strong flex items-center gap-2">
-                            <MessageSquare className="w-4 h-4 text-gold" /> تذاكر الدعم
-                        </h3>
-                        <span className="text-[10px] text-theme-faint">{tickets.length} تذكرة</span>
-                    </div>
-                    {tickets.length > 0 ? (
-                        <div className="divide-y divide-theme-faint">
-                            {tickets.map((t: any) => {
-                                const statusInfo = getTicketStatusInfo(t.status);
-                                return (
-                                    <Link key={t.id} href={`/dashboard/support/${t.id}`}>
-                                        <div className="px-5 py-3 hover:bg-theme-faint transition-colors">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <p className="text-xs font-bold text-theme-soft truncate flex-1">{t.subject}</p>
-                                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${statusInfo.color}`}>
-                                                    {statusInfo.label}
-                                                </span>
+                        {tickets.length > 0 ? (
+                            <div className="divide-y divide-white/6">
+                                {tickets.map((ticket) => (
+                                    <Link
+                                        key={ticket.id}
+                                        href={`/dashboard/support/${ticket.id}`}
+                                        className="block px-5 py-4 transition-colors hover:bg-white/[0.02]"
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-theme">{ticket.subject}</p>
+                                                <p className="mt-1 text-xs text-theme-faint">
+                                                    {formatDistanceToNow(new Date(ticket.updated_at || ticket.created_at), { addSuffix: true, locale: ar })}
+                                                </p>
                                             </div>
-                                            <p className="text-[10px] text-theme-faint">
-                                                {new Date(t.created_at).toLocaleDateString("ar-SA", { month: "short", day: "numeric" })}
-                                            </p>
+                                            <span className={`text-xs font-bold ${getTicketStatusMeta(ticket.status)}`}>
+                                                {ticket.status}
+                                            </span>
                                         </div>
                                     </Link>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="p-10 text-center text-theme-faint">
-                            <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                            <p className="text-xs">لا توجد تذاكر</p>
-                        </div>
-                    )}
-                </motion.div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="px-5 py-14 text-center text-theme-subtle">
+                                <MessageSquare className="mx-auto mb-3 h-8 w-8 text-theme-faint" />
+                                لا توجد تذاكر دعم لهذا المستخدم.
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+                <Link
+                    href="/dashboard/users"
+                    className={`${subtlePanelClass} flex items-center gap-3 p-4 text-sm font-bold text-theme transition-colors hover:border-gold/30`}
+                >
+                    <User className="h-4 w-4 text-gold" />
+                    العودة إلى مركز الهوية
+                </Link>
+                <Link
+                    href="/dashboard/users-clerk"
+                    className={`${subtlePanelClass} flex items-center gap-3 p-4 text-sm font-bold text-theme transition-colors hover:border-gold/30`}
+                >
+                    <UserCog className="h-4 w-4 text-gold" />
+                    فتح مستخدمي Clerk
+                </Link>
+                {application ? (
+                    <Link
+                        href={`/dashboard/applications/${application.id}`}
+                        className={`${subtlePanelClass} flex items-center gap-3 p-4 text-sm font-bold text-theme transition-colors hover:border-gold/30`}
+                    >
+                        <Mail className="h-4 w-4 text-gold" />
+                        فتح طلب الانضمام
+                    </Link>
+                ) : (
+                    <div className={`${subtlePanelClass} flex items-center gap-3 p-4 text-sm font-bold text-theme-faint`}>
+                        <MailWarning className="h-4 w-4" />
+                        لا يوجد طلب انضمام مرتبط
+                    </div>
+                )}
             </div>
         </div>
     );

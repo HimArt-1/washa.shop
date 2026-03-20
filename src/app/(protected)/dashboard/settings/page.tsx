@@ -1,9 +1,12 @@
-import { getSiteSettings } from "@/app/actions/settings";
+import { getOperationalRulesDiagnostics, getSiteSettings } from "@/app/actions/settings";
 import { SettingsClient } from "./SettingsClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
 export default async function AdminSettingsPage() {
-    const settings = await getSiteSettings();
+    const [settings, diagnostics] = await Promise.all([
+        getSiteSettings(),
+        getOperationalRulesDiagnostics(),
+    ]);
 
     return (
         <div className="space-y-6">
@@ -12,7 +15,7 @@ export default async function AdminSettingsPage() {
                 subtitle="تحكم في إعدادات ومظهر الموقع بالكامل."
             />
 
-            <SettingsClient settings={settings} />
+            <SettingsClient settings={settings} diagnostics={diagnostics} />
         </div>
     );
 }

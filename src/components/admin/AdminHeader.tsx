@@ -1,16 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import { ChevronLeft, Home, Zap } from "lucide-react";
 
 const ROUTES: Record<string, { label: string; parent?: string }> = {
     "/dashboard": { label: "نظرة عامة" },
-    "/dashboard/analytics": { label: "التحليلات", parent: "/dashboard" },
+    "/dashboard/analytics": { label: "المالية والإيرادات", parent: "/dashboard" },
     "/dashboard/sales": { label: "إدارة المبيعات", parent: "/dashboard" },
-    "/dashboard/products-inventory": { label: "إدارة المنتجات والمخزون", parent: "/dashboard" },
-    "/dashboard/users-clerk": { label: "مستخدمي Clerk", parent: "/dashboard" },
+    "/dashboard/products-inventory": { label: "التنفيذ والمخزون", parent: "/dashboard" },
+    "/dashboard/users-clerk": { label: "مزامنة الهوية", parent: "/dashboard" },
     "/dashboard/users": { label: "المستخدمون", parent: "/dashboard" },
     "/dashboard/orders": { label: "الطلبات", parent: "/dashboard" },
     "/dashboard/applications": { label: "طلبات الانضمام", parent: "/dashboard" },
@@ -44,17 +43,21 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
-    const pathname = usePathname();
+    const [pathname, setPathname] = useState("");
+
+    useEffect(() => {
+        const syncPathname = () => setPathname(window.location.pathname || "");
+        syncPathname();
+        window.addEventListener("popstate", syncPathname);
+        return () => window.removeEventListener("popstate", syncPathname);
+    }, []);
+
     const crumbs = getBreadcrumbs(pathname);
     const currentRoute = ROUTES[pathname];
     const displayTitle = title ?? currentRoute?.label ?? "لوحة الإدارة";
 
     return (
-        <motion.header
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-        >
+        <header className="mb-8">
             {/* Breadcrumbs */}
             <nav className="flex items-center gap-2 text-xs text-theme-subtle mb-4 flex-wrap">
                 <Link href="/dashboard" className="hover:text-gold transition-colors flex items-center gap-1">
@@ -91,6 +94,6 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
                 </div>
                 {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
             </div>
-        </motion.header>
+        </header>
     );
 }

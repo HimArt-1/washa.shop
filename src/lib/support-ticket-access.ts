@@ -1,6 +1,6 @@
-import { currentUser } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database, SupportTicket } from "@/types/database";
 
 export type SupportTicketAccessLevel = "none" | "owner" | "admin";
@@ -25,7 +25,7 @@ export async function getSupportTicketAccess(ticketId: string): Promise<SupportT
         return { sb, ticket: null, access: "none", profileId: null };
     }
 
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) {
         return { sb, ticket: null, access: "none", profileId: null };
     }
@@ -52,7 +52,7 @@ export async function getSupportTicketAccess(ticketId: string): Promise<SupportT
 }
 
 export async function requireSupportAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) {
         throw new Error("Unauthorized");
     }

@@ -41,7 +41,7 @@ const COMMAND_ITEMS = [
     { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingCart },
     { href: "/dashboard/applications", label: "طلبات الانضمام", icon: FileText },
     { href: "/dashboard/artworks", label: "الأعمال الفنية", icon: Palette },
-    { href: "/dashboard/products-inventory", label: "المنتجات والمخزون", icon: Package },
+    { href: "/dashboard/products-inventory", label: "التنفيذ والمخزون", icon: Package },
     { href: "/dashboard/exclusive-designs", label: "التصاميم الحصرية", icon: Palette },
     { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
     { href: "/store", label: "المتجر العام", icon: ExternalLink, external: true },

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import Link from "next/link";
 import type { Announcement } from "@/lib/announcement-types";
@@ -61,8 +60,7 @@ const templateStyles: Record<string, string> = {
 
 function BannerAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: () => void }) {
     return (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className={`relative ${templateStyles[ann.template] || templateStyles.gold}`}>
+        <div className={`relative ${templateStyles[ann.template] || templateStyles.gold}`}>
             <div className="flex items-center justify-center gap-3 px-6 py-2.5 text-center">
                 <p className="text-sm font-bold">{ann.title}</p>
                 <span className="text-xs opacity-80">{ann.body}</span>
@@ -77,7 +75,7 @@ function BannerAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: 
                     </button>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -85,11 +83,11 @@ function BannerAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: 
 
 function PopupAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: () => void }) {
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        <div
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
             onClick={ann.trigger?.dismissible ? onDismiss : undefined}
         >
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+            <div
                 onClick={(e) => e.stopPropagation()}
                 className={`w-full max-w-md rounded-2xl p-6 text-center shadow-2xl ${templateStyles[ann.template] || templateStyles.gold}`}
             >
@@ -112,8 +110,8 @@ function PopupAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: (
                         فهمت
                     </button>
                 )}
-            </motion.div>
-        </motion.div>
+            </div>
+        </div>
     );
 }
 
@@ -126,7 +124,7 @@ function ToastAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: (
     }, [onDismiss]);
 
     return (
-        <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 100, opacity: 0 }}
+        <div
             className={`fixed bottom-6 left-6 z-[9999] max-w-sm rounded-xl p-4 shadow-2xl ${templateStyles[ann.template] || templateStyles.gold}`}
         >
             <div className="flex items-start gap-3">
@@ -145,7 +143,7 @@ function ToastAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: (
                     </button>
                 )}
             </div>
-        </motion.div>
+        </div>
     );
 }
 
@@ -153,9 +151,8 @@ function ToastAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: (
 
 function MarqueeAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss: () => void }) {
     return (
-        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className={`relative overflow-hidden ${templateStyles[ann.template] || templateStyles.gold}`}>
-            <div className="py-2 whitespace-nowrap animate-marquee">
+        <div className={`relative overflow-hidden ${templateStyles[ann.template] || templateStyles.gold}`}>
+            <div className="wusha-marquee-track py-2 whitespace-nowrap">
                 <span className="inline-block px-8 text-sm font-bold">{ann.title}</span>
                 <span className="inline-block px-8 text-sm opacity-80">{ann.body}</span>
                 {ann.link && ann.linkText && (
@@ -169,7 +166,7 @@ function MarqueeAnnouncement({ ann, onDismiss }: { ann: Announcement; onDismiss:
                     <X className="w-3 h-3" />
                 </button>
             )}
-        </motion.div>
+        </div>
     );
 }
 
@@ -300,43 +297,24 @@ export function AnnouncementRenderer({ announcements }: { announcements: Announc
     return (
         <>
             {/* Banners — top of page */}
-            <AnimatePresence>
-                {banners.map((a) => (
-                    <BannerAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
-                ))}
-            </AnimatePresence>
+            {banners.map((a) => (
+                <BannerAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
+            ))}
 
             {/* Marquees — under banners */}
-            <AnimatePresence>
-                {marquees.map((a) => (
-                    <MarqueeAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
-                ))}
-            </AnimatePresence>
+            {marquees.map((a) => (
+                <MarqueeAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
+            ))}
 
             {/* Popups — modal overlay */}
-            <AnimatePresence>
-                {popups.length > 0 && (
-                    <PopupAnnouncement ann={popups[0]} onDismiss={() => handleDismiss(popups[0])} />
-                )}
-            </AnimatePresence>
+            {popups.length > 0 && (
+                <PopupAnnouncement ann={popups[0]} onDismiss={() => handleDismiss(popups[0])} />
+            )}
 
             {/* Toasts — bottom corner */}
-            <AnimatePresence>
-                {toasts.map((a) => (
-                    <ToastAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
-                ))}
-            </AnimatePresence>
-
-            {/* Marquee animation CSS */}
-            <style jsx global>{`
-                @keyframes marquee {
-                    from { transform: translateX(100%); }
-                    to { transform: translateX(-100%); }
-                }
-                .animate-marquee {
-                    animation: marquee 20s linear infinite;
-                }
-            `}</style>
+            {toasts.map((a) => (
+                <ToastAnnouncement key={a.id} ann={a} onDismiss={() => handleDismiss(a)} />
+            ))}
         </>
     );
 }

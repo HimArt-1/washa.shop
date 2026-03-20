@@ -117,23 +117,24 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full sm:w-[500px] bg-theme-bg shadow-2xl z-[210] flex flex-col border-l border-white/5"
+            className="fixed top-0 right-0 h-full w-full sm:w-[500px] shadow-2xl z-[210] flex flex-col border-l border-theme-soft theme-surface-panel"
             dir="rtl"
+            style={{ backgroundColor: "var(--wusha-surface)" }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-theme-faint">
+            <div className="flex items-center justify-between p-6 border-b border-theme-subtle bg-theme-faint/40">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-theme-strong/5 flex items-center justify-center border border-theme-strong/10">
-                  <ShoppingBag className="w-5 h-5 text-theme-strong" />
+                <div className="w-10 h-10 rounded-full bg-theme-subtle flex items-center justify-center border border-theme-subtle">
+                  <ShoppingBag className="w-5 h-5 text-theme" />
                 </div>
-                <h2 className="text-xl font-bold text-theme-strong">سلة التسوق</h2>
+                <h2 className="text-xl font-bold text-theme">سلة التسوق</h2>
                 <span className="bg-gold/10 text-gold text-xs font-bold px-2.5 py-1 rounded-full border border-gold/20">
                   {items.length} قطع
                 </span>
               </div>
               <button
                 onClick={() => toggleCart(false)}
-                className="p-2.5 rounded-full hover:bg-theme-strong/5 text-theme-subtle hover:text-theme-strong transition-colors"
+                className="p-2.5 rounded-full hover:bg-theme-subtle text-theme-subtle hover:text-theme transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -143,10 +144,10 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto p-6 scrollbar-wusha">
               {items.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="w-24 h-24 rounded-full bg-theme-strong/5 flex items-center justify-center mb-2 border border-theme-strong/10">
+                  <div className="w-24 h-24 rounded-full bg-theme-subtle flex items-center justify-center mb-2 border border-theme-subtle">
                     <ShoppingBag className="w-10 h-10 text-theme-faint" />
                   </div>
-                  <h3 className="text-xl font-bold text-theme-strong">سلتك فارغة الألوان!</h3>
+                  <h3 className="text-xl font-bold text-theme">سلتك فارغة الألوان!</h3>
                   <p className="text-theme-subtle max-w-[250px]">
                     يبدو أنك لم تختر أي تحفة فنية بعد. استكشف تصاميم وشّى واضف لمستك.
                   </p>
@@ -170,10 +171,10 @@ export function CartDrawer() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={`${item.id}-${item.size || "default"}`}
-                      className="flex gap-4 p-4 rounded-2xl bg-theme-faint border border-white/5 group"
+                      className="flex gap-4 p-4 rounded-2xl theme-surface-panel group"
                     >
                       {/* Image */}
-                      <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-theme-surface flex-shrink-0 border border-white/5">
+                      <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-theme-surface flex-shrink-0 border border-theme-subtle">
                         <Image
                           src={item.image_url}
                           alt={item.title}
@@ -201,7 +202,7 @@ export function CartDrawer() {
                             {item.size && (
                               <>
                                 <span className="w-1 h-1 rounded-full bg-theme-faint" />
-                                <span className="text-xs bg-theme-strong/10 border border-theme-strong/10 text-theme px-2 py-0.5 rounded-md font-mono font-bold">
+                                <span className="text-xs bg-theme-subtle border border-theme-subtle text-theme px-2 py-0.5 rounded-md font-mono font-bold">
                                   {item.size}
                                 </span>
                               </>
@@ -210,25 +211,25 @@ export function CartDrawer() {
                         </div>
 
                         <div className="flex items-end justify-between mt-3">
-                          <span className="font-bold text-lg text-theme-strong">
+                          <span className="font-bold text-lg text-theme">
                             {item.price} <span className="text-xs font-normal text-theme-subtle">ر.س</span>
                           </span>
 
                           {/* Quantity Controls */}
-                          <div className="flex items-center bg-theme-surface border border-white/10 rounded-full overflow-hidden">
+                          <div className="flex items-center bg-theme-faint border border-theme-subtle rounded-full overflow-hidden">
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity - 1, item.size)}
-                              className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme-strong hover:bg-theme-strong/5 transition-colors disabled:opacity-30"
+                              className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
                               disabled={item.quantity <= 1}
                             >
                               <Minus className="w-3.5 h-3.5" />
                             </button>
-                            <span className="w-8 flex justify-center text-sm font-bold text-theme-strong">
+                            <span className="w-8 flex justify-center text-sm font-bold text-theme">
                               {item.quantity}
                             </span>
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1, item.size)}
-                              className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme-strong hover:bg-theme-strong/5 transition-colors disabled:opacity-30"
+                              className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
                               disabled={item.quantity >= (item.maxQuantity || 99)}
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -244,12 +245,12 @@ export function CartDrawer() {
 
             {/* Footer Summary */}
             {items.length > 0 && (
-              <div className="p-6 border-t border-white/5 bg-[color-mix(in_srgb,var(--wusha-surface)_90%,transparent)] backdrop-blur-md">
+              <div className="p-6 border-t border-theme-subtle bg-theme-faint/40 backdrop-blur-md">
                 
                 {/* Promo Code Input */}
                 <div className="mb-6">
                     {coupon ? (
-                        <div className="flex items-center justify-between p-3 bg-gold/10 border border-gold/20 rounded-xl">
+                        <div className="theme-surface-panel flex items-center justify-between p-3 rounded-xl border-gold/20 bg-gold/5">
                             <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
                                     <ShoppingBag className="w-4 h-4 text-gold" />
@@ -275,12 +276,12 @@ export function CartDrawer() {
                                     value={promoCode}
                                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                                     onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
-                                    className="flex-1 bg-theme-faint border border-theme-strong/10 rounded-xl px-4 text-sm text-theme focus:ring-1 focus:ring-gold outline-none transition-all uppercase"
+                                    className="input-dark flex-1 rounded-xl px-4 text-sm uppercase"
                                 />
                                 <button
                                     onClick={handleApplyPromo}
                                     disabled={!promoCode.trim() || isApplyingPromo}
-                                    className="px-4 py-2.5 bg-theme-strong text-theme-bg rounded-xl text-sm font-bold hover:bg-theme-strong/90 transition-colors disabled:opacity-50 min-w-[80px]"
+                                    className="px-4 py-2.5 bg-gold/10 text-gold border border-gold/20 rounded-xl text-sm font-bold hover:bg-gold/20 transition-colors disabled:opacity-50 min-w-[80px]"
                                 >
                                     {isApplyingPromo ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "تطبيق"}
                                 </button>
@@ -305,7 +306,7 @@ export function CartDrawer() {
                       </div>
                   )}
 
-                  <div className="flex justify-between text-theme-strong font-bold text-lg pt-3 border-t border-white/5">
+                  <div className="flex justify-between text-theme font-bold text-lg pt-3 border-t border-theme-subtle">
                     <span>الإجمالي</span>
                     <div className="text-left">
                         {coupon && (

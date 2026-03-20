@@ -6,8 +6,8 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { Database } from "@/types/database";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 // نحتاج حساب المسؤول فقط للاطلاع على هذه البيانات
 function getAdminSb() {
@@ -20,7 +20,7 @@ function getAdminSb() {
 
 // دالة مساعدة للتحقق من صلاحية الإدارة
 async function verifyAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return false;
 
     const supabase = getAdminSb();
@@ -242,7 +242,7 @@ export async function getLowStockAlerts(threshold: number = 5) {
                 id,
                 quantity,
                 warehouse:warehouses(name),
-                sku:skus!inner (
+                sku:product_skus!inner (
                     id,
                     sku,
                     size,

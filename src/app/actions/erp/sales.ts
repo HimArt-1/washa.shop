@@ -1,8 +1,9 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { Database, SalesMethodType } from "@/types/database";
+import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 function getAdminSb() {
     return createClient<Database>(
@@ -13,7 +14,7 @@ function getAdminSb() {
 }
 
 async function verifyAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { user: null, isAdmin: false };
     const supabase = getAdminSb();
     const { data: profile } = await supabase
@@ -116,6 +117,26 @@ export async function recordManualSale(
     } catch (e: unknown) {
         const err = e as Error;
         console.error("Sale error", err);
+        await reportAdminOperationalAlert({
+            dispatchKey: `erp:record_manual_sale_failed:${skuId}:${warehouseId}`,
+            bucketMs: 15 * 60 * 1000,
+            category: "orders",
+            severity: "warning",
+            title: "فشل تسجيل بيع يدوي",
+            message: "تعذر تسجيل عملية بيع يدوية من واجهة ERP.",
+            source: "erp.sales.record_manual",
+            link: "/dashboard/sales",
+            resourceType: "sale",
+            resourceId: skuId,
+            metadata: {
+                sku_id: skuId,
+                warehouse_id: warehouseId,
+                quantity,
+                total_price: totalPrice,
+                error: err.message || "Unknown sale error",
+            },
+            stack: err.stack ?? null,
+        });
         return { error: err.message || "حدث خطأ أثناء تسجيل المبيعات" };
     }
 }

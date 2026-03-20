@@ -255,20 +255,23 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
         let referenceImageUrl: string | undefined;
         if (state.imageFile) {
             try {
-                const { createClient } = await import("@supabase/supabase-js");
-                const sb = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                );
-                const ext = state.imageFile.name.split(".").pop() ?? "png";
-                const fileName = `design-references/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-                const { error: uploadErr } = await sb.storage.from("smart-store").upload(fileName, state.imageFile, { cacheControl: "3600", upsert: false });
-                if (!uploadErr) {
-                    const { data: urlData } = sb.storage.from("smart-store").getPublicUrl(fileName);
-                    referenceImageUrl = urlData.publicUrl;
+                const { uploadDesignReferenceImage } = await import("@/app/actions/smart-store");
+                const formData = new FormData();
+                formData.append("file", state.imageFile);
+                const uploadResult = await uploadDesignReferenceImage(formData);
+                if (uploadResult.success) {
+                    referenceImageUrl = uploadResult.url;
+                } else {
+                    console.error("Image upload failed:", uploadResult.error);
+                    alert(uploadResult.error || "تعذر رفع الصورة المرجعية الآن.");
+                    setState((s) => ({ ...s, isSending: false }));
+                    return;
                 }
             } catch (err) {
                 console.error("Image upload failed:", err);
+                alert("تعذر رفع الصورة المرجعية الآن. حاول مرة أخرى.");
+                setState((s) => ({ ...s, isSending: false }));
+                return;
             }
         }
 
@@ -296,13 +299,25 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
             });
             if (result.error) {
                 console.error("Order creation error:", result.error);
-            } else if (result.orderId) {
-                storeOrderId(result.orderId, result.trackerToken);
-                orderNumber = result.orderNumber;
-                setActiveOrderId(result.orderId);
+                alert(result.error || "تعذر إنشاء الطلب الآن.");
+                setState((s) => ({ ...s, isSending: false }));
+                return;
             }
+
+            if (!result.orderId) {
+                alert("تعذر إنشاء الطلب الآن. حاول مرة أخرى.");
+                setState((s) => ({ ...s, isSending: false }));
+                return;
+            }
+
+            storeOrderId(result.orderId, result.trackerToken);
+            orderNumber = result.orderNumber;
+            setActiveOrderId(result.orderId);
         } catch (err) {
             console.error("submitDesignOrder failed:", err);
+            alert("تعذر إرسال الطلب الآن. حاول مرة أخرى.");
+            setState((s) => ({ ...s, isSending: false }));
+            return;
         }
 
         // 2. Build summary message with order number
@@ -520,11 +535,59 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                             />
                         )}
                         {state.step === 9 && (
-                            <StepSubmit state={state} garmentStudioMockups={garmentStudioMockups} onBack={goBack} onSend={handleSend} />
+                            <StepSubmit state={state} garmentStudioMockups={garmentStudioMockups} onBack={goBack} onSend={triggerSend} />
                         )}
                     </motion.div>
                 </AnimatePresence>
             </div>
+
+            <AnimatePresence>
+                {showAuthModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+                    >
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowAuthModal(false)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                            className="relative z-10 w-full max-w-md rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(10,10,10,0.96))] p-6 shadow-2xl"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setShowAuthModal(false)}
+                                className="absolute left-4 top-4 rounded-full border border-white/10 bg-white/[0.04] p-2 text-theme-subtle transition-colors hover:text-theme"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-gold/20 bg-gold/10 text-gold">
+                                <Lock className="h-6 w-6" />
+                            </div>
+                            <h3 className="mt-5 text-2xl font-black text-theme">أكمل الدخول أولاً</h3>
+                            <p className="mt-3 text-sm leading-7 text-theme-subtle">
+                                إرسال طلب التصميم يتطلب تسجيل الدخول حتى نحفظ الطلب ونربطه بحسابك وتستطيع متابعته لاحقًا.
+                            </p>
+
+                            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                                <SignInButton>
+                                    <button className="inline-flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-gold to-gold-light px-4 py-3 text-sm font-bold text-bg transition-transform hover:scale-[1.01]">
+                                        تسجيل الدخول
+                                    </button>
+                                </SignInButton>
+                                <SignUpButton>
+                                    <button className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold">
+                                        إنشاء حساب
+                                    </button>
+                                </SignUpButton>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -1704,6 +1767,7 @@ function SummaryRow({ label, value, color }: { label: string; value?: string; co
                 {color && <div className="w-4 h-4 rounded-full border border-theme-soft" style={{ backgroundColor: color }} />}
                 <span className="text-sm font-medium text-theme">{value ?? "—"}</span>
             </div>
+
         </div>
     );
 }

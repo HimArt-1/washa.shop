@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Send, ArrowRight, Loader2, CheckCircle2, Clock, X, MessageSquare, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import { createSupportMessage, adminUpdateSupportTicketStatus } from "@/app/actions/support-tickets";
@@ -20,10 +21,12 @@ type MessageWithSender = SupportMessage & {
 };
 
 export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: TicketWithProfile, initialMessages: MessageWithSender[] }) {
+    const router = useRouter();
     const [messages, setMessages] = useState(initialMessages);
     const [newMessage, setNewMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -52,25 +55,38 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: Ti
         if (!newMessage.trim() || isSubmitting) return;
 
         setIsSubmitting(true);
-        const res = await createSupportMessage(ticket.id, newMessage);
-        if (res.success) {
-            setNewMessage("");
-            window.location.reload();
-        } else {
-            console.error("Failed to send reply", res.error);
+        setError(null);
+        try {
+            const res = await createSupportMessage(ticket.id, newMessage);
+            if (res.success) {
+                setNewMessage("");
+                router.refresh();
+            } else {
+                setError(res.error || "فشل إرسال الرد");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل إرسال الرد");
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     const handleUpdateStatus = async (newStatus: SupportTicketStatus) => {
+        if (ticket.status === newStatus) return;
         setIsUpdatingStatus(true);
-        const res = await adminUpdateSupportTicketStatus(ticket.id, newStatus);
-        if (res.success) {
-            window.location.reload();
-        } else {
-            console.error("Failed to update status", res.error);
+        setError(null);
+        try {
+            const res = await adminUpdateSupportTicketStatus(ticket.id, newStatus);
+            if (res.success) {
+                router.refresh();
+            } else {
+                setError(res.error || "فشل تحديث حالة التذكرة");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل تحديث حالة التذكرة");
+        } finally {
+            setIsUpdatingStatus(false);
         }
-        setIsUpdatingStatus(false);
     };
 
     return (
@@ -177,6 +193,11 @@ export function AdminSupportTicketChat({ ticket, initialMessages }: { ticket: Ti
 
             {/* Input Area */}
             <div className="p-4 sm:p-6 border-t border-theme-subtle bg-theme-surface">
+                {error ? (
+                    <div className="mb-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {error}
+                    </div>
+                ) : null}
                 <form onSubmit={handleSubmit} className="relative flex items-center gap-3">
                     <div className="shrink-0 hidden sm:flex items-center justify-center w-10 h-10 rounded-full bg-white/[0.05] border border-theme-subtle">
                         <ShieldAlert className="w-5 h-5 text-theme-subtle" />

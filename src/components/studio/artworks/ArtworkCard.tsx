@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { MoreVertical, Trash2, Edit, ShoppingBag, Loader2 } from "lucide-react";
+import { MoreVertical, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import { deleteArtwork } from "@/app/actions/artworks";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -39,10 +39,10 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="group relative bg-white rounded-2xl overflow-hidden border border-ink/5 hover:shadow-lg transition-all duration-300"
+            className="group theme-surface-panel relative rounded-[1.75rem] overflow-hidden hover:shadow-lg transition-all duration-300"
         >
             {/* Image */}
-            <div className="relative aspect-[3/4] bg-sand/10">
+            <div className="relative aspect-[3/4] bg-[color:color-mix(in_srgb,var(--wusha-text)_4%,transparent)]">
                 <Image
                     src={artwork.image_url}
                     alt={artwork.title}
@@ -76,7 +76,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                 <div className="absolute top-3 left-3">
                     <button
                         onClick={() => setShowMenu(!showMenu)}
-                        className="p-1.5 bg-white/20 backdrop-blur-md rounded-full text-theme hover:bg-white/40 transition-colors"
+                        className="theme-icon-button h-9 w-9 bg-[color:rgba(15,15,15,0.32)] text-on-dark border-white/10 hover:bg-[color:rgba(15,15,15,0.5)]"
                     >
                         <MoreVertical className="w-4 h-4" />
                     </button>
@@ -87,13 +87,13 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className="absolute top-full left-0 mt-2 w-32 bg-white rounded-xl shadow-xl border border-ink/5 overflow-hidden z-10"
+                                className="absolute top-full left-0 mt-2 w-36 theme-surface-panel rounded-xl shadow-xl overflow-hidden z-10"
                                 onMouseLeave={() => setShowMenu(false)}
                             >
                                 <button
                                     disabled={isDeleting}
                                     onClick={handleDelete}
-                                    className="w-full text-right px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors disabled:opacity-50"
+                                    className="w-full text-right px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors disabled:opacity-50"
                                 >
                                     {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                                     حذف العمل
@@ -105,11 +105,11 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
             </div>
 
             {/* Info */}
-            <div className="p-4">
-                <h3 className="font-bold text-ink truncate" title={artwork.title}>
+            <div className="p-4 bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)]">
+                <h3 className="font-bold text-theme truncate" title={artwork.title}>
                     {artwork.title}
                 </h3>
-                <p className="text-ink/40 text-xs mt-1">
+                <p className="text-theme-faint text-xs mt-1">
                     {new Date(artwork.created_at).toLocaleDateString('ar-SA')}
                 </p>
             </div>

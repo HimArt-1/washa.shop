@@ -56,7 +56,7 @@ export default function FAQPage() {
 
             <div className="container-wusha relative z-10">
                 {/* Header */}
-                <div className="text-center mb-16">
+                <div className="theme-surface-panel rounded-[2rem] text-center mb-16 px-6 py-10 sm:px-10">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold/10 border border-gold/20 rounded-full text-gold text-xs font-bold mb-6">
                         <HelpCircle className="w-3.5 h-3.5" />
                         مركز المساعدة
@@ -74,7 +74,7 @@ export default function FAQPage() {
                     {faqs.map((faq, i) => (
                         <details
                             key={i}
-                            className="group bg-theme-subtle border border-theme-soft rounded-2xl overflow-hidden transition-all hover:border-gold/20"
+                            className="group theme-surface-panel rounded-[1.75rem] overflow-hidden transition-all hover:border-gold/20"
                         >
                             <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer list-none select-none">
                                 <span className="font-bold text-theme-strong text-base">{faq.q}</span>

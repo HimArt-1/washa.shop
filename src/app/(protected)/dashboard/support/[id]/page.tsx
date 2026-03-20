@@ -1,10 +1,10 @@
 import { getSupportTicketDetails } from "@/app/actions/support-tickets";
-import { AdminSupportTicketChat } from "@/components/admin/support/AdminSupportTicketChat";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { SupportCaseWorkspace } from "@/components/admin/support/SupportCaseWorkspace";
 import { notFound } from "next/navigation";
 
 export const metadata = {
-    title: "محادثة الدعم | لوحة الإدارة",
+    title: "مساحة عمل الدعم | لوحة الإدارة",
 };
 
 export default async function AdminSupportTicketPage({ params }: { params: { id: string } }) {
@@ -18,9 +18,9 @@ export default async function AdminSupportTicketPage({ params }: { params: { id:
         <div className="space-y-6">
             <AdminHeader
                 title={`تذكرة: ${details.ticket.subject}`}
-                subtitle={`#${details.ticket.id.slice(0, 8)} — ${(details.ticket.profile as any)?.display_name || "مستخدم"}`}
+                subtitle={`#${details.ticket.id.slice(0, 8)} — مساحة عمل تركز على SLA، قرار الحالة، وسياق العميل في نفس الشاشة.`}
             />
-            <AdminSupportTicketChat ticket={details.ticket as any} initialMessages={details.messages as any} />
+            <SupportCaseWorkspace ticket={details.ticket as any} initialMessages={details.messages as any} />
         </div>
     );
 }

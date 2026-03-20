@@ -51,19 +51,21 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Image */}
-                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-theme-subtle bg-surface/30">
-                        <Image
-                            src={artwork.image_url}
-                            alt={artwork.title}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 1024px) 100vw, 50vw"
-                            priority
-                        />
+                    <div className="theme-surface-panel rounded-[2rem] p-4">
+                        <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle">
+                            <Image
+                                src={artwork.image_url}
+                                alt={artwork.title}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                                priority
+                            />
+                        </div>
                     </div>
 
                     {/* Info */}
-                    <div className="flex flex-col justify-center">
+                    <div className="theme-surface-panel rounded-[2rem] p-8 lg:p-10 flex flex-col justify-center">
                         {/* Category Badge */}
                         {artwork.category && (
                             <span className="inline-block w-fit text-xs bg-gold/10 text-gold px-3 py-1 rounded-full mb-4">
@@ -104,24 +106,24 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                         {/* Details Grid */}
                         <div className="grid grid-cols-2 gap-4 mb-8">
                             {artwork.medium && (
-                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                <div className="p-3 bg-theme-faint border border-theme-subtle rounded-xl">
                                     <span className="text-[10px] text-theme-faint block">الخامة</span>
                                     <span className="text-sm text-theme-soft">{artwork.medium}</span>
                                 </div>
                             )}
                             {artwork.dimensions && (
-                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                <div className="p-3 bg-theme-faint border border-theme-subtle rounded-xl">
                                     <span className="text-[10px] text-theme-faint block">الأبعاد</span>
                                     <span className="text-sm text-theme-soft">{artwork.dimensions}</span>
                                 </div>
                             )}
                             {artwork.year && (
-                                <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                                <div className="p-3 bg-theme-faint border border-theme-subtle rounded-xl">
                                     <span className="text-[10px] text-theme-faint block">السنة</span>
                                     <span className="text-sm text-theme-soft">{artwork.year}</span>
                                 </div>
                             )}
-                            <div className="p-3 bg-theme-faint border border-theme-faint rounded-xl">
+                            <div className="p-3 bg-theme-faint border border-theme-subtle rounded-xl">
                                 <span className="text-[10px] text-theme-faint block">المشاهدات</span>
                                 <span className="text-sm text-theme-soft">{artwork.views_count || 0}</span>
                             </div>
@@ -144,7 +146,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                     <Link
                                         key={tag}
                                         href={`/search?q=${tag}`}
-                                        className="text-[10px] bg-theme-subtle text-theme-faint px-3 py-1 rounded-full hover:bg-gold/10 hover:text-gold transition-colors"
+                                        className="text-[10px] bg-theme-faint border border-theme-subtle text-theme-faint px-3 py-1 rounded-full hover:bg-gold/10 hover:text-gold hover:border-gold/20 transition-colors"
                                     >
                                         #{tag}
                                     </Link>
@@ -166,7 +168,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                 <Link
                                     key={item.id}
                                     href={`/artworks/${item.id}`}
-                                    className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all"
+                                    className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all"
                                 >
                                     <div className="aspect-square relative">
                                         <Image
@@ -177,7 +179,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                             sizes="(max-width: 768px) 50vw, 25vw"
                                         />
                                     </div>
-                                    <div className="p-3">
+                                    <div className="p-4">
                                         <h3 className="text-sm font-bold text-theme truncate">{item.title}</h3>
                                         <p className="text-xs text-theme-faint mt-1">{item.artist?.display_name}</p>
                                     </div>

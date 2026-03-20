@@ -11,31 +11,31 @@
 
 :root {
   --font-arabic: "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
-  /* الألوان الأساسية — Dark Heritage + Neon (الوضع الداكن) */
-  --wusha-bg: #080808;
-  --wusha-surface: #111111;
-  --wusha-surface-2: #1a1a1a;
-  --wusha-border: rgba(206, 174, 127, 0.1);
-  --wusha-border-strong: rgba(206, 174, 127, 0.25);
-  --wusha-text: #f0ebe3;
-  --wusha-text-muted: rgba(240, 235, 227, 0.5);
-  --wusha-gold: #ceae7f;
-  --wusha-gold-light: #e0c99a;
+  /* الألوان الأساسية — Light Heritage (الافتراضي) */
+  --wusha-bg: #f4ede3;
+  --wusha-surface: #fffdfa;
+  --wusha-surface-2: #eee4d5;
+  --wusha-border: rgba(90, 62, 43, 0.14);
+  --wusha-border-strong: rgba(90, 62, 43, 0.24);
+  --wusha-text: #1a1612;
+  --wusha-text-muted: rgba(26, 22, 18, 0.55);
+  --wusha-gold: #9a7b3d;
+  --wusha-gold-light: #b8964f;
   --wusha-earth: #5A3E2B;
-  --wusha-mist: #9D8BB1;
-  --wusha-forest: #2a7a5a;
-  --wusha-ink: #f0ebe3;
+  --wusha-mist: #6b5b7a;
+  --wusha-forest: #1e5c42;
+  --wusha-ink: #1a1612;
   /* Neon accents */
-  --neon-gold: rgba(206, 174, 127, 0.6);
-  --neon-cyan: rgba(34, 211, 238, 0.5);
-  --neon-mist: rgba(157, 139, 177, 0.5);
+  --neon-gold: rgba(154, 123, 61, 0.35);
+  --neon-cyan: rgba(34, 211, 238, 0.25);
+  --neon-mist: rgba(107, 91, 122, 0.3);
   /* Glass / surfaces */
-  --glass-bg: rgba(17, 17, 17, 0.7);
-  --glass-bg-hover: rgba(26, 26, 26, 0.8);
-  --glass-premium-from: rgba(17, 17, 17, 0.85);
-  --glass-premium-to: rgba(26, 26, 26, 0.6);
-  --glass-border: rgba(206, 174, 127, 0.15);
-  --noise-opacity: 0.025;
+  --glass-bg: rgba(255, 253, 248, 0.82);
+  --glass-bg-hover: rgba(244, 237, 227, 0.96);
+  --glass-premium-from: rgba(255, 253, 248, 0.92);
+  --glass-premium-to: rgba(238, 228, 213, 0.76);
+  --glass-border: rgba(90, 62, 43, 0.15);
+  --noise-opacity: 0.015;
 
   /* مساحات */
   --space-xs: 0.25rem;
@@ -56,33 +56,33 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   النمط الفاتح — Light Mode
-   تراثي دافئ · كريم · ذهبي
+   النمط الداكن — Dark Mode
+   تراثي عميق · ذهبي · نيون خفيف
 ═══════════════════════════════════════════════════════════ */
 
-[data-theme="light"] {
-  --wusha-bg: #faf8f5;
-  --wusha-surface: #fffefb;
-  --wusha-surface-2: #f5f2eb;
-  --wusha-border: rgba(90, 62, 43, 0.12);
-  --wusha-border-strong: rgba(90, 62, 43, 0.22);
-  --wusha-text: #1a1612;
-  --wusha-text-muted: rgba(26, 22, 18, 0.55);
-  --wusha-gold: #9a7b3d;
-  --wusha-gold-light: #b8964f;
+[data-theme="dark"] {
+  --wusha-bg: #080808;
+  --wusha-surface: #111111;
+  --wusha-surface-2: #1a1a1a;
+  --wusha-border: rgba(206, 174, 127, 0.1);
+  --wusha-border-strong: rgba(206, 174, 127, 0.25);
+  --wusha-text: #f0ebe3;
+  --wusha-text-muted: rgba(240, 235, 227, 0.5);
+  --wusha-gold: #ceae7f;
+  --wusha-gold-light: #e0c99a;
   --wusha-earth: #5A3E2B;
-  --wusha-mist: #6b5b7a;
-  --wusha-forest: #1e5c42;
-  --wusha-ink: #1a1612;
-  --neon-gold: rgba(154, 123, 61, 0.35);
-  --neon-cyan: rgba(34, 211, 238, 0.25);
-  --neon-mist: rgba(107, 91, 122, 0.3);
-  --glass-bg: rgba(255, 254, 251, 0.75);
-  --glass-bg-hover: rgba(245, 242, 235, 0.9);
-  --glass-premium-from: rgba(255, 254, 251, 0.9);
-  --glass-premium-to: rgba(245, 242, 235, 0.7);
-  --glass-border: rgba(90, 62, 43, 0.15);
-  --noise-opacity: 0.015;
+  --wusha-mist: #9D8BB1;
+  --wusha-forest: #2a7a5a;
+  --wusha-ink: #f0ebe3;
+  --neon-gold: rgba(206, 174, 127, 0.6);
+  --neon-cyan: rgba(34, 211, 238, 0.5);
+  --neon-mist: rgba(157, 139, 177, 0.5);
+  --glass-bg: rgba(17, 17, 17, 0.7);
+  --glass-bg-hover: rgba(26, 26, 26, 0.8);
+  --glass-premium-from: rgba(17, 17, 17, 0.85);
+  --glass-premium-to: rgba(26, 26, 26, 0.6);
+  --glass-border: rgba(206, 174, 127, 0.15);
+  --noise-opacity: 0.025;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -129,6 +129,12 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  background-color: var(--wusha-bg);
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -139,6 +145,9 @@ body {
   min-height: 100dvh;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--duration-normal) var(--ease-smooth),
+    color var(--duration-fast) var(--ease-smooth);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -218,10 +227,149 @@ h6 {
   transition: all 0.5s var(--ease-smooth);
 }
 
+@keyframes wusha-marquee {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.wusha-marquee-track {
+  animation: wusha-marquee 20s linear infinite;
+}
+
 .glass-card:hover {
   border-color: var(--wusha-border-strong);
   background: var(--glass-bg-hover);
   box-shadow: 0 8px 32px color-mix(in srgb, var(--wusha-gold) 8%, transparent);
+}
+
+.theme-surface-panel {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--wusha-surface) 98%, transparent),
+    color-mix(in srgb, var(--wusha-surface-2) 88%, transparent)
+  );
+  border: 1px solid color-mix(in srgb, var(--wusha-text) 9%, transparent);
+  box-shadow:
+    0 26px 80px color-mix(in srgb, var(--wusha-earth) 10%, transparent),
+    0 10px 28px color-mix(in srgb, var(--wusha-gold) 6%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--wusha-surface) 72%, transparent);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+[data-theme="dark"] .theme-surface-panel {
+  box-shadow:
+    0 20px 60px color-mix(in srgb, var(--wusha-bg) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--wusha-text) 4%, transparent);
+}
+
+.theme-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  color: color-mix(in srgb, var(--wusha-text) 72%, transparent);
+  background-color: color-mix(in srgb, var(--wusha-text) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wusha-text) 9%, transparent);
+  transition:
+    transform var(--duration-fast) var(--ease-smooth),
+    background-color var(--duration-fast) var(--ease-smooth),
+    color var(--duration-fast) var(--ease-smooth),
+    border-color var(--duration-fast) var(--ease-smooth);
+}
+
+.theme-icon-button:hover {
+  color: var(--wusha-gold);
+  background-color: color-mix(in srgb, var(--wusha-gold) 9%, transparent);
+  border-color: color-mix(in srgb, var(--wusha-gold) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-pill {
+  border: 1px solid color-mix(in srgb, var(--wusha-text) 10%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--wusha-surface) 94%, transparent),
+      color-mix(in srgb, var(--wusha-surface-2) 72%, transparent)
+    );
+  color: var(--wusha-text);
+  box-shadow:
+    0 14px 34px color-mix(in srgb, var(--wusha-bg) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--wusha-text) 4%, transparent);
+}
+
+.theme-toggle-pill:hover {
+  border-color: color-mix(in srgb, var(--wusha-gold) 18%, transparent);
+}
+
+.public-shell {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 86% 8%, color-mix(in srgb, var(--wusha-gold) 22%, transparent) 0%, transparent 28%),
+    radial-gradient(circle at 16% 18%, color-mix(in srgb, var(--wusha-mist) 16%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at 55% 82%, color-mix(in srgb, var(--wusha-forest) 12%, transparent) 0%, transparent 26%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--wusha-surface) 94%, var(--wusha-bg)) 0%,
+      color-mix(in srgb, var(--wusha-bg) 92%, var(--wusha-surface)) 42%,
+      color-mix(in srgb, var(--wusha-bg) 84%, var(--wusha-surface-2)) 100%
+    );
+}
+
+.public-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--wusha-surface) 12%, transparent) 0%, transparent 20%, transparent 80%, color-mix(in srgb, var(--wusha-gold) 4%, transparent) 100%);
+}
+
+.public-stage {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+.public-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.public-orb-primary {
+  top: 4rem;
+  right: -5rem;
+  width: 18rem;
+  height: 18rem;
+  background: color-mix(in srgb, var(--wusha-gold) 28%, transparent);
+}
+
+.public-orb-secondary {
+  top: 8rem;
+  left: -4rem;
+  width: 16rem;
+  height: 16rem;
+  background: color-mix(in srgb, var(--wusha-mist) 24%, transparent);
+}
+
+.public-orb-tertiary {
+  bottom: 8rem;
+  left: 35%;
+  width: 14rem;
+  height: 14rem;
+  background: color-mix(in srgb, var(--wusha-forest) 20%, transparent);
 }
 
 /* ═══════════════════════════════════════════════════════════

@@ -13,13 +13,13 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
         notFound();
     }
 
-    const { profile, orders, tickets, stats } = customer;
+    const { profile, orders, tickets, application, identity, stats } = customer;
 
     return (
         <div className="space-y-6">
             <AdminHeader
-                title={String(profile.display_name || "مستخدم")}
-                subtitle={`@${profile.username || "—"} · ${String(profile.role || "subscriber")}`}
+                title="Identity Case"
+                subtitle={`${String(profile.display_name || "مستخدم")} · @${profile.username || "—"}`}
                 actions={
                     <Link href="/dashboard/users"
                         className="px-4 py-2 text-xs text-theme-subtle hover:text-theme-soft border border-theme-subtle rounded-lg hover:bg-theme-subtle transition-all">
@@ -31,6 +31,8 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
                 profile={profile}
                 orders={orders}
                 tickets={tickets}
+                application={application}
+                identity={identity}
                 stats={stats}
             />
         </div>

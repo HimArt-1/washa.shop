@@ -1,19 +1,8 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { createClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { AdminSidebar } from "@/components/admin/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar";
-
-function getAdminSupabase() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-        console.error("[Dashboard] Missing Supabase env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
-        return null;
-    }
-    return createClient(url, key, { auth: { persistSession: false } });
-}
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 
 export default async function DashboardLayout({
     children,
@@ -21,24 +10,16 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     try {
-        const user = await currentUser();
+        const user = await getCurrentUserOrDevAdmin();
         if (!user) redirect("/sign-in");
 
-        const supabase = getAdminSupabase();
-        if (!supabase) redirect("/");
-
-        const { data: profile, error } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("clerk_id", user.id)
-            .single();
-
-        if (error) {
-            console.error("[Dashboard] Profile fetch error:", error.message, "clerk_id:", user.id);
+        const { supabase, profile, isAdmin, bootstrapped } = await resolveAdminAccess(user);
+        if (bootstrapped) {
+            console.log("[Dashboard] Bootstrapped first admin for clerk_id:", user.id);
         }
 
-        if (!profile || profile.role !== "admin") {
-            console.log("[Dashboard] Access denied for clerk_id:", user.id, "role:", profile?.role);
+        if (!profile || !isAdmin) {
+            console.log("[Dashboard] Access denied for clerk_id:", user.id, "role:", profile?.role ?? null);
             redirect("/");
         }
 

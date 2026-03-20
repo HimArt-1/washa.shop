@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { Database } from "@/types/database";
 import { generateNextSKU, getUnitSerialsForPrint } from "@/lib/product-identifiers";
+import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 // Create Admin Supabase Client
 function getAdminSb() {
@@ -16,7 +18,7 @@ function getAdminSb() {
 
 // Helper to verify admin role
 async function verifyAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { user: null, isAdmin: false };
 
     const supabase = getAdminSb();
@@ -195,8 +197,111 @@ export async function adjustInventory(
     } catch (e: unknown) {
         const err = e as Error;
         console.error("Inventory error", err);
+        await reportAdminOperationalAlert({
+            dispatchKey: `erp:adjust_inventory_failed:${skuId}:${warehouseId}:${transactionType}`,
+            bucketMs: 15 * 60 * 1000,
+            category: "system",
+            severity: "warning",
+            title: "فشل تعديل مخزون يدوي",
+            message: "تعذر تنفيذ تعديل يدوي على المخزون من واجهة ERP.",
+            source: "erp.inventory.adjust",
+            link: "/dashboard/inventory",
+            resourceType: "inventory_level",
+            resourceId: `${skuId}:${warehouseId}`,
+            metadata: {
+                sku_id: skuId,
+                warehouse_id: warehouseId,
+                quantity_change: quantityChange,
+                transaction_type: transactionType,
+                error: err.message || "Unknown inventory error",
+            },
+            stack: err.stack ?? null,
+        });
         return { error: err.message || "حدث خطأ" };
     }
+}
+
+type BulkRestockPlanItem = {
+    id?: string;
+    kind?: "restock" | "sync";
+    skuId: string | null;
+    warehouseId: string | null;
+    quantity: number;
+    title?: string;
+    sku?: string;
+    warehouse?: string;
+};
+
+export async function bulkExecuteRestockPlan(input: {
+    items: BulkRestockPlanItem[];
+    notes?: string;
+}) {
+    const { isAdmin } = await verifyAdmin();
+    if (!isAdmin) return { error: "غير مصرح" };
+
+    const sourceItems = Array.isArray(input.items) ? input.items.slice(0, 25) : [];
+    const actionableItems = sourceItems.filter(
+        (item): item is BulkRestockPlanItem & { skuId: string; warehouseId: string } =>
+            item.kind !== "sync" &&
+            Boolean(item.skuId) &&
+            Boolean(item.warehouseId) &&
+            Number.isFinite(Number(item.quantity)) &&
+            Number(item.quantity) > 0
+    );
+
+    if (actionableItems.length === 0) {
+        return { error: "لا توجد عناصر قابلة للتنفيذ في هذه الدفعة." };
+    }
+
+    const notes = input.notes?.trim();
+    const results: Array<{
+        id: string;
+        title: string;
+        sku: string;
+        warehouse: string;
+        quantity: number;
+        success: boolean;
+        newQuantity?: number;
+        error?: string;
+    }> = [];
+
+    for (const item of actionableItems) {
+        const response = await adjustInventory(
+            item.skuId,
+            item.warehouseId,
+            Number(item.quantity),
+            "addition",
+            notes ? `تنفيذ جماعي من مركز المخزون: ${notes}` : "تنفيذ جماعي من مركز المخزون"
+        );
+
+        results.push({
+            id: item.id || `${item.skuId}:${item.warehouseId}`,
+            title: item.title || "عنصر غير محدد",
+            sku: item.sku || "بدون SKU",
+            warehouse: item.warehouse || "مستودع غير محدد",
+            quantity: Number(item.quantity),
+            success: !("error" in response),
+            newQuantity: "newQuantity" in response ? response.newQuantity : undefined,
+            error: "error" in response ? response.error : undefined,
+        });
+    }
+
+    revalidatePath("/dashboard/products-inventory");
+    revalidatePath("/dashboard/inventory");
+
+    const succeeded = results.filter((item) => item.success).length;
+    const failed = results.length - succeeded;
+    const skipped = sourceItems.length - actionableItems.length;
+
+    return {
+        success: failed === 0,
+        processed: sourceItems.length,
+        actionable: actionableItems.length,
+        skipped,
+        succeeded,
+        failed,
+        results,
+    };
 }
 
 // ─── Enhanced Inventory with Sales Data ─────────────────

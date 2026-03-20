@@ -54,7 +54,7 @@ export function SupportClient() {
             <div className="max-w-4xl mx-auto space-y-16">
 
                 {/* --- HEADER & DIRECT CHAT --- */}
-                <section className="text-center space-y-6">
+                <section className="theme-surface-panel rounded-[2rem] text-center space-y-6 px-6 py-10 sm:px-10">
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block p-4 rounded-full bg-gold/10 text-gold mb-2">
                         <MessageSquareText className="w-10 h-10" />
                     </motion.div>
@@ -65,16 +65,16 @@ export function SupportClient() {
                         سواءً كان عندك استفسار عن طلبك، أو تبغى تصمم قطعتك الخاصة، نحن هنا لخدمتك دائماً.
                     </motion.p>
                     
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="pt-6">
+                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="pt-2">
                         <button
                             onClick={openGeneralChat}
-                            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-gold to-gold-light text-bg font-bold rounded-full overflow-hidden hover:shadow-xl hover:shadow-gold/20 transition-all duration-300"
+                            className="group relative inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-gold to-gold-light text-[var(--wusha-bg)] font-bold rounded-full overflow-hidden hover:shadow-xl hover:shadow-gold/20 transition-all duration-300"
                         >
                             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
                             <MessageSquareText className="w-5 h-5 relative z-10" />
                             <span className="relative z-10">محادثة فورية مع الفريق</span>
                         </button>
-                        <p className="text-xs text-theme-faint mt-4">الرد خلال دقائق في أوقات العمل الرسمية 🚀</p>
+                        <p className="text-xs text-theme-faint mt-4">الرد خلال دقائق في أوقات العمل الرسمية.</p>
                     </motion.div>
                 </section>
 
@@ -93,7 +93,7 @@ export function SupportClient() {
                                     <motion.div
                                         key={index}
                                         initial={false}
-                                        className={`rounded-2xl border transition-colors duration-300 ${isOpen ? "border-gold/30 bg-gold/5" : "border-theme-soft bg-surface/50 hover:border-theme-subtle"}`}
+                                        className={`theme-surface-panel rounded-2xl transition-colors duration-300 ${isOpen ? "border-gold/30 bg-gold/5" : "hover:border-theme-subtle"}`}
                                     >
                                         <button
                                             onClick={() => setOpenFaq(isOpen ? null : index)}
@@ -125,7 +125,7 @@ export function SupportClient() {
 
                     {/* --- TICKET FORM SECTION --- */}
                     <div className="md:col-span-2">
-                        <div className="bg-surface/50 border border-theme-soft rounded-3xl p-6 sm:p-8 sticky top-32">
+                        <div className="theme-surface-panel rounded-3xl p-6 sm:p-8 sticky top-32">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2.5 rounded-xl bg-theme-subtle text-theme">
                                     <Ticket className="w-5 h-5" />
@@ -145,7 +145,7 @@ export function SupportClient() {
                             ) : (
                                 <form onSubmit={handleTicketSubmit} className="space-y-4">
                                     {status.error && (
-                                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 bg-red-500/20 text-red-200 text-xs text-center font-medium">
+                                        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs text-center font-medium">
                                             {status.error}
                                         </div>
                                     )}
@@ -156,7 +156,7 @@ export function SupportClient() {
                                             type="text"
                                             value={form.name}
                                             onChange={e => setForm({ ...form, name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-theme-subtle/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/40 transition-colors"
+                                            className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                                             placeholder="اكتب اسمك"
                                         />
                                     </div>
@@ -167,7 +167,7 @@ export function SupportClient() {
                                             type="email"
                                             value={form.email}
                                             onChange={e => setForm({ ...form, email: e.target.value })}
-                                            className="w-full px-4 py-3 bg-theme-subtle/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/40 transition-colors"
+                                            className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                                             placeholder="user@example.com"
                                             dir="ltr"
                                         />
@@ -179,7 +179,7 @@ export function SupportClient() {
                                             type="text"
                                             value={form.subject}
                                             onChange={e => setForm({ ...form, subject: e.target.value })}
-                                            className="w-full px-4 py-3 bg-theme-subtle/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/40 transition-colors"
+                                            className="input-dark w-full px-4 py-3 rounded-xl text-sm"
                                             placeholder="مثال: استفسار عن شحنة، مساعدة تقنية..."
                                         />
                                     </div>
@@ -190,13 +190,13 @@ export function SupportClient() {
                                             rows={4}
                                             value={form.message}
                                             onChange={e => setForm({ ...form, message: e.target.value })}
-                                            className="w-full px-4 py-3 bg-theme-subtle/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/40 transition-colors resize-none"
+                                            className="input-dark w-full px-4 py-3 rounded-xl text-sm resize-none"
                                             placeholder="اكتب تفاصيل مشكلتك أو استفسارك هنا بكل وضوح..."
                                         />
                                     </div>
                                     <button
                                         disabled={status.loading}
-                                        className="w-full flex justify-center items-center gap-2 py-3.5 rounded-xl bg-theme text-bg font-bold text-sm hover:bg-gold transition-colors disabled:opacity-50 disabled:pointer-events-none mt-2"
+                                        className="w-full flex justify-center items-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-[var(--wusha-bg)] font-bold text-sm hover:shadow-xl hover:shadow-gold/20 transition-all disabled:opacity-50 disabled:pointer-events-none mt-2"
                                     >
                                         {status.loading ? (
                                             <div className="w-5 h-5 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />

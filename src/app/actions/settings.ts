@@ -1,9 +1,16 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 import { generateNextSKU } from "@/lib/product-identifiers";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import {
+    DEFAULT_OPERATIONAL_RULES,
+    getOperationalRules,
+    normalizeOperationalRules,
+    type OperationalRulesConfig,
+} from "@/lib/operational-rules";
+import { getInventoryWithSales } from "@/app/actions/erp/inventory";
 
 // ─── Admin Supabase Client ──────────────────────────────────
 
@@ -20,66 +27,209 @@ function getAdminSupabase() {
 }
 
 async function requireAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) throw new Error("Unauthorized");
     const supabase = getAdminSupabase();
     const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("id, role")
         .eq("clerk_id", user.id)
         .single();
     if (profile?.role !== "admin") throw new Error("Forbidden");
-    return user;
+    return { user, profileId: profile.id as string | null };
 }
 
 export type SiteSettingsType = {
-        visibility: {
-            gallery?: boolean;
-            store?: boolean;
-            signup?: boolean;
-            join?: boolean;
-            join_artist?: boolean;
-            ai_section?: boolean;
-            hero_auth_buttons?: boolean;
-            design_piece?: boolean;
-        };
-        site_info: Record<string, string>;
-        shipping: Record<string, number>;
-        creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
-        product_identifiers?: { prefix?: string; product_code_template?: string; sku_template?: string; type_map?: Record<string, string> };
-        ai_simulation?: {
-            step1_image?: string;
-            step1_color_name?: string;
-            step1_pattern?: string;
-            step2_prompt?: string;
-            step2_art_style?: string;
-            step2_result_image?: string;
-            step3_final_image?: string;
-        };
-        brand_assets?: {
-            business_card_name?: string;
-            business_card_title?: string;
-            business_card_phone?: string;
-            business_card_email?: string;
-            business_card_website?: string;
-            thank_you_title?: string;
-            thank_you_message?: string;
-            thank_you_handle?: string;
-            social_instagram?: string;
-            social_twitter?: string;
-            social_tiktok?: string;
-            social_snapchat?: string;
-            social_whatsapp?: string;
-            linktree_title?: string;
-            linktree_subtitle?: string;
-            show_instagram?: boolean;
-            show_twitter?: boolean;
-            show_tiktok?: boolean;
-            show_snapchat?: boolean;
-            show_whatsapp?: boolean;
-            show_website?: boolean;
-        };
+    visibility: {
+        gallery?: boolean;
+        store?: boolean;
+        signup?: boolean;
+        join?: boolean;
+        join_artist?: boolean;
+        ai_section?: boolean;
+        hero_auth_buttons?: boolean;
+        design_piece?: boolean;
+    };
+    site_info: Record<string, string>;
+    shipping: Record<string, number>;
+    creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
+    product_identifiers?: { prefix?: string; product_code_template?: string; sku_template?: string; type_map?: Record<string, string> };
+    ai_simulation?: {
+        step1_image?: string;
+        step1_color_name?: string;
+        step1_pattern?: string;
+        step2_prompt?: string;
+        step2_art_style?: string;
+        step2_result_image?: string;
+        step3_final_image?: string;
+    };
+    brand_assets?: {
+        business_card_name?: string;
+        business_card_title?: string;
+        business_card_phone?: string;
+        business_card_email?: string;
+        business_card_website?: string;
+        thank_you_title?: string;
+        thank_you_message?: string;
+        thank_you_handle?: string;
+        social_instagram?: string;
+        social_twitter?: string;
+        social_tiktok?: string;
+        social_snapchat?: string;
+        social_whatsapp?: string;
+        linktree_title?: string;
+        linktree_subtitle?: string;
+        show_instagram?: boolean;
+        show_twitter?: boolean;
+        show_tiktok?: boolean;
+        show_snapchat?: boolean;
+        show_whatsapp?: boolean;
+        show_website?: boolean;
+    };
+    operational_rules: OperationalRulesConfig;
 };
+
+const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
+    visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
+    site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
+    shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
+    creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
+    product_identifiers: {
+        prefix: "WSH",
+        product_code_template: "{PREFIX}-{SEQ:5}",
+        sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
+        type_map: {},
+    },
+    ai_simulation: {
+        step1_image: "/images/design/heavy-tshirt-black-front.png",
+        step1_color_name: "أسود كلاسيك",
+        step1_pattern: "بدون نمط",
+        step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
+        step2_art_style: "رسم رقمي (Digital Art)",
+        step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
+        step3_final_image: "",
+    },
+    brand_assets: {
+        business_card_name: "حمزة آرت",
+        business_card_title: "المدير الإبداعي | Founder",
+        business_card_phone: "+966 53 223 5005",
+        business_card_email: "washaksa@hotmail.com",
+        business_card_website: "www.washa.shop",
+        thank_you_title: "شكراً لثقتكم",
+        thank_you_message: "نحن في \"وشّى\" نصنع الفن بحُب وإتقان، \nونتمنى أن تنال هذه القطعة الفنية إعجابك كما نالت شغفنا بصنعها.\n\nيسعدنا مشاركتك لإطلالتك معنا!",
+        thank_you_handle: "@washha.sa",
+        social_instagram: "@wusha.art",
+        social_twitter: "@wusha_art",
+        social_tiktok: "@wusha.art",
+        social_snapchat: "@wusha.art",
+        social_whatsapp: "+966532235005",
+        linktree_title: "وشّى منصة الفن",
+        linktree_subtitle: "الإبداع بين يديك",
+        show_instagram: true,
+        show_twitter: true,
+        show_tiktok: true,
+        show_snapchat: true,
+        show_whatsapp: true,
+        show_website: true,
+    },
+    operational_rules: DEFAULT_OPERATIONAL_RULES,
+};
+
+export type OperationalRuleSignalState = "disabled" | "healthy" | "warning" | "critical";
+
+export type OperationalRuleSignal = {
+    id: string;
+    title: string;
+    description: string;
+    currentLabel: string;
+    thresholdLabel: string;
+    state: OperationalRuleSignalState;
+};
+
+export type OperationalRulesDiagnostics = {
+    defaults: OperationalRulesConfig;
+    metrics: {
+        support: {
+            slaAtRisk: number;
+            slaBreached: number;
+        };
+        inventory: {
+            criticalStockouts: number;
+            highPressureRestocks: number;
+            lowStockTotal: number;
+            fulfillmentQueue: number;
+        };
+        payments: {
+            failedPayments: number;
+            atRiskRevenue: number;
+            pendingPayments: number;
+            outstandingRevenue: number;
+        };
+        orders: {
+            pendingReview: number;
+            fulfillmentQueue: number;
+            paymentPending: number;
+        };
+    };
+    sections: {
+        support: OperationalRuleSignal[];
+        inventory: OperationalRuleSignal[];
+        payments: OperationalRuleSignal[];
+        orders: OperationalRuleSignal[];
+    };
+    recentChanges: Array<{
+        id: string;
+        createdAt: string;
+        message: string;
+        actor: string;
+        changedKeys: string[];
+    }>;
+};
+
+function formatThresholdNumber(value: number) {
+    return new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
+function determineSignalState(options: {
+    current: number;
+    warningMin?: number | null;
+    criticalMin?: number | null;
+}) {
+    const warningMin = typeof options.warningMin === "number" ? options.warningMin : null;
+    const criticalMin = typeof options.criticalMin === "number" ? options.criticalMin : null;
+
+    const warningEnabled = warningMin !== null && warningMin > 0;
+    const criticalEnabled = criticalMin !== null && criticalMin > 0;
+
+    if (!warningEnabled && !criticalEnabled) {
+        return "disabled" as const;
+    }
+
+    if (criticalEnabled && options.current >= criticalMin) {
+        return "critical" as const;
+    }
+
+    if (warningEnabled && options.current >= warningMin) {
+        return "warning" as const;
+    }
+
+    return "healthy" as const;
+}
+
+function collectChangedRuleKeys(before: OperationalRulesConfig, after: OperationalRulesConfig) {
+    const changedKeys: string[] = [];
+
+    for (const [section, values] of Object.entries(after) as Array<[keyof OperationalRulesConfig, Record<string, number>]>) {
+        const previousValues = before[section] as Record<string, number>;
+        for (const [key, nextValue] of Object.entries(values)) {
+            if (previousValues[key] !== nextValue) {
+                changedKeys.push(`${section}.${key}`);
+            }
+        }
+    }
+
+    return changedKeys;
+}
 
 // ═══════════════════════════════════════════════════════════
 //  GET ALL SETTINGS
@@ -88,36 +238,7 @@ export type SiteSettingsType = {
 export async function getSiteSettings() {
     // Check if Supabase is configured before attempting to use it
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return {
-            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
-            site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
-            shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
-            creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
-            product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
-            ai_simulation: { 
-                step1_image: "/images/design/heavy-tshirt-black-front.png", 
-                step1_color_name: "أسود كلاسيك", 
-                step1_pattern: "بدون نمط",
-                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
-                step2_art_style: "رسم رقمي (Digital Art)",
-                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
-            },
-            brand_assets: {
-                business_card_name: "حمزة آرت",
-                business_card_title: "المدير الإبداعي | Founder",
-                business_card_phone: "+966 53 223 5005",
-                business_card_email: "washaksa@hotmail.com",
-                business_card_website: "www.washa.shop",
-                thank_you_title: "شكراً لثقتكم",
-                thank_you_message: "نحن في \"وشّى\" نصنع الفن بحُب وإتقان، \nونتمنى أن تنال هذه القطعة الفنية إعجابك كما نالت شغفنا بصنعها.\n\nيسعدنا مشاركتك لإطلالتك معنا!",
-                thank_you_handle: "@washha.sa",
-                social_instagram: "@wusha.art",
-                social_twitter: "@wusha_art",
-                social_tiktok: "@wusha.art",
-                social_snapchat: "@wusha.art",
-                social_whatsapp: "+966532235005"
-            },
-        };
+        return DEFAULT_SITE_SETTINGS;
     }
     
     try {
@@ -127,138 +248,366 @@ export async function getSiteSettings() {
             .select("key, value");
 
         if (error || !data) {
-            // Return defaults if table doesn't exist yet
-            return {
-                visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
-                site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
-                shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
-            creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
-            product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
-            ai_simulation: { 
-                step1_image: "/images/design/heavy-tshirt-black-front.png", 
-                step1_color_name: "أسود كلاسيك", 
-                step1_pattern: "بدون نمط",
-                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
-                step2_art_style: "رسم رقمي (Digital Art)",
-                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
-            },
-            brand_assets: {
-                business_card_name: "حمزة آرت",
-                business_card_title: "المدير الإبداعي | Founder",
-                business_card_phone: "+966 53 223 5005",
-                business_card_email: "washaksa@hotmail.com",
-                business_card_website: "www.washa.shop",
-                thank_you_title: "شكراً لثقتكم",
-                thank_you_message: "نحن في \"وشّى\" نصنع الفن بحُب وإتقان، \nونتمنى أن تنال هذه القطعة الفنية إعجابك كما نالت شغفنا بصنعها.\n\nيسعدنا مشاركتك لإطلالتك معنا!",
-                thank_you_handle: "@washha.sa",
-                social_instagram: "@wusha.art",
-                social_twitter: "@wusha_art",
-                social_tiktok: "@wusha.art",
-                social_snapchat: "@wusha.art",
-                social_whatsapp: "+966532235005"
-            },
-        };
-    }
+            return DEFAULT_SITE_SETTINGS;
+        }
 
-    const settings: Record<string, any> = {};
-    for (const row of data) {
+        const settings: Record<string, any> = {};
+        for (const row of data) {
         settings[row.key] = row.value;
-    }
+        }
 
-    const v = settings.visibility || {};
-    const cp = settings.creation_prices || {};
-    const pi = settings.product_identifiers || {};
-    const aiSim = settings.ai_simulation || {};
-    
-    return {
-        visibility: {
-            gallery: v.gallery ?? false,
-            store: v.store ?? false,
-            signup: v.signup ?? false,
-            join: v.join ?? true,
-            join_artist: v.join_artist ?? true,
-            ai_section: v.ai_section ?? true,
-            hero_auth_buttons: v.hero_auth_buttons ?? true,
-            design_piece: v.design_piece ?? true,
-        },
-        site_info: settings.site_info || { name: "وشّى", description: "", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
-        shipping: settings.shipping || { flat_rate: 30, free_above: 500, tax_rate: 15 },
-        creation_prices: {
-            tshirt: cp.tshirt ?? 89,
-            hoodie: cp.hoodie ?? 149,
-            pullover: cp.pullover ?? 129,
-        },
-        product_identifiers: {
-            prefix: pi.prefix ?? "WSH",
-            product_code_template: pi.product_code_template ?? "{PREFIX}-{SEQ:5}",
-            sku_template: pi.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
-            type_map: pi.type_map ?? { print: "P", apparel: "T", digital: "D", nft: "N", original: "O" },
-        },
-        ai_simulation: {
-            step1_image: aiSim.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
-            step1_color_name: aiSim.step1_color_name ?? "أسود كلاسيك",
-            step1_pattern: aiSim.step1_pattern ?? "بدون نمط",
-            step2_prompt: aiSim.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
-            step2_art_style: aiSim.step2_art_style ?? "رسم رقمي (Digital Art)",
-            step2_result_image: aiSim.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
-            step3_final_image: aiSim.step3_final_image ?? "",
-        },
-        brand_assets: {
-            business_card_name: settings.brand_assets?.business_card_name ?? "هشام الزهراني",
-            business_card_title: settings.brand_assets?.business_card_title ?? "المدير التنفيذي",
-            business_card_phone: settings.brand_assets?.business_card_phone ?? "+966 53 223 5005",
-            business_card_email: settings.brand_assets?.business_card_email ?? "washaksa@hotmail.com",
-            business_card_website: settings.brand_assets?.business_card_website ?? "www.washa.shop",
-            thank_you_title: settings.brand_assets?.thank_you_title ?? "شكراً لثقتكم",
-            thank_you_message: settings.brand_assets?.thank_you_message ?? "نحن في \"وشّى\" نصنع الفن بحُب وإتقان، \nونتمنى أن تنال هذه القطعة الفنية إعجابك كما نالت شغفنا بصنعها.\n\nيسعدنا مشاركتك لإطلالتك معنا!",
-            thank_you_handle: settings.brand_assets?.thank_you_handle ?? "@washha.sa",
-            social_instagram: settings.brand_assets?.social_instagram ?? "@wusha.art",
-            social_twitter: settings.brand_assets?.social_twitter ?? "@wusha_art",
-            social_tiktok: settings.brand_assets?.social_tiktok ?? "@wusha.art",
-            social_snapchat: settings.brand_assets?.social_snapchat ?? "@wusha.art",
-            social_whatsapp: settings.brand_assets?.social_whatsapp ?? "+966532235005",
-            linktree_title: settings.brand_assets?.linktree_title ?? "وشّى منصة الفن",
-            linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? "الإبداع بين يديك",
-            show_instagram: settings.brand_assets?.show_instagram ?? true,
-            show_twitter: settings.brand_assets?.show_twitter ?? true,
-            show_tiktok: settings.brand_assets?.show_tiktok ?? true,
-            show_snapchat: settings.brand_assets?.show_snapchat ?? true,
-            show_whatsapp: settings.brand_assets?.show_whatsapp ?? true,
-            show_website: settings.brand_assets?.show_website ?? true,
-        },
-    };
-    } catch (error) {
-        // Return defaults if Supabase is not configured (development mode)
-        console.warn("getSiteSettings: Supabase not configured, returning defaults");
+        const v = settings.visibility || {};
+        const cp = settings.creation_prices || {};
+        const pi = settings.product_identifiers || {};
+        const aiSim = settings.ai_simulation || {};
+
         return {
-            visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
-            site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
-            shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
-            creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
-            product_identifiers: { prefix: "WSH", product_code_template: "{PREFIX}-{SEQ:5}", sku_template: "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}", type_map: {} },
-            ai_simulation: { 
-                step1_image: "/images/design/heavy-tshirt-black-front.png", 
-                step1_color_name: "أسود كلاسيك", 
-                step1_pattern: "بدون نمط",
-                step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...", 
-                step2_art_style: "رسم رقمي (Digital Art)",
-                step2_result_image: "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80" 
+            visibility: {
+                gallery: v.gallery ?? DEFAULT_SITE_SETTINGS.visibility.gallery,
+                store: v.store ?? DEFAULT_SITE_SETTINGS.visibility.store,
+                signup: v.signup ?? DEFAULT_SITE_SETTINGS.visibility.signup,
+                join: v.join ?? DEFAULT_SITE_SETTINGS.visibility.join,
+                join_artist: v.join_artist ?? DEFAULT_SITE_SETTINGS.visibility.join_artist,
+                ai_section: v.ai_section ?? DEFAULT_SITE_SETTINGS.visibility.ai_section,
+                hero_auth_buttons: v.hero_auth_buttons ?? DEFAULT_SITE_SETTINGS.visibility.hero_auth_buttons,
+                design_piece: v.design_piece ?? DEFAULT_SITE_SETTINGS.visibility.design_piece,
+            },
+            site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
+            shipping: settings.shipping || DEFAULT_SITE_SETTINGS.shipping,
+            creation_prices: {
+                tshirt: cp.tshirt ?? DEFAULT_SITE_SETTINGS.creation_prices?.tshirt ?? 89,
+                hoodie: cp.hoodie ?? DEFAULT_SITE_SETTINGS.creation_prices?.hoodie ?? 149,
+                pullover: cp.pullover ?? DEFAULT_SITE_SETTINGS.creation_prices?.pullover ?? 129,
+            },
+            product_identifiers: {
+                prefix: pi.prefix ?? DEFAULT_SITE_SETTINGS.product_identifiers?.prefix ?? "WSH",
+                product_code_template: pi.product_code_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.product_code_template ?? "{PREFIX}-{SEQ:5}",
+                sku_template: pi.sku_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
+                type_map: pi.type_map ?? DEFAULT_SITE_SETTINGS.product_identifiers?.type_map ?? { print: "P", apparel: "T", digital: "D", nft: "N", original: "O" },
+            },
+            ai_simulation: {
+                step1_image: aiSim.step1_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_image ?? "",
+                step1_color_name: aiSim.step1_color_name ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_color_name ?? "",
+                step1_pattern: aiSim.step1_pattern ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_pattern ?? "",
+                step2_prompt: aiSim.step2_prompt ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_prompt ?? "",
+                step2_art_style: aiSim.step2_art_style ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_art_style ?? "",
+                step2_result_image: aiSim.step2_result_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_result_image ?? "",
+                step3_final_image: aiSim.step3_final_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step3_final_image ?? "",
             },
             brand_assets: {
-                business_card_name: "حمزة آرت",
-                business_card_title: "المدير الإبداعي | Founder",
-                business_card_phone: "+966 53 223 5005",
-                business_card_email: "washaksa@hotmail.com",
-                business_card_website: "www.washa.shop",
-                thank_you_title: "شكراً لثقتكم",
-                thank_you_message: "نحن في \"وشّى\" نصنع الفن بحُب وإتقان، \nونتمنى أن تنال هذه القطعة الفنية إعجابك كما نالت شغفنا بصنعها.\n\nيسعدنا مشاركتك لإطلالتك معنا!",
-                thank_you_handle: "@washha.sa",
-                social_instagram: "@wusha.art",
-                social_twitter: "@wusha_art",
-                social_tiktok: "@wusha.art",
-                social_snapchat: "@wusha.art",
-                social_whatsapp: "+966532235005"
+                business_card_name: settings.brand_assets?.business_card_name ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_name ?? "",
+                business_card_title: settings.brand_assets?.business_card_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_title ?? "",
+                business_card_phone: settings.brand_assets?.business_card_phone ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_phone ?? "",
+                business_card_email: settings.brand_assets?.business_card_email ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_email ?? "",
+                business_card_website: settings.brand_assets?.business_card_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_website ?? "",
+                thank_you_title: settings.brand_assets?.thank_you_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_title ?? "",
+                thank_you_message: settings.brand_assets?.thank_you_message ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_message ?? "",
+                thank_you_handle: settings.brand_assets?.thank_you_handle ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_handle ?? "",
+                social_instagram: settings.brand_assets?.social_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_instagram ?? "",
+                social_twitter: settings.brand_assets?.social_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_twitter ?? "",
+                social_tiktok: settings.brand_assets?.social_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_tiktok ?? "",
+                social_snapchat: settings.brand_assets?.social_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_snapchat ?? "",
+                social_whatsapp: settings.brand_assets?.social_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_whatsapp ?? "",
+                linktree_title: settings.brand_assets?.linktree_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_title ?? "",
+                linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_subtitle ?? "",
+                show_instagram: settings.brand_assets?.show_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_instagram ?? true,
+                show_twitter: settings.brand_assets?.show_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_twitter ?? true,
+                show_tiktok: settings.brand_assets?.show_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_tiktok ?? true,
+                show_snapchat: settings.brand_assets?.show_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_snapchat ?? true,
+                show_whatsapp: settings.brand_assets?.show_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_whatsapp ?? true,
+                show_website: settings.brand_assets?.show_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_website ?? true,
             },
+            operational_rules: normalizeOperationalRules(settings.operational_rules),
+        };
+    } catch (error) {
+        console.warn("getSiteSettings: Supabase not configured, returning defaults");
+        return DEFAULT_SITE_SETTINGS;
+    }
+}
+
+export async function getOperationalRulesDiagnostics(): Promise<OperationalRulesDiagnostics> {
+    noStore();
+
+    try {
+        await requireAdmin();
+        const supabase = getAdminSupabase();
+        const rules = await getOperationalRules();
+
+        const [
+            supportActiveResult,
+            pendingOrdersResult,
+            fulfillmentQueueResult,
+            pendingPaymentsResult,
+            failedPaymentsResult,
+            pendingPaymentTotalsResult,
+            failedPaymentTotalsResult,
+            changesResult,
+            inventoryWithSales,
+        ] = await Promise.all([
+            supabase.from("support_tickets")
+                .select("id, created_at, priority")
+                .in("status", ["open", "in_progress"])
+                .limit(40),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["processing", "shipped"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "failed").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("orders").select("total").eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("orders").select("total").eq("payment_status", "failed").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("system_logs")
+                .select("id, message, metadata, created_at, user:profiles(display_name, username)")
+                .eq("source", "settings.operational_rules.update")
+                .order("created_at", { ascending: false })
+                .limit(6),
+            getInventoryWithSales(),
+        ]);
+
+        const supportActive = supportActiveResult.data ?? [];
+        const supportQueue = supportActive.map((ticket) => {
+            const ageHours = (Date.now() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+            const isHighPriority = ticket.priority === "high";
+            const riskThreshold = isHighPriority ? 2 : 8;
+            const breachThreshold = isHighPriority ? 6 : 24;
+
+            return {
+                id: ticket.id,
+                ageHours,
+                slaState: ageHours >= breachThreshold ? "breached" : ageHours >= riskThreshold ? "at_risk" : "healthy",
+            };
+        });
+
+        const slaAtRisk = supportQueue.filter((ticket) => ticket.slaState === "at_risk").length;
+        const slaBreached = supportQueue.filter((ticket) => ticket.slaState === "breached").length;
+
+        const inventory = Array.isArray((inventoryWithSales as { inventory?: any[] })?.inventory)
+            ? (inventoryWithSales as { inventory: any[] }).inventory
+            : [];
+        const inventoryStats = (inventoryWithSales as { stats?: { lowStock?: number } | null })?.stats ?? null;
+
+        const criticalStockouts = inventory.filter((item: any) => {
+            const quantity = Number(item.quantity) || 0;
+            const soldCount = Number(item.sold_count) || 0;
+            return quantity === 0 && soldCount > 0;
+        }).length;
+
+        const highPressureRestocks = inventory.filter((item: any) => {
+            const quantity = Number(item.quantity) || 0;
+            const soldCount = Number(item.sold_count) || 0;
+            return quantity > 0 && quantity <= 2 && (soldCount > quantity || soldCount >= 4);
+        }).length;
+
+        const pendingReview = pendingOrdersResult.count ?? 0;
+        const fulfillmentQueue = fulfillmentQueueResult.count ?? 0;
+        const paymentPending = pendingPaymentsResult.count ?? 0;
+        const failedPayments = failedPaymentsResult.count ?? 0;
+        const outstandingRevenue = (pendingPaymentTotalsResult.data ?? []).reduce((sum, row: { total: number }) => sum + (Number(row.total) || 0), 0);
+        const atRiskRevenue = (failedPaymentTotalsResult.data ?? []).reduce((sum, row: { total: number }) => sum + (Number(row.total) || 0), 0);
+
+        const recentChanges = (changesResult.data ?? []).map((entry: any) => {
+            const actorName = entry.user?.display_name || entry.user?.username || "أدمن";
+            const changedKeys = Array.isArray(entry.metadata?.changed_keys) ? entry.metadata.changed_keys : [];
+
+            return {
+                id: entry.id,
+                createdAt: entry.created_at,
+                message: entry.message,
+                actor: actorName,
+                changedKeys,
+            };
+        });
+
+        return {
+            defaults: DEFAULT_OPERATIONAL_RULES,
+            metrics: {
+                support: {
+                    slaAtRisk,
+                    slaBreached,
+                },
+                inventory: {
+                    criticalStockouts,
+                    highPressureRestocks,
+                    lowStockTotal: inventoryStats?.lowStock ?? 0,
+                    fulfillmentQueue,
+                },
+                payments: {
+                    failedPayments,
+                    atRiskRevenue,
+                    pendingPayments: paymentPending,
+                    outstandingRevenue,
+                },
+                orders: {
+                    pendingReview,
+                    fulfillmentQueue,
+                    paymentPending,
+                },
+            },
+            sections: {
+                support: [
+                    {
+                        id: "support.slaAtRiskMin",
+                        title: "التذاكر القريبة من تجاوز SLA",
+                        description: "يعرض التذاكر التي دخلت منطقة الخطر قبل التحول إلى تعثر فعلي.",
+                        currentLabel: `${formatThresholdNumber(slaAtRisk)} تذكرة`,
+                        thresholdLabel: rules.support.slaAtRiskMin > 0 ? `يتحرك عند ${formatThresholdNumber(rules.support.slaAtRiskMin)}+` : "معطل",
+                        state: determineSignalState({ current: slaAtRisk, warningMin: rules.support.slaAtRiskMin }),
+                    },
+                    {
+                        id: "support.slaBreachedMin",
+                        title: "التذاكر المتجاوزة لـ SLA",
+                        description: "يعرض الحالات التي تجاوزت نافذة الخدمة بالفعل وتحتاج تصعيدًا فوريًا.",
+                        currentLabel: `${formatThresholdNumber(slaBreached)} تذكرة`,
+                        thresholdLabel: rules.support.slaBreachedMin > 0 ? `يتحرك عند ${formatThresholdNumber(rules.support.slaBreachedMin)}+` : "معطل",
+                        state: determineSignalState({ current: slaBreached, criticalMin: rules.support.slaBreachedMin }),
+                    },
+                ],
+                inventory: [
+                    {
+                        id: "inventory.criticalStockoutsMin",
+                        title: "نفاد المخزون الحرج",
+                        description: "عناصر نافدة لديها سحب فعلي من المبيعات وقد تؤثر على التنفيذ.",
+                        currentLabel: `${formatThresholdNumber(criticalStockouts)} عنصر`,
+                        thresholdLabel: rules.inventory.criticalStockoutsMin > 0 ? `يتحرك عند ${formatThresholdNumber(rules.inventory.criticalStockoutsMin)}+` : "معطل",
+                        state:
+                            rules.inventory.criticalStockoutsMin === 0
+                                ? "disabled"
+                                : criticalStockouts >= rules.inventory.criticalStockoutsMin
+                                  ? (rules.inventory.fulfillmentQueueCriticalMin > 0 && fulfillmentQueue >= rules.inventory.fulfillmentQueueCriticalMin ? "critical" : "warning")
+                                  : "healthy",
+                    },
+                    {
+                        id: "inventory.restockPressureItemsMin",
+                        title: "ضغط إعادة التعبئة",
+                        description: "ينظر إلى العناصر عالية الضغط وإجمالي منخفض المخزون معًا.",
+                        currentLabel: `${formatThresholdNumber(highPressureRestocks)} عالي الضغط / ${formatThresholdNumber(inventoryStats?.lowStock ?? 0)} منخفض`,
+                        thresholdLabel:
+                            rules.inventory.restockPressureItemsMin > 0 || rules.inventory.lowStockTotalMin > 0
+                                ? `عناصر ${formatThresholdNumber(rules.inventory.restockPressureItemsMin)}+ أو منخفض ${formatThresholdNumber(rules.inventory.lowStockTotalMin)}+`
+                                : "معطل",
+                        state:
+                            rules.inventory.restockPressureItemsMin === 0 && rules.inventory.lowStockTotalMin === 0
+                                ? "disabled"
+                                : (
+                                    (rules.inventory.restockPressureItemsMin > 0 && highPressureRestocks >= rules.inventory.restockPressureItemsMin) ||
+                                    (rules.inventory.lowStockTotalMin > 0 && (inventoryStats?.lowStock ?? 0) >= rules.inventory.lowStockTotalMin)
+                                  )
+                                  ? "warning"
+                                  : "healthy",
+                    },
+                ],
+                payments: [
+                    {
+                        id: "payments.failedPaymentsWarningMin",
+                        title: "المدفوعات المتعثرة",
+                        description: "يراقب عدد المدفوعات المتعثرة والإيراد المعرض للخطر في نفس الإشارة.",
+                        currentLabel: `${formatThresholdNumber(failedPayments)} متعثرة / ${formatThresholdNumber(atRiskRevenue)} ر.س معرض`,
+                        thresholdLabel:
+                            rules.payments.failedPaymentsWarningMin > 0 || rules.payments.atRiskRevenueWarning > 0
+                                ? `تحذير: ${formatThresholdNumber(rules.payments.failedPaymentsWarningMin)} أو ${formatThresholdNumber(rules.payments.atRiskRevenueWarning)} ر.س`
+                                : "معطل",
+                        state:
+                            (rules.payments.failedPaymentsWarningMin === 0 && rules.payments.atRiskRevenueWarning === 0)
+                                ? "disabled"
+                                : (
+                                    (rules.payments.failedPaymentsCriticalMin > 0 && failedPayments >= rules.payments.failedPaymentsCriticalMin) ||
+                                    (rules.payments.atRiskRevenueCritical > 0 && atRiskRevenue >= rules.payments.atRiskRevenueCritical)
+                                  )
+                                  ? "critical"
+                                  : (
+                                        (rules.payments.failedPaymentsWarningMin > 0 && failedPayments >= rules.payments.failedPaymentsWarningMin) ||
+                                        (rules.payments.atRiskRevenueWarning > 0 && atRiskRevenue >= rules.payments.atRiskRevenueWarning)
+                                    )
+                                    ? "warning"
+                                    : "healthy",
+                    },
+                    {
+                        id: "payments.pendingPaymentsWarningMin",
+                        title: "طابور التحصيل المعلق",
+                        description: "يعرض عدد الطلبات بانتظار الدفع والإيراد المعلّق الذي يحتاج متابعة.",
+                        currentLabel: `${formatThresholdNumber(paymentPending)} طلب / ${formatThresholdNumber(outstandingRevenue)} ر.س معلق`,
+                        thresholdLabel:
+                            rules.payments.pendingPaymentsWarningMin > 0 || rules.payments.outstandingRevenueWarning > 0
+                                ? `تحذير: ${formatThresholdNumber(rules.payments.pendingPaymentsWarningMin)} أو ${formatThresholdNumber(rules.payments.outstandingRevenueWarning)} ر.س`
+                                : "معطل",
+                        state:
+                            (rules.payments.pendingPaymentsWarningMin === 0 && rules.payments.outstandingRevenueWarning === 0)
+                                ? "disabled"
+                                : (
+                                    (rules.payments.pendingPaymentsCriticalMin > 0 && paymentPending >= rules.payments.pendingPaymentsCriticalMin) ||
+                                    (rules.payments.outstandingRevenueCritical > 0 && outstandingRevenue >= rules.payments.outstandingRevenueCritical)
+                                  )
+                                  ? "critical"
+                                  : (
+                                        (rules.payments.pendingPaymentsWarningMin > 0 && paymentPending >= rules.payments.pendingPaymentsWarningMin) ||
+                                        (rules.payments.outstandingRevenueWarning > 0 && outstandingRevenue >= rules.payments.outstandingRevenueWarning)
+                                    )
+                                    ? "warning"
+                                    : "healthy",
+                    },
+                ],
+                orders: [
+                    {
+                        id: "orders.backlog",
+                        title: "ضغط طابور الطلبات",
+                        description: "مؤشر مركب يراقب المراجعات، التنفيذ، والطلبات بانتظار الدفع.",
+                        currentLabel: `قرار ${formatThresholdNumber(pendingReview)} / تنفيذ ${formatThresholdNumber(fulfillmentQueue)} / دفع ${formatThresholdNumber(paymentPending)}`,
+                        thresholdLabel:
+                            `تحذير: ${formatThresholdNumber(rules.orders.pendingReviewWarningMin)}/${formatThresholdNumber(rules.orders.fulfillmentQueueWarningMin)}/${formatThresholdNumber(rules.orders.paymentPendingWarningMin)}`,
+                        state:
+                            (rules.orders.pendingReviewWarningMin === 0 &&
+                                rules.orders.fulfillmentQueueWarningMin === 0 &&
+                                rules.orders.paymentPendingWarningMin === 0)
+                                ? "disabled"
+                                : (
+                                    (rules.orders.pendingReviewCriticalMin > 0 && pendingReview >= rules.orders.pendingReviewCriticalMin) ||
+                                    (rules.orders.fulfillmentQueueCriticalMin > 0 && fulfillmentQueue >= rules.orders.fulfillmentQueueCriticalMin) ||
+                                    (rules.orders.paymentPendingCriticalMin > 0 && paymentPending >= rules.orders.paymentPendingCriticalMin)
+                                  )
+                                  ? "critical"
+                                  : (
+                                        (rules.orders.pendingReviewWarningMin > 0 && pendingReview >= rules.orders.pendingReviewWarningMin) ||
+                                        (rules.orders.fulfillmentQueueWarningMin > 0 && fulfillmentQueue >= rules.orders.fulfillmentQueueWarningMin) ||
+                                        (rules.orders.paymentPendingWarningMin > 0 && paymentPending >= rules.orders.paymentPendingWarningMin)
+                                    )
+                                    ? "warning"
+                                    : "healthy",
+                    },
+                ],
+            },
+            recentChanges,
+        };
+    } catch (error) {
+        return {
+            defaults: DEFAULT_OPERATIONAL_RULES,
+            metrics: {
+                support: {
+                    slaAtRisk: 0,
+                    slaBreached: 0,
+                },
+                inventory: {
+                    criticalStockouts: 0,
+                    highPressureRestocks: 0,
+                    lowStockTotal: 0,
+                    fulfillmentQueue: 0,
+                },
+                payments: {
+                    failedPayments: 0,
+                    atRiskRevenue: 0,
+                    pendingPayments: 0,
+                    outstandingRevenue: 0,
+                },
+                orders: {
+                    pendingReview: 0,
+                    fulfillmentQueue: 0,
+                    paymentPending: 0,
+                },
+            },
+            sections: {
+                support: [],
+                inventory: [],
+                payments: [],
+                orders: [],
+            },
+            recentChanges: [],
         };
     }
 }
@@ -355,13 +704,27 @@ export async function getPublicVisibility() {
 // ═══════════════════════════════════════════════════════════
 
 export async function updateSiteSetting(key: string, value: Record<string, any>) {
-    await requireAdmin();
+    const { profileId } = await requireAdmin();
     const supabase = getAdminSupabase();
+    const nextValue = key === "operational_rules" ? normalizeOperationalRules(value) : value;
+
+    let changedRuleKeys: string[] = [];
+
+    if (key === "operational_rules") {
+        const { data: currentSetting } = await supabase
+            .from("site_settings")
+            .select("value")
+            .eq("key", "operational_rules")
+            .maybeSingle();
+
+        const previousRules = normalizeOperationalRules((currentSetting?.value as Record<string, unknown> | undefined) ?? null);
+        changedRuleKeys = collectChangedRuleKeys(previousRules, nextValue as OperationalRulesConfig);
+    }
 
     const { error } = await supabase
         .from("site_settings")
         .upsert(
-            { key, value, updated_at: new Date().toISOString() },
+            { key, value: nextValue, updated_at: new Date().toISOString() },
             { onConflict: "key" }
         );
 
@@ -369,10 +732,30 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
         return { success: false, error: error.message };
     }
 
+    if (key === "operational_rules" && changedRuleKeys.length > 0) {
+        await supabase.from("system_logs").insert({
+            type: "info",
+            source: "settings.operational_rules.update",
+            message: "تم تحديث قواعد التشغيل والتصعيد",
+            metadata: {
+                changed_keys: changedRuleKeys,
+                operational_rules: nextValue,
+            },
+            user_id: profileId,
+        });
+    }
+
     revalidatePath("/dashboard/settings");
     revalidatePath("/");
     revalidatePath("/account");
     revalidatePath("/studio");
+    if (key === "operational_rules") {
+        revalidatePath("/dashboard/analytics");
+        revalidatePath("/dashboard/orders");
+        revalidatePath("/dashboard/support");
+        revalidatePath("/dashboard/products-inventory");
+        revalidatePath("/dashboard/notifications");
+    }
     return { success: true };
 }
 

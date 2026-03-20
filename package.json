@@ -2,12 +2,18 @@
   "name": "wusha",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <11"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:fix": "bash scripts/dev.sh",
-    "build": "next build --no-lint",
+    "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "qa:env": "node scripts/qa-env.mjs",
+    "qa:smoke": "node scripts/qa-smoke.mjs"
   },
   "dependencies": {
     "@clerk/localizations": "^3.35.3",

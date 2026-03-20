@@ -43,13 +43,13 @@ export function AdminSidebar({
             title: "الرئيسية",
             items: [
                 { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard" },
-                { icon: BarChart3, label: "التقارير والتحليلات", href: "/dashboard/analytics" },
+                { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics" },
             ],
         },
         {
             title: "المنتجات والمخزون",
             items: [
-                { icon: Package, label: "إدارة المنتجات والمخزون", href: "/dashboard/products-inventory" },
+                { icon: Package, label: "التنفيذ والمخزون", href: "/dashboard/products-inventory" },
                 { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
                 { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales" },
                 { icon: Ticket, label: "كوبونات الخصم", href: "/dashboard/coupons" },
@@ -65,7 +65,7 @@ export function AdminSidebar({
         {
             title: "العملاء والمستخدمون",
             items: [
-                { icon: UserCheck, label: "المستخدمون", href: "/dashboard/users-clerk" },
+                { icon: UserCheck, label: "مزامنة الهوية", href: "/dashboard/users-clerk" },
 
                 { icon: Users, label: "الملفات الشخصية", href: "/dashboard/users" },
                 { icon: UserCog, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },

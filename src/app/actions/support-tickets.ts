@@ -7,6 +7,7 @@ import { createUserNotification } from "./user-notifications";
 import { createAdminNotification } from "./notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getSupportTicketAccess, requireSupportAdmin } from "@/lib/support-ticket-access";
+import { emitSupportServiceEscalations } from "@/lib/operational-escalations";
 
 export async function createSupportTicket(data: { subject: string; message: string; priority: SupportTicketPriority }) {
     const user = await currentUser();
@@ -186,6 +187,169 @@ export async function adminGetSupportTickets() {
     } catch (err) {
         console.error("[adminGetSupportTickets]", err);
         return [];
+    }
+}
+
+export async function getSupportOperationsSnapshot() {
+    try {
+        const { sb: supabase } = await requireSupportAdmin();
+        const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+        const staleThresholdIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+        const results = await Promise.allSettled([
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open"),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "resolved"),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "closed"),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("priority", "high").in("status", ["open", "in_progress"]),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).gte("updated_at", todayStartIso).in("status", ["resolved", "closed"]),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]).lte("created_at", staleThresholdIso),
+            supabase.from("support_tickets")
+                .select("id, created_at, updated_at")
+                .in("status", ["open", "in_progress"]),
+            supabase.from("support_tickets")
+                .select("id, created_at, updated_at")
+                .in("status", ["resolved", "closed"]),
+            supabase.from("support_tickets")
+                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .eq("priority", "high")
+                .in("status", ["open", "in_progress"])
+                .order("updated_at", { ascending: false })
+                .limit(5),
+            supabase.from("support_tickets")
+                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .in("status", ["open", "in_progress"])
+                .lte("created_at", staleThresholdIso)
+                .order("created_at", { ascending: true })
+                .limit(5),
+            supabase.from("support_tickets")
+                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .in("status", ["resolved", "closed"])
+                .order("updated_at", { ascending: false })
+                .limit(5),
+            supabase.from("support_tickets")
+                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .in("status", ["open", "in_progress"])
+                .order("created_at", { ascending: true })
+                .limit(40),
+        ]);
+
+        const getCount = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && typeof result.value.count === "number" ? result.value.count : 0;
+
+        const getData = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && Array.isArray(result.value.data) ? result.value.data : [];
+
+        results.forEach((res, idx) => {
+            if (res.status === "rejected") {
+                console.error(`Support snapshot query ${idx} failed:`, res.reason);
+                return;
+            }
+
+            if (res.value?.error) {
+                console.error(`Support snapshot query ${idx} returned DB error:`, res.value.error);
+            }
+        });
+
+        const activeAges = getData(results[9]).map((ticket: { created_at: string }) => {
+            return (Date.now() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+        });
+        const resolvedDurations = getData(results[10]).map((ticket: { created_at: string; updated_at: string }) => {
+            return (new Date(ticket.updated_at).getTime() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+        });
+        const activeDetailed = getData(results[14]);
+        const slaQueue = activeDetailed
+            .map((ticket: any) => {
+                const ageHours = (Date.now() - new Date(ticket.created_at).getTime()) / (1000 * 60 * 60);
+                const isHighPriority = ticket.priority === "high";
+                const riskThreshold = isHighPriority ? 2 : 8;
+                const breachThreshold = isHighPriority ? 6 : 24;
+                const slaState =
+                    ageHours >= breachThreshold ? "breached" : ageHours >= riskThreshold ? "at_risk" : "healthy";
+
+                return {
+                    ...ticket,
+                    ageHours,
+                    slaState,
+                    flagLabel:
+                        slaState === "breached"
+                            ? `تجاوز SLA منذ ${Math.round(ageHours)} ساعة`
+                            : slaState === "at_risk"
+                              ? `على وشك تجاوز SLA خلال ${Math.round(ageHours)} ساعة`
+                              : null,
+                };
+            })
+            .filter((ticket: any) => ticket.slaState !== "healthy")
+            .sort((a: any, b: any) => {
+                const stateRank = (value: string) => (value === "breached" ? 0 : 1);
+                const stateDelta = stateRank(a.slaState) - stateRank(b.slaState);
+                if (stateDelta !== 0) return stateDelta;
+
+                const priorityRank = (value: string) => (value === "high" ? 0 : value === "normal" ? 1 : 2);
+                const priorityDelta = priorityRank(a.priority) - priorityRank(b.priority);
+                if (priorityDelta !== 0) return priorityDelta;
+
+                return b.ageHours - a.ageHours;
+            })
+            .slice(0, 5);
+
+        const avgActiveHours = activeAges.length
+            ? Math.round(activeAges.reduce((sum: number, value: number) => sum + value, 0) / activeAges.length)
+            : 0;
+        const avgResolutionHours = resolvedDurations.length
+            ? Math.round(resolvedDurations.reduce((sum: number, value: number) => sum + value, 0) / resolvedDurations.length)
+            : 0;
+
+        const snapshot = {
+            stats: {
+                total: getCount(results[0]),
+                open: getCount(results[1]),
+                inProgress: getCount(results[2]),
+                resolved: getCount(results[3]),
+                closed: getCount(results[4]),
+                urgentOpen: getCount(results[5]),
+                createdToday: getCount(results[6]),
+                resolvedToday: getCount(results[7]),
+                staleActive: getCount(results[8]),
+                avgActiveHours,
+                avgResolutionHours,
+                slaAtRisk: slaQueue.filter((ticket: any) => ticket.slaState === "at_risk").length,
+                slaBreached: slaQueue.filter((ticket: any) => ticket.slaState === "breached").length,
+            },
+            urgentQueue: getData(results[11]),
+            staleQueue: getData(results[12]),
+            recentlyResolved: getData(results[13]),
+            slaQueue,
+        };
+
+        await emitSupportServiceEscalations(snapshot);
+
+        return snapshot;
+    } catch (err) {
+        console.error("[getSupportOperationsSnapshot]", err);
+        return {
+            stats: {
+                total: 0,
+                open: 0,
+                inProgress: 0,
+                resolved: 0,
+                closed: 0,
+                urgentOpen: 0,
+                createdToday: 0,
+                resolvedToday: 0,
+                staleActive: 0,
+                avgActiveHours: 0,
+                avgResolutionHours: 0,
+                slaAtRisk: 0,
+                slaBreached: 0,
+            },
+            urgentQueue: [],
+            staleQueue: [],
+            recentlyResolved: [],
+            slaQueue: [],
+        };
     }
 }
 

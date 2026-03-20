@@ -1,6 +1,8 @@
-import { getAdminUsers, getAdminUsersStats } from "@/app/actions/admin";
-import { UsersClient } from "@/components/admin/UsersClient";
-import { AdminHeader } from "@/components/admin/AdminHeader";
+import {
+    getAdminUsers,
+    getIdentityOperationsSnapshot,
+} from "@/app/actions/admin";
+import { IdentityOperationsCenter } from "@/components/admin/users/IdentityOperationsCenter";
 
 interface PageProps {
     searchParams: Promise<{ page?: string; role?: string; search?: string }>;
@@ -12,27 +14,28 @@ export default async function AdminUsersPage({ searchParams }: PageProps) {
     const role = params.role || "all";
     const search = params.search || "";
 
-    const [{ data: users, count, totalPages }, stats] = await Promise.all([
+    const [{ data: users, count, totalPages }, snapshot] = await Promise.all([
         getAdminUsers(page, role, search),
-        getAdminUsersStats(),
+        getIdentityOperationsSnapshot(),
     ]);
 
     return (
-        <div className="space-y-6">
-            <AdminHeader
-                title="إدارة المستخدمين"
-                subtitle="عرض وإدارة وإضافة وتعديل وحذف المستخدمين على المنصة."
-            />
-
-            <UsersClient
-                users={users}
-                count={count}
-                totalPages={totalPages}
-                currentPage={page}
-                currentRole={role}
-                currentSearch={search}
-                stats={stats}
-            />
-        </div>
+        <IdentityOperationsCenter
+            snapshot={snapshot}
+            clientProps={{
+                users,
+                count,
+                totalPages,
+                currentPage: page,
+                currentRole: role,
+                currentSearch: search,
+                stats: {
+                    total: snapshot.stats.total,
+                    wushsha: snapshot.stats.wushsha,
+                    subscriber: snapshot.stats.subscriber,
+                    admin: snapshot.stats.admin,
+                },
+            }}
+        />
     );
 }

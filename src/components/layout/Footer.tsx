@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
 import { Instagram, Twitter, MessageCircle, Mail, MapPin, Phone, Check, Loader2 } from "lucide-react";
 import { subscribeNewsletter } from "@/app/actions/forms";
@@ -106,14 +107,53 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
 
   return (
     <footer
-      className="pt-12 sm:pt-20 pb-6 sm:pb-8 border-t"
+      className="relative overflow-hidden pt-12 sm:pt-20 pb-6 sm:pb-8 border-t"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--wusha-bg) 98%, black)",
+        backgroundColor: "color-mix(in srgb, var(--wusha-bg) 96%, var(--wusha-surface))",
         color: "color-mix(in srgb, var(--wusha-text) 80%, transparent)",
         borderColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
       }}
     >
-      <div className="container-wusha">
+      <div
+        className="pointer-events-none absolute -top-20 right-8 h-56 w-56 rounded-full blur-3xl"
+        style={{ backgroundColor: "color-mix(in srgb, var(--wusha-gold) 16%, transparent)" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute bottom-8 left-6 h-48 w-48 rounded-full blur-3xl"
+        style={{ backgroundColor: "color-mix(in srgb, var(--wusha-mist) 14%, transparent)" }}
+        aria-hidden
+      />
+
+      <div className="container-wusha relative z-10 space-y-8 sm:space-y-10">
+        <div className="theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">
+                مجتمع وشّى
+              </p>
+              <h3 className="text-2xl sm:text-3xl font-black text-theme-strong">
+                الفن، الأزياء، والانضمام الذكي في مساحة واحدة
+              </h3>
+              <p className="mt-3 max-w-xl text-sm sm:text-base text-theme-subtle">
+                سواء كنت فنانًا، مصممًا، مودل، عميلًا مهتمًا أو شريكًا، صارت بوابة الانضمام في وشّى أكثر وضوحًا واحترافية.
+              </p>
+            </div>
+            {visibility?.join !== false && (
+              <motion.button
+                type="button"
+                onClick={() => setJoinModalOpen(true)}
+                className="btn-gold w-full sm:w-auto px-8 py-3"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                انضم إلى المجتمع
+              </motion.button>
+            )}
+          </div>
+        </div>
+
+        <div className="theme-surface-panel rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
         {/* Main Footer Content */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-12 sm:mb-16">
           {/* Brand Column */}
@@ -159,11 +199,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:bg-[var(--wusha-gold)] hover:text-[var(--wusha-bg)] hover:border-[var(--wusha-gold)]"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--wusha-text) 5%, transparent)",
-                      border: "1px solid color-mix(in srgb, var(--wusha-text) 10%, transparent)",
-                    }}
+                    className="theme-icon-button h-10 w-10 hover:bg-[var(--wusha-gold)] hover:text-[var(--wusha-bg)] hover:border-[var(--wusha-gold)]"
                     whileHover={{ scale: 1.1, y: -3 }}
                     whileTap={{ scale: 0.95 }}
                     aria-label={social.label}
@@ -191,13 +227,13 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                         {link.label}
                       </button>
                     ) : (
-                      <a
+                      <Link
                         href={link.href}
                         className="text-sm transition-colors hover:text-[var(--wusha-gold)]"
                         style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
                       >
                         {link.label}
-                      </a>
+                      </Link>
                     )}
                   </li>
                 ))}
@@ -208,7 +244,10 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
 
         {/* Newsletter */}
         <div className="pt-8 sm:pt-12 mb-8 sm:mb-12" style={{ borderTop: "1px solid color-mix(in srgb, var(--wusha-text) 5%, transparent)" }}>
-          <div className="max-w-xl mx-auto text-center">
+          <div className="max-w-xl mx-auto text-center rounded-[1.5rem] border px-5 py-6 sm:px-6 sm:py-7" style={{
+            backgroundColor: "color-mix(in srgb, var(--wusha-text) 3%, transparent)",
+            borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+          }}>
             <h4 className="text-xl font-bold mb-3" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>ابقَ على اطلاع</h4>
             <p className="text-sm mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
               اشترك في نشرتنا البريدية لتصلك آخر الأعمال والمعارض
@@ -266,6 +305,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
             </motion.span>
             <span>في السعودية</span>
           </div>
+        </div>
         </div>
       </div>
 

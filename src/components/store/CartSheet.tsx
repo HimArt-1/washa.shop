@@ -53,11 +53,11 @@ export function CartSheet() {
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-md border-l border-theme-soft shadow-2xl z-[101] flex flex-col"
+                        className="fixed right-0 top-0 h-full w-full max-w-md border-l border-theme-soft shadow-2xl z-[101] flex flex-col theme-surface-panel"
                         style={{ backgroundColor: "var(--wusha-surface)" }}
                     >
                         {/* Header */}
-                        <div className="p-5 border-b border-theme-soft flex items-center justify-between">
+                        <div className="p-5 border-b border-theme-soft flex items-center justify-between bg-theme-faint/40">
                             <div className="flex items-center gap-2">
                                 <ShoppingBag className="w-5 h-5 text-gold" />
                                 <h2 className="text-lg font-bold" style={{ color: "var(--wusha-text)" }}>سلة المشتريات</h2>
@@ -164,7 +164,7 @@ export function CartSheet() {
 
                         {/* Footer */}
                         {items.length > 0 && (
-                            <div className="p-5 border-t border-theme-soft backdrop-blur-sm space-y-4" style={{ backgroundColor: "color-mix(in srgb, var(--wusha-surface) 95%, transparent)" }}>
+                            <div className="p-5 border-t border-theme-soft backdrop-blur-sm space-y-4 bg-theme-faint/40">
 
                                 {/* Promo Code Section */}
                                 <div className="space-y-2">
@@ -181,7 +181,7 @@ export function CartSheet() {
                                                 <button
                                                     onClick={handleApplyPromo}
                                                     disabled={isValidating || !promoCode.trim()}
-                                                    className="px-4 py-2 bg-theme-subtle hover:bg-theme-soft text-gold text-sm font-medium rounded-xl transition-colors disabled:opacity-50 min-w-[80px]"
+                                                    className="px-4 py-2 bg-gold/10 hover:bg-gold/20 border border-gold/20 text-gold text-sm font-medium rounded-xl transition-colors disabled:opacity-50 min-w-[80px]"
                                                 >
                                                     {isValidating ? "جاري التحقق..." : "تطبيق"}
                                                 </button>
@@ -191,7 +191,7 @@ export function CartSheet() {
                                             )}
                                         </>
                                     ) : (
-                                        <div className="flex items-center justify-between p-3 bg-gold/10 border border-gold/20 rounded-xl">
+                                        <div className="theme-surface-panel flex items-center justify-between p-3 rounded-xl border-gold/20 bg-gold/5">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-8 h-8 rounded-lg bg-gold/20 flex items-center justify-center">
                                                     <span className="text-gold font-bold">%</span>

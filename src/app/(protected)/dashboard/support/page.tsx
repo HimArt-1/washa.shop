@@ -1,6 +1,6 @@
-import { adminGetSupportTickets } from "@/app/actions/support-tickets";
+import { adminGetSupportTickets, getSupportOperationsSnapshot } from "@/app/actions/support-tickets";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { SupportOpsCenter } from "@/components/ops/SupportOpsCenter";
+import { SupportOperationsCenter } from "@/components/admin/support/SupportOperationsCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +9,18 @@ export const metadata = {
 };
 
 export default async function AdminSupportPage() {
-    const tickets = await adminGetSupportTickets();
+    const [tickets, snapshot] = await Promise.all([
+        adminGetSupportTickets(),
+        getSupportOperationsSnapshot(),
+    ]);
 
     return (
         <div className="space-y-6">
             <AdminHeader
                 title="مركز الدعم الفني"
-                subtitle="الصيانة · الفحص · التحليل · سجل الزيارات · داشبورد الأخطاء · الاتصال · الأمان والحماية المطلقة"
+                subtitle="غرفة تشغيل مركزة لطوابير الدعم، التذاكر الحرجة، التذاكر الراكدة، وسرعة الاستجابة اليومية."
             />
-            <SupportOpsCenter initialTickets={tickets} />
+            <SupportOperationsCenter snapshot={snapshot} tickets={tickets} />
         </div>
     );
 }

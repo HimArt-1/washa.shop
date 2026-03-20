@@ -20,12 +20,27 @@ const JOIN_CLOTHING_LABELS: Record<string, string> = {
     tshirt: "تيشيرت",
     hoodie: "هودي",
     plain_thobe: "ثوب سادة",
+    abaya_shayla: "عباية وشيلة",
+    blouse_skirt: "بلوزة وتنورة",
+    dress: "فستان",
+    plain_abaya: "عباية سادة",
+};
+
+const JOIN_TYPE_LABELS: Record<string, string> = {
+    artist: "فنان",
+    designer: "مصمم",
+    model: "مودل",
+    customer: "عميل مهتم",
+    partner: "شريك أو متعاون",
 };
 
 type ApplicationInsertPayload = {
     full_name: string;
     email: string;
     phone?: string | null;
+    join_type?: "artist" | "designer" | "model" | "customer" | "partner" | null;
+    gender?: "male" | "female" | null;
+    birth_date?: string | null;
     portfolio_url?: string | null;
     instagram_url?: string | null;
     art_style: string;
@@ -90,6 +105,9 @@ async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<
         full_name: string;
         email: string;
         phone: string | null;
+        join_type: "artist" | "designer" | "model" | "customer" | "partner" | null;
+        gender: "male" | "female" | null;
+        birth_date: string | null;
         portfolio_url: string | null;
         instagram_url: string | null;
         art_style: string;
@@ -100,6 +118,9 @@ async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<
         full_name: data.full_name,
         email: normalizedEmail,
         phone: data.phone ?? null,
+        join_type: data.join_type ?? null,
+        gender: data.gender ?? null,
+        birth_date: data.birth_date ?? null,
         portfolio_url: data.portfolio_url ?? null,
         instagram_url: data.instagram_url ?? null,
         art_style: data.art_style,
@@ -147,6 +168,9 @@ export async function submitApplication(formData: FormData): Promise<ActionRespo
         full_name: formData.get("full_name"),
         email: formData.get("email"),
         phone: formData.get("phone"),
+        join_type: formData.get("join_type"),
+        gender: formData.get("gender"),
+        birth_date: formData.get("birth_date"),
         portfolio_url: formData.get("portfolio_url"),
         instagram_url: formData.get("instagram_url"),
         art_style: formData.get("art_style"),
@@ -179,19 +203,42 @@ export async function submitJoinLead(data: {
     name: string;
     email: string;
     phone: string;
+    joinType: "artist" | "designer" | "model" | "customer" | "partner" | "";
+    gender: "male" | "female" | "";
+    birthDate: string;
     clothing: string[];
 }): Promise<ActionResponse> {
+    if (!(data.joinType in JOIN_TYPE_LABELS)) {
+        return {
+            success: false,
+            message: "الرجاء تحديد نوع الانضمام قبل الإرسال",
+        };
+    }
+
+    if (data.gender !== "male" && data.gender !== "female") {
+        return {
+            success: false,
+            message: "الرجاء تحديد الجنس قبل الإرسال",
+        };
+    }
+
     const mappedClothing = (data.clothing || [])
         .map((item) => JOIN_CLOTHING_LABELS[item] || item)
         .filter(Boolean);
 
+    const joinTypeLabel = JOIN_TYPE_LABELS[data.joinType];
+    const genderLabel = data.gender === "male" ? "ذكر" : "أنثى";
     const artStyle = mappedClothing.length > 0 ? mappedClothing.join(", ") : "اهتمامات عامة بالمنصة";
-    const motivation = `طلب انضمام مبسط عبر صفحة الانضمام. الاهتمامات: ${artStyle}.`;
+    const birthDateText = data.birthDate ? ` تاريخ الميلاد: ${data.birthDate}.` : "";
+    const motivation = `طلب انضمام مبسط عبر صفحة الانضمام. نوع الانضمام: ${joinTypeLabel}. الجنس: ${genderLabel}.${birthDateText} الاهتمامات: ${artStyle}.`;
 
     const validated = applicationSchema.safeParse({
         full_name: data.name,
         email: data.email,
         phone: data.phone || "",
+        join_type: data.joinType,
+        gender: data.gender,
+        birth_date: data.birthDate || "",
         portfolio_url: "",
         instagram_url: "",
         art_style: artStyle,
@@ -210,6 +257,9 @@ export async function submitJoinLead(data: {
         ...validated.data,
         email: validated.data.email.trim().toLowerCase(),
         phone: validated.data.phone ?? null,
+        join_type: validated.data.join_type ?? null,
+        gender: validated.data.gender ?? null,
+        birth_date: validated.data.birth_date || null,
         portfolio_url: null,
         instagram_url: null,
         experience_years: null,

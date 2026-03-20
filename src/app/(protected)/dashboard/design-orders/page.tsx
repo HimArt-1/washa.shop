@@ -1,6 +1,6 @@
-import { getDesignOrders, getDesignPromptTemplate, getDesignOrderStats, getAdminList } from "@/app/actions/smart-store";
-import { DesignOrdersClient } from "@/components/admin/DesignOrdersClient";
+import { getAdminList, getDesignOperationsSnapshot, getDesignOrders, getDesignPromptTemplate } from "@/app/actions/smart-store";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { DesignOperationsCenter } from "@/components/admin/design-orders/DesignOperationsCenter";
 import type { CustomDesignOrderStatus } from "@/types/database";
 
 export const dynamic = "force-dynamic";
@@ -14,28 +14,39 @@ export default async function DesignOrdersPage({ searchParams }: PageProps) {
     const page = Number(params.page) || 1;
     const status = (params.status || "all") as CustomDesignOrderStatus | "all";
 
-    const [ordersResult, promptTemplate, stats, adminList] = await Promise.all([
+    const [ordersResult, promptTemplate, adminList, snapshot] = await Promise.all([
         getDesignOrders(page, status),
         getDesignPromptTemplate(),
-        getDesignOrderStats(),
         getAdminList(),
+        getDesignOperationsSnapshot(),
     ]);
 
     return (
         <div className="space-y-6">
             <AdminHeader
-                title="طلبات التصميم"
-                subtitle="إدارة طلبات التصميم المخصص — مراجعة ، تنفيذ ، تعيين ، وإرسال النتائج."
+                title="مركز عمليات التصميم"
+                subtitle="غرفة تشغيل لإدارة الوارد، التنفيذ، المراجعة، التعيين، والتسليم داخل مسار التصميم المخصص."
             />
-            <DesignOrdersClient
-                orders={ordersResult.data}
-                count={ordersResult.count}
-                totalPages={ordersResult.totalPages}
-                currentPage={page}
-                currentStatus={status}
-                promptTemplate={promptTemplate}
-                stats={stats}
-                adminList={adminList}
+            <DesignOperationsCenter
+                snapshot={snapshot}
+                clientProps={{
+                    orders: ordersResult.data,
+                    count: ordersResult.count,
+                    totalPages: ordersResult.totalPages,
+                    currentPage: page,
+                    currentStatus: status,
+                    promptTemplate,
+                    stats: {
+                        new: snapshot.stats.new,
+                        in_progress: snapshot.stats.in_progress,
+                        awaiting_review: snapshot.stats.awaiting_review,
+                        modification_requested: snapshot.stats.modification_requested,
+                        completed: snapshot.stats.completed,
+                        cancelled: snapshot.stats.cancelled,
+                        revenue: snapshot.stats.revenue,
+                    },
+                    adminList,
+                }}
             />
         </div>
     );

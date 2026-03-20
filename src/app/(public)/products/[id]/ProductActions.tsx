@@ -33,6 +33,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
     const [loadingWishlist, setLoadingWishlist] = useState(false);
     const [loadingLike, setLoadingLike] = useState(false);
     const [mounted, setMounted] = useState(false);
+    const utilityButtonBase = "p-3.5 rounded-2xl border border-theme-soft bg-theme-faint text-theme-subtle transition-colors hover:bg-theme-subtle";
 
     useEffect(() => {
         setMounted(true);
@@ -101,7 +102,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                                 onClick={() => setSelectedSize(size)}
                                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all border ${selectedSize === size
                                     ? "bg-gold/10 border-gold/40 text-gold"
-                                    : "border-theme-soft text-theme-subtle hover:border-white/20"
+                                    : "border-theme-soft bg-theme-faint text-theme-subtle hover:border-gold/20 hover:bg-theme-subtle"
                                     }`}
                             >
                                 {size}
@@ -125,7 +126,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                         maxQuantity: product.stock_quantity || 99,
                     })}
                     disabled={!inStock}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gold text-bg font-bold rounded-2xl hover:bg-gold-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-gold text-[var(--wusha-bg)] font-bold rounded-2xl hover:bg-gold-light transition-colors shadow-[0_18px_40px_rgba(154,123,61,0.2)] disabled:opacity-30 disabled:cursor-not-allowed"
                     whileHover={inStock ? { scale: 1.02 } : {}}
                     whileTap={inStock ? { scale: 0.98 } : {}}
                 >
@@ -137,7 +138,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleWishlist}
                         disabled={loadingWishlist}
-                        className={`p-3.5 border rounded-2xl transition-colors ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "border-theme-soft text-theme-subtle hover:text-gold hover:border-gold/30"
+                        className={`${utilityButtonBase} ${inWishlist ? "border-gold/40 bg-gold/10 text-gold" : "hover:text-gold hover:border-gold/30"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -148,7 +149,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                     <motion.button
                         onClick={handleLike}
                         disabled={loadingLike}
-                        className={`p-3.5 border rounded-2xl transition-colors flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "border-theme-soft text-theme-subtle hover:text-red-400 hover:border-red-500/20"
+                        className={`${utilityButtonBase} flex items-center gap-1 ${liked ? "border-red-500/40 bg-red-500/10 text-red-400" : "hover:text-red-400 hover:border-red-500/20"
                             }`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
@@ -161,14 +162,14 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                 <SignedOut>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-gold hover:border-gold/30 transition-colors inline-block"
+                        className={`${utilityButtonBase} hover:text-gold hover:border-gold/30 inline-block`}
                         title="إضافة للمحفوظات"
                     >
                         <Bookmark className="w-5 h-5" />
                     </Link>
                     <Link
                         href={`/sign-in?redirect_url=/products/${product.id}`}
-                        className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-red-400 hover:border-red-500/20 transition-colors inline-flex items-center gap-1"
+                        className={`${utilityButtonBase} hover:text-red-400 hover:border-red-500/20 inline-flex items-center gap-1`}
                         title="إعجاب"
                     >
                         <Heart className="w-5 h-5" />
@@ -178,7 +179,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
 
                 <motion.button
                     onClick={handleShare}
-                    className="p-3.5 border border-theme-soft rounded-2xl text-theme-subtle hover:text-gold hover:border-gold/30 transition-colors"
+                    className={`${utilityButtonBase} hover:text-gold hover:border-gold/30`}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     title="مشاركة الرابط"

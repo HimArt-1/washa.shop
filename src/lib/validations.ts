@@ -35,6 +35,13 @@ export const applicationSchema = z.object({
     full_name: arabicOrLatinName,
     email: emailSchema,
     phone: phoneOptional,
+    join_type: z.enum(["artist", "designer", "model", "customer", "partner"]).optional(),
+    gender: z.enum(["male", "female"]).optional(),
+    birth_date: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "تاريخ الميلاد غير صالح")
+        .optional()
+        .or(z.literal("")),
     portfolio_url: urlOptional,
     instagram_url: urlOptional,
     art_style: z

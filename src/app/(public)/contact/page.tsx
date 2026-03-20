@@ -55,7 +55,7 @@ export default function ContactPage() {
 
             <div className="container-wusha relative z-10">
                 {/* Header */}
-                <div className="text-center mb-16">
+                <div className="theme-surface-panel rounded-[2rem] text-center mb-16 px-6 py-10 sm:px-10">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold/10 border border-gold/20 rounded-full text-gold text-xs font-bold mb-6">
                         <Mail className="w-3.5 h-3.5" />
                         تواصل
@@ -78,7 +78,7 @@ export default function ContactPage() {
                                 href={method.href}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group p-6 bg-theme-subtle border border-theme-soft rounded-2xl hover:border-gold/20 transition-all duration-300 hover:-translate-y-1"
+                                className="group theme-surface-panel p-6 rounded-[1.75rem] hover:border-gold/20 transition-all duration-300 hover:-translate-y-1"
                             >
                                 <div className={`w-12 h-12 rounded-xl ${method.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                                     <Icon className={`w-6 h-6 ${method.color}`} />
@@ -93,7 +93,7 @@ export default function ContactPage() {
 
                 {/* Info Banner */}
                 <div className="max-w-3xl mx-auto">
-                    <div className="p-6 bg-theme-subtle border border-theme-soft rounded-2xl flex items-start gap-4">
+                    <div className="theme-surface-panel p-6 rounded-[1.75rem] flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
                             <Clock className="w-5 h-5 text-gold" />
                         </div>
@@ -106,7 +106,7 @@ export default function ContactPage() {
                             </p>
                         </div>
                     </div>
-                    <div className="mt-6 p-6 bg-theme-subtle border border-theme-soft rounded-2xl flex items-start gap-4">
+                    <div className="mt-6 theme-surface-panel p-6 rounded-[1.75rem] flex items-start gap-4">
                         <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center shrink-0">
                             <MapPin className="w-5 h-5 text-gold" />
                         </div>

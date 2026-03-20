@@ -1,5 +1,5 @@
-import { currentUser } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { CustomDesignOrder, Database } from "@/types/database";
 
@@ -32,7 +32,7 @@ export async function getDesignOrderAccess(
         return { sb, order: designOrder, access: "token", profileId: null };
     }
 
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) {
         return { sb, order: null, access: "none", profileId: null };
     }

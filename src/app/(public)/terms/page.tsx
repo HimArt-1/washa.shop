@@ -16,7 +16,7 @@ export default function TermsPage() {
 
             <div className="container-wusha relative z-10 max-w-4xl mx-auto">
                 {/* Header */}
-                <div className="text-center mb-16">
+                <div className="theme-surface-panel rounded-[2rem] text-center mb-16 px-6 py-10 sm:px-10">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold/10 border border-gold/20 rounded-full text-gold text-xs font-bold mb-6">
                         <Scale className="w-3.5 h-3.5" />
                         القانونية
@@ -40,7 +40,7 @@ export default function TermsPage() {
                             </div>
                             <h2 className="text-xl font-bold text-theme-strong">الشروط والأحكام</h2>
                         </div>
-                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
+                        <div className="theme-surface-panel rounded-[1.75rem] p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <p>باستخدامك لمنصة وشّى (washa.shop)، فإنك توافق على الشروط والأحكام التالية:</p>
                             <ul className="space-y-3 list-none">
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />يجب أن يكون عمر المستخدم 18 سنة أو أكثر لإتمام عمليات الشراء.</li>
@@ -63,7 +63,7 @@ export default function TermsPage() {
                             </div>
                             <h2 className="text-xl font-bold text-theme-strong">سياسة الخصوصية</h2>
                         </div>
-                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
+                        <div className="theme-surface-panel rounded-[1.75rem] p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <div>
                                 <h3 className="font-bold text-theme-soft mb-2">البيانات التي نجمعها</h3>
                                 <ul className="space-y-2 list-none">
@@ -97,7 +97,7 @@ export default function TermsPage() {
                             </div>
                             <h2 className="text-xl font-bold text-theme-strong">حقوق الملكية الفكرية</h2>
                         </div>
-                        <div className="bg-theme-subtle border border-theme-soft rounded-2xl p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
+                        <div className="theme-surface-panel rounded-[1.75rem] p-6 sm:p-8 space-y-5 text-sm text-theme-subtle leading-relaxed">
                             <ul className="space-y-3 list-none">
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />جميع المحتويات المعروضة على المنصة (شعارات، تصاميم، نصوص) محمية بموجب حقوق الملكية الفكرية.</li>
                                 <li className="flex items-start gap-3"><span className="w-1.5 h-1.5 rounded-full bg-gold/40 mt-2 shrink-0" />الأعمال الفنية المعروضة في المعرض ملك لأصحابها ولا يجوز نسخها أو استخدامها بدون إذن.</li>

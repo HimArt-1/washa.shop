@@ -9,6 +9,7 @@ import { Database, ProductType, ApparelSize } from "@/types/database";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 export type SortOption = "newest" | "oldest" | "price_asc" | "price_desc" | "rating";
 
@@ -142,7 +143,7 @@ export async function createProduct(input: CreateProductInput) {
 // ─── SYNC STOCK FROM ERP ─────────────────────────────────────
 // تزامن علامة in_stock على كل منتج بناءً على مخزون ERP الفعلي
 export async function syncProductStockFromERP() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { success: false, error: "Unauthorized", updated: 0 };
 
     const supabase = getSupabaseServerClient();

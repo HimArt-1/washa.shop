@@ -1,24 +1,27 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Search,
+    AlertTriangle,
+    Calendar,
+    Check,
     ChevronLeft,
     ChevronRight,
-    Users,
-    Mail,
-    Calendar,
-    LogIn,
-    ExternalLink,
-    UserCog,
     Copy,
-    Check,
     Download,
+    ExternalLink,
+    Link2,
+    LogIn,
+    Search,
+    ShieldCheck,
+    UserCog,
+    UserPlus,
+    Users,
 } from "lucide-react";
-import type { ClerkUserWithProfile } from "@/app/actions/clerk-users";
+import { linkClerkUserToProfile, type ClerkUserWithProfile } from "@/app/actions/clerk-users";
 
 const ROLE_LABELS: Record<string, string> = {
     admin: "مسؤول",
@@ -38,12 +41,37 @@ function formatDate(ms: number) {
     });
 }
 
+function getSyncBadge(syncState: ClerkUserWithProfile["syncState"]) {
+    if (syncState === "linked") {
+        return {
+            label: "مربوط",
+            className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+            icon: ShieldCheck,
+        };
+    }
+
+    if (syncState === "email_match") {
+        return {
+            label: "قابل للربط",
+            className: "border-amber-500/20 bg-amber-500/10 text-amber-200",
+            icon: Link2,
+        };
+    }
+
+    return {
+        label: "بدون ملف",
+        className: "border-red-500/20 bg-red-500/10 text-red-200",
+        icon: AlertTriangle,
+    };
+}
+
 interface ClerkUsersClientProps {
     users: ClerkUserWithProfile[];
     totalCount: number;
     totalPages: number;
     currentPage: number;
     currentSearch: string;
+    hideSummary?: boolean;
 }
 
 export function ClerkUsersClient({
@@ -52,13 +80,16 @@ export function ClerkUsersClient({
     totalPages,
     currentPage,
     currentSearch,
+    hideSummary = false,
 }: ClerkUsersClientProps) {
     const router = useRouter();
     const [search, setSearch] = useState(currentSearch);
     const [isPending, startTransition] = useTransition();
+    const [isLinking, startLinkTransition] = useTransition();
     const [mounted, setMounted] = useState(false);
-
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [linkingKey, setLinkingKey] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -71,12 +102,13 @@ export function ClerkUsersClient({
     };
 
     const exportToCSV = () => {
-        const headers = ["Clerk ID", "Name", "Email", "Platform Role", "Created At", "Last Sign In"];
+        const headers = ["Clerk ID", "Name", "Email", "Sync State", "Platform Role", "Created At", "Last Sign In"];
         const rows = users.map((u) => [
             u.id,
             `"${u.name || ""}"`,
             u.email || "",
-            u.profile?.role || "Not registered in platform",
+            u.syncState,
+            u.profile?.role || u.emailMatchedProfile?.role || "none",
             new Date(u.createdAt).toLocaleString("ar-SA"),
             u.lastSignInAt ? new Date(u.lastSignInAt).toLocaleString("ar-SA") : "Never",
         ]);
@@ -90,7 +122,7 @@ export function ClerkUsersClient({
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `wusha_clerk_users_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute("download", `wusha_auth_sync_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -110,185 +142,270 @@ export function ClerkUsersClient({
         navigate({ search, page: "1" });
     };
 
+    const handleLink = (user: ClerkUserWithProfile) => {
+        if (!user.emailMatchedProfile) return;
+
+        setErrorMessage(null);
+        setLinkingKey(user.id);
+        startLinkTransition(async () => {
+            const result = await linkClerkUserToProfile(user.id, user.emailMatchedProfile!.id);
+            if (!result.success) {
+                setErrorMessage(result.error || "فشل ربط الحساب");
+                setLinkingKey(null);
+                return;
+            }
+
+            router.refresh();
+            setLinkingKey(null);
+        });
+    };
+
     return (
         <div className="space-y-6">
-            {/* ─── Stats ─── */}
-            <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm p-5"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gold/10">
-                        <Users className="w-5 h-5 text-gold" />
+            {!hideSummary && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-2xl border border-theme-subtle bg-surface/50 p-5 backdrop-blur-sm"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="rounded-xl bg-gold/10 p-2.5">
+                            <Users className="h-5 w-5 text-gold" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-theme-subtle">إجمالي مستخدمي Clerk</p>
+                            <p className="text-2xl font-bold text-theme">{totalCount}</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-theme-subtle text-xs font-medium">إجمالي المستخدمين في Clerk</p>
-                        <p className="text-2xl font-bold text-theme">{totalCount}</p>
-                    </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            )}
 
-            {/* ─── Toolbar ─── */}
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <Link
                     href="/dashboard/users"
-                    className="flex items-center gap-2 text-sm text-theme-subtle hover:text-gold transition-colors"
+                    className="flex items-center gap-2 text-sm text-theme-subtle transition-colors hover:text-gold"
                 >
-                    <UserCog className="w-4 h-4" />
-                    عرض مستخدمي المنصة (الملفات)
+                    <UserCog className="h-4 w-4" />
+                    العودة إلى مركز الهوية
                 </Link>
 
                 <form onSubmit={handleSearch} className="relative">
-                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
+                    <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-faint" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث بالبريد أو الاسم أو المعرف..."
-                        className="w-64 pl-4 pr-10 py-2.5 bg-surface/50 border border-theme-subtle rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-colors"
+                        className="w-72 rounded-xl border border-theme-subtle bg-surface/50 py-2.5 pl-4 pr-10 text-sm text-theme placeholder:text-theme-faint focus:border-gold/30 focus:outline-none"
                     />
                 </form>
-                
-                {/* Export CSV Desktop */}
+
                 <button
                     onClick={exportToCSV}
-                    className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-theme-subtle text-theme hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all mr-auto"
+                    className="flex items-center gap-2 rounded-xl border border-theme-subtle bg-theme-subtle px-4 py-2.5 text-sm font-medium text-theme transition-all hover:border-gold/20 hover:text-gold"
                 >
-                    <Download className="w-4 h-4" />
+                    <Download className="h-4 w-4" />
                     تصدير (CSV)
                 </button>
             </div>
 
-            {/* Export CSV Mobile */}
-            <button
-                onClick={exportToCSV}
-                className="flex sm:hidden w-full justify-center items-center gap-2 px-4 py-2.5 bg-theme-subtle text-theme hover:text-gold border border-theme-subtle hover:border-gold/20 rounded-xl text-sm font-medium transition-all"
-            >
-                <Download className="w-4 h-4" />
-                تصدير (CSV)
-            </button>
+            {errorMessage && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                    {errorMessage}
+                </div>
+            )}
 
-            {/* ─── Table ─── */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="rounded-2xl border border-theme-subtle bg-surface/30 overflow-hidden"
+                className="overflow-hidden rounded-2xl border border-theme-subtle bg-surface/30"
             >
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-theme-subtle bg-theme-faint">
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft">المستخدم</th>
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft">البريد</th>
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft">الدور في المنصة</th>
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft">تاريخ التسجيل</th>
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft">آخر دخول</th>
-                                <th className="text-right py-4 px-4 font-medium text-theme-soft w-20">إجراءات</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">المستخدم</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">الحالة</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">البريد</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">هوية المنصة</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">تاريخ التسجيل</th>
+                                <th className="px-4 py-4 text-right font-medium text-theme-soft">آخر دخول</th>
+                                <th className="w-36 px-4 py-4 text-right font-medium text-theme-soft">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
                             <AnimatePresence mode="popLayout">
                                 {users.length === 0 ? (
-                                    <tr key="empty-row">
-                                        <td colSpan={6} className="py-16 text-center text-theme-subtle">
-                                            لا يوجد مستخدمون
+                                    <tr>
+                                        <td colSpan={7} className="py-16 text-center text-theme-subtle">
+                                            لا توجد حسابات مطابقة لهذا البحث
                                         </td>
                                     </tr>
                                 ) : (
-                                    users.map((user, i) => (
-                                        <motion.tr
-                                            key={user.id}
-                                            initial={{ opacity: 0, y: 4 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0 }}
-                                            transition={{ delay: i * 0.02 }}
-                                            className="border-b border-theme-faint hover:bg-theme-faint transition-colors"
-                                        >
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-theme-subtle shrink-0">
-                                                        {user.imageUrl ? (
-                                                            // eslint-disable-next-line @next/next/no-img-element
-                                                            <img
-                                                                src={user.imageUrl}
-                                                                alt=""
-                                                                width={40}
-                                                                height={40}
-                                                                className="object-cover w-full h-full"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-theme-faint">
-                                                                <Users className="w-5 h-5" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <span className="font-medium text-theme truncate max-w-[140px] block">
-                                                            {user.name}
-                                                        </span>
-                                                        <div className="flex items-center gap-1 mt-0.5 group/id">
-                                                            <span className="text-theme-faint text-[10px] font-mono truncate max-w-[120px] block" dir="ltr">
-                                                                {user.id?.slice(0, 16)}…
+                                    users.map((user, index) => {
+                                        const badge = getSyncBadge(user.syncState);
+                                        const BadgeIcon = badge.icon;
+
+                                        return (
+                                            <motion.tr
+                                                key={user.id}
+                                                initial={{ opacity: 0, y: 4 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ delay: index * 0.02 }}
+                                                className="border-b border-theme-faint transition-colors hover:bg-theme-faint"
+                                            >
+                                                <td className="px-4 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-theme-subtle">
+                                                            {user.imageUrl ? (
+                                                                // eslint-disable-next-line @next/next/no-img-element
+                                                                <img
+                                                                    src={user.imageUrl}
+                                                                    alt=""
+                                                                    width={40}
+                                                                    height={40}
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="flex h-full w-full items-center justify-center text-theme-faint">
+                                                                    <Users className="h-5 w-5" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <span className="block max-w-[160px] truncate font-medium text-theme">
+                                                                {user.name}
                                                             </span>
-                                                            <button onClick={() => handleCopy(user.id, `clerk_${user.id}`)} className="opacity-0 group-hover/id:opacity-100 transition-opacity">
-                                                                {copiedId === `clerk_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
-                                                            </button>
+                                                            <div className="group/id mt-0.5 flex items-center gap-1">
+                                                                <span className="block max-w-[120px] truncate font-mono text-[10px] text-theme-faint" dir="ltr">
+                                                                    {user.id.slice(0, 16)}…
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => handleCopy(user.id, `clerk_${user.id}`)}
+                                                                    className="opacity-0 transition-opacity group-hover/id:opacity-100"
+                                                                >
+                                                                    {copiedId === `clerk_${user.id}` ? (
+                                                                        <Check className="h-3 w-3 text-green-400" />
+                                                                    ) : (
+                                                                        <Copy className="h-3 w-3 text-theme-faint hover:text-gold" />
+                                                                    )}
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                <div className="flex items-center gap-1.5 group/email text-xs">
-                                                    <a href={`mailto:${user.email}`} className="text-theme-soft hover:text-gold truncate max-w-[160px]" dir="ltr">{user.email || "—"}</a>
-                                                    <button onClick={() => handleCopy(user.email || '', `email_${user.id}`)} className="opacity-0 group-hover/email:opacity-100 transition-opacity">
-                                                        {copiedId === `email_${user.id}` ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-theme-faint hover:text-gold" />}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                {user.profile ? (
-                                                    <span className="inline-flex px-2.5 py-1 rounded-lg bg-gold/10 text-gold text-xs font-medium">
-                                                        {ROLE_LABELS[user.profile.role] || user.profile.role}
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${badge.className}`}>
+                                                        <BadgeIcon className="h-3.5 w-3.5" />
+                                                        {badge.label}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-theme-faint text-xs">بدون ملف</span>
-                                                )}
-                                            </td>
-                                            <td className="py-4 px-4 text-theme-soft">
-                                                <span className="flex items-center gap-1.5">
-                                                    <Calendar className="w-3.5 h-3.5 text-theme-subtle" />
-                                                    {mounted ? formatDate(user.createdAt) : "—"}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4 text-theme-soft">
-                                                <span className="flex items-center gap-1.5">
-                                                    <LogIn className="w-3.5 h-3.5 text-theme-subtle" />
-                                                    {mounted ? formatDate(user.lastSignInAt ?? 0) : "—"}
-                                                </span>
-                                            </td>
-                                            <td className="py-4 px-4">
-                                                {user.profile && (
-                                                    <Link
-                                                        href={`/dashboard/users?search=${encodeURIComponent(user.profile.username || user.id)}`}
-                                                        className="inline-flex items-center gap-1 text-gold hover:text-gold/80 text-xs font-medium"
-                                                    >
-                                                        <ExternalLink className="w-3.5 h-3.5" />
-                                                        إدارة
-                                                    </Link>
-                                                )}
-                                            </td>
-                                        </motion.tr>
-                                    ))
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <div className="group/email flex items-center gap-1.5 text-xs">
+                                                        <a
+                                                            href={user.email ? `mailto:${user.email}` : undefined}
+                                                            className="max-w-[180px] truncate text-theme-soft hover:text-gold"
+                                                            dir="ltr"
+                                                        >
+                                                            {user.email || "—"}
+                                                        </a>
+                                                        {user.email && (
+                                                            <button
+                                                                onClick={() => handleCopy(user.email || "", `email_${user.id}`)}
+                                                                className="opacity-0 transition-opacity group-hover/email:opacity-100"
+                                                            >
+                                                                {copiedId === `email_${user.id}` ? (
+                                                                    <Check className="h-3 w-3 text-green-400" />
+                                                                ) : (
+                                                                    <Copy className="h-3 w-3 text-theme-faint hover:text-gold" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    {user.profile ? (
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-semibold text-theme">
+                                                                {user.profile.display_name || user.profile.username || "ملف منصة"}
+                                                            </p>
+                                                            <p className="text-xs text-theme-subtle">
+                                                                {ROLE_LABELS[user.profile.role] || user.profile.role}
+                                                            </p>
+                                                        </div>
+                                                    ) : user.emailMatchedProfile ? (
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-semibold text-amber-100">
+                                                                {user.emailMatchedProfile.display_name || user.emailMatchedProfile.username || "ملف مطابق بالبريد"}
+                                                            </p>
+                                                            <p className="text-xs text-theme-subtle">
+                                                                {ROLE_LABELS[user.emailMatchedProfile.role] || user.emailMatchedProfile.role}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 text-xs text-theme-faint">
+                                                            <UserPlus className="h-3.5 w-3.5" />
+                                                            لا يوجد profile
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-4 text-theme-soft">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <Calendar className="h-3.5 w-3.5 text-theme-subtle" />
+                                                        {mounted ? formatDate(user.createdAt) : "—"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-4 text-theme-soft">
+                                                    <span className="flex items-center gap-1.5">
+                                                        <LogIn className="h-3.5 w-3.5 text-theme-subtle" />
+                                                        {mounted ? formatDate(user.lastSignInAt ?? 0) : "—"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-4">
+                                                    <div className="flex flex-col items-start gap-2">
+                                                        {user.profile && (
+                                                            <Link
+                                                                href={`/dashboard/users/${user.profile.id}`}
+                                                                className="inline-flex items-center gap-1 text-xs font-medium text-gold hover:text-gold/80"
+                                                            >
+                                                                <ExternalLink className="h-3.5 w-3.5" />
+                                                                ملف الهوية
+                                                            </Link>
+                                                        )}
+
+                                                        {!user.profile && user.emailMatchedProfile && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleLink(user)}
+                                                                    disabled={isLinking && linkingKey === user.id}
+                                                                    className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                                                >
+                                                                    <Link2 className="h-3.5 w-3.5" />
+                                                                    {isLinking && linkingKey === user.id ? "جارٍ الربط..." : "ربط آمن"}
+                                                                </button>
+                                                                <Link
+                                                                    href={`/dashboard/users/${user.emailMatchedProfile.id}`}
+                                                                    className="inline-flex items-center gap-1 text-xs font-medium text-theme-subtle hover:text-gold"
+                                                                >
+                                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                                    مراجعة الملف
+                                                                </Link>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </motion.tr>
+                                        );
+                                    })
                                 )}
                             </AnimatePresence>
                         </tbody>
                     </table>
                 </div>
 
-                {/* ─── Pagination ─── */}
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-theme-subtle bg-theme-faint">
+                    <div className="flex items-center justify-between border-t border-theme-subtle bg-theme-faint px-4 py-3">
                         <p className="text-xs text-theme-subtle">
                             الصفحة {currentPage} من {totalPages}
                         </p>
@@ -296,16 +413,16 @@ export function ClerkUsersClient({
                             <button
                                 onClick={() => navigate({ page: String(currentPage - 1), search })}
                                 disabled={currentPage <= 1 || isPending}
-                                className="p-2 rounded-lg bg-theme-subtle hover:bg-theme-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                className="rounded-lg bg-theme-subtle p-2 transition-colors hover:bg-theme-soft disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                                <ChevronRight className="w-4 h-4" />
+                                <ChevronRight className="h-4 w-4" />
                             </button>
                             <button
                                 onClick={() => navigate({ page: String(currentPage + 1), search })}
                                 disabled={currentPage >= totalPages || isPending}
-                                className="p-2 rounded-lg bg-theme-subtle hover:bg-theme-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                className="rounded-lg bg-theme-subtle p-2 transition-colors hover:bg-theme-soft disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                                <ChevronLeft className="w-4 h-4" />
+                                <ChevronLeft className="h-4 w-4" />
                             </button>
                         </div>
                     </div>

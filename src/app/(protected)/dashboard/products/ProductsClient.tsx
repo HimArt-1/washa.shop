@@ -261,7 +261,7 @@ export function ProductsClient({
                     <div className="flex items-center gap-1.5 flex-wrap">
                         {Object.entries(typeLabels).map(([key, label]) => (
                             <button key={key} onClick={() => setFilter(key)}
-                                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${currentType === key ? "bg-gold text-bg shadow-[0_2px_10px_rgba(206,174,127,0.3)]" : "bg-theme-subtle text-theme-subtle hover:text-theme-soft hover:bg-theme-soft border border-theme-faint"}`}>
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${currentType === key ? "bg-gold text-[var(--wusha-bg)] shadow-[0_2px_10px_rgba(206,174,127,0.3)]" : "bg-theme-faint text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle border border-theme-faint"}`}>
                                 {label}
                             </button>
                         ))}
@@ -272,7 +272,7 @@ export function ProductsClient({
                     <div className="flex items-center gap-2">
                         {onSmartImportClick && (
                             <button onClick={onSmartImportClick}
-                                className="flex items-center gap-2 px-4 py-2 bg-gold/20 text-gold border-2 border-gold/40 rounded-lg text-sm font-bold hover:bg-gold/30 transition-all">
+                                className="flex items-center gap-2 px-4 py-2 bg-gold text-[var(--wusha-bg)] border border-gold/40 rounded-lg text-sm font-bold hover:bg-gold-light transition-all shadow-[0_12px_26px_rgba(154,123,61,0.16)]">
                                 <Upload className="w-4 h-4" /> الاستيراد الذكي
                             </button>
                         )}
@@ -326,7 +326,7 @@ export function ProductsClient({
             </div>
 
             {/* ─── Products Table ─── */}
-            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="theme-surface-panel rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
@@ -510,7 +510,7 @@ export function ProductsClient({
                     {[...Array(totalPages)].map((_, i) => (
                         <Link key={i}
                             href={`${basePath}?page=${i + 1}${currentType !== "all" ? `&type=${currentType}` : ""}${basePath.includes("products-inventory") ? "&tab=products" : ""}`}
-                            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-medium transition-all ${currentPage === i + 1 ? "bg-gold text-bg" : "text-theme-faint hover:bg-theme-subtle"}`}>
+                            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-medium transition-all ${currentPage === i + 1 ? "bg-gold text-[var(--wusha-bg)]" : "text-theme-faint hover:bg-theme-subtle"}`}>
                             {i + 1}
                         </Link>
                     ))}
@@ -667,7 +667,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
             onClick={onClose}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-md rounded-2xl border border-theme-soft bg-bg shadow-2xl p-6 space-y-5">
+                className="theme-surface-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-theme flex items-center gap-2">
@@ -698,13 +698,13 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                 <label className="block text-xs font-medium text-theme-subtle mb-1.5">المقاس (اختياري)</label>
                                 <input type="text" value={size} onChange={e => setSize(e.target.value)}
                                     placeholder="مثال: XL"
-                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" />
+                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm" />
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-theme-subtle mb-1.5">اللون (اختياري)</label>
                                 <input type="text" value={colorCode} onChange={e => setColorCode(e.target.value)}
                                     placeholder="مثال: blu"
-                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30" />
+                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm" />
                             </div>
                         </div>
                         <div>
@@ -712,7 +712,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                             <input type="text" value={customSku}
                                 onChange={(e) => setCustomSku(e.target.value)} dir="ltr"
                                 placeholder="اتركه فارغاً للتوليد التلقائي (WSH-P-00001-NA-NA)"
-                                className="w-full px-4 py-2.5 bg-gold/5 border border-gold/20 text-gold rounded-xl text-sm font-mono tracking-wider focus:outline-none placeholder:text-gold/30" />
+                                className="w-full rounded-xl border border-gold/20 bg-gold/10 px-4 py-2.5 text-sm font-mono tracking-wider text-gold focus:outline-none focus:border-gold/40 placeholder:text-gold/35" />
                             <p className="text-[10px] text-theme-subtle mt-1.5 leading-relaxed">
                                 اترك الحقل فارغاً لاستخدام القالب التلقائي، أو أدخل رمزاً مخصصاً. القالب: WSH-{'{'}النوع{'}'}-{'{'}تسلسل{'}'}-{'{'}المقاس{'}'}-{'{'}اللون{'}'}
                             </p>
@@ -725,7 +725,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                             <div>
                                 <label className="block text-xs font-medium text-theme-subtle mb-1.5">رمز SKU الحالي</label>
                                 <input type="text" value={sku.sku} readOnly dir="ltr"
-                                    className="w-full px-4 py-2 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme font-mono tracking-wider focus:outline-none opacity-60" />
+                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm font-mono tracking-wider opacity-60" />
                             </div>
                             <div className="flex gap-2">
                                 {sku.size && <span className="px-2 py-1 text-xs bg-theme-subtle rounded-md border border-theme-soft text-theme-soft">المقاس: {sku.size}</span>}
@@ -736,11 +736,11 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                         {/* Format Toggle */}
                         <div className="flex gap-2 border-t border-theme-faint pt-4">
                             <button onClick={() => setCodeType("barcode")}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "barcode" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-subtle border-transparent text-theme-subtle"}`}>
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "barcode" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-faint border-theme-subtle text-theme-subtle"}`}>
                                 Code 128
                             </button>
                             <button onClick={() => setCodeType("qr")}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "qr" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-subtle border-transparent text-theme-subtle"}`}>
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "qr" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-faint border-theme-subtle text-theme-subtle"}`}>
                                 QR Code
                             </button>
                         </div>
@@ -805,7 +805,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                     <Printer className="w-4 h-4" /> طباعة ملصق
                                 </button>
                                 <button onClick={() => { navigator.clipboard.writeText(sku.sku); }}
-                                    className="py-2.5 px-4 rounded-xl bg-theme-subtle text-theme-soft hover:bg-white/10 transition-all text-sm border border-theme-subtle">
+                                    className="py-2.5 px-4 rounded-xl bg-theme-faint text-theme-soft hover:bg-theme-subtle transition-all text-sm border border-theme-subtle">
                                     نسخ
                                 </button>
                             </div>
@@ -813,7 +813,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                 <span className="text-xs text-theme-soft shrink-0">طباعة مجموعة:</span>
                                 <input type="number" min={1} max={999} placeholder="عدد الملصقات"
                                     value={batchCount} onChange={(e) => setBatchCount(e.target.value)}
-                                    className="w-20 px-2 py-1.5 text-sm rounded-lg bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-subtle" />
+                                    className="input-dark w-20 rounded-lg px-2 py-1.5 text-sm" />
                                 <button onClick={handleBatchPrint} disabled={batchPrinting}
                                     className="py-1.5 px-4 rounded-lg bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 disabled:opacity-50 flex items-center gap-1">
                                     {batchPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
@@ -823,7 +823,7 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                         </>
                     ) : (
                         <button onClick={handleCreate} disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl bg-gold/20 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/30 transition-all disabled:opacity-50 text-sm">
+                            className="flex-1 py-2.5 rounded-xl bg-gold text-[var(--wusha-bg)] font-bold flex items-center justify-center gap-2 hover:bg-gold-light transition-all disabled:opacity-50 text-sm">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                             إنشاء SKU
                         </button>
@@ -946,8 +946,8 @@ function ProductFormModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--wusha-bg)_60%,transparent)] backdrop-blur-sm" onClick={onClose}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-theme-soft bg-bg shadow-2xl styled-scrollbar">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle sticky top-0 bg-bg z-10">
+                className="theme-surface-panel styled-scrollbar w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle sticky top-0 bg-[color:var(--wusha-surface)] z-10">
                     <h2 className="text-lg font-bold text-theme">{isEdit ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle"><X className="w-5 h-5" /></button>
                 </div>
@@ -957,7 +957,7 @@ function ProductFormModal({
                         <label className="block text-xs font-medium text-theme-subtle mb-1.5">الوشّاي {!isEdit && "*"}</label>
                         <select value={form.artist_id}
                             onChange={(e) => setForm((f) => ({ ...f, artist_id: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             required={!isEdit}>
                             {artistOptions.length === 0
                                 ? <option value="">— لا يوجد وشّايون —</option>
@@ -971,7 +971,7 @@ function ProductFormModal({
                         <input type="text" value={form.title}
                             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                             placeholder="عنوان المنتج"
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             required />
                     </div>
 
@@ -981,7 +981,7 @@ function ProductFormModal({
                             <label className="block text-xs font-medium text-theme-subtle mb-1.5">النوع</label>
                             <select value={form.type}
                                 onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30">
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm">
                                 {typeOptions.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
                         </div>
@@ -990,7 +990,7 @@ function ProductFormModal({
                             <input type="number" min="0" step="0.01" value={form.price}
                                 onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                                 placeholder="0"
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                                 required />
                         </div>
                     </div>
@@ -1023,7 +1023,7 @@ function ProductFormModal({
                                 ) : isEdit && product?.image_url ? (
                                     <div className="relative inline-block">
                                         <img src={product.image_url} alt="الصورة الحالية" className="max-h-28 rounded-lg object-contain opacity-70" />
-                                        <span className="absolute bottom-1 right-1 text-[9px] bg-black/50 px-1.5 py-0.5 rounded text-white/80">انقر لتغيير</span>
+                                        <span className="absolute bottom-1 right-1 rounded bg-[color:rgba(15,15,15,0.42)] px-1.5 py-0.5 text-[9px] text-on-dark">انقر لتغيير</span>
                                     </div>
                                 ) : (
                                     <>
@@ -1037,7 +1037,7 @@ function ProductFormModal({
                             <input type="url" value={form.image_url}
                                 onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
                                 placeholder="https://..."
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>
                     </div>
 
@@ -1047,7 +1047,7 @@ function ProductFormModal({
                         <textarea value={form.description}
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                             placeholder="وصف المنتج..." rows={2}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 resize-none" />
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm resize-none" />
                     </div>
 
                     {/* Sizes + Store Name */}
@@ -1057,14 +1057,14 @@ function ProductFormModal({
                             <input type="text" value={form.sizes}
                                 onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
                                 placeholder="S, M, L, XL"
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المتجر</label>
                             <input type="text" value={form.store_name}
                                 onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
                                 placeholder="WASHA.STOR"
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30" dir="ltr" />
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>
                     </div>
 
@@ -1082,7 +1082,7 @@ function ProductFormModal({
                                 <input type="number" min="0" value={form.stock_quantity}
                                     onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
                                     placeholder="مثال: 100"
-                                    className="w-full max-w-[120px] px-3 py-2 bg-theme-subtle border border-theme-soft rounded-lg text-sm text-theme"
+                                    className="input-dark w-full max-w-[120px] rounded-lg px-3 py-2 text-sm"
                                     dir="ltr" />
                                 <p className="text-[10px] text-theme-subtle mt-1">لتسجيل الكمية دفعة واحدة عند الإنشاء. أي تعديل لاحق من تبويب المخزون والجرد.</p>
                             </div>
@@ -1101,7 +1101,7 @@ function ProductFormModal({
                             إلغاء
                         </button>
                         <button type="submit" disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl bg-gold/20 text-gold font-bold hover:bg-gold/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                            className="flex-1 py-2.5 rounded-xl bg-gold text-[var(--wusha-bg)] font-bold hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : isEdit ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                             {isEdit ? "حفظ" : "إضافة"}
                         </button>

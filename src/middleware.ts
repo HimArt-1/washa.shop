@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { shouldBypassClerkForDashboardPath } from "@/lib/dev-auth";
 
 const isProtectedRoute = createRouteMatcher([
     '/studio(.*)',
@@ -16,6 +17,9 @@ const isPublicRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, req) => {
     if (isPublicRoute(req)) return;
     if (isProtectedRoute(req)) {
+        if (shouldBypassClerkForDashboardPath(req.nextUrl.pathname)) {
+            return;
+        }
         await auth.protect();
     }
 });

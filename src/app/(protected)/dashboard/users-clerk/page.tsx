@@ -1,6 +1,5 @@
-import { getClerkUsersList } from "@/app/actions/clerk-users";
-import { AdminHeader } from "@/components/admin/AdminHeader";
-import { ClerkUsersClient } from "@/components/admin/ClerkUsersClient";
+import { getClerkIdentitySnapshot, getClerkUsersList } from "@/app/actions/clerk-users";
+import { AuthSyncCenter } from "@/components/admin/users/AuthSyncCenter";
 
 interface PageProps {
     searchParams: Promise<{ page?: string; search?: string }>;
@@ -11,22 +10,21 @@ export default async function ClerkUsersPage({ searchParams }: PageProps) {
     const page = Number(params.page) || 1;
     const search = params.search || "";
 
-    const { data, totalCount, totalPages } = await getClerkUsersList(page, search);
+    const [{ data, totalCount, totalPages }, snapshot] = await Promise.all([
+        getClerkUsersList(page, search),
+        getClerkIdentitySnapshot(),
+    ]);
 
     return (
-        <div className="space-y-6">
-            <AdminHeader
-                title="مستخدمي Clerk"
-                subtitle="عرض جميع المستخدمين المسجلين في نظام المصادقة مع بياناتهم من المنصة."
-            />
-
-            <ClerkUsersClient
-                users={data}
-                totalCount={totalCount}
-                totalPages={totalPages}
-                currentPage={page}
-                currentSearch={search}
-            />
-        </div>
+        <AuthSyncCenter
+            snapshot={snapshot}
+            clientProps={{
+                users: data,
+                totalCount,
+                totalPages,
+                currentPage: page,
+                currentSearch: search,
+            }}
+        />
     );
 }

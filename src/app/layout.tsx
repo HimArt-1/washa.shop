@@ -9,6 +9,7 @@ import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
 import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerRegister";
 import { CartSyncProvider } from "@/components/store/CartSyncProvider";
+import { ProfileBootstrapper } from "@/components/auth/ProfileBootstrapper";
 import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
@@ -20,6 +21,7 @@ export const viewport: Viewport = {
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+const THEME_INIT_SCRIPT = `(function(){try{var key='wusha-theme';var stored=localStorage.getItem(key);var theme=(stored==='light'||stored==='dark')?stored:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -111,7 +113,7 @@ export default function RootLayout({
         <head>
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){var t=localStorage.getItem('wusha-theme');document.documentElement.setAttribute('data-theme',t==='dark'||t==='light'?t:'light');})();`,
+              __html: THEME_INIT_SCRIPT,
             }}
           />
           {/* JSON-LD Structured Data */}
@@ -169,9 +171,10 @@ export default function RootLayout({
           {/* Main Content */}
           <ThemeProvider>
             <CartSyncProvider />
+            <ProfileBootstrapper />
             <VisitLogger />
             <ClientErrorLogger />
-            <main id="main-content">
+            <main id="main-content" className="min-h-screen">
               {children}
             </main>
           </ThemeProvider>

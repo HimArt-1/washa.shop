@@ -1,13 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import type {
     AdminNotification,
     AdminNotificationCategory,
     AdminNotificationSeverity,
     AdminNotificationType,
 } from "@/types/database";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import { getDefaultAdminNotificationMeta } from "@/lib/admin-notification-meta";
 
 // NOTE: "use server" files can only export async functions.
@@ -59,7 +60,7 @@ export async function createAdminNotification(data: {
 }
 
 async function requireAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return null;
     const supabase = getNotificationsClient();
     const { data } = await supabase.from("profiles").select("role").eq("clerk_id", user.id).single();
@@ -106,14 +107,44 @@ export async function getUnreadNotificationsCount(): Promise<number> {
 
 /** تعليم إشعار كمقروء */
 export async function markNotificationRead(id: string) {
-    const supabase = await requireAdmin();
-    if (!supabase) return;
-    await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);
+    try {
+        const supabase = await requireAdmin();
+        if (!supabase) return { success: false as const, error: "Unauthorized" };
+        const { error } = await supabase
+            .from("admin_notifications")
+            .update({ is_read: true })
+            .eq("id", id);
+
+        if (error) {
+            return { success: false as const, error: error.message };
+        }
+
+        revalidatePath("/dashboard");
+        revalidatePath("/dashboard/notifications");
+        return { success: true as const };
+    } catch (error) {
+        return { success: false as const, error: error instanceof Error ? error.message : "Failed to mark notification as read" };
+    }
 }
 
 /** تعليم الكل كمقروء */
 export async function markAllNotificationsRead() {
-    const supabase = await requireAdmin();
-    if (!supabase) return;
-    await supabase.from("admin_notifications").update({ is_read: true }).eq("is_read", false);
+    try {
+        const supabase = await requireAdmin();
+        if (!supabase) return { success: false as const, error: "Unauthorized" };
+        const { error } = await supabase
+            .from("admin_notifications")
+            .update({ is_read: true })
+            .eq("is_read", false);
+
+        if (error) {
+            return { success: false as const, error: error.message };
+        }
+
+        revalidatePath("/dashboard");
+        revalidatePath("/dashboard/notifications");
+        return { success: true as const };
+    } catch (error) {
+        return { success: false as const, error: error instanceof Error ? error.message : "Failed to mark all notifications as read" };
+    }
 }

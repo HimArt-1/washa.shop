@@ -1,4 +1,4 @@
-import { getAdminOverview } from "@/app/actions/admin";
+import { getAdminCommandCenterData, getAdminOverview } from "@/app/actions/admin";
 import { 
     getDashboardMetrics, 
     getRevenueByMonth, 
@@ -14,8 +14,9 @@ export default async function AdminDashboardPage() {
     
     // Fetch overview for the KPI top cards and recent orders
     // Plus the new deep analytics data
-    const [overview, metrics, monthlyRevenue, topProducts, lowStock] = await Promise.all([
+    const [overview, controlTower, metrics, monthlyRevenue, topProducts, lowStock] = await Promise.all([
         getAdminOverview(),
+        getAdminCommandCenterData(),
         getDashboardMetrics(),
         getRevenueByMonth(currentYear),
         getTopSellingProducts(5),
@@ -35,6 +36,7 @@ export default async function AdminDashboardPage() {
                 stats={{...stats, ...metrics}}
                 recentOrders={recentOrders}
                 pendingApplications={pendingApplications}
+                controlTower={controlTower}
                 topProductsList={topProducts.data || []}
                 monthlyRevenue={monthlyRevenue}
                 lowStockList={lowStock.data || []}

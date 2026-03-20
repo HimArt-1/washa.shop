@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 function getOpsClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,7 +11,7 @@ function getOpsClient() {
 }
 
 async function requireAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return null;
     const supabase = getOpsClient();
     if (!supabase) return null;

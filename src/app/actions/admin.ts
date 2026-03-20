@@ -6,10 +6,13 @@
 
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { currentUser, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { sendApplicationAcceptedEmail, sendApplicationRejectedEmail } from "@/lib/email";
+import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
+import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
+import { emitOrderRevenueEscalations } from "@/lib/operational-escalations";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
@@ -26,37 +29,49 @@ function generateTempPassword(): string {
     return p;
 }
 
-// ─── Admin Supabase Client ──────────────────────────────────
-
-function getAdminSupabase() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) {
-        throw new Error(
-            "[Admin] Missing Supabase env: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY. Add them in Vercel → Project → Settings → Environment Variables."
-        );
-    }
-    return createClient<Database>(url, key, { auth: { persistSession: false } });
-}
-
 // ─── Auth Guard ─────────────────────────────────────────────
 
 async function requireAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) throw new Error("Unauthorized");
 
-    const supabase = getAdminSupabase();
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("clerk_id", user.id)
-        .single();
+    const { supabase, profile, isAdmin } = await resolveAdminAccess(user);
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || !isAdmin) {
         throw new Error("Forbidden: Admin access required");
     }
 
     return { user, profile, supabase };
+}
+
+async function reportAdminActionAlert(params: {
+    dispatchKey: string;
+    title: string;
+    message: string;
+    source: string;
+    category?: "applications" | "orders" | "system" | "security" | "design";
+    severity?: "warning" | "critical";
+    link?: string;
+    metadata?: Record<string, unknown>;
+    bucketMs?: number;
+    resourceType?: string;
+    resourceId?: string | null;
+    stack?: string | null;
+}) {
+    await reportAdminOperationalAlert({
+        dispatchKey: params.dispatchKey,
+        title: params.title,
+        message: params.message,
+        source: params.source,
+        category: params.category ?? "system",
+        severity: params.severity ?? "warning",
+        link: params.link ?? "/dashboard/notifications",
+        metadata: params.metadata,
+        bucketMs: params.bucketMs,
+        resourceType: params.resourceType,
+        resourceId: params.resourceId ?? null,
+        stack: params.stack,
+    });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -178,11 +193,108 @@ export async function getAdminOverview() {
     }
 }
 
+export async function getAdminCommandCenterData() {
+    noStore();
+
+    try {
+        const { supabase } = await requireAdmin();
+
+        const results = await Promise.allSettled([
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["processing", "shipped"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
+            supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("priority", "high").in("status", ["open", "in_progress"]),
+            supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "new"),
+            supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "awaiting_review"),
+            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
+            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false).eq("severity", "critical"),
+            supabase.from("admin_notifications")
+                .select("id, title, message, category, severity, created_at, link, is_read")
+                .order("created_at", { ascending: false })
+                .limit(6),
+            supabase.from("support_tickets")
+                .select("id, subject, status, priority, name, email, created_at")
+                .in("status", ["open", "in_progress"])
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase.from("custom_design_orders")
+                .select("id, order_number, customer_name, garment_name, status, created_at")
+                .in("status", ["new", "in_progress", "awaiting_review"])
+                .order("created_at", { ascending: false })
+                .limit(5),
+        ]);
+
+        const getCount = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && typeof result.value.count === "number" ? result.value.count : 0;
+
+        const getData = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && Array.isArray(result.value.data) ? result.value.data : [];
+
+        results.forEach((res, idx) => {
+            if (res.status === "rejected") {
+                console.error(`Command center query ${idx} failed:`, res.reason);
+                return;
+            }
+
+            if (res.value?.error) {
+                console.error(`Command center query ${idx} returned DB error:`, res.value.error);
+            }
+        });
+
+        return {
+            ops: {
+                ordersNeedingReview: getCount(results[0]),
+                fulfillmentQueue: getCount(results[1]),
+                pendingPayments: getCount(results[2]),
+                supportOpen: getCount(results[3]),
+                supportUrgent: getCount(results[4]),
+                designNew: getCount(results[5]),
+                designAwaitingReview: getCount(results[6]),
+                alertsUnread: getCount(results[7]),
+                alertsCritical: getCount(results[8]),
+            },
+            recentAlerts: getData(results[9]),
+            supportQueue: getData(results[10]),
+            designQueue: getData(results[11]),
+        };
+    } catch (err) {
+        console.error("FATAL: getAdminCommandCenterData crashed completely:", err);
+        return {
+            ops: {
+                ordersNeedingReview: 0,
+                fulfillmentQueue: 0,
+                pendingPayments: 0,
+                supportOpen: 0,
+                supportUrgent: 0,
+                designNew: 0,
+                designAwaitingReview: 0,
+                alertsUnread: 0,
+                alertsCritical: 0,
+            },
+            recentAlerts: [],
+            supportQueue: [],
+            designQueue: [],
+        };
+    }
+}
+
 // ═══════════════════════════════════════════════════════════
 //  1b. ANALYTICS — لوحة التحليلات
 // ═══════════════════════════════════════════════════════════
 
 export type AnalyticsPeriod = "7d" | "30d" | "90d";
+
+type FinanceWatchOrder = {
+    id: string;
+    order_number: string;
+    total: number;
+    status: string;
+    payment_status: string;
+    created_at: string;
+    discount_amount: number;
+    buyer: { display_name?: string | null; username?: string | null } | null;
+};
 
 export interface AnalyticsData {
     revenueByDay: { date: string; revenue: number; orders: number }[];
@@ -197,6 +309,29 @@ export interface AnalyticsData {
         ordersGrowth: number;
         usersGrowth: number;
     };
+    finance: {
+        todayRevenue: number;
+        todayOrders: number;
+        paidOrders: number;
+        pendingPayments: number;
+        failedPayments: number;
+        deliveredOrders: number;
+        cancelledOrRefunded: number;
+        outstandingRevenue: number;
+        atRiskRevenue: number;
+        discountGranted: number;
+        collectionRate: number;
+        activeRevenueQueue: number;
+    };
+    watchlists: {
+        pendingPayments: FinanceWatchOrder[];
+        failedPayments: FinanceWatchOrder[];
+        recentPaid: FinanceWatchOrder[];
+    };
+    mixes: {
+        orderStatus: Array<{ key: string; label: string; count: number }>;
+        paymentStatus: Array<{ key: string; label: string; count: number }>;
+    };
 }
 
 export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promise<AnalyticsData> {
@@ -208,16 +343,43 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
         const startIso = startDate.toISOString();
+        const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-        // 1. Orders (paid) with created_at for revenue/orders by day
-        const { data: ordersData } = await supabase
-            .from("orders")
-            .select("id, total, created_at")
-            .gte("created_at", startIso)
-            .in("payment_status", ["paid"]);
+        const [
+            { data: ordersData },
+            { data: profilesData },
+        ] = await Promise.all([
+            supabase
+                .from("orders")
+                .select("id, order_number, total, discount_amount, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .gte("created_at", startIso)
+                .order("created_at", { ascending: false }),
+            supabase
+                .from("profiles")
+                .select("created_at")
+                .gte("created_at", startIso),
+        ]);
 
-        const orders = (ordersData as { id: string; total: number; created_at: string }[]) || [];
-        const totalRevenue = orders.reduce((s, o) => s + (Number(o.total) || 0), 0);
+        const orders = (ordersData as FinanceWatchOrder[]) || [];
+        const paidOrders = orders.filter((order) => order.payment_status === "paid");
+        const pendingPaymentOrders = orders.filter(
+            (order) => order.payment_status === "pending" && !["cancelled", "refunded"].includes(order.status)
+        );
+        const failedPaymentOrders = orders.filter(
+            (order) => order.payment_status === "failed" && !["cancelled", "refunded"].includes(order.status)
+        );
+        const deliveredOrders = orders.filter((order) => order.status === "delivered");
+        const cancelledOrRefundedOrders = orders.filter(
+            (order) => ["cancelled", "refunded"].includes(order.status) || order.payment_status === "refunded"
+        );
+        const todayOrders = orders.filter((order) => order.created_at >= todayStartIso);
+        const todayPaidOrders = paidOrders.filter((order) => order.created_at >= todayStartIso);
+
+        const totalRevenue = paidOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+        const todayRevenue = todayPaidOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+        const outstandingRevenue = pendingPaymentOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+        const atRiskRevenue = failedPaymentOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+        const discountGranted = orders.reduce((sum, order) => sum + (Number(order.discount_amount) || 0), 0);
 
         // Group by date
         const revenueByDayMap = new Map<string, { revenue: number; orders: number }>();
@@ -227,7 +389,7 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
             const key = d.toISOString().slice(0, 10);
             revenueByDayMap.set(key, { revenue: 0, orders: 0 });
         }
-        for (const o of orders) {
+        for (const o of paidOrders) {
             const key = o.created_at.slice(0, 10);
             const curr = revenueByDayMap.get(key) ?? { revenue: 0, orders: 0 };
             curr.revenue += Number(o.total) || 0;
@@ -239,7 +401,7 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
             .map(([date, v]) => ({ date, revenue: v.revenue, orders: v.orders }));
 
         // 2. Top products from order_items
-        const orderIds = orders.map((o) => o.id);
+        const orderIds = paidOrders.map((o) => o.id);
         let topProducts: { productId: string; title: string; quantity: number; revenue: number }[] = [];
 
         if (orderIds.length > 0) {
@@ -268,11 +430,6 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
         }
 
         // 3. Users by day (profiles created_at)
-        const { data: profilesData } = await supabase
-            .from("profiles")
-            .select("created_at")
-            .gte("created_at", startIso);
-
         const profiles = (profilesData as { created_at: string }[]) || [];
         const usersByDayMap = new Map<string, number>();
         for (let i = 0; i < days; i++) {
@@ -300,17 +457,19 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
                 { data: prevOrders },
                 { data: prevProfiles },
             ] = await Promise.all([
-                supabase.from("orders").select("id, total").gte("created_at", prevStartIso).lt("created_at", startIso).in("payment_status", ["paid"]),
+                supabase.from("orders").select("id, total, payment_status").gte("created_at", prevStartIso).lt("created_at", startIso),
                 supabase.from("profiles").select("id").gte("created_at", prevStartIso).lt("created_at", startIso),
             ]);
-            const prevOrdersList = (prevOrders as { total: number }[]) || [];
-            const prevRev = prevOrdersList.reduce((s, o) => s + (Number(o.total) || 0), 0);
+            const prevOrdersList = (prevOrders as { total: number; payment_status: string }[]) || [];
+            const prevRev = prevOrdersList
+                .filter((order) => order.payment_status === "paid")
+                .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
             const prevUsers = (prevProfiles as unknown[])?.length ?? 0;
             previousPeriod = {
                 totalRevenue: prevRev,
                 totalOrders: prevOrdersList.length,
                 totalUsers: prevUsers,
-                revenueGrowth: prevRev > 0 ? ((totalRevenue - prevRev) / prevRev) * 100 : (totalRevenue > 0 ? 100 : 0),
+                revenueGrowth: prevRev > 0 ? ((totalRevenue - prevRev) / prevRev) * 100 : totalRevenue > 0 ? 100 : 0,
                 ordersGrowth: prevOrdersList.length > 0 ? ((orders.length - prevOrdersList.length) / prevOrdersList.length) * 100 : (orders.length > 0 ? 100 : 0),
                 usersGrowth: prevUsers > 0 ? ((profiles.length - prevUsers) / prevUsers) * 100 : (profiles.length > 0 ? 100 : 0),
             };
@@ -318,7 +477,58 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
             previousPeriod = undefined;
         }
 
-        return {
+        const orderStatusLabel = (status: string) => {
+            switch (status) {
+                case "pending":
+                    return "بانتظار التأكيد";
+                case "confirmed":
+                    return "مؤكد";
+                case "processing":
+                    return "قيد التنفيذ";
+                case "shipped":
+                    return "تم الشحن";
+                case "delivered":
+                    return "تم التسليم";
+                case "cancelled":
+                    return "ملغي";
+                case "refunded":
+                    return "مسترد";
+                default:
+                    return status;
+            }
+        };
+
+        const paymentStatusLabel = (status: string) => {
+            switch (status) {
+                case "pending":
+                    return "بانتظار الدفع";
+                case "paid":
+                    return "مدفوع";
+                case "failed":
+                    return "متعثر";
+                case "refunded":
+                    return "مسترد";
+                default:
+                    return status;
+            }
+        };
+
+        const toMix = (entries: [string, number][], labelFor: (value: string) => string) =>
+            entries
+                .filter(([, count]) => count > 0)
+                .map(([key, count]) => ({ key, count, label: labelFor(key) }))
+                .sort((a, b) => b.count - a.count);
+
+        const orderStatusCounts = new Map<string, number>();
+        const paymentStatusCounts = new Map<string, number>();
+        for (const order of orders) {
+            orderStatusCounts.set(order.status, (orderStatusCounts.get(order.status) ?? 0) + 1);
+            paymentStatusCounts.set(order.payment_status, (paymentStatusCounts.get(order.payment_status) ?? 0) + 1);
+        }
+
+        const collectionRate = orders.length > 0 ? (paidOrders.length / orders.length) * 100 : 0;
+
+        const analytics = {
             revenueByDay,
             topProducts,
             usersByDay,
@@ -326,10 +536,37 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
                 totalRevenue,
                 totalOrders: orders.length,
                 totalUsers: profiles.length,
-                avgOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
+                avgOrderValue: paidOrders.length > 0 ? totalRevenue / paidOrders.length : 0,
             },
             previousPeriod,
+            finance: {
+                todayRevenue,
+                todayOrders: todayOrders.length,
+                paidOrders: paidOrders.length,
+                pendingPayments: pendingPaymentOrders.length,
+                failedPayments: failedPaymentOrders.length,
+                deliveredOrders: deliveredOrders.length,
+                cancelledOrRefunded: cancelledOrRefundedOrders.length,
+                outstandingRevenue,
+                atRiskRevenue,
+                discountGranted,
+                collectionRate,
+                activeRevenueQueue: pendingPaymentOrders.length + failedPaymentOrders.length,
+            },
+            watchlists: {
+                pendingPayments: pendingPaymentOrders.slice(0, 6),
+                failedPayments: failedPaymentOrders.slice(0, 6),
+                recentPaid: paidOrders.slice(0, 6),
+            },
+            mixes: {
+                orderStatus: toMix(Array.from(orderStatusCounts.entries()), orderStatusLabel),
+                paymentStatus: toMix(Array.from(paymentStatusCounts.entries()), paymentStatusLabel),
+            },
         };
+
+        await emitOrderRevenueEscalations({ finance: analytics.finance });
+
+        return analytics;
     } catch (err) {
         console.error("getAdminAnalytics error:", err);
         return {
@@ -337,6 +574,29 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
             topProducts: [],
             usersByDay: [],
             summary: { totalRevenue: 0, totalOrders: 0, totalUsers: 0, avgOrderValue: 0 },
+            finance: {
+                todayRevenue: 0,
+                todayOrders: 0,
+                paidOrders: 0,
+                pendingPayments: 0,
+                failedPayments: 0,
+                deliveredOrders: 0,
+                cancelledOrRefunded: 0,
+                outstandingRevenue: 0,
+                atRiskRevenue: 0,
+                discountGranted: 0,
+                collectionRate: 0,
+                activeRevenueQueue: 0,
+            },
+            watchlists: {
+                pendingPayments: [],
+                failedPayments: [],
+                recentPaid: [],
+            },
+            mixes: {
+                orderStatus: [],
+                paymentStatus: [],
+            },
         };
     }
 }
@@ -541,6 +801,23 @@ export async function updateUserRole(userId: string, newRole: string) {
 
     if (error) {
         console.error("Update role error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_user_role_failed:${userId}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث دور المستخدم",
+            message: `تعذر تحديث دور المستخدم ${userId} إلى ${role}.`,
+            source: "admin.users.update_role",
+            category: "security",
+            severity: "warning",
+            link: "/dashboard/users",
+            resourceType: "profile",
+            resourceId: userId,
+            metadata: {
+                user_id: userId,
+                target_role: role,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -563,6 +840,21 @@ export async function updateUserWushshaLevel(userId: string, level: number) {
 
     if (error) {
         console.error("Update wushsha level error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_wushsha_level_failed:${userId}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث مستوى وشّى",
+            message: `تعذر تحديث مستوى المستخدم ${userId} إلى ${lvl}.`,
+            source: "admin.users.update_wushsha_level",
+            link: "/dashboard/users",
+            resourceType: "profile",
+            resourceId: userId,
+            metadata: {
+                user_id: userId,
+                level: lvl,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -585,6 +877,19 @@ export async function deleteUsers(userIds: string[]) {
 
     if (error) {
         console.error("Bulk delete users error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: "admin:bulk_delete_users_failed",
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل حذف مجموعة مستخدمين",
+            message: `تعذر حذف ${filtered.length} مستخدم دفعة واحدة من لوحة الإدارة.`,
+            source: "admin.users.bulk_delete",
+            severity: "critical",
+            link: "/dashboard/users",
+            metadata: {
+                user_ids: filtered,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -606,6 +911,21 @@ export async function deleteUser(userId: string) {
 
     if (error) {
         console.error("Delete user error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:delete_user_failed:${userId}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل حذف مستخدم",
+            message: `تعذر حذف المستخدم ${userId} من لوحة الإدارة.`,
+            source: "admin.users.delete",
+            severity: "warning",
+            link: "/dashboard/users",
+            resourceType: "profile",
+            resourceId: userId,
+            metadata: {
+                user_id: userId,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -662,6 +982,21 @@ export async function createUser(data: {
             return { success: false, error: "اسم المستخدم أو clerk_id مستخدم مسبقاً" };
         }
         console.error("Create user error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:create_user_failed:${insertData.clerk_id}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل إنشاء مستخدم إداريًا",
+            message: `تعذر إنشاء المستخدم ${displayName} من لوحة الإدارة.`,
+            source: "admin.users.create",
+            severity: "warning",
+            link: "/dashboard/users",
+            metadata: {
+                clerk_id: insertData.clerk_id,
+                username,
+                role,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -714,6 +1049,22 @@ export async function updateUser(
             return { success: false, error: "اسم المستخدم مستخدم مسبقاً" };
         }
         console.error("Update user error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_user_failed:${userId}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث مستخدم",
+            message: `تعذر تحديث بيانات المستخدم ${userId} من لوحة الإدارة.`,
+            source: "admin.users.update",
+            severity: "warning",
+            link: "/dashboard/users",
+            resourceType: "profile",
+            resourceId: userId,
+            metadata: {
+                user_id: userId,
+                fields: Object.keys(updateData),
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -760,19 +1111,48 @@ export async function getCustomerProfile(userId: string) {
 
     const orders = (ordersRes.status === "fulfilled" && ordersRes.value.data ? ordersRes.value.data : []);
     const tickets = (ticketsRes.status === "fulfilled" && ticketsRes.value.data ? ticketsRes.value.data : []);
+    const applicationQuery = profile.email
+        ? supabase
+            .from("applications")
+            .select("*")
+            .or(`profile_id.eq.${userId},email.eq.${profile.email}`)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        : supabase
+            .from("applications")
+            .select("*")
+            .eq("profile_id", userId)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+    const { data: application } = await applicationQuery;
 
     const totalSpent = orders
         .filter((o) => o.payment_status === "paid")
         .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const activeOrders = orders.filter((o) =>
+        ["pending", "confirmed", "processing", "shipped"].includes(o.status)
+    ).length;
+    const isTempProfile = String(profile.clerk_id || "").startsWith("app_");
+    const hasContactInfo = Boolean(profile.email) && Boolean(profile.phone);
 
     return {
         profile: profile as Record<string, unknown>,
         orders,
         tickets,
+        application,
+        identity: {
+            isTempProfile,
+            hasContactInfo,
+            hasLinkedApplication: Boolean(application),
+        },
         stats: {
             totalOrders: orders.length,
             totalSpent,
             paidOrders: orders.filter((o) => o.payment_status === "paid").length,
+            activeOrders,
             openTickets: tickets.filter((t) => t.status === "open" || t.status === "in_progress").length,
         },
     };
@@ -794,6 +1174,78 @@ export async function getAdminUsersStats() {
         wushsha: wushshaRes.count ?? 0,
         subscriber: subscriberRes.count ?? 0,
         admin: adminRes.count ?? 0,
+    };
+}
+
+export async function getIdentityOperationsSnapshot() {
+    noStore();
+    const { supabase } = await requireAdmin();
+
+    const [profilesRes, acceptedAppsRes] = await Promise.all([
+        supabase
+            .from("profiles")
+            .select("id, clerk_id, display_name, username, email, phone, role, is_verified, created_at, updated_at")
+            .order("created_at", { ascending: false }),
+        supabase
+            .from("applications")
+            .select("*")
+            .eq("status", "accepted")
+            .order("updated_at", { ascending: false }),
+    ]);
+
+    if (profilesRes.error) {
+        console.error("Identity operations profiles error:", profilesRes.error);
+        return {
+            stats: {
+                total: 0,
+                admin: 0,
+                wushsha: 0,
+                subscriber: 0,
+                verified: 0,
+                recent7d: 0,
+                tempProfiles: 0,
+                missingContact: 0,
+                acceptedWithoutProfile: 0,
+                acceptedWithoutClerk: 0,
+            },
+            identityBacklog: [],
+            profileHygieneQueue: [],
+            recentProfiles: [],
+        };
+    }
+
+    const profiles = profilesRes.data || [];
+    const acceptedApplications = acceptedAppsRes.error ? [] : acceptedAppsRes.data || [];
+    const enrichedApplications = await enrichApplicationsWithIdentity(supabase, acceptedApplications);
+
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    const tempProfiles = profiles.filter((profile) => String(profile.clerk_id || "").startsWith("app_"));
+    const missingContact = profiles.filter((profile) => !profile.email || !profile.phone);
+    const profileHygieneQueue = profiles
+        .filter((profile) => String(profile.clerk_id || "").startsWith("app_") || !profile.email || !profile.phone)
+        .slice(0, 6);
+    const identityBacklog = enrichedApplications
+        .filter((application) => !application.hasProfile || !application.hasClerkAccount)
+        .slice(0, 6);
+
+    return {
+        stats: {
+            total: profiles.length,
+            admin: profiles.filter((profile) => profile.role === "admin").length,
+            wushsha: profiles.filter((profile) => profile.role === "wushsha").length,
+            subscriber: profiles.filter((profile) => profile.role === "subscriber").length,
+            verified: profiles.filter((profile) => profile.is_verified).length,
+            recent7d: profiles.filter((profile) => now - new Date(profile.created_at).getTime() <= sevenDaysMs).length,
+            tempProfiles: tempProfiles.length,
+            missingContact: missingContact.length,
+            acceptedWithoutProfile: enrichedApplications.filter((application) => !application.hasProfile).length,
+            acceptedWithoutClerk: enrichedApplications.filter((application) => application.hasProfile && !application.hasClerkAccount).length,
+        },
+        identityBacklog,
+        profileHygieneQueue,
+        recentProfiles: profiles.slice(0, 6),
     };
 }
 
@@ -825,13 +1277,20 @@ export async function acceptApplicationAndCreateUser(
     let clerkId = options.clerk_id?.trim();
     let tempPassword: string | undefined;
     const appClerkId = `app_${applicationId}`;
+    const applicationEmail = app.email ? String(app.email).trim().toLowerCase() : null;
+    const normalizedWushshaLevel = (role === "wushsha"
+        ? Math.min(5, Math.max(1, options.wushsha_level ?? 1))
+        : null) as WushshaLevel | null;
 
     // ─── حالة: يوجد ملف بـ app_xxx (بدون Clerk) — إنشاء Clerk وتحديث الملف فقط ───
-    const { data: existingAppProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", appClerkId)
-        .maybeSingle();
+    const existingIdentityProfile = await findProfileForIdentity(supabase, {
+        clerkId: clerkId || null,
+        email: applicationEmail,
+        tempClerkId: appClerkId,
+    });
+    const existingAppProfile = existingIdentityProfile && String(existingIdentityProfile.clerk_id || "").startsWith("app_")
+        ? existingIdentityProfile
+        : null;
 
     if (existingAppProfile && options.createInClerk && app.email) {
         const email = String(app.email).trim();
@@ -849,25 +1308,81 @@ export async function acceptApplicationAndCreateUser(
                 lastName: lastName || undefined,
                 username: username.slice(0, 128),
             });
-            const { error: updateErr } = await supabase
-                .from("profiles")
-                .update({ clerk_id: clerkUser.id })
-                .eq("id", existingAppProfile.id);
-            if (updateErr) {
+            try {
+                const ensured = await ensureIdentityProfile(
+                    supabase,
+                    {
+                        clerkId: clerkUser.id,
+                        email,
+                        username,
+                        firstName,
+                        lastName,
+                        role,
+                    },
+                    {
+                        tempClerkId: appClerkId,
+                        role,
+                        additionalUpdate: {
+                            bio: app.motivation?.slice(0, 500) || null,
+                            ...(role === "wushsha" ? { wushsha_level: normalizedWushshaLevel } : {}),
+                        },
+                    }
+                );
+
+                if (ensured.action === "conflict") {
+                    return { success: false, error: "يوجد ملف آخر مرتبط بهذا المستخدم ويحتاج مراجعة يدوية" };
+                }
+
+                await supabase.from("applications").update({ profile_id: ensured.profile.id }).eq("id", applicationId);
+                revalidatePath("/dashboard/applications");
+                revalidatePath("/dashboard/users");
+                sendApplicationAcceptedEmail(app.email, app.full_name || "فنان", tempPassword).catch(console.error);
+                return { success: true, userId: ensured.profile.id, tempPassword };
+            } catch (updateErr) {
                 console.error("[acceptApplication] Update profile clerk_id:", updateErr);
-                return { success: false, error: updateErr.message };
+                await reportAdminActionAlert({
+                    dispatchKey: `admin:accept_application_profile_link_failed:${applicationId}`,
+                    bucketMs: 30 * 60 * 1000,
+                    title: "فشل ربط حساب الطلب المقبول",
+                    message: `تعذر ربط ملف الطلب ${applicationId} بحساب Clerk الجديد بعد القبول.`,
+                    source: "admin.applications.accept",
+                    category: "applications",
+                    severity: "critical",
+                    link: "/dashboard/applications",
+                    resourceType: "application",
+                    resourceId: applicationId,
+                    metadata: {
+                        application_id: applicationId,
+                        profile_id: existingAppProfile.id,
+                        error: updateErr instanceof Error ? updateErr.message : String(updateErr),
+                    },
+                });
+                return { success: false, error: updateErr instanceof Error ? updateErr.message : "فشل ربط الملف بالحساب" };
             }
-            await supabase.from("applications").update({ profile_id: existingAppProfile.id }).eq("id", applicationId);
-            revalidatePath("/dashboard/applications");
-            revalidatePath("/dashboard/users");
-            sendApplicationAcceptedEmail(app.email, app.full_name || "فنان", tempPassword).catch(console.error);
-            return { success: true, userId: existingAppProfile.id, tempPassword };
         } catch (err: unknown) {
             console.error("[acceptApplication] Clerk createUser error:", err);
             const clerkErr = err as { errors?: { code: string }[]; message?: string };
             if (clerkErr?.errors?.[0]?.code === "form_identifier_exists") {
                 return { success: false, error: "البريد مسجّل مسبقاً في Clerk." };
             }
+            await reportAdminActionAlert({
+                dispatchKey: `admin:accept_application_clerk_create_failed:${applicationId}`,
+                bucketMs: 30 * 60 * 1000,
+                title: "فشل إنشاء حساب Clerk للطلب المقبول",
+                message: `تعذر إنشاء حساب Clerk للطلب ${applicationId} أثناء القبول.`,
+                source: "admin.applications.accept",
+                category: "applications",
+                severity: "critical",
+                link: "/dashboard/applications",
+                resourceType: "application",
+                resourceId: applicationId,
+                metadata: {
+                    application_id: applicationId,
+                    email,
+                    error: clerkErr?.message || "Unknown Clerk error",
+                },
+                stack: err instanceof Error ? err.stack ?? null : null,
+            });
             return { success: false, error: clerkErr?.message || "فشل إنشاء المستخدم في Clerk" };
         }
     }
@@ -896,43 +1411,83 @@ export async function acceptApplicationAndCreateUser(
             if (clerkErr?.errors?.[0]?.code === "form_identifier_exists") {
                 return { success: false, error: "البريد الإلكتروني مسجّل مسبقاً في Clerk." };
             }
+            await reportAdminActionAlert({
+                dispatchKey: `admin:accept_application_new_clerk_failed:${applicationId}`,
+                bucketMs: 30 * 60 * 1000,
+                title: "فشل إنشاء حساب Clerk أثناء قبول الطلب",
+                message: `تعذر إنشاء حساب Clerk جديد للطلب ${applicationId}.`,
+                source: "admin.applications.accept",
+                category: "applications",
+                severity: "critical",
+                link: "/dashboard/applications",
+                resourceType: "application",
+                resourceId: applicationId,
+                metadata: {
+                    application_id: applicationId,
+                    email,
+                    error: clerkErr?.message || "Unknown Clerk error",
+                },
+                stack: err instanceof Error ? err.stack ?? null : null,
+            });
             return { success: false, error: clerkErr?.message || "فشل إنشاء المستخدم في Clerk" };
         }
     } else {
         clerkId = clerkId || appClerkId;
     }
 
-    const { data: existing } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", clerkId)
-        .maybeSingle();
+    let newProfile: { id: string } | null = null;
+    try {
+        const ensured = await ensureIdentityProfile(
+            supabase,
+            {
+                clerkId: clerkId!,
+                email: applicationEmail,
+                username,
+                firstName: app.full_name?.split(/\s+/)[0] || null,
+                lastName: app.full_name?.split(/\s+/).slice(1).join(" ") || null,
+                role,
+            },
+            {
+                tempClerkId: appClerkId,
+                role,
+                additionalInsert: {
+                    display_name: app.full_name,
+                    username,
+                    bio: app.motivation?.slice(0, 500) || null,
+                    ...(role === "wushsha" ? { wushsha_level: normalizedWushshaLevel } : {}),
+                },
+                additionalUpdate: {
+                    bio: app.motivation?.slice(0, 500) || null,
+                    ...(role === "wushsha" ? { wushsha_level: normalizedWushshaLevel } : {}),
+                },
+            }
+        );
 
-    if (existing) {
-        return { success: false, error: "يوجد مستخدم بنفس clerk_id مسبقاً" };
-    }
+        if (ensured.action === "conflict") {
+            return { success: false, error: "تم العثور على هوية مختلفة لنفس الشخص وتحتاج مراجعة يدوية" };
+        }
 
-    const insertData: Record<string, unknown> = {
-        clerk_id: clerkId,
-        display_name: app.full_name,
-        username,
-        role,
-        bio: app.motivation?.slice(0, 500) || null,
-    };
-
-    if (role === "wushsha") {
-        insertData.wushsha_level = Math.min(5, Math.max(1, options.wushsha_level ?? 1));
-    }
-
-    const { data: newProfile, error: insertError } = await supabase
-        .from("profiles")
-        .insert(insertData as Database['public']['Tables']['profiles']['Insert'])
-        .select("id")
-        .single();
-
-    if (insertError) {
+        newProfile = { id: ensured.profile.id };
+    } catch (insertError) {
         console.error("Create user from application:", insertError);
-        return { success: false, error: insertError.message };
+        await reportAdminActionAlert({
+            dispatchKey: `admin:accept_application_profile_create_failed:${applicationId}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل إنشاء ملف المستخدم من الطلب",
+            message: `تعذر إنشاء ملف المستخدم الناتج عن الطلب ${applicationId}.`,
+            source: "admin.applications.accept",
+            category: "applications",
+            severity: "critical",
+            link: "/dashboard/applications",
+            resourceType: "application",
+            resourceId: applicationId,
+            metadata: {
+                application_id: applicationId,
+                clerk_id: clerkId,
+                error: insertError instanceof Error ? insertError.message : String(insertError),
+            },
+        });
+        return { success: false, error: insertError instanceof Error ? insertError.message : "فشل إنشاء ملف المستخدم" };
     }
 
     await supabase
@@ -955,6 +1510,123 @@ export async function acceptApplicationAndCreateUser(
 // ═══════════════════════════════════════════════════════════
 //  3. ORDERS — إدارة الطلبات
 // ═══════════════════════════════════════════════════════════
+
+export async function getOrdersOperationsSnapshot() {
+    noStore();
+
+    try {
+        const { supabase } = await requireAdmin();
+        const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+        const results = await Promise.allSettled([
+            supabase.from("orders").select("id", { count: "exact", head: true }),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["processing", "shipped"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded"),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "delivered"),
+            supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["cancelled", "refunded"]),
+            supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "paid"),
+            supabase.from("orders").select("total").eq("payment_status", "paid"),
+            supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso),
+            supabase.from("orders").select("total").eq("payment_status", "paid").gte("created_at", todayStartIso),
+            supabase.from("orders")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .in("status", ["pending", "confirmed"])
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase.from("orders")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .in("status", ["processing", "shipped"])
+                .order("created_at", { ascending: false })
+                .limit(5),
+            supabase.from("orders")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .eq("payment_status", "pending")
+                .neq("status", "cancelled")
+                .neq("status", "refunded")
+                .order("created_at", { ascending: false })
+                .limit(5),
+        ]);
+
+        const getCount = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && typeof result.value.count === "number" ? result.value.count : 0;
+
+        const getData = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && Array.isArray(result.value.data) ? result.value.data : [];
+
+        results.forEach((res, idx) => {
+            if (res.status === "rejected") {
+                console.error(`Orders snapshot query ${idx} failed:`, res.reason);
+                return;
+            }
+
+            if (res.value?.error) {
+                console.error(`Orders snapshot query ${idx} returned DB error:`, res.value.error);
+            }
+        });
+
+        const paidRevenue = getData(results[7]).reduce((sum: number, row: { total: number }) => sum + (Number(row.total) || 0), 0);
+        const todayRevenue = getData(results[9]).reduce((sum: number, row: { total: number }) => sum + (Number(row.total) || 0), 0);
+
+        const snapshot = {
+            stats: {
+                totalOrders: getCount(results[0]),
+                pendingReview: getCount(results[1]),
+                fulfillmentQueue: getCount(results[2]),
+                paymentPending: getCount(results[3]),
+                delivered: getCount(results[4]),
+                cancelledOrRefunded: getCount(results[5]),
+                paidOrders: getCount(results[6]),
+                totalRevenue: paidRevenue,
+                todayOrders: getCount(results[8]),
+                todayRevenue,
+            },
+            awaitingConfirmation: getData(results[10]),
+            shippingDesk: getData(results[11]),
+            paymentWatchlist: getData(results[12]),
+        };
+
+        const pendingWatchlist = snapshot.paymentWatchlist as Array<{ total?: number }>;
+        const pendingRevenue = pendingWatchlist.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+
+        await emitOrderRevenueEscalations({
+            finance: {
+                pendingPayments: snapshot.stats.paymentPending,
+                failedPayments: 0,
+                outstandingRevenue: pendingRevenue,
+                atRiskRevenue: 0,
+                activeRevenueQueue: snapshot.stats.paymentPending,
+            },
+            operations: {
+                pendingReview: snapshot.stats.pendingReview,
+                fulfillmentQueue: snapshot.stats.fulfillmentQueue,
+                paymentPending: snapshot.stats.paymentPending,
+                todayOrders: snapshot.stats.todayOrders,
+            },
+        });
+
+        return snapshot;
+    } catch (err) {
+        console.error("FATAL: getOrdersOperationsSnapshot crashed completely:", err);
+        return {
+            stats: {
+                totalOrders: 0,
+                pendingReview: 0,
+                fulfillmentQueue: 0,
+                paymentPending: 0,
+                delivered: 0,
+                cancelledOrRefunded: 0,
+                paidOrders: 0,
+                totalRevenue: 0,
+                todayOrders: 0,
+                todayRevenue: 0,
+            },
+            awaitingConfirmation: [],
+            shippingDesk: [],
+            paymentWatchlist: [],
+        };
+    }
+}
 
 export async function getAdminOrders(page = 1, status = "all") {
     noStore();
@@ -1031,6 +1703,23 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 
     if (error) {
         console.error("Update order status error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_order_status_failed:${orderId}:${newStatus}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث حالة الطلب",
+            message: `تعذر تحديث حالة الطلب ${orderId} إلى ${newStatus}.`,
+            source: "admin.orders.update_status",
+            category: "orders",
+            severity: "critical",
+            link: "/dashboard/orders",
+            resourceType: "order",
+            resourceId: orderId,
+            metadata: {
+                order_id: orderId,
+                new_status: newStatus,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1072,48 +1761,604 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 //  4. APPLICATIONS — طلبات الانضمام
 // ═══════════════════════════════════════════════════════════
 
-export async function getAdminApplications(status = "all") {
-    noStore();
-    const { supabase } = await requireAdmin();
-
-    let query = supabase
-        .from("applications")
-        .select("*", { count: "exact" });
-
-    if (status !== "all") {
-        query = query.eq("status", status as ApplicationStatus);
+async function enrichApplicationsWithIdentity(
+    supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+    applications: any[]
+) {
+    const acceptedApps = applications.filter((app) => app.status === "accepted");
+    if (acceptedApps.length === 0) {
+        return applications.map((app) => ({
+            ...app,
+            profile: null,
+            hasProfile: false,
+            hasClerkAccount: false,
+        }));
     }
 
-    const { data, count, error } = await query
+    const profileIds = Array.from(
+        new Set(
+            acceptedApps
+                .map((app) => app.profile_id)
+                .filter(Boolean)
+        )
+    );
+    const tempClerkIds = acceptedApps.map((app) => `app_${app.id}`);
+
+    const [{ data: profilesById = [] }, { data: profilesByTempId = [] }] = await Promise.all([
+        profileIds.length > 0
+            ? supabase.from("profiles").select("id, clerk_id, display_name, avatar_url").in("id", profileIds)
+            : Promise.resolve({ data: [] }),
+        tempClerkIds.length > 0
+            ? supabase.from("profiles").select("id, clerk_id, display_name, avatar_url").in("clerk_id", tempClerkIds)
+            : Promise.resolve({ data: [] }),
+    ]);
+
+    const safeProfilesById = profilesById ?? [];
+    const safeProfilesByTempId = profilesByTempId ?? [];
+
+    const profileById = new Map(safeProfilesById.map((profile) => [profile.id, profile]));
+    const profileByTempClerkId = new Map(safeProfilesByTempId.map((profile) => [profile.clerk_id, profile]));
+
+    return applications.map((app) => {
+        if (app.status !== "accepted") {
+            return { ...app, profile: null, hasProfile: false, hasClerkAccount: false };
+        }
+
+        const profile =
+            (app.profile_id ? profileById.get(app.profile_id) : null) ??
+            profileByTempClerkId.get(`app_${app.id}`) ??
+            null;
+        const hasProfile = !!profile;
+        const hasClerkAccount = hasProfile && !String(profile!.clerk_id).startsWith("app_");
+
+        return {
+            ...app,
+            profile,
+            hasProfile,
+            hasClerkAccount,
+        };
+    });
+}
+
+function getApplicationAgeBand(birthDate: string | null | undefined) {
+    if (!birthDate) return null;
+
+    const birth = new Date(birthDate);
+    if (Number.isNaN(birth.getTime())) return null;
+
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    const monthDiff = now.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+        age -= 1;
+    }
+
+    if (age < 18) return "under_18";
+    if (age <= 24) return "age_18_24";
+    if (age <= 34) return "age_25_34";
+    return "age_35_plus";
+}
+
+type AdminApplicationFilters = {
+    status?: string;
+    joinType?: string;
+    gender?: string;
+    ageBand?: string;
+    identityState?: string;
+};
+
+function csvCell(value: unknown) {
+    const raw = value == null ? "" : String(value).replace(/\s*\n+\s*/g, " ").trim();
+    return `"${raw.replace(/"/g, '""')}"`;
+}
+
+async function fetchFilteredAdminApplications(
+    supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+    filters?: AdminApplicationFilters
+) {
+    const status = filters?.status || "all";
+    const joinType = filters?.joinType || "all";
+    const gender = filters?.gender || "all";
+    const ageBand = filters?.ageBand || "all";
+    const identityState = filters?.identityState || "all";
+
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
         .order("created_at", { ascending: false });
 
     if (error) {
         console.error("Admin applications error:", error);
-        return { data: [], count: 0 };
+        return [];
     }
 
     const apps = data || [];
-    // للطلبات المقبولة: التحقق من وجود ملف وحساب Clerk
-    const enriched = await Promise.all(
-        apps.map(async (app) => {
-            if (app.status !== "accepted") return { ...app, profile: null, hasProfile: false, hasClerkAccount: false };
-            // محاولة عبر profile_id أولاً، ثم عبر clerk_id = app_xxx (للترحيل)
-            let profile: { id: string; clerk_id: string } | null = null;
-            if (app.profile_id) {
-                const { data: p } = await supabase.from("profiles").select("id, clerk_id").eq("id", app.profile_id).maybeSingle();
-                profile = p;
-            }
-            if (!profile) {
-                const { data: p } = await supabase.from("profiles").select("id, clerk_id").eq("clerk_id", `app_${app.id}`).maybeSingle();
-                profile = p;
-            }
-            const hasProfile = !!profile;
-            const hasClerkAccount = hasProfile && !String(profile!.clerk_id).startsWith("app_");
-            return { ...app, profile, hasProfile, hasClerkAccount };
-        })
+    const enriched = enrichApplicationsWithPriority(await enrichApplicationsWithIdentity(supabase, apps));
+    const filtered = enriched.filter((app) => {
+        if (status !== "all" && app.status !== status) return false;
+        if (joinType !== "all" && app.join_type !== joinType) return false;
+        if (gender !== "all" && app.gender !== gender) return false;
+        if (ageBand !== "all" && getApplicationAgeBand(app.birth_date) !== ageBand) return false;
+        if (identityState === "needs_profile" && !(app.status === "accepted" && !app.hasProfile)) return false;
+        if (identityState === "needs_clerk" && !(app.status === "accepted" && app.hasProfile && !app.hasClerkAccount)) return false;
+        if (identityState === "ready_identity" && !(app.status === "accepted" && app.hasProfile && app.hasClerkAccount)) return false;
+        return true;
+    });
+
+    return [...filtered].sort((a, b) => b.priorityScore - a.priorityScore);
+}
+
+function enrichApplicationsWithPriority(applications: any[]) {
+    const now = Date.now();
+
+    return applications.map((app) => {
+        let priorityScore = 0;
+        const reasons: string[] = [];
+        const updatedAt = new Date(app.updated_at || app.created_at).getTime();
+        const waitingHours = Number.isFinite(updatedAt) ? Math.max(0, (now - updatedAt) / 36e5) : 0;
+
+        if (app.status === "pending") {
+            priorityScore += 34;
+            reasons.push("بانتظار قرار أولي");
+        } else if (app.status === "reviewing") {
+            priorityScore += 28;
+            reasons.push("قيد المراجعة");
+        } else if (app.status === "accepted" && !app.hasProfile) {
+            priorityScore += 30;
+            reasons.push("مقبول بلا profile");
+        } else if (app.status === "accepted" && app.hasProfile && !app.hasClerkAccount) {
+            priorityScore += 26;
+            reasons.push("مقبول بلا Clerk");
+        }
+
+        if ((app.status === "pending" || app.status === "reviewing") && waitingHours >= 72) {
+            priorityScore += 18;
+            reasons.push("متأخر أكثر من 72 ساعة");
+        } else if ((app.status === "pending" || app.status === "reviewing") && waitingHours >= 24) {
+            priorityScore += 10;
+            reasons.push("ينتظر منذ أكثر من يوم");
+        }
+
+        if (app.join_type === "artist") {
+            priorityScore += 10;
+            reasons.push("فنان ذو قيمة استراتيجية");
+        } else if (app.join_type === "designer") {
+            priorityScore += 8;
+            reasons.push("مصمم ضمن المسار الإبداعي");
+        } else if (app.join_type === "model") {
+            priorityScore += 6;
+            reasons.push("مفيد لخط المحتوى");
+        } else if (app.join_type === "partner") {
+            priorityScore += 6;
+            reasons.push("قد يفتح مسار شراكة");
+        }
+
+        if (app.portfolio_url || app.instagram_url || (app.portfolio_images?.length ?? 0) > 0) {
+            priorityScore += 8;
+            reasons.push("أصول مرجعية متاحة");
+        }
+
+        if (app.phone) {
+            priorityScore += 3;
+            reasons.push("التواصل المباشر متاح");
+        }
+
+        if (app.art_style && app.art_style !== "اهتمامات عامة بالمنصة") {
+            priorityScore += 4;
+            reasons.push("ذوق أو ستايل واضح");
+        }
+
+        if (app.gender) priorityScore += 2;
+        if (app.birth_date) priorityScore += 2;
+
+        const priorityTier =
+            priorityScore >= 65
+                ? "critical"
+                : priorityScore >= 45
+                  ? "high"
+                  : priorityScore >= 25
+                    ? "medium"
+                    : "low";
+
+        return {
+            ...app,
+            priorityScore,
+            priorityTier,
+            priorityReasons: Array.from(new Set(reasons)).slice(0, 3),
+        };
+    });
+}
+
+export async function getAdminApplications(filters?: AdminApplicationFilters) {
+    noStore();
+    const { supabase } = await requireAdmin();
+    const filtered = await fetchFilteredAdminApplications(supabase, filters);
+
+    return {
+        data: filtered,
+        count: filtered.length,
+    };
+}
+
+export async function exportAdminApplicationsCsv(filters?: AdminApplicationFilters) {
+    noStore();
+    const { supabase } = await requireAdmin();
+    const filtered = await fetchFilteredAdminApplications(supabase, filters);
+
+    const headers = [
+        "id",
+        "full_name",
+        "email",
+        "phone",
+        "status",
+        "join_type",
+        "gender",
+        "birth_date",
+        "age_band",
+        "art_style",
+        "experience_years",
+        "priority_tier",
+        "priority_score",
+        "priority_reasons",
+        "has_profile",
+        "has_clerk_account",
+        "portfolio_url",
+        "instagram_url",
+        "motivation",
+        "created_at",
+        "updated_at",
+    ];
+
+    const rows = filtered.map((app) =>
+        [
+            app.id,
+            app.full_name,
+            app.email,
+            app.phone,
+            app.status,
+            app.join_type,
+            app.gender,
+            app.birth_date,
+            getApplicationAgeBand(app.birth_date),
+            app.art_style,
+            app.experience_years,
+            app.priorityTier,
+            app.priorityScore,
+            Array.isArray(app.priorityReasons) ? app.priorityReasons.join(" | ") : "",
+            app.hasProfile ? "yes" : "no",
+            app.hasClerkAccount ? "yes" : "no",
+            app.portfolio_url,
+            app.instagram_url,
+            app.motivation,
+            app.created_at,
+            app.updated_at,
+        ]
+            .map(csvCell)
+            .join(",")
     );
 
-    return { data: enriched, count: count || 0 };
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+    return {
+        success: true,
+        count: filtered.length,
+        filename: `applications-export-${stamp}.csv`,
+        csv: "\uFEFF" + [headers.join(","), ...rows].join("\n"),
+    };
+}
+
+export async function getAdminApplicationDetails(id: string) {
+    noStore();
+    const { supabase } = await requireAdmin();
+
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+
+    if (error) {
+        console.error("Admin application details error:", error);
+        return null;
+    }
+
+    if (!data) return null;
+
+    const [application] = enrichApplicationsWithPriority(await enrichApplicationsWithIdentity(supabase, [data]));
+    return application ?? null;
+}
+
+export async function getApplicationWorkspaceContext(id: string) {
+    noStore();
+    const { supabase } = await requireAdmin();
+
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Application workspace context error:", error);
+        return {
+            navigation: {
+                previous: null,
+                next: null,
+            },
+            queue: {
+                reviewPosition: null,
+                reviewTotal: 0,
+                identityPosition: null,
+                identityTotal: 0,
+                nextDecisionCandidate: null,
+                nextProvisionCandidate: null,
+            },
+            checklist: {
+                hasContact: false,
+                hasAssets: false,
+                hasAudienceProfile: false,
+                hasIdentityReady: false,
+                hasReviewNotes: false,
+            },
+        };
+    }
+
+    const applications = enrichApplicationsWithPriority(await enrichApplicationsWithIdentity(supabase, data || []));
+    const ranked = [...applications].sort((a, b) => {
+        if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    const currentIndex = ranked.findIndex((application) => application.id === id);
+    const current = currentIndex >= 0 ? ranked[currentIndex] : null;
+
+    const decisionQueue = ranked.filter((application) => application.status === "pending" || application.status === "reviewing");
+    const identityQueue = ranked.filter(
+        (application) =>
+            application.status === "accepted" && (!application.hasProfile || !application.hasClerkAccount)
+    );
+
+    return {
+        navigation: {
+            previous:
+                currentIndex > 0
+                    ? {
+                          id: ranked[currentIndex - 1].id,
+                          full_name: ranked[currentIndex - 1].full_name,
+                          status: ranked[currentIndex - 1].status,
+                      }
+                    : null,
+            next:
+                currentIndex >= 0 && currentIndex < ranked.length - 1
+                    ? {
+                          id: ranked[currentIndex + 1].id,
+                          full_name: ranked[currentIndex + 1].full_name,
+                          status: ranked[currentIndex + 1].status,
+                      }
+                    : null,
+        },
+        queue: {
+            reviewPosition:
+                current && (current.status === "pending" || current.status === "reviewing")
+                    ? decisionQueue.findIndex((application) => application.id === current.id) + 1
+                    : null,
+            reviewTotal: decisionQueue.length,
+            identityPosition:
+                current && current.status === "accepted" && (!current.hasProfile || !current.hasClerkAccount)
+                    ? identityQueue.findIndex((application) => application.id === current.id) + 1
+                    : null,
+            identityTotal: identityQueue.length,
+            nextDecisionCandidate:
+                decisionQueue.find((application) => application.id !== id) ?? null,
+            nextProvisionCandidate:
+                identityQueue.find((application) => application.id !== id) ?? null,
+        },
+        checklist: {
+            hasContact: !!(current?.email || current?.phone),
+            hasAssets: !!(current?.portfolio_url || current?.instagram_url || (current?.portfolio_images?.length ?? 0) > 0),
+            hasAudienceProfile: !!(current?.join_type && current?.gender && current?.birth_date),
+            hasIdentityReady: !!(current?.hasProfile && current?.hasClerkAccount),
+            hasReviewNotes: !!current?.reviewer_notes,
+        },
+    };
+}
+
+export async function getApplicationsOperationsSnapshot() {
+    noStore();
+    const { supabase } = await requireAdmin();
+
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Applications operations snapshot error:", error);
+        return {
+            stats: {
+                total: 0,
+                pending: 0,
+                reviewing: 0,
+                accepted: 0,
+                rejected: 0,
+                createdToday: 0,
+                waitingDecision: 0,
+                acceptedWithoutProfile: 0,
+                acceptedWithoutClerk: 0,
+                highPriority: 0,
+            },
+            intakeQueue: [],
+            identityBacklog: [],
+            recentlyReviewed: [],
+            priorityQueue: [],
+            segments: {
+                joinTypeMix: [],
+                genderMix: [],
+                ageBands: [],
+                styleSignals: [],
+            },
+        };
+    }
+
+    const applications = enrichApplicationsWithPriority(await enrichApplicationsWithIdentity(supabase, data || []));
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+
+    const pending = applications.filter((app) => app.status === "pending");
+    const reviewing = applications.filter((app) => app.status === "reviewing");
+    const accepted = applications.filter((app) => app.status === "accepted");
+    const rejected = applications.filter((app) => app.status === "rejected");
+
+    const prioritySort = (a: any, b: any) => {
+        if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+        return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime();
+    };
+
+    const createdToday = applications.filter(
+        (app) => new Date(app.created_at).toISOString().slice(0, 10) === todayKey
+    ).length;
+    const identityBacklog = accepted
+        .filter((app) => !app.hasProfile || !app.hasClerkAccount)
+        .sort(prioritySort)
+        .slice(0, 6);
+    const priorityQueue = applications
+        .filter((app) =>
+            app.status === "pending" ||
+            app.status === "reviewing" ||
+            (app.status === "accepted" && (!app.hasProfile || !app.hasClerkAccount))
+        )
+        .sort(prioritySort)
+        .slice(0, 6);
+    const intakeQueue = [...pending, ...reviewing]
+        .sort(prioritySort)
+        .slice(0, 6);
+    const recentlyReviewed = applications
+        .filter((app) => app.status === "accepted" || app.status === "rejected")
+        .sort(
+            (a, b) =>
+                new Date(b.updated_at || b.created_at).getTime() -
+                new Date(a.updated_at || a.created_at).getTime()
+        )
+        .slice(0, 6);
+
+    const buildMix = (
+        counts: Record<string, number>,
+        labels: Record<string, string>,
+        total: number
+    ) =>
+        Object.entries(labels)
+            .map(([key, label]) => ({
+                key,
+                label,
+                count: counts[key] ?? 0,
+                share: total > 0 ? Math.round(((counts[key] ?? 0) / total) * 100) : 0,
+            }))
+            .filter((item) => item.count > 0)
+            .sort((a, b) => b.count - a.count);
+
+    const joinTypeLabels = {
+        artist: "فنان",
+        designer: "مصمم",
+        model: "مودل",
+        customer: "عميل مهتم",
+        partner: "شريك أو متعاون",
+    } as const;
+
+    const genderLabels = {
+        male: "ذكر",
+        female: "أنثى",
+    } as const;
+
+    const joinTypeCounts = applications.reduce<Record<string, number>>((acc, app) => {
+        if (app.join_type) {
+            acc[app.join_type] = (acc[app.join_type] ?? 0) + 1;
+        }
+        return acc;
+    }, {});
+
+    const genderCounts = applications.reduce<Record<string, number>>((acc, app) => {
+        if (app.gender) {
+            acc[app.gender] = (acc[app.gender] ?? 0) + 1;
+        }
+        return acc;
+    }, {});
+
+    const ageBandLabels = {
+        under_18: "أقل من 18",
+        age_18_24: "18 - 24",
+        age_25_34: "25 - 34",
+        age_35_plus: "35+",
+    } as const;
+
+    const ageBandCounts = applications.reduce<Record<string, number>>((acc, app) => {
+        if (!app.birth_date) return acc;
+
+        const birth = new Date(app.birth_date);
+        if (Number.isNaN(birth.getTime())) return acc;
+
+        let age = now.getFullYear() - birth.getFullYear();
+        const monthDiff = now.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+            age -= 1;
+        }
+
+        const band =
+            age < 18
+                ? "under_18"
+                : age <= 24
+                  ? "age_18_24"
+                  : age <= 34
+                    ? "age_25_34"
+                    : "age_35_plus";
+
+        acc[band] = (acc[band] ?? 0) + 1;
+        return acc;
+    }, {});
+
+    const styleSignalCounts = applications.reduce<Record<string, number>>((acc, app) => {
+        const signals = String(app.art_style || "")
+            .split(",")
+            .map((item: string) => item.trim())
+            .filter(Boolean);
+
+        for (const signal of signals) {
+            acc[signal] = (acc[signal] ?? 0) + 1;
+        }
+
+        return acc;
+    }, {});
+
+    const styleSignals = Object.entries(styleSignalCounts)
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    const joinTypeTotal = Object.values(joinTypeCounts).reduce((sum, count) => sum + count, 0);
+    const genderTotal = Object.values(genderCounts).reduce((sum, count) => sum + count, 0);
+    const ageBandTotal = Object.values(ageBandCounts).reduce((sum, count) => sum + count, 0);
+
+    return {
+        stats: {
+            total: applications.length,
+            pending: pending.length,
+            reviewing: reviewing.length,
+            accepted: accepted.length,
+            rejected: rejected.length,
+            createdToday,
+            waitingDecision: pending.length + reviewing.length,
+            acceptedWithoutProfile: accepted.filter((app) => !app.hasProfile).length,
+            acceptedWithoutClerk: accepted.filter((app) => app.hasProfile && !app.hasClerkAccount).length,
+            highPriority: applications.filter((app) => app.priorityTier === "critical" || app.priorityTier === "high").length,
+        },
+        intakeQueue,
+        identityBacklog,
+        recentlyReviewed,
+        priorityQueue,
+        segments: {
+            joinTypeMix: buildMix(joinTypeCounts, joinTypeLabels, joinTypeTotal),
+            genderMix: buildMix(genderCounts, genderLabels, genderTotal),
+            ageBands: buildMix(ageBandCounts, ageBandLabels, ageBandTotal),
+            styleSignals,
+        },
+    };
 }
 
 export async function reviewApplication(
@@ -1144,6 +2389,23 @@ export async function reviewApplication(
 
     if (error) {
         console.error("Review application error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:review_application_failed:${id}:${decision}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل مراجعة طلب الانضمام",
+            message: `تعذر تحديث حالة طلب الانضمام ${id} إلى ${decision}.`,
+            source: "admin.applications.review",
+            category: "applications",
+            severity: "warning",
+            link: "/dashboard/applications",
+            resourceType: "application",
+            resourceId: id,
+            metadata: {
+                application_id: id,
+                decision,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1180,6 +2442,201 @@ export async function reviewApplication(
 
     revalidatePath("/dashboard/applications");
     return { success: true };
+}
+
+export async function bulkReviewApplications(
+    ids: string[],
+    decision: "accepted" | "reviewing" | "rejected",
+    notes?: string
+) {
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+    if (uniqueIds.length === 0) {
+        return { success: false, error: "حدد طلبًا واحدًا على الأقل" };
+    }
+
+    const { supabase, profile: adminProfile } = await requireAdmin();
+
+    const { data: apps, error: appsError } = await supabase
+        .from("applications")
+        .select("id, email, full_name")
+        .in("id", uniqueIds);
+
+    if (appsError) {
+        return { success: false, error: appsError.message };
+    }
+
+    const { error } = await supabase
+        .from("applications")
+        .update({
+            status: decision,
+            reviewer_id: adminProfile.id,
+            reviewer_notes: notes || null,
+        })
+        .in("id", uniqueIds);
+
+    if (error) {
+        await reportAdminActionAlert({
+            dispatchKey: `admin:bulk_review_failed:${decision}:${uniqueIds.sort().join(",")}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل إجراء جماعي على طلبات الانضمام",
+            message: `تعذر تنفيذ الإجراء الجماعي (${decision}) على ${uniqueIds.length} طلبات.`,
+            source: "admin.applications.bulk-review",
+            category: "applications",
+            severity: "warning",
+            link: "/dashboard/applications",
+            resourceType: "application",
+            metadata: {
+                ids: uniqueIds,
+                decision,
+                error: error.message,
+            },
+        });
+        return { success: false, error: error.message };
+    }
+
+    if (decision === "rejected") {
+        await Promise.all(
+            (apps || []).map((app) =>
+                app.email
+                    ? sendApplicationRejectedEmail(app.email, app.full_name || "مقدم الطلب").catch(console.error)
+                    : Promise.resolve()
+            )
+        );
+    }
+
+    if (decision === "accepted") {
+        await Promise.all(
+            (apps || []).map(async (app) => {
+                if (!app.email) return;
+
+                try {
+                    const client = await clerkClient();
+                    const clerkUsers = await client.users.getUserList({
+                        emailAddress: [app.email],
+                        limit: 1,
+                    });
+                    const matched = clerkUsers.data?.[0];
+                    if (!matched) return;
+
+                    const { data: matchedProfile } = await supabase
+                        .from("profiles")
+                        .select("id")
+                        .eq("clerk_id", matched.id)
+                        .maybeSingle();
+
+                    if (matchedProfile) {
+                        await supabase
+                            .from("applications")
+                            .update({ profile_id: matchedProfile.id })
+                            .eq("id", app.id);
+                    }
+                } catch (linkErr) {
+                    console.warn("[bulkReviewApplications] Auto-link profile_id failed (non-critical):", linkErr);
+                }
+            })
+        );
+    }
+
+    revalidatePath("/dashboard/applications");
+    return { success: true, updated: uniqueIds.length };
+}
+
+export async function bulkProvisionAcceptedApplications(
+    ids: string[],
+    options?: {
+        roleStrategy?: "smart" | "wushsha" | "subscriber";
+        wushshaLevel?: number;
+    }
+) {
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+    if (uniqueIds.length === 0) {
+        return { success: false, error: "حدد طلبًا واحدًا على الأقل" };
+    }
+
+    const { supabase } = await requireAdmin();
+
+    const { data: apps, error: appsError } = await supabase
+        .from("applications")
+        .select("*")
+        .in("id", uniqueIds);
+
+    if (appsError) {
+        return { success: false, error: appsError.message };
+    }
+
+    const enrichedApps = await enrichApplicationsWithIdentity(supabase, apps || []);
+    const queue = enrichedApps.filter(
+        (app) => app.status === "accepted" && (!app.hasProfile || !app.hasClerkAccount)
+    );
+
+    if (queue.length === 0) {
+        return { success: false, error: "لا توجد طلبات مقبولة تحتاج تجهيز حسابات." };
+    }
+
+    const roleStrategy = options?.roleStrategy ?? "smart";
+    const wushshaLevel = Math.min(5, Math.max(1, options?.wushshaLevel ?? 1)) as WushshaLevel;
+
+    const credentials: Array<{
+        id: string;
+        full_name: string;
+        email: string | null;
+        tempPassword: string;
+    }> = [];
+    const failures: Array<{
+        id: string;
+        full_name: string;
+        email: string | null;
+        error: string;
+    }> = [];
+
+    for (const app of queue) {
+        const resolvedRole =
+            roleStrategy === "wushsha"
+                ? "wushsha"
+                : roleStrategy === "subscriber"
+                  ? "subscriber"
+                  : app.join_type === "customer"
+                    ? "subscriber"
+                    : "wushsha";
+
+        const result = await acceptApplicationAndCreateUser(app.id, {
+            role: resolvedRole,
+            wushsha_level: resolvedRole === "wushsha" ? wushshaLevel : undefined,
+            createInClerk: true,
+        });
+
+        if (result.success) {
+            if (result.tempPassword) {
+                credentials.push({
+                    id: app.id,
+                    full_name: app.full_name || "مستخدم",
+                    email: app.email || null,
+                    tempPassword: result.tempPassword,
+                });
+            }
+            continue;
+        }
+
+        failures.push({
+            id: app.id,
+            full_name: app.full_name || "مستخدم",
+            email: app.email || null,
+            error: result.error || "فشل غير معروف",
+        });
+    }
+
+    revalidatePath("/dashboard/applications");
+    revalidatePath("/dashboard/users");
+    revalidatePath("/dashboard/users-clerk");
+
+    return {
+        success: failures.length < queue.length,
+        processed: queue.length,
+        succeeded: queue.length - failures.length,
+        failed: failures.length,
+        credentials,
+        failures,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1235,6 +2692,23 @@ export async function updateArtworkStatus(
 
     if (error) {
         console.error("Update artwork status error:", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_artwork_status_failed:${id}:${newStatus}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث حالة العمل الفني",
+            message: `تعذر تحديث حالة العمل الفني ${id} إلى ${newStatus}.`,
+            source: "admin.artworks.update_status",
+            category: "design",
+            severity: "warning",
+            link: "/dashboard/artworks",
+            resourceType: "artwork",
+            resourceId: id,
+            metadata: {
+                artwork_id: id,
+                new_status: newStatus,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1265,6 +2739,22 @@ export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ suc
 
     if (error) {
         console.error("[uploadArtworkImageAdmin]", error);
+        await reportAdminActionAlert({
+            dispatchKey: "admin:upload_artwork_image_failed",
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل رفع صورة عمل فني",
+            message: "تعذر رفع صورة عمل فني من لوحة الإدارة إلى التخزين.",
+            source: "admin.artworks.upload_image",
+            category: "design",
+            severity: "warning",
+            link: "/dashboard/artworks",
+            metadata: {
+                file_name: file.name,
+                file_type: file.type,
+                file_size: file.size,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1310,6 +2800,21 @@ export async function createArtworkAdmin(data: {
 
     if (error) {
         console.error("[createArtworkAdmin]", error);
+        await reportAdminActionAlert({
+            dispatchKey: "admin:create_artwork_failed",
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل إنشاء عمل فني",
+            message: `تعذر إنشاء العمل الفني ${insert.title as string}.`,
+            source: "admin.artworks.create",
+            category: "design",
+            severity: "warning",
+            link: "/dashboard/artworks",
+            metadata: {
+                artist_id: insert.artist_id,
+                title: insert.title,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1355,6 +2860,23 @@ export async function updateArtworkAdmin(id: string, data: {
 
     if (error) {
         console.error("[updateArtworkAdmin]", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:update_artwork_failed:${id}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل تحديث عمل فني",
+            message: `تعذر تحديث العمل الفني ${id} من لوحة الإدارة.`,
+            source: "admin.artworks.update",
+            category: "design",
+            severity: "warning",
+            link: "/dashboard/artworks",
+            resourceType: "artwork",
+            resourceId: id,
+            metadata: {
+                artwork_id: id,
+                fields: Object.keys(update),
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 
@@ -1371,6 +2893,22 @@ export async function deleteArtworkAdmin(id: string, imageUrl?: string | null): 
 
     if (error) {
         console.error("[deleteArtworkAdmin]", error);
+        await reportAdminActionAlert({
+            dispatchKey: `admin:delete_artwork_failed:${id}`,
+            bucketMs: 30 * 60 * 1000,
+            title: "فشل حذف عمل فني",
+            message: `تعذر حذف العمل الفني ${id} من لوحة الإدارة.`,
+            source: "admin.artworks.delete",
+            category: "design",
+            severity: "warning",
+            link: "/dashboard/artworks",
+            resourceType: "artwork",
+            resourceId: id,
+            metadata: {
+                artwork_id: id,
+                error: error.message,
+            },
+        });
         return { success: false, error: error.message };
     }
 

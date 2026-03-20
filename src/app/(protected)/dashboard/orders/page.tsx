@@ -1,4 +1,4 @@
-import { getAdminOrders } from "@/app/actions/admin";
+import { getAdminOrders, getOrdersOperationsSnapshot } from "@/app/actions/admin";
 import { OrdersClient } from "@/components/admin/OrdersClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
@@ -12,6 +12,8 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const params = searchParams ?? {};
     const page = Number(params.page) || 1;
     const status = params.status || "all";
+
+    const snapshot = await getOrdersOperationsSnapshot();
 
     let orders: any[] = [];
     let count = 0;
@@ -28,11 +30,12 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     return (
         <div className="space-y-6">
             <AdminHeader
-                title="إدارة الطلبات"
-                subtitle="تتبع وإدارة جميع الطلبات على المنصة."
+                title="مركز عمليات الطلبات"
+                subtitle="غرفة تشغيل يومية لمراجعة الطلبات، المدفوعات، التنفيذ، والشحن من زاوية واحدة."
             />
 
             <OrdersClient
+                snapshot={snapshot}
                 orders={orders}
                 count={count}
                 totalPages={totalPages}

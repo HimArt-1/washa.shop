@@ -1,25 +1,19 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { ProductType } from "@/types/database";
 
 export async function processSmartImport(payload: any[]) {
     try {
-        const user = await currentUser();
+        const user = await getCurrentUserOrDevAdmin();
         if (!user) return { success: false, error: "غير مصرح" };
 
         const supabase = getSupabaseAdminClient();
 
-        // 1. Verify Admin Role
-        const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, role")
-            .eq("clerk_id", user.id)
-            .single();
-
-        if (profile?.role !== "admin") return { success: false, error: "صلاحيات غير كافية" };
+        const { profile, isAdmin } = await resolveAdminAccess(user);
+        if (!profile || !isAdmin) return { success: false, error: "صلاحيات غير كافية" };
 
         let insertedCount = 0;
         let errors: string[] = [];

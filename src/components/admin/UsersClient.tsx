@@ -42,6 +42,7 @@ interface UsersClientProps {
     currentRole: string;
     currentSearch: string;
     stats?: { total: number; wushsha: number; subscriber: number; admin: number };
+    hideStatsSummary?: boolean;
 }
 
 const roles = [
@@ -66,6 +67,7 @@ export function UsersClient({
     currentRole,
     currentSearch,
     stats = { total: 0, wushsha: 0, subscriber: 0, admin: 0 },
+    hideStatsSummary = false,
 }: UsersClientProps) {
     const router = useRouter();
     const [search, setSearch] = useState(currentSearch);
@@ -103,36 +105,56 @@ export function UsersClient({
     const handleRoleChange = async (userId: string, newRole: string) => {
         setChangingRole(userId);
         setError(null);
-        const res = await updateUserRole(userId, newRole);
-        setChangingRole(null);
-        if (res.success) {
-            setSuccess("تم تغيير الدور بنجاح");
-            setTimeout(() => setSuccess(null), 3000);
-            router.refresh();
-        } else {
-            setError(res.error || "فشل تغيير الدور");
+        try {
+            const res = await updateUserRole(userId, newRole);
+            if (res.success) {
+                setSuccess("تم تغيير الدور بنجاح");
+                setTimeout(() => setSuccess(null), 3000);
+                router.refresh();
+            } else {
+                setError(res.error || "فشل تغيير الدور");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل تغيير الدور");
+        } finally {
+            setChangingRole(null);
         }
     };
 
     const handleLevelChange = async (userId: string, level: number) => {
         setChangingLevel(userId);
-        await updateUserWushshaLevel(userId, level);
-        setChangingLevel(null);
-        router.refresh();
+        setError(null);
+        try {
+            const res = await updateUserWushshaLevel(userId, level);
+            if (res.success) {
+                router.refresh();
+            } else {
+                setError(res.error || "فشل تحديث المستوى");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل تحديث المستوى");
+        } finally {
+            setChangingLevel(null);
+        }
     };
 
     const handleDelete = async (user: any) => {
         if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.display_name}"؟\n\nسيتم حذف جميع بياناته المرتبطة (أعمال، منتجات، طلبات).`)) return;
         setDeletingId(user.id);
         setError(null);
-        const res = await deleteUser(user.id);
-        setDeletingId(null);
-        if (res.success) {
-            setSuccess("تم حذف المستخدم بنجاح");
-            setTimeout(() => setSuccess(null), 3000);
-            router.refresh();
-        } else {
-            setError(res.error || "فشل الحذف");
+        try {
+            const res = await deleteUser(user.id);
+            if (res.success) {
+                setSuccess("تم حذف المستخدم بنجاح");
+                setTimeout(() => setSuccess(null), 3000);
+                router.refresh();
+            } else {
+                setError(res.error || "فشل الحذف");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل الحذف");
+        } finally {
+            setDeletingId(null);
         }
     };
 
@@ -157,14 +179,18 @@ export function UsersClient({
         if (selectedIds.size === 0) return;
         if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} مستخدم؟\n\nسيتم حذف جميع بياناتهم المرتبطة.`)) return;
         setError(null);
-        const res = await deleteUsers(Array.from(selectedIds));
-        setSelectedIds(new Set());
-        if (res.success) {
-            setSuccess(`تم حذف ${res.deleted} مستخدم بنجاح`);
-            setTimeout(() => setSuccess(null), 3000);
-            router.refresh();
-        } else {
-            setError(res.error || "فشل الحذف");
+        try {
+            const res = await deleteUsers(Array.from(selectedIds));
+            if (res.success) {
+                setSelectedIds(new Set());
+                setSuccess(`تم حذف ${res.deleted} مستخدم بنجاح`);
+                setTimeout(() => setSuccess(null), 3000);
+                router.refresh();
+            } else {
+                setError(res.error || "فشل الحذف");
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "فشل الحذف");
         }
     };
 
@@ -210,28 +236,30 @@ export function UsersClient({
     return (
         <div className="space-y-6">
             {/* ─── Stats Cards ─── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {[
-                    { label: "إجمالي المستخدمين", value: stats.total, icon: Users, color: "from-gold/20 to-gold/5" },
-                    { label: "الوشّايون", value: stats.wushsha, icon: Palette, color: "from-accent/20 to-accent/5" },
-                    { label: "المشتركون", value: stats.subscriber, icon: UserCheck, color: "from-forest/20 to-forest/5" },
-                    { label: "المشرفون", value: stats.admin, icon: UserX, color: "from-gray-500/20 to-gray-500/5" },
-                ].map((s, i) => (
-                    <motion.div
-                        key={s.label}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm p-5"
-                    >
-                        <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${s.color} mb-3`}>
-                            <s.icon className="w-5 h-5 text-theme-soft" />
-                        </div>
-                        <p className="text-theme-subtle text-xs font-medium">{s.label}</p>
-                        <p className="text-2xl font-bold text-theme mt-0.5">{s.value}</p>
-                    </motion.div>
-                ))}
-            </div>
+            {!hideStatsSummary ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {[
+                        { label: "إجمالي المستخدمين", value: stats.total, icon: Users, color: "from-gold/20 to-gold/5" },
+                        { label: "الوشّايون", value: stats.wushsha, icon: Palette, color: "from-accent/20 to-accent/5" },
+                        { label: "المشتركون", value: stats.subscriber, icon: UserCheck, color: "from-forest/20 to-forest/5" },
+                        { label: "المشرفون", value: stats.admin, icon: UserX, color: "from-gray-500/20 to-gray-500/5" },
+                    ].map((s, i) => (
+                        <motion.div
+                            key={s.label}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="theme-surface-panel rounded-2xl p-5"
+                        >
+                            <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${s.color} mb-3`}>
+                                <s.icon className="w-5 h-5 text-theme-soft" />
+                            </div>
+                            <p className="text-theme-subtle text-xs font-medium">{s.label}</p>
+                            <p className="text-2xl font-bold text-theme mt-0.5">{s.value}</p>
+                        </motion.div>
+                    ))}
+                </div>
+            ) : null}
 
             {/* ─── Toolbar ─── */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -244,7 +272,7 @@ export function UsersClient({
                         مستخدمي Clerk
                     </Link>
                     {/* Role Tabs */}
-                    <div className="flex gap-1 p-1 bg-surface/50 rounded-xl border border-theme-subtle">
+                    <div className="theme-surface-panel flex gap-1 rounded-xl p-1">
                         {roles.map((r) => (
                             <button
                                 key={r.value}
@@ -297,7 +325,7 @@ export function UsersClient({
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث بالاسم أو اسم المستخدم..."
-                        className="w-64 pl-4 pr-10 py-2.5 bg-surface/50 border border-theme-subtle rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 transition-colors"
+                        className="input-dark w-64 rounded-xl py-2.5 pl-4 pr-10 text-sm"
                     />
                 </form>
             </div>
@@ -334,9 +362,9 @@ export function UsersClient({
             </AnimatePresence>
 
             {/* ─── Table ─── */}
-            <div className="rounded-2xl border border-theme-subtle bg-surface/50 backdrop-blur-sm overflow-hidden">
+            <div className="theme-surface-panel rounded-2xl overflow-hidden">
                 {isPending && (
-                    <div className="absolute inset-0 bg-bg/50 flex items-center justify-center z-10">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_40%,transparent)] backdrop-blur-[1px]">
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
                     </div>
                 )}
@@ -425,7 +453,7 @@ export function UsersClient({
                                                     value={user.wushsha_level ?? 1}
                                                     onChange={(e) => handleLevelChange(user.id, Number(e.target.value))}
                                                     disabled={changingLevel === user.id}
-                                                    className="bg-theme-subtle border border-theme-soft rounded-lg px-2 py-1 text-[10px] text-theme focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer w-12"
+                                                    className="input-dark w-12 rounded-lg px-2 py-1 text-[10px] disabled:opacity-50 cursor-pointer"
                                                     title="مستوى الوشّاي"
                                                 >
                                                     {[1, 2, 3, 4, 5].map((l) => (
@@ -459,7 +487,7 @@ export function UsersClient({
                                                     }
                                                 }}
                                                 disabled={changingRole === user.id}
-                                                className="bg-theme-subtle border border-theme-soft rounded-lg px-3 py-1.5 text-xs text-theme focus:outline-none focus:border-gold/30 disabled:opacity-50 cursor-pointer min-w-[100px]"
+                                                className="input-dark min-w-[100px] rounded-lg px-3 py-1.5 text-xs disabled:opacity-50 cursor-pointer"
                                             >
                                                 {roleOptions.map((r) => (
                                                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -526,7 +554,7 @@ export function UsersClient({
                         <button
                             onClick={() => navigate({ role: currentRole, search, page: String(currentPage - 1) })}
                             disabled={currentPage <= 1}
-                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-theme-faint border border-theme-subtle text-theme-subtle hover:text-theme hover:bg-theme-subtle disabled:opacity-30 transition-colors"
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
@@ -536,7 +564,7 @@ export function UsersClient({
                         <button
                             onClick={() => navigate({ role: currentRole, search, page: String(currentPage + 1) })}
                             disabled={currentPage >= totalPages}
-                            className="p-2 rounded-lg bg-surface/50 border border-theme-subtle text-theme-subtle hover:text-theme disabled:opacity-30 transition-colors"
+                            className="p-2 rounded-lg bg-theme-faint border border-theme-subtle text-theme-subtle hover:text-theme hover:bg-theme-subtle disabled:opacity-30 transition-colors"
                         >
                             <ChevronLeft className="w-4 h-4" />
                         </button>
@@ -606,22 +634,27 @@ function AddUserModal({
         }
         setLoading(true);
         onError("");
-        const res = await createUser({
-            clerk_id: form.clerk_id,
-            display_name: form.display_name,
-            username: form.username,
-            email: form.email || undefined,
-            phone: form.phone || undefined,
-            role: form.role as any,
-            bio: form.bio || undefined,
-            wushsha_level: form.role === "wushsha" ? form.wushsha_level : undefined,
-        });
-        setLoading(false);
-        if (res.success) {
-            setForm({ clerk_id: "", display_name: "", username: "", email: "", phone: "", role: "subscriber", bio: "", wushsha_level: 1 });
-            onSuccess();
-        } else {
-            onError(res.error || "فشل الإضافة");
+        try {
+            const res = await createUser({
+                clerk_id: form.clerk_id,
+                display_name: form.display_name,
+                username: form.username,
+                email: form.email || undefined,
+                phone: form.phone || undefined,
+                role: form.role as any,
+                bio: form.bio || undefined,
+                wushsha_level: form.role === "wushsha" ? form.wushsha_level : undefined,
+            });
+            if (res.success) {
+                setForm({ clerk_id: "", display_name: "", username: "", email: "", phone: "", role: "subscriber", bio: "", wushsha_level: 1 });
+                onSuccess();
+            } else {
+                onError(res.error || "فشل الإضافة");
+            }
+        } catch (error) {
+            onError(error instanceof Error ? error.message : "فشل الإضافة");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -633,7 +666,7 @@ function AddUserModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg rounded-2xl border border-theme-soft bg-bg shadow-2xl"
+                className="theme-surface-panel w-full max-w-lg rounded-2xl shadow-2xl"
             >
                 <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
                     <h2 className="text-lg font-bold text-theme">إضافة مستخدم جديد</h2>
@@ -649,7 +682,7 @@ function AddUserModal({
                             value={form.clerk_id}
                             onChange={(e) => setForm((f) => ({ ...f, clerk_id: e.target.value }))}
                             placeholder="user_xxxxxxxx"
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             dir="ltr"
                         />
                         <p className="text-[10px] text-theme-faint mt-1">يُربط تلقائيًا إذا لم تقم بتحديده</p>
@@ -661,7 +694,7 @@ function AddUserModal({
                             value={form.display_name}
                             onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
                             placeholder="الاسم المعروض"
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                         />
                     </div>
                     <div>
@@ -671,7 +704,7 @@ function AddUserModal({
                             value={form.username}
                             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
                             placeholder="username"
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             dir="ltr"
                         />
                     </div>
@@ -683,7 +716,7 @@ function AddUserModal({
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                             list="add-role-list"
                             placeholder="مثال: subscriber, wushsha, admin..."
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                         />
                         <datalist id="add-role-list">
                             {roleOptions.map((r) => (
@@ -698,7 +731,7 @@ function AddUserModal({
                             <select
                                 value={form.wushsha_level}
                                 onChange={(e) => setForm((f) => ({ ...f, wushsha_level: Number(e.target.value) }))}
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             >
                                 {[1, 2, 3, 4, 5].map((l) => (
                                     <option key={l} value={l}>المستوى {l}</option>
@@ -713,7 +746,7 @@ function AddUserModal({
                             onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                             placeholder="نبذة قصيرة..."
                             rows={2}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30 resize-none"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm resize-none"
                         />
                     </div>
                     <div className="flex gap-3 pt-2">
@@ -727,7 +760,7 @@ function AddUserModal({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl bg-gold/20 text-gold font-bold hover:bg-gold/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 rounded-xl bg-gold py-2.5 font-bold text-[var(--wusha-bg)] hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                             إضافة
@@ -788,22 +821,27 @@ function EditUserModal({
         e.preventDefault();
         setLoading(true);
         onError("");
-        const res = await updateUser(user.id, {
-            display_name: form.display_name,
-            username: form.username,
-            email: form.email || null,
-            phone: form.phone || null,
-            bio: form.bio || undefined,
-            role: form.role as any,
-            wushsha_level: form.role === "wushsha" ? form.wushsha_level : null,
-            is_verified: form.is_verified,
-            website: form.website || null,
-        });
-        setLoading(false);
-        if (res.success) {
-            onSuccess();
-        } else {
-            onError(res.error || "فشل التحديث");
+        try {
+            const res = await updateUser(user.id, {
+                display_name: form.display_name,
+                username: form.username,
+                email: form.email || null,
+                phone: form.phone || null,
+                bio: form.bio || undefined,
+                role: form.role as any,
+                wushsha_level: form.role === "wushsha" ? form.wushsha_level : null,
+                is_verified: form.is_verified,
+                website: form.website || null,
+            });
+            if (res.success) {
+                onSuccess();
+            } else {
+                onError(res.error || "فشل التحديث");
+            }
+        } catch (error) {
+            onError(error instanceof Error ? error.message : "فشل التحديث");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -813,7 +851,7 @@ function EditUserModal({
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="w-full max-w-lg rounded-2xl border border-theme-soft bg-bg shadow-2xl"
+                className="theme-surface-panel w-full max-w-lg rounded-2xl shadow-2xl"
             >
                 <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle">
                     <h2 className="text-lg font-bold text-theme">تعديل المستخدم</h2>
@@ -828,7 +866,7 @@ function EditUserModal({
                             type="text"
                             value={form.display_name}
                             onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                         />
                     </div>
                     <div>
@@ -837,7 +875,7 @@ function EditUserModal({
                             type="text"
                             value={form.username}
                             onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             dir="ltr"
                         />
                     </div>
@@ -849,7 +887,7 @@ function EditUserModal({
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
                             list="edit-role-list"
                             placeholder="مثال: subscriber, wushsha, admin..."
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                         />
                         <datalist id="edit-role-list">
                             {roleOptions.map((r) => (
@@ -864,7 +902,7 @@ function EditUserModal({
                             <select
                                 value={form.wushsha_level}
                                 onChange={(e) => setForm((f) => ({ ...f, wushsha_level: Number(e.target.value) }))}
-                                className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30"
+                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             >
                                 {[1, 2, 3, 4, 5].map((l) => (
                                     <option key={l} value={l}>المستوى {l}</option>
@@ -879,7 +917,7 @@ function EditUserModal({
                             value={form.website}
                             onChange={(e) => setForm((f) => ({ ...f, website: e.target.value }))}
                             placeholder="https://..."
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/30"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
                             dir="ltr"
                         />
                     </div>
@@ -889,7 +927,7 @@ function EditUserModal({
                             value={form.bio}
                             onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-2.5 bg-theme-subtle border border-theme-soft rounded-xl text-sm text-theme focus:outline-none focus:border-gold/30 resize-none"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm resize-none"
                         />
                     </div>
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -912,7 +950,7 @@ function EditUserModal({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl bg-gold/20 text-gold font-bold hover:bg-gold/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 rounded-xl bg-gold text-[var(--wusha-bg)] font-bold hover:bg-gold-light transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
                             حفظ

@@ -7,6 +7,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
 import { createAdminNotification } from "./notifications";
 import { createUserNotification } from "./user-notifications";
 import type {
@@ -22,6 +23,7 @@ import type {
 } from "@/types/database";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { getDesignOrderAccess } from "@/lib/design-order-access";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 
 function getSmartStoreSb() {
@@ -33,8 +35,66 @@ function getSmartStoreSb() {
     return createClient<Database>(url, key, { auth: { persistSession: false } });
 }
 
+type DesignResultField =
+    | "result_design_url"
+    | "result_mockup_url"
+    | "result_pdf_url"
+    | "modification_design_url";
+
+const DESIGN_RESULT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const DESIGN_RESULT_PDF_TYPES = ["application/pdf"];
+const DESIGN_RESULT_MAX_SIZE = 8 * 1024 * 1024;
+const SMART_STORE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const SMART_STORE_IMAGE_MAX_SIZE = 8 * 1024 * 1024;
+
+function getDesignResultAllowedTypes(field: DesignResultField) {
+    return field === "result_pdf_url" ? DESIGN_RESULT_PDF_TYPES : DESIGN_RESULT_IMAGE_TYPES;
+}
+
+function getDesignResultPath(orderId: string, file: File) {
+    const ext = file.name.split(".").pop()?.trim().toLowerCase() || (file.type === "application/pdf" ? "pdf" : "png");
+    return `design-orders/${orderId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+}
+
+function sanitizeSmartStoreFolder(folder: string) {
+    return folder
+        .trim()
+        .replace(/[^a-zA-Z0-9/_-]/g, "-")
+        .replace(/\/+/g, "/")
+        .replace(/^\/|\/$/g, "");
+}
+
+function buildSmartStoreImagePath(folder: string, file: File) {
+    const ext = file.name.split(".").pop()?.trim().toLowerCase() || "png";
+    const safeFolder = sanitizeSmartStoreFolder(folder) || "uploads";
+    return `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+}
+
+async function uploadSmartStoreBinary(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    file: File,
+    path: string
+) {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { data, error } = await sb.storage
+        .from("smart-store")
+        .upload(path, buffer, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+        });
+
+    if (error || !data?.path) {
+        console.error("[uploadSmartStoreBinary]", error);
+        return { error: error?.message || "فشل رفع الملف" } as const;
+    }
+
+    const { data: publicUrlData } = sb.storage.from("smart-store").getPublicUrl(data.path);
+    return { url: publicUrlData.publicUrl } as const;
+}
+
 async function requireSmartStoreAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) {
         throw new Error("Unauthorized");
     }
@@ -744,11 +804,117 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
 
 // ─── Admin: Upload Results ──────────────────────────────
 
-export async function uploadDesignResult(id: string, field: "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url", url: string) {
+export async function uploadDesignResult(id: string, field: DesignResultField, url: string) {
     const { sb } = await requireSmartStoreAdmin();
     const { error } = await sb.from("custom_design_orders").update({ [field]: url }).eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
+}
+
+export async function uploadDesignResultFile(id: string, field: DesignResultField, formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+        return { error: "لم يتم اختيار ملف صالح" };
+    }
+
+    if (file.size <= 0) {
+        return { error: "الملف فارغ" };
+    }
+
+    if (file.size > DESIGN_RESULT_MAX_SIZE) {
+        return { error: "حجم الملف كبير جدًا. الحد الأقصى 8 ميجابايت" };
+    }
+
+    const allowedTypes = getDesignResultAllowedTypes(field);
+    if (!allowedTypes.includes(file.type)) {
+        return {
+            error:
+                field === "result_pdf_url"
+                    ? "نوع الملف غير مدعوم. المطلوب PDF فقط"
+                    : "نوع الملف غير مدعوم. المسموح: JPG, PNG, WebP",
+        };
+    }
+
+    const objectPath = getDesignResultPath(id, file);
+    const upload = await uploadSmartStoreBinary(sb, file, objectPath);
+    if ("error" in upload) {
+        return { error: upload.error };
+    }
+    const publicUrl = upload.url;
+
+    const { error: updateError } = await sb
+        .from("custom_design_orders")
+        .update({ [field]: publicUrl })
+        .eq("id", id);
+
+    if (updateError) {
+        console.error("[uploadDesignResultFile:update]", updateError);
+        return { error: updateError.message };
+    }
+
+    revalidatePath(`/dashboard/design-orders/${id}`);
+    revalidatePath("/dashboard/design-orders");
+    revalidatePath("/dashboard/smart-store");
+
+    return { success: true, url: publicUrl };
+}
+
+export async function uploadSmartStoreImage(folder: string, formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+        return { success: false as const, error: "لم يتم اختيار ملف" };
+    }
+
+    if (file.size <= 0) {
+        return { success: false as const, error: "الملف فارغ" };
+    }
+
+    if (file.size > SMART_STORE_IMAGE_MAX_SIZE) {
+        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 8 ميجابايت" };
+    }
+
+    if (!SMART_STORE_IMAGE_TYPES.includes(file.type)) {
+        return { success: false as const, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
+    }
+
+    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath(folder, file));
+    if ("error" in upload) {
+        return { success: false as const, error: upload.error };
+    }
+
+    return { success: true as const, url: upload.url };
+}
+
+export async function uploadDesignReferenceImage(formData: FormData) {
+    const sb = getSmartStoreSb();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+        return { success: false as const, error: "لم يتم اختيار ملف" };
+    }
+
+    if (file.size <= 0) {
+        return { success: false as const, error: "الملف فارغ" };
+    }
+
+    if (file.size > SMART_STORE_IMAGE_MAX_SIZE) {
+        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 8 ميجابايت" };
+    }
+
+    if (!SMART_STORE_IMAGE_TYPES.includes(file.type)) {
+        return { success: false as const, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
+    }
+
+    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath("design-references", file));
+    if ("error" in upload) {
+        return { success: false as const, error: upload.error };
+    }
+
+    return { success: true as const, url: upload.url };
 }
 
 // ─── Admin: Skip Results ────────────────────────────────
@@ -1145,6 +1311,142 @@ export async function getDesignOrderStats() {
         cancelled: cancelRes.count ?? 0,
         revenue,
     };
+}
+
+export async function getDesignOperationsSnapshot() {
+    try {
+        const { sb } = await requireSmartStoreAdmin();
+        const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+        const activeStatuses: CustomDesignOrderStatus[] = [
+            "new",
+            "in_progress",
+            "awaiting_review",
+            "modification_requested",
+        ];
+
+        const results = await Promise.allSettled([
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "new"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "awaiting_review"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "modification_requested"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "completed"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "cancelled"),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).in("status", activeStatuses).is("assigned_to", null),
+            sb.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "completed").eq("is_sent_to_customer", false),
+            sb.from("custom_design_orders").select("final_price").eq("status", "completed").not("final_price", "is", null),
+            sb.from("custom_design_orders").select("id, created_at").in("status", activeStatuses),
+            sb.from("custom_design_orders").select("id, created_at, updated_at").eq("status", "completed"),
+            sb.from("custom_design_orders")
+                .select("*")
+                .eq("status", "new")
+                .order("created_at", { ascending: false })
+                .limit(5),
+            sb.from("custom_design_orders")
+                .select("*")
+                .in("status", ["awaiting_review", "modification_requested"])
+                .order("updated_at", { ascending: false })
+                .limit(5),
+            sb.from("custom_design_orders")
+                .select("*")
+                .in("status", activeStatuses)
+                .is("assigned_to", null)
+                .order("created_at", { ascending: true })
+                .limit(5),
+            sb.from("custom_design_orders")
+                .select("*")
+                .eq("status", "completed")
+                .order("updated_at", { ascending: false })
+                .limit(5),
+        ]);
+
+        const getCount = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && typeof result.value.count === "number" ? result.value.count : 0;
+
+        const getData = (result: PromiseSettledResult<any>) =>
+            result.status === "fulfilled" && Array.isArray(result.value.data) ? result.value.data : [];
+
+        results.forEach((res, idx) => {
+            if (res.status === "rejected") {
+                console.error(`Design snapshot query ${idx} failed:`, res.reason);
+                return;
+            }
+
+            if (res.value?.error) {
+                console.error(`Design snapshot query ${idx} returned DB error:`, res.value.error);
+            }
+        });
+
+        const revenue = getData(results[10]).reduce((sum: number, row: { final_price?: number | null }) => {
+            return sum + (row.final_price || 0);
+        }, 0);
+
+        const activeAges = getData(results[11]).map((order: { created_at: string }) => {
+            return (Date.now() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
+        });
+        const completionDurations = getData(results[12]).map((order: { created_at: string; updated_at: string }) => {
+            return (new Date(order.updated_at).getTime() - new Date(order.created_at).getTime()) / (1000 * 60 * 60);
+        });
+
+        const avgActiveHours = activeAges.length
+            ? Math.round(activeAges.reduce((sum: number, value: number) => sum + value, 0) / activeAges.length)
+            : 0;
+        const avgCompletionHours = completionDurations.length
+            ? Math.round(completionDurations.reduce((sum: number, value: number) => sum + value, 0) / completionDurations.length)
+            : 0;
+
+        return {
+            stats: {
+                total: getCount(results[0]),
+                new: getCount(results[1]),
+                in_progress: getCount(results[2]),
+                awaiting_review: getCount(results[3]),
+                modification_requested: getCount(results[4]),
+                completed: getCount(results[5]),
+                cancelled: getCount(results[6]),
+                createdToday: getCount(results[7]),
+                unassignedActive: getCount(results[8]),
+                readyToSend: getCount(results[9]),
+                revenue,
+                avgActiveHours,
+                avgCompletionHours,
+                activeLoad:
+                    getCount(results[1]) +
+                    getCount(results[2]) +
+                    getCount(results[3]) +
+                    getCount(results[4]),
+            },
+            intakeQueue: getData(results[13]) as CustomDesignOrder[],
+            reviewQueue: getData(results[14]) as CustomDesignOrder[],
+            assignmentBacklog: getData(results[15]) as CustomDesignOrder[],
+            recentlyCompleted: getData(results[16]) as CustomDesignOrder[],
+        };
+    } catch (err) {
+        console.error("[getDesignOperationsSnapshot]", err);
+        return {
+            stats: {
+                total: 0,
+                new: 0,
+                in_progress: 0,
+                awaiting_review: 0,
+                modification_requested: 0,
+                completed: 0,
+                cancelled: 0,
+                createdToday: 0,
+                unassignedActive: 0,
+                readyToSend: 0,
+                revenue: 0,
+                avgActiveHours: 0,
+                avgCompletionHours: 0,
+                activeLoad: 0,
+            },
+            intakeQueue: [] as CustomDesignOrder[],
+            reviewQueue: [] as CustomDesignOrder[],
+            assignmentBacklog: [] as CustomDesignOrder[],
+            recentlyCompleted: [] as CustomDesignOrder[],
+        };
+    }
 }
 
 // ─── Get Admin List ──────────────────────────────────────

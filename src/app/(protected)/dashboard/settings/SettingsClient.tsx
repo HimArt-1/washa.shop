@@ -4,12 +4,19 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import {
     Eye, EyeOff, Globe, Truck, Save, Loader2, Tag, QrCode,
-    Instagram, Twitter, Mail, Phone, Sparkles, Image as ImageIcon, type LucideIcon,
+    Instagram, Twitter, Mail, Phone, Sparkles, Image as ImageIcon, ShieldAlert, History, Activity, RotateCcw, type LucideIcon,
 } from "lucide-react";
-import { updateSiteSetting, uploadExclusiveDesignImage, type SiteSettingsType } from "@/app/actions/settings";
+import {
+    updateSiteSetting,
+    uploadExclusiveDesignImage,
+    type OperationalRuleSignal,
+    type OperationalRulesDiagnostics,
+    type SiteSettingsType,
+} from "@/app/actions/settings";
 
 interface SettingsProps {
     settings: SiteSettingsType;
+    diagnostics: OperationalRulesDiagnostics;
 }
 
 // ─── Toggle Switch ──────────────────────────────────────
@@ -81,9 +88,187 @@ function Field({
     );
 }
 
+function SignalStateBadge({ state }: { state: OperationalRuleSignal["state"] }) {
+    const map = {
+        healthy: "bg-emerald-500/15 text-emerald-300 border-emerald-500/20",
+        warning: "bg-amber-500/15 text-amber-300 border-amber-500/20",
+        critical: "bg-rose-500/15 text-rose-300 border-rose-500/20",
+        disabled: "bg-white/5 text-theme-subtle border-white/10",
+    } as const;
+
+    const label = {
+        healthy: "سليم",
+        warning: "تحذير",
+        critical: "حرج",
+        disabled: "معطل",
+    } as const;
+
+    return (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold ${map[state]}`}>
+            {label[state]}
+        </span>
+    );
+}
+
+function formatRuleMetric(value: number) {
+    return new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(Math.round(value));
+}
+
+function buildRuleSections(
+    metrics: OperationalRulesDiagnostics["metrics"],
+    rules: SiteSettingsType["operational_rules"]
+) {
+    const inventoryRestockTriggered =
+        (rules.inventory.restockPressureItemsMin > 0 && metrics.inventory.highPressureRestocks >= rules.inventory.restockPressureItemsMin) ||
+        (rules.inventory.lowStockTotalMin > 0 && metrics.inventory.lowStockTotal >= rules.inventory.lowStockTotalMin);
+
+    const failedPaymentsWarningTriggered =
+        (rules.payments.failedPaymentsWarningMin > 0 && metrics.payments.failedPayments >= rules.payments.failedPaymentsWarningMin) ||
+        (rules.payments.atRiskRevenueWarning > 0 && metrics.payments.atRiskRevenue >= rules.payments.atRiskRevenueWarning);
+    const failedPaymentsCriticalTriggered =
+        (rules.payments.failedPaymentsCriticalMin > 0 && metrics.payments.failedPayments >= rules.payments.failedPaymentsCriticalMin) ||
+        (rules.payments.atRiskRevenueCritical > 0 && metrics.payments.atRiskRevenue >= rules.payments.atRiskRevenueCritical);
+
+    const pendingPaymentsWarningTriggered =
+        (rules.payments.pendingPaymentsWarningMin > 0 && metrics.payments.pendingPayments >= rules.payments.pendingPaymentsWarningMin) ||
+        (rules.payments.outstandingRevenueWarning > 0 && metrics.payments.outstandingRevenue >= rules.payments.outstandingRevenueWarning);
+    const pendingPaymentsCriticalTriggered =
+        (rules.payments.pendingPaymentsCriticalMin > 0 && metrics.payments.pendingPayments >= rules.payments.pendingPaymentsCriticalMin) ||
+        (rules.payments.outstandingRevenueCritical > 0 && metrics.payments.outstandingRevenue >= rules.payments.outstandingRevenueCritical);
+
+    const ordersWarningTriggered =
+        (rules.orders.pendingReviewWarningMin > 0 && metrics.orders.pendingReview >= rules.orders.pendingReviewWarningMin) ||
+        (rules.orders.fulfillmentQueueWarningMin > 0 && metrics.orders.fulfillmentQueue >= rules.orders.fulfillmentQueueWarningMin) ||
+        (rules.orders.paymentPendingWarningMin > 0 && metrics.orders.paymentPending >= rules.orders.paymentPendingWarningMin);
+    const ordersCriticalTriggered =
+        (rules.orders.pendingReviewCriticalMin > 0 && metrics.orders.pendingReview >= rules.orders.pendingReviewCriticalMin) ||
+        (rules.orders.fulfillmentQueueCriticalMin > 0 && metrics.orders.fulfillmentQueue >= rules.orders.fulfillmentQueueCriticalMin) ||
+        (rules.orders.paymentPendingCriticalMin > 0 && metrics.orders.paymentPending >= rules.orders.paymentPendingCriticalMin);
+
+    return {
+        support: [
+            {
+                id: "support.slaAtRiskMin",
+                title: "التذاكر القريبة من تجاوز SLA",
+                description: "يعرض التذاكر التي دخلت منطقة الخطر قبل التحول إلى تعثر فعلي.",
+                currentLabel: `${formatRuleMetric(metrics.support.slaAtRisk)} تذكرة`,
+                thresholdLabel: rules.support.slaAtRiskMin > 0 ? `يتحرك عند ${formatRuleMetric(rules.support.slaAtRiskMin)}+` : "معطل",
+                state:
+                    rules.support.slaAtRiskMin === 0
+                        ? "disabled"
+                        : metrics.support.slaAtRisk >= rules.support.slaAtRiskMin
+                          ? "warning"
+                          : "healthy",
+            },
+            {
+                id: "support.slaBreachedMin",
+                title: "التذاكر المتجاوزة لـ SLA",
+                description: "يعرض الحالات التي تجاوزت نافذة الخدمة بالفعل وتحتاج تصعيدًا فوريًا.",
+                currentLabel: `${formatRuleMetric(metrics.support.slaBreached)} تذكرة`,
+                thresholdLabel: rules.support.slaBreachedMin > 0 ? `يتحرك عند ${formatRuleMetric(rules.support.slaBreachedMin)}+` : "معطل",
+                state:
+                    rules.support.slaBreachedMin === 0
+                        ? "disabled"
+                        : metrics.support.slaBreached >= rules.support.slaBreachedMin
+                          ? "critical"
+                          : "healthy",
+            },
+        ],
+        inventory: [
+            {
+                id: "inventory.criticalStockoutsMin",
+                title: "نفاد المخزون الحرج",
+                description: "عناصر نافدة لديها سحب فعلي من المبيعات وقد تؤثر على التنفيذ.",
+                currentLabel: `${formatRuleMetric(metrics.inventory.criticalStockouts)} عنصر`,
+                thresholdLabel: rules.inventory.criticalStockoutsMin > 0 ? `يتحرك عند ${formatRuleMetric(rules.inventory.criticalStockoutsMin)}+` : "معطل",
+                state:
+                    rules.inventory.criticalStockoutsMin === 0
+                        ? "disabled"
+                        : metrics.inventory.criticalStockouts >= rules.inventory.criticalStockoutsMin
+                          ? (rules.inventory.fulfillmentQueueCriticalMin > 0 && metrics.inventory.fulfillmentQueue >= rules.inventory.fulfillmentQueueCriticalMin ? "critical" : "warning")
+                          : "healthy",
+            },
+            {
+                id: "inventory.restockPressureItemsMin",
+                title: "ضغط إعادة التعبئة",
+                description: "ينظر إلى العناصر عالية الضغط وإجمالي منخفض المخزون معًا.",
+                currentLabel: `${formatRuleMetric(metrics.inventory.highPressureRestocks)} عالي الضغط / ${formatRuleMetric(metrics.inventory.lowStockTotal)} منخفض`,
+                thresholdLabel:
+                    rules.inventory.restockPressureItemsMin > 0 || rules.inventory.lowStockTotalMin > 0
+                        ? `عناصر ${formatRuleMetric(rules.inventory.restockPressureItemsMin)}+ أو منخفض ${formatRuleMetric(rules.inventory.lowStockTotalMin)}+`
+                        : "معطل",
+                state:
+                    rules.inventory.restockPressureItemsMin === 0 && rules.inventory.lowStockTotalMin === 0
+                        ? "disabled"
+                        : inventoryRestockTriggered
+                          ? "warning"
+                          : "healthy",
+            },
+        ],
+        payments: [
+            {
+                id: "payments.failedPaymentsWarningMin",
+                title: "المدفوعات المتعثرة",
+                description: "يراقب عدد المدفوعات المتعثرة والإيراد المعرض للخطر في نفس الإشارة.",
+                currentLabel: `${formatRuleMetric(metrics.payments.failedPayments)} متعثرة / ${formatRuleMetric(metrics.payments.atRiskRevenue)} ر.س معرض`,
+                thresholdLabel:
+                    rules.payments.failedPaymentsWarningMin > 0 || rules.payments.atRiskRevenueWarning > 0
+                        ? `تحذير: ${formatRuleMetric(rules.payments.failedPaymentsWarningMin)} أو ${formatRuleMetric(rules.payments.atRiskRevenueWarning)} ر.س`
+                        : "معطل",
+                state:
+                    rules.payments.failedPaymentsWarningMin === 0 && rules.payments.atRiskRevenueWarning === 0
+                        ? "disabled"
+                        : failedPaymentsCriticalTriggered
+                          ? "critical"
+                          : failedPaymentsWarningTriggered
+                            ? "warning"
+                            : "healthy",
+            },
+            {
+                id: "payments.pendingPaymentsWarningMin",
+                title: "طابور التحصيل المعلق",
+                description: "يعرض عدد الطلبات بانتظار الدفع والإيراد المعلّق الذي يحتاج متابعة.",
+                currentLabel: `${formatRuleMetric(metrics.payments.pendingPayments)} طلب / ${formatRuleMetric(metrics.payments.outstandingRevenue)} ر.س معلق`,
+                thresholdLabel:
+                    rules.payments.pendingPaymentsWarningMin > 0 || rules.payments.outstandingRevenueWarning > 0
+                        ? `تحذير: ${formatRuleMetric(rules.payments.pendingPaymentsWarningMin)} أو ${formatRuleMetric(rules.payments.outstandingRevenueWarning)} ر.س`
+                        : "معطل",
+                state:
+                    rules.payments.pendingPaymentsWarningMin === 0 && rules.payments.outstandingRevenueWarning === 0
+                        ? "disabled"
+                        : pendingPaymentsCriticalTriggered
+                          ? "critical"
+                          : pendingPaymentsWarningTriggered
+                            ? "warning"
+                            : "healthy",
+            },
+        ],
+        orders: [
+            {
+                id: "orders.backlog",
+                title: "ضغط طابور الطلبات",
+                description: "مؤشر مركب يراقب المراجعات، التنفيذ، والطلبات بانتظار الدفع.",
+                currentLabel: `قرار ${formatRuleMetric(metrics.orders.pendingReview)} / تنفيذ ${formatRuleMetric(metrics.orders.fulfillmentQueue)} / دفع ${formatRuleMetric(metrics.orders.paymentPending)}`,
+                thresholdLabel:
+                    `تحذير: ${formatRuleMetric(rules.orders.pendingReviewWarningMin)}/${formatRuleMetric(rules.orders.fulfillmentQueueWarningMin)}/${formatRuleMetric(rules.orders.paymentPendingWarningMin)}`,
+                state:
+                    rules.orders.pendingReviewWarningMin === 0 &&
+                    rules.orders.fulfillmentQueueWarningMin === 0 &&
+                    rules.orders.paymentPendingWarningMin === 0
+                        ? "disabled"
+                        : ordersCriticalTriggered
+                          ? "critical"
+                          : ordersWarningTriggered
+                            ? "warning"
+                            : "healthy",
+            },
+        ],
+    } as const;
+}
+
 // ═══════════════════════════════════════════════════════════
 
-export function SettingsClient({ settings }: SettingsProps) {
+export function SettingsClient({ settings, diagnostics }: SettingsProps) {
     const [visibility, setVisibility] = useState({
         gallery: settings.visibility.gallery ?? false,
         store: settings.visibility.store ?? false,
@@ -140,6 +325,7 @@ export function SettingsClient({ settings }: SettingsProps) {
         show_whatsapp: settings.brand_assets?.show_whatsapp ?? true,
         show_website: settings.brand_assets?.show_website ?? true,
     });
+    const [operationalRules, setOperationalRules] = useState(settings.operational_rules);
 
     const [saving, setSaving] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
@@ -151,12 +337,17 @@ export function SettingsClient({ settings }: SettingsProps) {
 
     const handleSave = async (key: string, value: Record<string, any>) => {
         setSaving(key);
-        const result = await updateSiteSetting(key, value);
-        setSaving(null);
-        if (result.success) {
-            showToast("تم الحفظ بنجاح ✓");
-        } else {
-            showToast("خطأ: " + (result.error || "حدث خطأ"));
+        try {
+            const result = await updateSiteSetting(key, value);
+            if (result.success) {
+                showToast("تم الحفظ بنجاح ✓");
+            } else {
+                showToast("خطأ: " + (result.error || "حدث خطأ"));
+            }
+        } catch (error) {
+            showToast("خطأ: " + (error instanceof Error ? error.message : "حدث خطأ"));
+        } finally {
+            setSaving(null);
         }
     };
 
@@ -188,8 +379,55 @@ export function SettingsClient({ settings }: SettingsProps) {
             showToast("فشل الرفع");
         } finally {
             setSaving(null);
+            e.target.value = "";
         }
     };
+
+    const updateOperationalRule = (section: keyof typeof operationalRules, key: string, nextValue: string) => {
+        const numericValue = Math.max(0, Number(nextValue) || 0);
+        setOperationalRules((prev) => ({
+            ...prev,
+            [section]: {
+                ...prev[section],
+                [key]: numericValue,
+            },
+        }));
+    };
+
+    const ruleSections = [
+        { key: "support", title: "الدعم", signals: diagnostics.sections.support },
+        { key: "inventory", title: "المخزون", signals: diagnostics.sections.inventory },
+        { key: "payments", title: "المدفوعات", signals: diagnostics.sections.payments },
+        { key: "orders", title: "الطلبات", signals: diagnostics.sections.orders },
+    ] as const;
+    const draftRuleSections = buildRuleSections(diagnostics.metrics, operationalRules);
+    const draftRuleGroups = [
+        { key: "support", title: "الدعم", signals: draftRuleSections.support },
+        { key: "inventory", title: "المخزون", signals: draftRuleSections.inventory },
+        { key: "payments", title: "المدفوعات", signals: draftRuleSections.payments },
+        { key: "orders", title: "الطلبات", signals: draftRuleSections.orders },
+    ] as const;
+    const isOperationalRulesDirty = JSON.stringify(operationalRules) !== JSON.stringify(settings.operational_rules);
+    const ruleChanges = draftRuleGroups.flatMap((group) =>
+        group.signals
+            .map((signal) => {
+                const currentSignal = diagnostics.sections[group.key].find((item) => item.id === signal.id);
+                if (!currentSignal) return null;
+                if (currentSignal.state === signal.state && currentSignal.thresholdLabel === signal.thresholdLabel) {
+                    return null;
+                }
+                return {
+                    groupTitle: group.title,
+                    currentSignal,
+                    draftSignal: signal,
+                };
+            })
+            .filter(Boolean) as Array<{
+                groupTitle: string;
+                currentSignal: OperationalRuleSignal;
+                draftSignal: OperationalRuleSignal;
+            }>
+    );
 
     return (
         <div className="space-y-6 max-w-3xl">
@@ -367,6 +605,333 @@ export function SettingsClient({ settings }: SettingsProps) {
                     {saving === "shipping" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     حفظ إعدادات الشحن
                 </button>
+            </SettingsCard>
+
+            <SettingsCard title="قواعد التشغيل والتصعيد" icon={ShieldAlert}>
+                <p className="text-theme-subtle text-sm mb-4">
+                    هذه القواعد تتحكم في متى يرتفع التنبيه من مراقبة عادية إلى تحذير أو حالة حرجة.
+                    استخدم القيمة <span className="font-bold text-theme">0</span> لتعطيل قاعدة بعينها.
+                </p>
+
+                <div className="space-y-6">
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme">جودة خدمة الدعم</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field
+                                label="حد تذاكر على حافة SLA"
+                                value={String(operationalRules.support.slaAtRiskMin)}
+                                onChange={(v) => updateOperationalRule("support", "slaAtRiskMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد تذاكر تجاوزت SLA"
+                                value={String(operationalRules.support.slaBreachedMin)}
+                                onChange={(v) => updateOperationalRule("support", "slaBreachedMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme">المخزون والتنفيذ</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field
+                                label="حد العناصر النافدة الحرجة"
+                                value={String(operationalRules.inventory.criticalStockoutsMin)}
+                                onChange={(v) => updateOperationalRule("inventory", "criticalStockoutsMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد قائمة إعادة التعبئة"
+                                value={String(operationalRules.inventory.restockPressureItemsMin)}
+                                onChange={(v) => updateOperationalRule("inventory", "restockPressureItemsMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد إجمالي منخفض المخزون"
+                                value={String(operationalRules.inventory.lowStockTotalMin)}
+                                onChange={(v) => updateOperationalRule("inventory", "lowStockTotalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد التنفيذ لتصعيد النفاد إلى حرج"
+                                value={String(operationalRules.inventory.fulfillmentQueueCriticalMin)}
+                                onChange={(v) => updateOperationalRule("inventory", "fulfillmentQueueCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme">المدفوعات والتحصيل</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field
+                                label="حد المدفوعات المتعثرة للتحذير"
+                                value={String(operationalRules.payments.failedPaymentsWarningMin)}
+                                onChange={(v) => updateOperationalRule("payments", "failedPaymentsWarningMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد المدفوعات المتعثرة للحالة الحرجة"
+                                value={String(operationalRules.payments.failedPaymentsCriticalMin)}
+                                onChange={(v) => updateOperationalRule("payments", "failedPaymentsCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="إيراد معرض للخطر للتحذير (ر.س)"
+                                value={String(operationalRules.payments.atRiskRevenueWarning)}
+                                onChange={(v) => updateOperationalRule("payments", "atRiskRevenueWarning", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="إيراد معرض للخطر للحالة الحرجة (ر.س)"
+                                value={String(operationalRules.payments.atRiskRevenueCritical)}
+                                onChange={(v) => updateOperationalRule("payments", "atRiskRevenueCritical", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد المدفوعات المعلقة للتحذير"
+                                value={String(operationalRules.payments.pendingPaymentsWarningMin)}
+                                onChange={(v) => updateOperationalRule("payments", "pendingPaymentsWarningMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="حد المدفوعات المعلقة للحالة الحرجة"
+                                value={String(operationalRules.payments.pendingPaymentsCriticalMin)}
+                                onChange={(v) => updateOperationalRule("payments", "pendingPaymentsCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="إيراد معلق للتحذير (ر.س)"
+                                value={String(operationalRules.payments.outstandingRevenueWarning)}
+                                onChange={(v) => updateOperationalRule("payments", "outstandingRevenueWarning", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="إيراد معلق للحالة الحرجة (ر.س)"
+                                value={String(operationalRules.payments.outstandingRevenueCritical)}
+                                onChange={(v) => updateOperationalRule("payments", "outstandingRevenueCritical", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
+                        <h4 className="font-bold text-sm text-theme">ضغط طابور الطلبات</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field
+                                label="مراجعات بانتظار القرار للتحذير"
+                                value={String(operationalRules.orders.pendingReviewWarningMin)}
+                                onChange={(v) => updateOperationalRule("orders", "pendingReviewWarningMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="مراجعات بانتظار القرار للحالة الحرجة"
+                                value={String(operationalRules.orders.pendingReviewCriticalMin)}
+                                onChange={(v) => updateOperationalRule("orders", "pendingReviewCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="خط التنفيذ للتحذير"
+                                value={String(operationalRules.orders.fulfillmentQueueWarningMin)}
+                                onChange={(v) => updateOperationalRule("orders", "fulfillmentQueueWarningMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="خط التنفيذ للحالة الحرجة"
+                                value={String(operationalRules.orders.fulfillmentQueueCriticalMin)}
+                                onChange={(v) => updateOperationalRule("orders", "fulfillmentQueueCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="طلبات بانتظار الدفع للتحذير"
+                                value={String(operationalRules.orders.paymentPendingWarningMin)}
+                                onChange={(v) => updateOperationalRule("orders", "paymentPendingWarningMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                            <Field
+                                label="طلبات بانتظار الدفع للحالة الحرجة"
+                                value={String(operationalRules.orders.paymentPendingCriticalMin)}
+                                onChange={(v) => updateOperationalRule("orders", "paymentPendingCriticalMin", v)}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {isOperationalRulesDirty && (
+                    <div className="mt-5 space-y-4">
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setOperationalRules(settings.operational_rules)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-theme-soft px-4 py-2 text-sm font-bold text-theme-soft transition-colors hover:border-gold hover:text-theme"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                إعادة الحالة المحفوظة
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setOperationalRules(diagnostics.defaults)}
+                                className="inline-flex items-center gap-2 rounded-xl border border-theme-soft px-4 py-2 text-sm font-bold text-theme-soft transition-colors hover:border-gold hover:text-theme"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                استعادة الافتراضي
+                            </button>
+                        </div>
+
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4 space-y-4">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                    <h4 className="font-bold text-sm text-theme">محاكاة قبل/بعد</h4>
+                                    <p className="text-xs leading-6 text-theme-subtle">
+                                        {ruleChanges.length === 0
+                                            ? "المقاييس الحالية لن تغيّر مستوى الإشارات، لكن العتبات الجديدة ستُحفظ كما هي."
+                                            : `${ruleChanges.length} إشارات ستتأثر عند حفظ هذه المسودة.`}
+                                    </p>
+                                </div>
+                                <span className="rounded-full bg-white/5 px-3 py-1.5 text-xs text-theme-soft">
+                                    المسودة الحالية
+                                </span>
+                            </div>
+
+                            {ruleChanges.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-theme-soft bg-surface/70 px-4 py-4 text-sm text-theme-subtle">
+                                    لا توجد تغييرات مرئية على حالة الإشارات الآن، لكن يمكنك حفظ المسودة لتحديث العتبات التشغيلية.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {ruleChanges.map(({ groupTitle, currentSignal, draftSignal }) => (
+                                        <div key={draftSignal.id} className="rounded-xl border border-theme-soft bg-surface/70 p-4 space-y-3">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-bold text-theme">{draftSignal.title}</div>
+                                                    <div className="text-xs text-theme-subtle">{groupTitle}</div>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <SignalStateBadge state={currentSignal.state} />
+                                                    <span className="text-xs text-theme-faint">← الحالي</span>
+                                                    <SignalStateBadge state={draftSignal.state} />
+                                                    <span className="text-xs text-theme-faint">المسودة →</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                                                <div className="rounded-xl bg-white/5 px-3 py-3 text-theme-soft">
+                                                    <div className="mb-1 font-bold text-theme">الآن</div>
+                                                    <div>{currentSignal.currentLabel}</div>
+                                                    <div className="text-theme-subtle">العتبة: {currentSignal.thresholdLabel}</div>
+                                                </div>
+                                                <div className="rounded-xl bg-gold/5 px-3 py-3 text-theme-soft">
+                                                    <div className="mb-1 font-bold text-theme">بعد الحفظ</div>
+                                                    <div>{draftSignal.currentLabel}</div>
+                                                    <div className="text-theme-subtle">العتبة: {draftSignal.thresholdLabel}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <button
+                    onClick={() => handleSave("operational_rules", operationalRules)}
+                    disabled={saving === "operational_rules"}
+                    className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {saving === "operational_rules" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    حفظ قواعد التشغيل
+                </button>
+            </SettingsCard>
+
+            <SettingsCard title="معاينة القواعد الحالية" icon={Activity}>
+                <div className="space-y-4">
+                    {ruleSections.map((section) => (
+                        <div key={section.key} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                                <h4 className="font-bold text-sm text-theme">{section.title}</h4>
+                                <span className="text-xs text-theme-subtle">{section.signals.length} إشارات</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                {section.signals.map((signal) => (
+                                    <div key={signal.id} className="rounded-xl border border-theme-soft bg-surface/70 p-4 space-y-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="text-sm font-bold text-theme">{signal.title}</div>
+                                                <p className="text-xs text-theme-subtle leading-6">{signal.description}</p>
+                                            </div>
+                                            <SignalStateBadge state={signal.state} />
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 text-xs">
+                                            <span className="rounded-full bg-white/5 px-3 py-1.5 text-theme-soft">
+                                                الحالي: {signal.currentLabel}
+                                            </span>
+                                            <span className="rounded-full bg-white/5 px-3 py-1.5 text-theme-subtle">
+                                                العتبة: {signal.thresholdLabel}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </SettingsCard>
+
+            <SettingsCard title="سجل تغييرات القواعد" icon={History}>
+                {diagnostics.recentChanges.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-theme-soft bg-theme-faint px-4 py-5 text-sm text-theme-subtle">
+                        لا توجد تغييرات مسجلة بعد على قواعد التشغيل.
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {diagnostics.recentChanges.map((entry) => (
+                            <div key={entry.id} className="rounded-xl border border-theme-soft bg-theme-faint px-4 py-4">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div className="text-sm font-bold text-theme">{entry.message}</div>
+                                    <div className="text-xs text-theme-subtle">
+                                        {new Date(entry.createdAt).toLocaleString("ar-SA")}
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-theme-subtle">
+                                    بواسطة: <span className="text-theme-soft font-semibold">{entry.actor}</span>
+                                </div>
+                                {entry.changedKeys.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {entry.changedKeys.map((changedKey) => (
+                                            <span key={changedKey} className="rounded-full bg-white/5 px-3 py-1 text-[11px] text-theme-soft">
+                                                {changedKey}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </SettingsCard>
 
             {/* ─── 4. معرفات المنتجات والـ SKU ─── */}

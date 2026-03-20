@@ -17,17 +17,29 @@ export function DesignOrderChat({ orderId, trackerToken }: { orderId: string; tr
     const [mounted, setMounted] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        scrollContainerRef.current?.scrollTo({
+            top: scrollContainerRef.current.scrollHeight,
+            behavior: "smooth",
+        });
     };
 
     const fetchMessages = async () => {
-        const data = await getDesignOrderMessages(orderId, trackerToken);
-        setMessages(data);
-        setLoading(false);
+        try {
+            const data = await getDesignOrderMessages(orderId, trackerToken);
+            setMessages(Array.isArray(data) ? data : []);
+        } catch (fetchError) {
+            console.error("Failed to fetch design order messages", fetchError);
+            setMessages([]);
+            setError("تعذر تحميل المحادثة الآن");
+        } finally {
+            setLoading(false);
+        }
     };
+
+    const safeMessages = Array.isArray(messages) ? messages : [];
 
     useEffect(() => {
         setMounted(true);
@@ -37,8 +49,10 @@ export function DesignOrderChat({ orderId, trackerToken }: { orderId: string; tr
     }, [orderId, trackerToken]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        if (safeMessages.length > 0) {
+            scrollToBottom();
+        }
+    }, [safeMessages.length]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -71,19 +85,19 @@ export function DesignOrderChat({ orderId, trackerToken }: { orderId: string; tr
             </div>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
                     </div>
-                ) : messages.length === 0 ? (
+                ) : safeMessages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center text-theme-faint space-y-2">
                         <MessageCircle className="w-8 h-8 opacity-50" />
                         <p className="text-sm">لا توجد رسائل حتى الآن</p>
                         <p className="text-xs">اكتب أي استفسار أو ملاحظة حول تصميمك</p>
                     </div>
                 ) : (
-                    messages.map((msg, idx) => {
+                    safeMessages.map((msg) => {
                         const isUser = !msg.is_admin_reply;
 
                         return (
@@ -115,7 +129,6 @@ export function DesignOrderChat({ orderId, trackerToken }: { orderId: string; tr
                         );
                     })
                 )}
-                <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}

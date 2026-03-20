@@ -1,10 +1,10 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import type { Announcement, AnnouncementTrigger } from "@/lib/announcement-types";
 import { DEFAULT_TRIGGER } from "@/lib/announcement-types";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database } from "@/types/database";
 
 // ─── Admin Supabase Client ──────────────────────────────────
@@ -16,7 +16,7 @@ function getAdminSupabase() {
 }
 
 async function requireAdmin() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) throw new Error("Unauthorized");
     const supabase = getAdminSupabase();
     const { data: profile } = await supabase.from("profiles").select("role").eq("clerk_id", user.id).single();

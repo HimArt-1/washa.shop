@@ -31,12 +31,13 @@ interface Props {
     skus: any[];
     stats: InventoryStats | null;
     onSmartImportClick?: () => void;
+    hideStatsSummary?: boolean;
 }
 
 // ─── Main Component ─────────────────────────────────────
 
 export default function InventoryClient({
-    initialInventory, warehouses, skus, stats, onSmartImportClick
+    initialInventory, warehouses, skus, stats, onSmartImportClick, hideStatsSummary = false
 }: Props) {
     const router = useRouter();
     const [inventory] = useState(initialInventory);
@@ -175,7 +176,7 @@ export default function InventoryClient({
         <div className="space-y-6">
 
             {/* ══ Stats Cards ══ */}
-            {stats && (
+            {stats && !hideStatsSummary && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <StatCard icon={Package} label="إجمالي القطع" value={stats.totalItems.toLocaleString()} color="text-gold" bg="bg-gold/10" />
                     <StatCard icon={Warehouse} label="منتجات مخزّنة" value={stats.totalProducts} color="text-blue-400" bg="bg-blue-400/10" />

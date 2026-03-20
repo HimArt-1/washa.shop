@@ -72,20 +72,22 @@ function CheckoutContent() {
     if (items.length === 0 && !success) {
         return (
             <div className="min-h-screen pt-32 pb-20 container-wusha flex flex-col items-center justify-center text-center">
-                <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6">
-                    <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
-                </div>
-                <h1 className="text-2xl font-bold mb-4">سلة المشتريات فارغة</h1>
-                <p className="text-theme-subtle mb-8 max-w-md">
-                    لم تقم بإضافة أي منتجات للسلة بعد. تصفح المتجر واكتشف منتجاتنا الحصرية.
-                </p>
-                <div className="flex flex-wrap gap-3 justify-center">
-                    <Link href="/store" className="btn-gold px-8 py-3 rounded-xl">
-                        تصفح المتجر
-                    </Link>
-                    <Link href="/design" className="px-8 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
-                        صمّم قطعتك
-                    </Link>
+                <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
+                    <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6 mx-auto">
+                        <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-4">سلة المشتريات فارغة</h1>
+                    <p className="text-theme-subtle mb-8 max-w-md mx-auto">
+                        لم تقم بإضافة أي منتجات للسلة بعد. تصفح المتجر واكتشف منتجاتنا الحصرية.
+                    </p>
+                    <div className="flex flex-wrap gap-3 justify-center">
+                        <Link href="/store" className="btn-gold px-8 py-3 rounded-xl">
+                            تصفح المتجر
+                        </Link>
+                        <Link href="/design" className="px-8 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
+                            صمّم قطعتك
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
@@ -182,26 +184,28 @@ function CheckoutContent() {
     if (success) {
         return (
             <div className="min-h-screen pt-32 pb-20 container-wusha flex flex-col items-center justify-center text-center">
-                <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 border border-green-500/30"
-                >
-                    <Check className="w-12 h-12" />
-                </motion.div>
-                <h1 className="text-3xl font-bold mb-2">تم استلام طلبك بنجاح!</h1>
-                <p className="text-theme-soft mb-2">
-                    رقم الطلب: <span className="font-mono text-gold font-bold">{success}</span>
-                </p>
-                <p className="text-theme-subtle mb-8 max-w-md">
-                    شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً.
-                </p>
-                <Link
-                    href="/"
-                    className="btn-gold px-8 py-3 rounded-xl"
-                >
-                    العودة للرئيسية
-                </Link>
+                <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 border border-green-500/30 mx-auto"
+                    >
+                        <Check className="w-12 h-12" />
+                    </motion.div>
+                    <h1 className="text-3xl font-bold mb-2">تم استلام طلبك بنجاح!</h1>
+                    <p className="text-theme-soft mb-2">
+                        رقم الطلب: <span className="font-mono text-gold font-bold">{success}</span>
+                    </p>
+                    <p className="text-theme-subtle mb-8 max-w-md mx-auto">
+                        شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً.
+                    </p>
+                    <Link
+                        href="/"
+                        className="btn-gold px-8 py-3 rounded-xl"
+                    >
+                        العودة للرئيسية
+                    </Link>
+                </div>
             </div>
         );
     }
@@ -221,7 +225,7 @@ function CheckoutContent() {
 
                     <h1 className="text-3xl md:text-4xl font-bold mb-8">إتمام الدفع</h1>
 
-                    <div className="mb-6 p-4 bg-theme-faint border border-white/5 rounded-xl flex justify-between text-sm">
+                    <div className="mb-6 p-4 theme-surface-panel rounded-2xl flex justify-between text-sm">
                         <span className="text-theme-subtle">رقم الطلب</span>
                         <span className="font-mono font-bold text-gold">{pendingOrderNumber}</span>
                     </div>
@@ -232,7 +236,7 @@ function CheckoutContent() {
                         onSuccess={handlePaymentSuccess}
                     />
 
-                    <div className="mt-4 p-4 bg-theme-faint border border-white/5 rounded-xl flex justify-between text-sm">
+                    <div className="mt-4 p-4 theme-surface-panel rounded-2xl flex justify-between text-sm">
                         <span className="text-theme-subtle">الإجمالي</span>
                         <span className="font-bold text-gold">{total.toLocaleString()} ر.س</span>
                     </div>
@@ -250,7 +254,7 @@ function CheckoutContent() {
                 <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
                     {/* Form Section */}
                     <div className="lg:col-span-7 space-y-8">
-                        <div className="bg-surface border border-white/5 rounded-2xl p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <MapPin className="text-gold w-5 h-5" />
                                 عنوان الشحن
@@ -263,7 +267,7 @@ function CheckoutContent() {
                                         <div className="relative">
                                             <input
                                                 {...form.register("name")}
-                                                className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:border-gold focus:outline-none transition-colors pl-10"
+                                                className="input-dark w-full rounded-xl px-4 py-3 pl-10"
                                                 placeholder="الاسم الثلاثي"
                                             />
                                             <User className="absolute left-3 top-3.5 w-4 h-4 text-theme-faint" />
@@ -278,7 +282,7 @@ function CheckoutContent() {
                                         <div className="relative">
                                             <input
                                                 {...form.register("phone")}
-                                                className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:border-gold focus:outline-none transition-colors pl-10 dir-ltr text-right"
+                                                className="input-dark w-full rounded-xl px-4 py-3 pl-10 dir-ltr text-right"
                                                 placeholder="05xxxxxxxx"
                                             />
                                             <Phone className="absolute left-3 top-3.5 w-4 h-4 text-theme-faint" />
@@ -293,7 +297,7 @@ function CheckoutContent() {
                                     <label className="text-sm text-theme-soft">العنوان</label>
                                     <input
                                         {...form.register("line1")}
-                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:border-gold focus:outline-none transition-colors"
+                                        className="input-dark w-full rounded-xl px-4 py-3"
                                         placeholder="اسم الشارع، رقم المبنى"
                                     />
                                     {form.formState.errors.line1 && (
@@ -306,7 +310,7 @@ function CheckoutContent() {
                                         <label className="text-sm text-theme-soft">المدينة</label>
                                         <input
                                             {...form.register("city")}
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:border-gold focus:outline-none transition-colors"
+                                            className="input-dark w-full rounded-xl px-4 py-3"
                                         />
                                         {form.formState.errors.city && (
                                             <p className="text-red-400 text-xs">{form.formState.errors.city.message}</p>
@@ -316,7 +320,7 @@ function CheckoutContent() {
                                         <label className="text-sm text-theme-soft">الرمز البريدي</label>
                                         <input
                                             {...form.register("postal_code")}
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme focus:border-gold focus:outline-none transition-colors"
+                                            className="input-dark w-full rounded-xl px-4 py-3"
                                         />
                                         {form.formState.errors.postal_code && (
                                             <p className="text-red-400 text-xs">{form.formState.errors.postal_code.message}</p>
@@ -327,14 +331,14 @@ function CheckoutContent() {
                                         <input
                                             {...form.register("country")}
                                             disabled
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-4 py-3 text-theme-subtle cursor-not-allowed"
+                                            className="input-dark w-full rounded-xl px-4 py-3 text-theme-subtle cursor-not-allowed opacity-70"
                                         />
                                     </div>
                                 </div>
                             </form>
                         </div>
 
-                        <div className="bg-surface border border-white/5 rounded-2xl p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <CreditCard className="text-gold w-5 h-5" />
                                 طريقة الدفع
@@ -346,13 +350,13 @@ function CheckoutContent() {
                                     onClick={() => setPaymentMethod("cod")}
                                     className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all text-right ${paymentMethod === "cod"
                                         ? "border-gold/40 bg-gold/10"
-                                        : "border-theme-soft bg-theme-faint hover:border-white/20"
+                                        : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-white/30"
                                             }`}>
-                                            {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                                            {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                         </div>
                                         <span className="font-bold">الدفع عند الاستلام</span>
                                     </div>
@@ -365,13 +369,13 @@ function CheckoutContent() {
                                         onClick={() => setPaymentMethod("stripe")}
                                         className={`w-full p-4 rounded-xl border flex items-center justify-between transition-all text-right ${paymentMethod === "stripe"
                                             ? "border-gold/40 bg-gold/10"
-                                            : "border-theme-soft bg-theme-faint hover:border-white/20"
+                                            : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                             }`}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "stripe" ? "border-gold bg-gold" : "border-white/30"
                                                 }`}>
-                                                {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                                                {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                             </div>
                                             <span className="font-bold">الدفع الإلكتروني</span>
                                         </div>
@@ -387,12 +391,12 @@ function CheckoutContent() {
 
                     {/* Order Summary */}
                     <div className="lg:col-span-5">
-                        <div className="bg-surface border border-white/5 rounded-2xl p-6 md:p-8 sticky top-32">
+                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8 sticky top-32">
                             <h2 className="text-xl font-bold mb-6">ملخص الطلب</h2>
 
                             <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size}`} className="flex gap-4">
+                                    <div key={`${item.id}-${item.size}`} className="flex gap-4 rounded-2xl bg-theme-faint p-3">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -400,7 +404,7 @@ function CheckoutContent() {
                                                 fill
                                                 className="object-cover"
                                             />
-                                            <span className="absolute bottom-0 right-0 bg-gold text-black text-[10px] font-bold px-1.5 rounded-tl-lg">
+                                            <span className="absolute bottom-0 right-0 bg-gold text-[var(--wusha-bg)] text-[10px] font-bold px-1.5 rounded-tl-lg">
                                                 x{item.quantity}
                                             </span>
                                         </div>

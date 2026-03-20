@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { createClient } from "@supabase/supabase-js";
 import {
     Plus,
     Pencil,
@@ -40,6 +39,7 @@ import {
     deleteStudioItem,
     upsertGarmentStudioMockup,
     deleteGarmentStudioMockup,
+    uploadSmartStoreImage,
 } from "@/app/actions/smart-store";
 import type {
     CustomDesignGarment,
@@ -51,31 +51,6 @@ import type {
     CustomDesignStudioItem,
     GarmentStudioMockup,
 } from "@/types/database";
-
-// ─── Supabase Storage Upload ────────────────────────────
-
-function getStorageClient() {
-    return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-}
-
-async function uploadToStorage(file: File, folder: string): Promise<string | null> {
-    const sb = getStorageClient();
-    const ext = file.name.split(".").pop() ?? "png";
-    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error } = await sb.storage.from("smart-store").upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
-    });
-    if (error) {
-        console.error("Upload error:", error);
-        return null;
-    }
-    const { data } = sb.storage.from("smart-store").getPublicUrl(fileName);
-    return data.publicUrl;
-}
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -119,7 +94,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "bg-gold/15 text-gold border border-gold/30" : "bg-theme-subtle text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-white/[0.05]"}`}
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "theme-surface-panel text-gold border-gold/30" : "bg-theme-faint text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"}`}
                         >
                             <Icon className="w-4 h-4" />
                             {tab.label}
@@ -149,7 +124,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
 function SectionCard({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd: () => void }) {
     return (
-        <div className="rounded-2xl border border-theme-soft bg-theme-faint p-6">
+        <div className="theme-surface-panel rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold text-theme">{title}</h2>
                 <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
@@ -170,9 +145,9 @@ function FormField({ label, children }: { label: string; children: React.ReactNo
     );
 }
 
-const inputCls = "w-full px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/40 transition-colors text-sm";
-const btnPrimary = "px-6 py-2.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all";
-const btnSecondary = "px-4 py-2.5 rounded-xl border border-theme-soft text-theme-soft text-sm hover:bg-theme-subtle transition-colors";
+const inputCls = "input-dark w-full px-4 py-2.5 rounded-xl text-sm";
+const btnPrimary = "px-6 py-2.5 rounded-xl bg-gradient-to-r from-gold to-gold-light text-[var(--wusha-bg)] font-bold text-sm hover:shadow-lg hover:shadow-gold/20 transition-all";
+const btnSecondary = "px-4 py-2.5 rounded-xl border border-theme-soft bg-theme-faint text-theme-soft text-sm hover:bg-theme-subtle transition-colors";
 
 function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
     if (!open) return null;
@@ -182,7 +157,7 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-surface border border-theme-soft p-6 shadow-2xl"
+                className="theme-surface-panel relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-6 shadow-2xl"
             >
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-theme">{title}</h3>
@@ -200,6 +175,22 @@ function EmptyState({ text }: { text: string }) {
     return <div className="text-center py-16 text-theme-faint"><p className="text-sm">{text}</p></div>;
 }
 
+function InlineError({ message }: { message: string | null }) {
+    if (!message) return null;
+    return (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {message}
+        </div>
+    );
+}
+
+function getActionError(result: any) {
+    if (!result) return "حدث خطأ غير متوقع.";
+    if (typeof result.error === "string" && result.error.trim()) return result.error;
+    if (result.success === false && typeof result.message === "string" && result.message.trim()) return result.message;
+    return null;
+}
+
 // ─── Image Uploader ─────────────────────────────────────
 
 function ImageUploader({ value, onChange, folder, label }: {
@@ -215,21 +206,32 @@ function ImageUploader({ value, onChange, folder, label }: {
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        // Show instant preview
+
         const localUrl = URL.createObjectURL(file);
         setPreview(localUrl);
         setUploading(true);
-        const publicUrl = await uploadToStorage(file, folder);
-        setUploading(false);
-        if (publicUrl) {
-            setPreview(publicUrl);
-            onChange(publicUrl);
-        } else {
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const result = await uploadSmartStoreImage(folder, formData);
+
+            if (result.success) {
+                setPreview(result.url);
+                onChange(result.url);
+            } else {
+                setPreview(value);
+                alert(result.error || "فشل رفع الصورة");
+            }
+        } catch (error) {
+            console.error("Smart-store image upload failed", error);
             setPreview(value);
-            alert("فشل رفع الصورة. تأكد من إعداد storage bucket في Supabase.");
+            alert("تعذر رفع الصورة الآن. حاول مرة أخرى.");
+        } finally {
+            URL.revokeObjectURL(localUrl);
+            setUploading(false);
+            if (inputRef.current) inputRef.current.value = "";
         }
-        // Reset input
-        if (inputRef.current) inputRef.current.value = "";
     };
 
     // Sync external changes
@@ -284,31 +286,54 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const openAdd = () => { setIsAdding(true); setImageUrl(""); };
-    const openEdit = (g: CustomDesignGarment) => { setEditing(g); setImageUrl(g.image_url ?? ""); };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); };
+    const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
+    const openEdit = (g: CustomDesignGarment) => { setEditing(g); setImageUrl(g.image_url ?? ""); setError(null); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("image_url", imageUrl);
-        await upsertGarment(fd);
-        setLoading(false);
-        closeModal();
-        onRefresh();
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_url", imageUrl);
+            const result = await upsertGarment(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ القطعة الآن.");
+        } finally {
+            setLoading(false);
+        }
     }, [editing, onRefresh, imageUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذه القطعة؟ سيتم حذف جميع الألوان والمقاسات المرتبطة.")) return;
-        await deleteGarment(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteGarment(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف القطعة الآن.");
+        }
     }, [onRefresh]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="اسم القطعة">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: تيشيرت" />
             </FormField>
@@ -365,6 +390,7 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
 
     return (
         <SectionCard title="القطع (الملابس)" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             {items.length === 0 ? <EmptyState text="لا توجد قطع بعد. أضف أول قطعة!" /> : (
                 <div className="grid gap-3">
                     {items.map((g) => (
@@ -404,32 +430,55 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
     const [loading, setLoading] = useState(false);
     const [filterGarment, setFilterGarment] = useState<string>("all");
     const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(c => c.garment_id === filterGarment);
-    const openAdd = () => { setIsAdding(true); setImageUrl(""); };
-    const openEdit = (c: CustomDesignColor) => { setEditing(c); setImageUrl(c.image_url ?? ""); };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); };
+    const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
+    const openEdit = (c: CustomDesignColor) => { setEditing(c); setImageUrl(c.image_url ?? ""); setError(null); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("image_url", imageUrl);
-        await upsertColor(fd);
-        setLoading(false);
-        closeModal();
-        onRefresh();
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_url", imageUrl);
+            const result = await upsertColor(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ اللون الآن.");
+        } finally {
+            setLoading(false);
+        }
     }, [editing, onRefresh, imageUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذا اللون؟")) return;
-        await deleteColor(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteColor(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف اللون الآن.");
+        }
     }, [onRefresh]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="القطعة">
                 <select name="garment_id" defaultValue={editing?.garment_id ?? garments[0]?.id ?? ""} required className={inputCls}>
                     {garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -462,6 +511,7 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
 
     return (
         <SectionCard title="ألوان القطع" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             <div className="mb-4">
                 <select value={filterGarment} onChange={(e) => setFilterGarment(e.target.value)} className={inputCls + " max-w-xs"}>
                     <option value="all">جميع القطع</option>
@@ -510,31 +560,54 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const openAdd = () => { setIsAdding(true); setImageUrl(""); };
-    const openEdit = (item: T) => { setEditing(item); setImageUrl(item.image_url ?? ""); };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); };
+    const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
+    const openEdit = (item: T) => { setEditing(item); setImageUrl(item.image_url ?? ""); setError(null); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("image_url", imageUrl);
-        await onUpsert(fd);
-        setLoading(false);
-        closeModal();
-        onRefresh();
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_url", imageUrl);
+            const result = await onUpsert(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ العنصر الآن.");
+        } finally {
+            setLoading(false);
+        }
     }, [editing, onRefresh, onUpsert, imageUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذا العنصر؟")) return;
-        await onDelete(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await onDelete(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف العنصر الآن.");
+        }
     }, [onRefresh, onDelete]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="الاسم">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} />
             </FormField>
@@ -562,6 +635,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
 
     return (
         <SectionCard title={title} onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             {items.length === 0 ? <EmptyState text="لا توجد عناصر بعد." /> : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
@@ -610,33 +684,56 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
     const [filterGarment, setFilterGarment] = useState<string>("all");
     const [frontUrl, setFrontUrl] = useState("");
     const [backUrl, setBackUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(s => s.garment_id === filterGarment);
-    const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); };
-    const openEdit = (s: CustomDesignSize) => { setEditing(s); setFrontUrl(s.image_front_url ?? ""); setBackUrl(s.image_back_url ?? ""); };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setFrontUrl(""); setBackUrl(""); };
+    const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); setError(null); };
+    const openEdit = (s: CustomDesignSize) => { setEditing(s); setFrontUrl(s.image_front_url ?? ""); setBackUrl(s.image_back_url ?? ""); setError(null); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setFrontUrl(""); setBackUrl(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("image_front_url", frontUrl);
-        fd.set("image_back_url", backUrl);
-        await upsertSize(fd);
-        setLoading(false);
-        closeModal();
-        onRefresh();
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_front_url", frontUrl);
+            fd.set("image_back_url", backUrl);
+            const result = await upsertSize(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ المقاس الآن.");
+        } finally {
+            setLoading(false);
+        }
     }, [editing, onRefresh, frontUrl, backUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذا المقاس؟")) return;
-        await deleteSize(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteSize(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف المقاس الآن.");
+        }
     }, [onRefresh]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="القطعة">
                 <select name="garment_id" defaultValue={editing?.garment_id ?? garments[0]?.id ?? ""} required className={inputCls}>
                     {garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -672,6 +769,7 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
 
     return (
         <SectionCard title="المقاسات" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             <div className="mb-4">
                 <select value={filterGarment} onChange={(e) => setFilterGarment(e.target.value)} className={inputCls + " max-w-xs"}>
                     <option value="all">جميع القطع</option>
@@ -717,45 +815,70 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
     const [loading, setLoading] = useState(false);
     const [packageColors, setPackageColors] = useState<{ hex: string; name: string }[]>([]);
     const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("colors", JSON.stringify(packageColors));
-        fd.set("image_url", imageUrl);
-        await upsertColorPackage(fd);
-        setLoading(false);
-        setEditing(null);
-        setIsAdding(false);
-        setPackageColors([]);
-        setImageUrl("");
-        onRefresh();
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("colors", JSON.stringify(packageColors));
+            fd.set("image_url", imageUrl);
+            const result = await upsertColorPackage(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            setEditing(null);
+            setIsAdding(false);
+            setPackageColors([]);
+            setImageUrl("");
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ الباقة الآن.");
+        } finally {
+            setLoading(false);
+        }
     }, [editing, onRefresh, packageColors, imageUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذه الباقة؟")) return;
-        await deleteColorPackage(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteColorPackage(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف الباقة الآن.");
+        }
     }, [onRefresh]);
 
     const openEdit = (item: CustomDesignColorPackage) => {
         setEditing(item);
         setPackageColors(Array.isArray(item.colors) ? item.colors : []);
         setImageUrl(item.image_url ?? "");
+        setError(null);
     };
 
     const openAdd = () => {
         setIsAdding(true);
         setPackageColors([{ hex: "#ceae7f", name: "ذهبي" }, { hex: "#000000", name: "أسود" }]);
         setImageUrl("");
+        setError(null);
     };
 
-    const closeModal = () => { setEditing(null); setIsAdding(false); setPackageColors([]); setImageUrl(""); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setPackageColors([]); setImageUrl(""); setError(null); };
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="اسم الباقة">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: باقة ذهبية" />
             </FormField>
@@ -792,6 +915,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
 
     return (
         <SectionCard title="باقات الألوان" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             {items.length === 0 ? <EmptyState text="لا توجد باقات ألوان بعد." /> : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((pkg) => (
@@ -832,43 +956,63 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
     const [mainImage, setMainImage] = useState("");
     const [mockupImage, setMockupImage] = useState("");
     const [modelImage, setModelImage] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
-    const openAdd = () => { setIsAdding(true); setMainImage(""); setMockupImage(""); setModelImage(""); };
+    const openAdd = () => { setIsAdding(true); setMainImage(""); setMockupImage(""); setModelImage(""); setError(null); };
     const openEdit = (s: CustomDesignStudioItem) => {
         setEditing(s);
         setMainImage(s.main_image_url ?? "");
         setMockupImage(s.mockup_image_url ?? "");
         setModelImage(s.model_image_url ?? "");
+        setError(null);
     };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setMainImage(""); setMockupImage(""); setModelImage(""); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setMainImage(""); setMockupImage(""); setModelImage(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("main_image_url", mainImage);
-        fd.set("mockup_image_url", mockupImage);
-        fd.set("model_image_url", modelImage);
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("main_image_url", mainImage);
+            fd.set("mockup_image_url", mockupImage);
+            fd.set("model_image_url", modelImage);
 
-        const result = await upsertStudioItem(fd);
-        setLoading(false);
-        if (result.error) {
-            alert(`حدث خطأ أثناء الحفظ: ${result.error}`);
-            return;
+            const result = await upsertStudioItem(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ تصميم الاستوديو الآن.");
+        } finally {
+            setLoading(false);
         }
-        closeModal();
-        onRefresh();
     }, [editing, onRefresh, mainImage, mockupImage, modelImage]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذا التصميم من ستيديو وشّى؟")) return;
-        await deleteStudioItem(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteStudioItem(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف تصميم الاستوديو الآن.");
+        }
     }, [onRefresh]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="اسم التصميم">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: تصميم تراثي ملكي" />
             </FormField>
@@ -905,6 +1049,7 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
 
     return (
         <SectionCard title="ستيديو وشّى" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             {items.length === 0 ? <EmptyState text="لا توجد تصاميم ستيديو بعد." /> : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
@@ -964,41 +1109,60 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
     const [frontUrl, setFrontUrl] = useState("");
     const [backUrl, setBackUrl] = useState("");
     const [modelUrl, setModelUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(m => m.garment_id === filterGarment);
 
-    const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); setModelUrl(""); };
+    const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); setModelUrl(""); setError(null); };
     const openEdit = (m: GarmentStudioMockup) => {
         setEditing(m);
         setFrontUrl(m.mockup_front_url ?? "");
         setBackUrl(m.mockup_back_url ?? "");
         setModelUrl(m.mockup_model_url ?? "");
+        setError(null);
     };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setFrontUrl(""); setBackUrl(""); setModelUrl(""); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setFrontUrl(""); setBackUrl(""); setModelUrl(""); setError(null); };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        const fd = new FormData(e.currentTarget);
-        if (editing) fd.set("id", editing.id);
-        fd.set("mockup_front_url", frontUrl);
-        fd.set("mockup_back_url", backUrl);
-        fd.set("mockup_model_url", modelUrl);
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("mockup_front_url", frontUrl);
+            fd.set("mockup_back_url", backUrl);
+            fd.set("mockup_model_url", modelUrl);
 
-        const result = await upsertGarmentStudioMockup(fd);
-        setLoading(false);
-        if (result.error) {
-            alert(`خطأ: ${result.error}`);
-            return;
+            const result = await upsertGarmentStudioMockup(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ الموكب الآن.");
+        } finally {
+            setLoading(false);
         }
-        closeModal();
-        onRefresh();
     }, [editing, onRefresh, frontUrl, backUrl, modelUrl]);
 
     const handleDelete = useCallback(async (id: string) => {
         if (!confirm("حذف هذا الموكب؟")) return;
-        await deleteGarmentStudioMockup(id);
-        onRefresh();
+        setError(null);
+        try {
+            const result = await deleteGarmentStudioMockup(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف الموكب الآن.");
+        }
     }, [onRefresh]);
 
     const getGarmentName = (id: string) => garments.find(g => g.id === id)?.name ?? "—";
@@ -1008,6 +1172,7 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
             <FormField label="القطعة">
                 <select name="garment_id" defaultValue={editing?.garment_id ?? garments[0]?.id ?? ""} required className={inputCls}>
                     {garments.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -1049,6 +1214,7 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
 
     return (
         <SectionCard title="موكبات التصاميم الجاهزة" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
             {/* Info Banner */}
             <div className="mb-4 p-3 rounded-xl bg-gradient-to-l from-gold/5 to-transparent border border-gold/10">
                 <p className="text-xs text-theme-soft leading-relaxed flex items-start gap-2">

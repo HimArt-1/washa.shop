@@ -127,9 +127,11 @@ export async function reportAdminOperationalAlert(params: {
     }
 
     try {
+        const notificationDispatchKey = buildDispatchKey(params.dispatchKey, params.bucketMs);
+
         await runIdempotentDispatch(
             {
-                dispatchKey: buildDispatchKey(params.dispatchKey, params.bucketMs),
+                dispatchKey: notificationDispatchKey,
                 eventType: `admin_alert_${params.category}_${params.severity}`,
                 channel: "admin_notification",
                 resourceType: params.resourceType ?? params.category,
@@ -152,6 +154,30 @@ export async function reportAdminOperationalAlert(params: {
                 }
             }
         );
+
+        if (params.severity === "critical") {
+            await runIdempotentDispatch(
+                {
+                    dispatchKey: `${notificationDispatchKey}:push`,
+                    eventType: `admin_alert_push_${params.category}_${params.severity}`,
+                    channel: "push",
+                    resourceType: params.resourceType ?? params.category,
+                    resourceId: params.resourceId ?? null,
+                    metadata: {
+                        ...metadata,
+                        escalation: "admin_push",
+                    },
+                },
+                async () => {
+                    const { sendPushToAdmins } = await import("@/lib/push");
+                    await sendPushToAdmins(
+                        title,
+                        message,
+                        link ?? "/dashboard/notifications"
+                    );
+                }
+            );
+        }
     } catch (error) {
         console.error("[admin-operational-alerts.notification]", error);
     }

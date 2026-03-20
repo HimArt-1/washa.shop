@@ -27,7 +27,7 @@ const sortOptions = [
 // ─── Skeleton ───────────────────────────────────────────────
 function CardSkeleton() {
     return (
-        <div className="rounded-2xl bg-theme-subtle border border-theme-subtle overflow-hidden animate-pulse">
+        <div className="theme-surface-panel rounded-[1.65rem] overflow-hidden animate-pulse">
             <div className="aspect-square bg-theme-subtle" />
             <div className="p-4 space-y-3">
                 <div className="h-4 bg-theme-soft rounded-full w-3/4" />
@@ -45,7 +45,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
+            className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500"
         >
             <Link href={`/artworks/${artwork.id}`} className="block">
                 <div className="aspect-square relative overflow-hidden">
@@ -58,7 +58,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     {artwork.category && (
-                        <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-theme-strong px-2 py-1 rounded-full">
+                        <span className="absolute top-3 right-3 text-[10px] bg-[color:rgba(15,15,15,0.42)] backdrop-blur-md text-on-dark px-2.5 py-1 rounded-full">
                             {artwork.category.name_ar}
                         </span>
                     )}
@@ -94,7 +94,7 @@ function ArtworkCard({ artwork }: { artwork: any }) {
                             artist_name: artwork.artist?.display_name || "فنان وشّى",
                             type: "artwork",
                         })}
-                        className="mt-3 w-full py-2 text-xs font-bold bg-gold/10 text-gold rounded-xl hover:bg-gold/20 transition-colors"
+                        className="mt-3 w-full py-2.5 text-xs font-bold bg-gold/10 text-gold rounded-xl border border-gold/15 hover:bg-gold/20 transition-colors"
                     >
                         أضف للسلة
                     </button>
@@ -112,7 +112,7 @@ function ProductCard({ product }: { product: any }) {
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="group rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
+            className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500"
         >
             <Link href={`/products/${product.id}`} className="block">
                 <div className="aspect-square relative overflow-hidden">
@@ -123,7 +123,7 @@ function ProductCard({ product }: { product: any }) {
                         className="object-cover group-hover:scale-105 transition-transform duration-700"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                     />
-                    <span className="absolute top-3 right-3 text-[10px] bg-black/40 backdrop-blur-sm text-theme-strong px-2 py-1 rounded-full">
+                    <span className="absolute top-3 right-3 text-[10px] bg-[color:rgba(15,15,15,0.42)] backdrop-blur-md text-on-dark px-2.5 py-1 rounded-full">
                         {product.type}
                     </span>
                 </div>
@@ -147,7 +147,7 @@ function ProductCard({ product }: { product: any }) {
                         artist_name: product.artist?.display_name || "فنان وشّى",
                         type: "product",
                     })}
-                    className="mt-3 w-full py-2 text-xs font-bold bg-gold/10 text-gold rounded-xl hover:bg-gold/20 transition-colors"
+                    className="mt-3 w-full py-2.5 text-xs font-bold bg-gold/10 text-gold rounded-xl border border-gold/15 hover:bg-gold/20 transition-colors"
                 >
                     أضف للسلة
                 </button>
@@ -165,7 +165,7 @@ function ArtistCard({ artist }: { artist: any }) {
         >
             <Link
                 href={`/artists/${artist.username}`}
-                className="group block rounded-2xl bg-surface/50 border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all duration-500"
+                className="group block theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500"
             >
                 {/* Cover */}
                 <div className="h-24 relative bg-gradient-to-br from-gold/20 via-purple-500/10 to-emerald-500/10">
@@ -175,7 +175,7 @@ function ArtistCard({ artist }: { artist: any }) {
                 </div>
                 {/* Avatar + Info */}
                 <div className="px-4 pb-4 -mt-8 relative">
-                    <div className="w-16 h-16 rounded-full border-4 border-surface bg-white/[0.05] overflow-hidden mb-3">
+                    <div className="w-16 h-16 rounded-full border-4 border-theme-subtle bg-theme-subtle overflow-hidden mb-3">
                         {artist.avatar_url ? (
                             <Image src={artist.avatar_url} alt={artist.display_name} width={64} height={64} className="object-cover" />
                         ) : (
@@ -261,53 +261,55 @@ export default function SearchContent() {
             <div className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-b from-gold/[0.03] via-transparent to-transparent" />
                 <div className="max-w-4xl mx-auto px-6 py-12 relative">
-                    <motion.h1
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl md:text-5xl font-bold text-theme text-center mb-2"
-                    >
-                        اكتشف الفن
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-theme-faint text-center mb-8"
-                    >
-                        ابحث في الأعمال الفنية، المنتجات، والفنانين
-                    </motion.p>
+                    <div className="theme-surface-panel rounded-[2rem] px-6 py-10 sm:px-10">
+                        <motion.h1
+                            initial={{ opacity: 0, y: -20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-4xl md:text-5xl font-bold text-theme text-center mb-2"
+                        >
+                            اكتشف الفن
+                        </motion.h1>
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.1 }}
+                            className="text-theme-faint text-center mb-8"
+                        >
+                            ابحث في الأعمال الفنية، المنتجات، والفنانين عبر واجهة أوضح وأكثر اتزانًا.
+                        </motion.p>
 
-                    {/* Search Input */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="relative"
-                    >
-                        <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-faint" />
-                        <input
-                            type="text"
-                            value={query}
-                            onChange={(e) => {
-                                setQuery(e.target.value);
-                                setPage(1);
-                            }}
-                            placeholder="ابحث... مثلاً: خط عربي، تيشيرت، فنان"
-                            className="w-full h-14 bg-surface/80 backdrop-blur-xl border border-theme-soft rounded-2xl pr-14 pl-14 text-theme placeholder:text-theme-faint focus:outline-none focus:border-gold/40 focus:ring-2 focus:ring-gold/10 transition-all text-sm"
-                            autoFocus
-                        />
-                        {query && (
-                            <button
-                                onClick={() => setQuery("")}
-                                className="absolute left-5 top-1/2 -translate-y-1/2 text-theme-faint hover:text-theme-subtle transition-colors"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        )}
-                        {isPending && (
-                            <Loader2 className="absolute left-12 top-1/2 -translate-y-1/2 w-4 h-4 text-gold animate-spin" />
-                        )}
-                    </motion.div>
+                        {/* Search Input */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="relative"
+                        >
+                            <Search className="absolute right-5 top-1/2 -translate-y-1/2 w-5 h-5 text-theme-faint" />
+                            <input
+                                type="text"
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    setPage(1);
+                                }}
+                                placeholder="ابحث... مثلاً: خط عربي، تيشيرت، فنان"
+                                className="input-dark w-full h-14 rounded-2xl pr-14 pl-14 text-sm"
+                                autoFocus
+                            />
+                            {query && (
+                                <button
+                                    onClick={() => setQuery("")}
+                                    className="absolute left-5 top-1/2 -translate-y-1/2 text-theme-faint hover:text-theme-subtle transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                            {isPending && (
+                                <Loader2 className="absolute left-12 top-1/2 -translate-y-1/2 w-4 h-4 text-gold animate-spin" />
+                            )}
+                        </motion.div>
+                    </div>
                 </div>
             </div>
 
@@ -320,7 +322,7 @@ export default function SearchContent() {
                                 key={tab.id}
                                 onClick={() => { setActiveTab(tab.id); setPage(1); }}
                                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab.id
-                                    ? "bg-gold/10 text-gold border border-gold/30"
+                                    ? "theme-surface-panel text-gold border-gold/30"
                                     : "text-theme-faint hover:text-theme-soft hover:bg-theme-subtle border border-transparent"
                                     }`}
                             >
@@ -337,7 +339,7 @@ export default function SearchContent() {
 
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all ${showFilters ? "bg-gold/10 text-gold" : "text-theme-faint hover:bg-theme-subtle"
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm transition-all ${showFilters ? "theme-surface-panel text-gold border-gold/30" : "text-theme-faint hover:bg-theme-subtle"
                             }`}
                     >
                         <SlidersHorizontal className="w-4 h-4" />
@@ -354,14 +356,14 @@ export default function SearchContent() {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden mb-8"
                         >
-                            <div className="p-6 bg-surface/50 backdrop-blur-sm border border-theme-subtle rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="theme-surface-panel p-6 rounded-[1.75rem] grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 {/* Sort */}
                                 <div>
                                     <label className="text-xs text-theme-faint mb-2 block">الترتيب</label>
                                     <select
                                         value={filters.sortBy}
                                         onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
-                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
+                                        className="input-dark w-full rounded-xl px-3 py-2 text-sm"
                                     >
                                         {sortOptions.map((opt) => (
                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -376,7 +378,7 @@ export default function SearchContent() {
                                         <select
                                             value={filters.category}
                                             onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
+                                            className="input-dark w-full rounded-xl px-3 py-2 text-sm"
                                         >
                                             <option value="all">الكل</option>
                                             {categories.map((cat) => (
@@ -393,7 +395,7 @@ export default function SearchContent() {
                                         <select
                                             value={filters.productType}
                                             onChange={(e) => setFilters({ ...filters, productType: e.target.value })}
-                                            className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
+                                            className="input-dark w-full rounded-xl px-3 py-2 text-sm"
                                         >
                                             <option value="all">الكل</option>
                                             <option value="t-shirt">تيشيرت</option>
@@ -413,7 +415,7 @@ export default function SearchContent() {
                                         value={filters.minPrice || ""}
                                         onChange={(e) => setFilters({ ...filters, minPrice: e.target.value ? Number(e.target.value) : undefined })}
                                         placeholder="0"
-                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
+                                        className="input-dark w-full rounded-xl px-3 py-2 text-sm"
                                     />
                                 </div>
 
@@ -425,7 +427,7 @@ export default function SearchContent() {
                                         value={filters.maxPrice || ""}
                                         onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value ? Number(e.target.value) : undefined })}
                                         placeholder="∞"
-                                        className="w-full bg-theme-subtle border border-theme-soft rounded-xl px-3 py-2 text-sm text-theme focus:outline-none focus:border-gold/40"
+                                        className="input-dark w-full rounded-xl px-3 py-2 text-sm"
                                     />
                                 </div>
                             </div>
@@ -459,9 +461,9 @@ export default function SearchContent() {
                                     <button
                                         key={i}
                                         onClick={() => { setPage(i + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                                        className={`w-10 h-10 rounded-xl text-sm font-medium transition-all ${page === i + 1
-                                            ? "bg-gold text-bg"
-                                            : "text-theme-faint hover:bg-theme-subtle"
+                                        className={`w-11 h-11 rounded-2xl text-sm font-medium transition-all ${page === i + 1
+                                            ? "bg-gold text-[var(--wusha-bg)] shadow-[0_18px_45px_rgba(154,123,61,0.22)]"
+                                            : "theme-surface-panel text-theme-faint hover:border-gold/25"
                                             }`}
                                     >
                                         {i + 1}
@@ -471,7 +473,7 @@ export default function SearchContent() {
                         )}
                     </>
                 ) : (
-                    <div className="text-center py-24">
+                    <div className="theme-surface-panel rounded-[2rem] text-center py-24 px-6">
                         <Search className="w-16 h-16 text-fg/10 mx-auto mb-6" />
                         <h3 className="text-xl font-bold text-theme-faint mb-2">
                             {query ? "لا توجد نتائج" : "ابدأ البحث"}

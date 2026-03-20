@@ -14,7 +14,7 @@ import {
     getProductLikesCount,
 } from "@/app/actions/social";
 import { useRouter } from "next/navigation";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { SignedIn } from "@clerk/nextjs";
 
 interface ProductCardProps {
     product: {
@@ -33,6 +33,11 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
     const router = useRouter();
+    const typeBadgeStyle = {
+        backgroundColor: "color-mix(in srgb, var(--wusha-surface) 76%, transparent)",
+        borderColor: "color-mix(in srgb, var(--wusha-text) 10%, transparent)",
+        color: "color-mix(in srgb, var(--wusha-text) 92%, transparent)",
+    };
 
     // Calculate Stock
     const skus = product.product_skus;
@@ -116,7 +121,7 @@ export function ProductCard({ product }: ProductCardProps) {
         return (
             <Link
                 href={`/products/${product.id}`}
-                className="group rounded-2xl border border-theme-soft overflow-hidden hover:border-gold/30 transition-all duration-500 block"
+                className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500 block"
             >
                 <div className="aspect-square relative overflow-hidden">
                     <Image
@@ -129,7 +134,10 @@ export function ProductCard({ product }: ProductCardProps) {
                     
                     {/* Status Badges */}
                     <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                        <span className="text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
+                        <span
+                            className="text-[9px] backdrop-blur-md px-2 py-0.5 rounded-full border"
+                            style={typeBadgeStyle}
+                        >
                             {product.type}
                         </span>
                         {!isCurrentlyInStock ? (
@@ -143,7 +151,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         ) : null}
                     </div>
                 </div>
-                <div className="p-3">
+                <div className="p-3 bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)]">
                     <h3 className="text-sm font-bold truncate group-hover:text-gold transition-colors" style={{ color: "var(--wusha-text)" }}>
                         {product.title}
                     </h3>
@@ -159,7 +167,7 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <Link
             href={`/products/${product.id}`}
-            className="group rounded-2xl border border-theme-soft overflow-hidden hover:border-gold/30 transition-all duration-500 block relative"
+            className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500 block relative"
         >
             <div className="aspect-square relative overflow-hidden">
                 <Image
@@ -172,7 +180,10 @@ export function ProductCard({ product }: ProductCardProps) {
                 
                 {/* Status Badges */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                    <span className="text-[9px] bg-black/40 backdrop-blur-sm text-on-dark px-2 py-0.5 rounded-full">
+                    <span
+                        className="text-[9px] backdrop-blur-md px-2 py-0.5 rounded-full border"
+                        style={typeBadgeStyle}
+                    >
                         {product.type}
                     </span>
                     {!isCurrentlyInStock ? (
@@ -191,7 +202,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     <SignedIn>
                         <button
                             onClick={handleWishlist}
-                            className={`p-2 rounded-xl backdrop-blur-md transition-colors ${inWishlist ? "bg-gold/20 text-gold" : "bg-black/40 text-on-dark hover:bg-gold/20 hover:text-gold"
+                            className={`p-2 rounded-2xl backdrop-blur-md border transition-colors ${inWishlist ? "bg-gold/20 text-gold border-gold/30" : "text-on-dark border-white/10 bg-[color:rgba(15,15,15,0.46)] hover:bg-gold/20 hover:text-gold hover:border-gold/20"
                                 }`}
                             title={inWishlist ? "إزالة من المحفوظات" : "إضافة للمحفوظات"}
                         >
@@ -199,7 +210,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         </button>
                         <button
                             onClick={handleLike}
-                            className={`p-2 rounded-xl backdrop-blur-md transition-colors flex items-center gap-1 ${liked ? "bg-red-500/20 text-red-400" : "bg-black/40 text-on-dark hover:bg-red-500/20 hover:text-red-400"
+                            className={`p-2 rounded-2xl backdrop-blur-md border transition-colors flex items-center gap-1 ${liked ? "bg-red-500/20 text-red-400 border-red-400/20" : "text-on-dark border-white/10 bg-[color:rgba(15,15,15,0.46)] hover:bg-red-500/20 hover:text-red-400 hover:border-red-400/20"
                                 }`}
                             title={liked ? "إلغاء الإعجاب" : "إعجاب"}
                         >
@@ -209,14 +220,14 @@ export function ProductCard({ product }: ProductCardProps) {
                     </SignedIn>
                     <button
                         onClick={handleShare}
-                        className="p-2 rounded-xl backdrop-blur-md bg-black/40 text-on-dark hover:bg-gold/20 hover:text-gold transition-colors"
+                        className="p-2 rounded-2xl backdrop-blur-md border border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:bg-gold/20 hover:text-gold hover:border-gold/20 transition-colors"
                         title="مشاركة"
                     >
                         <Share2 className="w-4 h-4" />
                     </button>
                 </div>
             </div>
-            <div className="p-3">
+            <div className="p-3 bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)]">
                 <h3 className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">
                     {product.title}
                 </h3>

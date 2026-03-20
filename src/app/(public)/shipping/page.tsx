@@ -62,7 +62,7 @@ export default function ShippingPage() {
 
             <div className="container-wusha relative z-10">
                 {/* Header */}
-                <div className="text-center mb-16">
+                <div className="theme-surface-panel rounded-[2rem] text-center mb-16 px-6 py-10 sm:px-10">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gold/10 border border-gold/20 rounded-full text-gold text-xs font-bold mb-6">
                         <Truck className="w-3.5 h-3.5" />
                         سياسات التوصيل والإرجاع
@@ -82,7 +82,7 @@ export default function ShippingPage() {
                         return (
                             <div
                                 key={item.title}
-                                className="p-6 bg-theme-subtle border border-theme-soft rounded-2xl hover:border-gold/20 transition-all"
+                                className="theme-surface-panel p-6 rounded-[1.75rem] hover:border-gold/20 transition-all"
                             >
                                 <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center mb-4">
                                     <Icon className="w-6 h-6 text-gold" />
@@ -108,7 +108,7 @@ export default function ShippingPage() {
                             return (
                                 <div
                                     key={section.title}
-                                    className="p-6 bg-theme-subtle border border-theme-soft rounded-2xl"
+                                    className="theme-surface-panel p-6 rounded-[1.75rem]"
                                 >
                                     <div className="flex items-center gap-3 mb-5">
                                         <div className="w-10 h-10 rounded-lg bg-gold/10 flex items-center justify-center">

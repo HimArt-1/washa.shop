@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import {
     AlertTriangle,
     CheckCircle,
     CreditCard,
     FileText,
+    Loader2,
     Palette,
     ShieldAlert,
     ShoppingCart,
@@ -18,6 +20,7 @@ import {
     getAdminNotificationCategoryLabel,
     getAdminNotificationSeverityLabel,
 } from "@/lib/admin-notification-meta";
+import { markAllNotificationsRead, markNotificationRead } from "@/app/actions/notifications";
 import { cn } from "@/lib/utils";
 import type {
     AdminNotification,
@@ -141,9 +144,17 @@ function FilterChip(props: {
 }
 
 export function NotificationsAdminClient({ notifications, alerts }: NotificationsAdminClientProps) {
+    const [items, setItems] = useState(notifications);
     const [categoryFilter, setCategoryFilter] = useState<AdminNotificationCategory | "all">("all");
     const [severityFilter, setSeverityFilter] = useState<AdminNotificationSeverity | "all">("all");
     const [readFilter, setReadFilter] = useState<"all" | "unread">("all");
+    const [pendingNotificationId, setPendingNotificationId] = useState<string | null>(null);
+    const [isMarkingAll, startMarkAllTransition] = useTransition();
+    const [isMarkingOne, startSingleTransition] = useTransition();
+
+    useEffect(() => {
+        setItems(notifications);
+    }, [notifications]);
 
     const categoryCounts = {
         orders: 0,
@@ -163,18 +174,57 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
 
     let unreadCount = 0;
 
-    for (const notification of notifications) {
+    for (const notification of items) {
         categoryCounts[notification.category] += 1;
         severityCounts[notification.severity] += 1;
         if (!notification.is_read) unreadCount += 1;
     }
 
-    const filteredNotifications = notifications.filter((notification) => {
+    const filteredNotifications = items.filter((notification) => {
         if (categoryFilter !== "all" && notification.category !== categoryFilter) return false;
         if (severityFilter !== "all" && notification.severity !== severityFilter) return false;
         if (readFilter === "unread" && notification.is_read) return false;
         return true;
     });
+
+    const handleMarkRead = (id: string) => {
+        if (pendingNotificationId || isMarkingOne) return;
+
+        startSingleTransition(async () => {
+            setPendingNotificationId(id);
+            try {
+                const result = await markNotificationRead(id);
+                if (!result?.success) {
+                    throw new Error(result?.error || "فشل تحديث الإشعار");
+                }
+                setItems((prev) =>
+                    prev.map((notification) =>
+                        notification.id === id ? { ...notification, is_read: true } : notification
+                    )
+                );
+            } catch (error) {
+                window.alert(error instanceof Error ? error.message : "فشل تحديث الإشعار");
+            } finally {
+                setPendingNotificationId(null);
+            }
+        });
+    };
+
+    const handleMarkAllRead = () => {
+        if (unreadCount === 0 || isMarkingAll) return;
+
+        startMarkAllTransition(async () => {
+            try {
+                const result = await markAllNotificationsRead();
+                if (!result?.success) {
+                    throw new Error(result?.error || "فشل تحديث الإشعارات");
+                }
+                setItems((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+            } catch (error) {
+                window.alert(error instanceof Error ? error.message : "فشل تحديث الإشعارات");
+            }
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -266,11 +316,20 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             <h3 className="text-sm font-bold text-theme-strong">سجل تنبيهات الإدارة</h3>
                         </div>
                         <span className="mr-auto text-xs text-theme-faint">
-                            {filteredNotifications.length} من {notifications.length} إشعار
+                            {filteredNotifications.length} من {items.length} إشعار
                         </span>
                         <span className="inline-flex items-center rounded-full border border-theme-soft bg-theme-subtle px-2.5 py-1 text-[11px] text-theme-subtle">
                             غير المقروء: {unreadCount}
                         </span>
+                        <button
+                            type="button"
+                            onClick={handleMarkAllRead}
+                            disabled={unreadCount === 0 || isMarkingAll}
+                            className="inline-flex items-center gap-2 rounded-full border border-theme-soft bg-theme-subtle px-3 py-1.5 text-[11px] font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-theme disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isMarkingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                            تعليم الكل كمقروء
+                        </button>
                     </div>
 
                     <div className="space-y-2">
@@ -278,7 +337,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             <FilterChip
                                 active={categoryFilter === "all"}
                                 label="كل التصنيفات"
-                                count={notifications.length}
+                                count={items.length}
                                 onClick={() => setCategoryFilter("all")}
                             />
                             {ADMIN_NOTIFICATION_CATEGORIES.map((category) => (
@@ -296,7 +355,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             <FilterChip
                                 active={severityFilter === "all"}
                                 label="كل المستويات"
-                                count={notifications.length}
+                                count={items.length}
                                 onClick={() => setSeverityFilter("all")}
                             />
                             {ADMIN_NOTIFICATION_SEVERITIES.map((severity) => (
@@ -311,7 +370,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             <FilterChip
                                 active={readFilter === "all"}
                                 label="الكل"
-                                count={notifications.length}
+                                count={items.length}
                                 onClick={() => setReadFilter("all")}
                             />
                             <FilterChip
@@ -384,6 +443,29 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                                                 <span className="text-[10px] text-theme-faint">
                                                     {timeAgo(notification.created_at)}
                                                 </span>
+                                                {notification.link ? (
+                                                    <Link
+                                                        href={notification.link}
+                                                        className="text-[10px] font-semibold text-gold hover:text-gold-light"
+                                                    >
+                                                        فتح
+                                                    </Link>
+                                                ) : null}
+                                                {!notification.is_read ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleMarkRead(notification.id)}
+                                                        disabled={pendingNotificationId === notification.id}
+                                                        className="inline-flex items-center gap-1 rounded-full border border-theme-soft bg-theme-subtle px-2 py-0.5 text-[10px] font-medium text-theme-soft transition-colors hover:border-gold/20 hover:text-theme disabled:cursor-not-allowed disabled:opacity-50"
+                                                    >
+                                                        {pendingNotificationId === notification.id ? (
+                                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                                        ) : (
+                                                            <CheckCircle className="h-3 w-3" />
+                                                        )}
+                                                        تعليم كمقروء
+                                                    </button>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>

@@ -104,22 +104,24 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Image */}
-                    <div className="relative aspect-square rounded-3xl overflow-hidden border border-theme-subtle bg-surface/30">
-                        <Image
-                            src={product.image_url}
-                            alt={product.title}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 1024px) 100vw, 50vw"
-                            priority
-                        />
-                        <span className="absolute top-4 right-4 text-xs bg-black/50 backdrop-blur-sm text-theme-strong px-3 py-1 rounded-full">
-                            {product.type}
-                        </span>
+                    <div className="theme-surface-panel rounded-[2rem] p-4">
+                        <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle">
+                            <Image
+                                src={product.image_url}
+                                alt={product.title}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 1024px) 100vw, 50vw"
+                                priority
+                            />
+                            <span className="absolute top-4 right-4 text-xs bg-[color:rgba(15,15,15,0.42)] backdrop-blur-md text-on-dark px-3 py-1 rounded-full">
+                                {product.type}
+                            </span>
+                        </div>
                     </div>
 
                     {/* Info */}
-                    <div className="flex flex-col justify-center">
+                    <div className="theme-surface-panel rounded-[2rem] p-8 lg:p-10 flex flex-col justify-center">
                         <h1 className="text-3xl md:text-4xl font-bold text-theme mb-3">{product.title}</h1>
 
                         {/* Artist */}
@@ -144,17 +146,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
                         {/* Product Details */}
                         <div className="space-y-3 mb-8">
-                            <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                            <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
                                 <span className="text-xs text-theme-faint">النوع</span>
                                 <span className="text-sm text-theme-soft">{product.type}</span>
                             </div>
                             {availableSizes.size > 0 && (
-                                <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                                <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
                                     <span className="text-xs text-theme-faint">المقاسات المتاحة المتوفرة</span>
                                     <span className="text-sm text-theme-soft font-semibold">{Array.from(availableSizes).join(" ، ")}</span>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between py-3 border-b border-theme-faint">
+                            <div className="flex items-center justify-between py-3 border-b border-theme-subtle">
                                 <span className="text-xs text-theme-faint">الحالة</span>
                                 <span className={`text-sm font-medium ${isCurrentlyInStock ? "text-emerald-400" : "text-red-400"}`}>
                                     {isCurrentlyInStock ? "متوفر" : "غير متوفر"}
@@ -196,7 +198,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <Link
                                     key={item.id}
                                     href={`/products/${item.id}`}
-                                    className="group rounded-2xl border border-theme-subtle overflow-hidden hover:border-gold/30 transition-all"
+                                    className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all"
                                 >
                                     <div className="aspect-square relative">
                                         <Image
@@ -207,7 +209,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                             sizes="(max-width: 768px) 50vw, 25vw"
                                         />
                                     </div>
-                                    <div className="p-3">
+                                    <div className="p-4">
                                         <h3 className="text-sm font-bold text-theme truncate">{item.title}</h3>
                                         <p className="text-xs text-gold mt-1">{Number(item.price).toLocaleString()} ر.س</p>
                                     </div>

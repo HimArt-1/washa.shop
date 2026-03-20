@@ -1,8 +1,8 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ActivityLogClient } from "./ActivityLogClient";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 function getAdminSb() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,7 +20,7 @@ function getAdminSb() {
 }
 
 export default async function ActivityLogPage() {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) redirect("/sign-in");
 
     const supabase = getAdminSb();

@@ -1,43 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, CheckCircle, Loader2 } from "lucide-react";
+import { CalendarDays, CheckCircle, Loader2, Send, Sparkles, X } from "lucide-react";
 
 interface JoinModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-const clothingOptions = [
-    { id: "thobe_shimagh", label: "ثوب وشماغ" },
-    { id: "tshirt", label: "تيشيرت" },
-    { id: "hoodie", label: "هودي" },
-    { id: "plain_thobe", label: "ثوب سادة" },
-];
+const genderOptions = [
+    { id: "male", label: "ذكر" },
+    { id: "female", label: "أنثى" },
+] as const;
+
+const joinTypeOptions = [
+    { id: "artist", label: "فنان" },
+    { id: "designer", label: "مصمم" },
+    { id: "model", label: "مودل" },
+    { id: "customer", label: "عميل مهتم" },
+    { id: "partner", label: "شريك أو متعاون" },
+] as const;
+
+const clothingOptionsByGender = {
+    male: [
+        { id: "thobe_shimagh", label: "ثوب وشماغ" },
+        { id: "tshirt", label: "تيشيرت" },
+        { id: "hoodie", label: "هودي" },
+        { id: "plain_thobe", label: "ثوب سادة" },
+    ],
+    female: [
+        { id: "abaya_shayla", label: "عباية وشيلة" },
+        { id: "blouse_skirt", label: "بلوزة وتنورة" },
+        { id: "hoodie", label: "هودي" },
+        { id: "plain_abaya", label: "عباية سادة" },
+    ],
+} as const;
+
+type JoinType = (typeof joinTypeOptions)[number]["id"] | "";
+type Gender = (typeof genderOptions)[number]["id"] | "";
 
 export function JoinModal({ isOpen, onClose }: JoinModalProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
+    const [joinType, setJoinType] = useState<JoinType>("");
+    const [gender, setGender] = useState<Gender>("");
+    const [birthDate, setBirthDate] = useState("");
     const [clothing, setClothing] = useState<string[]>([]);
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [errorMsg, setErrorMsg] = useState("");
 
+    const clothingOptions = useMemo(
+        () => (gender ? clothingOptionsByGender[gender] : []),
+        [gender]
+    );
+
+    useEffect(() => {
+        if (!gender) {
+            setClothing([]);
+            return;
+        }
+
+        const allowedIds = new Set<string>(clothingOptionsByGender[gender].map((option) => option.id));
+        setClothing((prev) => prev.filter((item) => allowedIds.has(item)));
+    }, [gender]);
+
     const toggleClothing = (id: string) => {
         setClothing((prev) =>
-            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
         );
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim() || !email.trim()) return;
+        if (!name.trim() || !email.trim() || !joinType || !gender) return;
 
         setStatus("loading");
         try {
             const { submitJoinForm } = await import("@/app/actions/join");
-            const result = await submitJoinForm({ name, email, phone, clothing });
+            const result = await submitJoinForm({
+                name,
+                email,
+                phone,
+                joinType,
+                gender,
+                birthDate,
+                clothing,
+            });
             if (result.success) {
                 setStatus("success");
             } else {
@@ -51,18 +101,20 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
     };
 
     const handleClose = () => {
-        if (status !== "loading") {
-            onClose();
-            // Reset after animation
-            setTimeout(() => {
-                setName("");
-                setEmail("");
-                setPhone("");
-                setClothing([]);
-                setStatus("idle");
-                setErrorMsg("");
-            }, 300);
-        }
+        if (status === "loading") return;
+
+        onClose();
+        setTimeout(() => {
+            setName("");
+            setEmail("");
+            setPhone("");
+            setJoinType("");
+            setGender("");
+            setBirthDate("");
+            setClothing([]);
+            setStatus("idle");
+            setErrorMsg("");
+        }, 300);
     };
 
     return (
@@ -75,7 +127,6 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
                 >
-                    {/* Backdrop */}
                     <motion.div
                         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
                         onClick={handleClose}
@@ -84,9 +135,8 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                         exit={{ opacity: 0 }}
                     />
 
-                    {/* Modal */}
                     <motion.div
-                        className="relative w-full max-w-md border border-gold/20 rounded-2xl overflow-hidden shadow-2xl shadow-gold/5"
+                        className="relative w-full max-w-md overflow-hidden rounded-2xl border border-gold/20 shadow-2xl shadow-gold/5"
                         style={{ backgroundColor: "var(--wusha-surface)" }}
                         initial={{ scale: 0.9, opacity: 0, y: 30 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -94,22 +144,19 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                         dir="rtl"
                     >
-                        {/* Header gradient */}
                         <div className="h-1 bg-gradient-to-r from-gold/60 via-gold to-gold/60" />
 
-                        {/* Close button */}
                         <button
                             onClick={handleClose}
-                            className="absolute top-4 left-4 p-1.5 rounded-full hover:bg-theme-subtle transition-colors z-10"
+                            className="absolute left-4 top-4 z-10 rounded-full p-1.5 transition-colors hover:bg-theme-subtle"
                         >
-                            <X className="w-5 h-5 text-theme-subtle" />
+                            <X className="h-5 w-5 text-theme-subtle" />
                         </button>
 
                         <div className="p-6 sm:p-8">
                             {status === "success" ? (
-                                /* ─── Success State ─── */
                                 <motion.div
-                                    className="text-center py-8"
+                                    className="py-8 text-center"
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ type: "spring", damping: 20 }}
@@ -119,35 +166,31 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                                         animate={{ scale: 1 }}
                                         transition={{ delay: 0.1, type: "spring", damping: 15 }}
                                     >
-                                        <CheckCircle className="w-16 h-16 text-gold mx-auto mb-4" />
+                                        <CheckCircle className="mx-auto mb-4 h-16 w-16 text-gold" />
                                     </motion.div>
-                                    <h3 className="text-xl font-bold mb-2" style={{ color: "var(--wusha-text)" }}>
+                                    <h3 className="mb-2 text-xl font-bold" style={{ color: "var(--wusha-text)" }}>
                                         تم التسجيل بنجاح!
                                     </h3>
-                                    <p className="text-theme-soft text-sm">
-                                        شكراً لانضمامك، سنتواصل معك قريباً
-                                    </p>
+                                    <p className="text-sm text-theme-soft">شكراً لانضمامك، سنتواصل معك قريباً</p>
                                     <button
                                         onClick={handleClose}
-                                        className="mt-6 px-6 py-2 bg-gold/10 text-gold rounded-lg hover:bg-gold/20 transition-colors text-sm"
+                                        className="mt-6 rounded-lg bg-gold/10 px-6 py-2 text-sm text-gold transition-colors hover:bg-gold/20"
                                     >
                                         إغلاق
                                     </button>
                                 </motion.div>
                             ) : (
-                                /* ─── Form State ─── */
                                 <>
-                                    <h2 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: "var(--wusha-text)" }}>
-                                        انضم إلى وشّى
+                                    <h2 className="mb-1 text-xl font-bold sm:text-2xl" style={{ color: "var(--wusha-text)" }}>
+                                        كن جزءاً من وشّى
                                     </h2>
-                                    <p className="text-theme-subtle text-sm mb-6">
-                                        سجّل اهتمامك وكن من أوائل المنضمين
+                                    <p className="mb-6 text-sm text-theme-subtle">
+                                        انضم إلى المجتمع وساعدنا نبني تجربة أوضح وأذكى للمستقبل
                                     </p>
 
                                     <form onSubmit={handleSubmit} className="space-y-4">
-                                        {/* Name */}
                                         <div>
-                                            <label className="block text-sm text-theme-soft mb-1.5">
+                                            <label className="mb-1.5 block text-sm text-theme-soft">
                                                 الاسم <span className="text-gold">*</span>
                                             </label>
                                             <input
@@ -156,13 +199,12 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                                                 onChange={(e) => setName(e.target.value)}
                                                 required
                                                 placeholder="اسمك الكامل"
-                                                className="input-dark w-full px-4 py-3 rounded-xl transition-colors"
+                                                className="input-dark w-full rounded-xl px-4 py-3 transition-colors"
                                             />
                                         </div>
 
-                                        {/* Email */}
                                         <div>
-                                            <label className="block text-sm text-theme-soft mb-1.5">
+                                            <label className="mb-1.5 block text-sm text-theme-soft">
                                                 البريد الإلكتروني <span className="text-gold">*</span>
                                             </label>
                                             <input
@@ -172,43 +214,39 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                                                 required
                                                 placeholder="example@email.com"
                                                 dir="ltr"
-                                                className="input-dark w-full px-4 py-3 rounded-xl text-left"
+                                                className="input-dark w-full rounded-xl px-4 py-3 text-left"
                                             />
                                         </div>
 
-                                        {/* Phone */}
                                         <div>
-                                            <label className="block text-sm text-theme-soft mb-1.5">
-                                                رقم الجوال
-                                            </label>
+                                            <label className="mb-1.5 block text-sm text-theme-soft">رقم الجوال</label>
                                             <input
                                                 type="tel"
                                                 value={phone}
                                                 onChange={(e) => setPhone(e.target.value)}
                                                 placeholder="05XXXXXXXX"
                                                 dir="ltr"
-                                                className="input-dark w-full px-4 py-3 rounded-xl text-left"
+                                                className="input-dark w-full rounded-xl px-4 py-3 text-left"
                                             />
                                         </div>
 
-                                        {/* Clothing Preference */}
                                         <div>
-                                            <label className="block text-sm text-theme-soft mb-2.5">
-                                                وش تحب تلبس؟{" "}
-                                                <span className="text-theme-muted">(اختياري)</span>
+                                            <label className="mb-2.5 block text-sm text-theme-soft">
+                                                ما نوع انضمامك إلى وشّى؟ <span className="text-gold">*</span>
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
-                                                {clothingOptions.map((option) => {
-                                                    const isSelected = clothing.includes(option.id);
+                                                {joinTypeOptions.map((option) => {
+                                                    const isSelected = joinType === option.id;
                                                     return (
                                                         <button
                                                             key={option.id}
                                                             type="button"
-                                                            onClick={() => toggleClothing(option.id)}
-                                                            className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all duration-200 ${isSelected
+                                                            onClick={() => setJoinType(option.id)}
+                                                            className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                                                                isSelected
                                                                     ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(206,174,127,0.1)]"
                                                                     : "border-theme-soft bg-theme-subtle text-theme-subtle hover:border-theme-strong hover:bg-theme-subtle-hover"
-                                                                }`}
+                                                            }`}
                                                         >
                                                             {option.label}
                                                         </button>
@@ -217,10 +255,88 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                                             </div>
                                         </div>
 
-                                        {/* Error */}
+                                        <div>
+                                            <label className="mb-2.5 block text-sm text-theme-soft">
+                                                وش جنسك؟ <span className="text-gold">*</span>
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {genderOptions.map((option) => {
+                                                    const isSelected = gender === option.id;
+                                                    return (
+                                                        <button
+                                                            key={option.id}
+                                                            type="button"
+                                                            onClick={() => setGender(option.id)}
+                                                            className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                                                                isSelected
+                                                                    ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(206,174,127,0.1)]"
+                                                                    : "border-theme-soft bg-theme-subtle text-theme-subtle hover:border-theme-strong hover:bg-theme-subtle-hover"
+                                                            }`}
+                                                        >
+                                                            {option.label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-2.5 flex items-center gap-2 text-sm text-theme-soft">
+                                                <CalendarDays className="h-4 w-4 text-gold/70" />
+                                                تاريخ الميلاد <span className="text-theme-muted">(اختياري)</span>
+                                            </label>
+                                            <div className="rounded-2xl border border-theme-soft bg-theme-subtle px-4 py-3 transition-colors focus-within:border-gold/40">
+                                                <input
+                                                    type="date"
+                                                    value={birthDate}
+                                                    onChange={(e) => setBirthDate(e.target.value)}
+                                                    max={new Date().toISOString().split("T")[0]}
+                                                    className="w-full bg-transparent text-sm text-theme outline-none [color-scheme:dark]"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-2.5 block text-sm text-theme-soft">
+                                                وش تحب تلبس؟ <span className="text-theme-muted">(اختياري)</span>
+                                            </label>
+
+                                            {gender ? (
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center gap-2 text-[11px] text-theme-faint">
+                                                        <Sparkles className="h-3.5 w-3.5 text-gold/70" />
+                                                        <span>تم تخصيص الخيارات حسب الجنس المختار</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {clothingOptions.map((option) => {
+                                                            const isSelected = clothing.includes(option.id);
+                                                            return (
+                                                                <button
+                                                                    key={option.id}
+                                                                    type="button"
+                                                                    onClick={() => toggleClothing(option.id)}
+                                                                    className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                                                                        isSelected
+                                                                            ? "border-gold/50 bg-gold/10 text-gold shadow-[0_0_12px_rgba(206,174,127,0.1)]"
+                                                                            : "border-theme-soft bg-theme-subtle text-theme-subtle hover:border-theme-strong hover:bg-theme-subtle-hover"
+                                                                    }`}
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="rounded-2xl border border-dashed border-theme-soft bg-theme-subtle px-4 py-4 text-center text-sm text-theme-faint">
+                                                    حدّد الجنس أولًا لتظهر خيارات الملابس المناسبة.
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {status === "error" && (
                                             <motion.p
-                                                className="text-red-400 text-sm text-center bg-red-400/10 rounded-lg py-2"
+                                                className="rounded-lg bg-red-400/10 py-2 text-center text-sm text-red-400"
                                                 initial={{ opacity: 0, y: -5 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                             >
@@ -228,32 +344,31 @@ export function JoinModal({ isOpen, onClose }: JoinModalProps) {
                                             </motion.p>
                                         )}
 
-                                        {/* Submit */}
                                         <button
                                             type="submit"
-                                            disabled={status === "loading" || !name.trim() || !email.trim()}
-                                            className="w-full py-3.5 font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            disabled={status === "loading" || !name.trim() || !email.trim() || !joinType || !gender}
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-50"
                                             style={{
-                                              background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
-                                              color: "var(--wusha-bg)",
+                                                background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
+                                                color: "var(--wusha-bg)",
                                             }}
                                             onMouseEnter={(e) => {
-                                              if (!e.currentTarget.disabled) {
-                                                e.currentTarget.style.boxShadow = "0 0 30px var(--neon-gold)";
-                                              }
+                                                if (!e.currentTarget.disabled) {
+                                                    e.currentTarget.style.boxShadow = "0 0 30px var(--neon-gold)";
+                                                }
                                             }}
                                             onMouseLeave={(e) => {
-                                              e.currentTarget.style.boxShadow = "none";
+                                                e.currentTarget.style.boxShadow = "none";
                                             }}
                                         >
                                             {status === "loading" ? (
                                                 <>
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
                                                     جاري الإرسال...
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Send className="w-4 h-4" />
+                                                    <Send className="h-4 w-4" />
                                                     سجّل الآن
                                                 </>
                                             )}

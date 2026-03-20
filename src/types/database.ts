@@ -233,6 +233,9 @@ export type Application = Timestamps & {
     full_name: string;
     email: string;
     phone: string | null;
+    join_type: "artist" | "designer" | "model" | "customer" | "partner" | null;
+    gender: "male" | "female" | null;
+    birth_date: string | null;
     portfolio_url: string | null;
     instagram_url: string | null;
     art_style: string;

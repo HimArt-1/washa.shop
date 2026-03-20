@@ -5,6 +5,7 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { ensureIdentityProfile } from "@/lib/identity-sync";
 
 function getAdminSupabase() {
     try {
@@ -47,51 +48,46 @@ export async function ensureProfile(): Promise<EnsuredProfile | null> {
 
         if (existing) return existing as EnsuredProfile;
 
-        const displayName =
-            [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-            user.username ||
-            "مستخدم وشّى";
+        const primaryEmail =
+            user.emailAddresses.find((entry) => entry.id === user.primaryEmailAddressId)?.emailAddress ||
+            user.emailAddresses[0]?.emailAddress ||
+            null;
+        const primaryPhone =
+            user.phoneNumbers.find((entry) => entry.id === user.primaryPhoneNumberId)?.phoneNumber ||
+            user.phoneNumbers[0]?.phoneNumber ||
+            null;
 
-        const baseUsername = (
-            user.username ||
-            user.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
-            "user"
-        )
-            .toLowerCase()
-            .replace(/[^a-z0-9_-]/g, "_")
-            .slice(0, 20);
-
-        const username = `${baseUsername}_${Date.now().toString(36)}`;
-
-        const { data: created, error } = await supabase
-            .from("profiles")
-            .insert({
-                clerk_id: user.id,
-                display_name: displayName,
-                username,
+        const ensured = await ensureIdentityProfile(
+            supabase,
+            {
+                clerkId: user.id,
+                email: primaryEmail,
+                phone: primaryPhone,
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                imageUrl: user.imageUrl || null,
                 role: "subscriber",
-                avatar_url: user.imageUrl || null,
-                bio: null,
-                cover_url: null,
-                website: null,
-            })
-            .select("id, clerk_id, display_name, username, role, avatar_url, bio, wushsha_level, is_verified")
-            .single();
+            },
+            { role: "subscriber" }
+        );
 
-        if (error) {
-            if (error.code === "23505") {
-                const { data: retry } = await supabase
-                    .from("profiles")
-                    .select("id, clerk_id, display_name, username, role, avatar_url, bio, wushsha_level, is_verified")
-                    .eq("clerk_id", user.id)
-                    .maybeSingle();
-                return retry as EnsuredProfile | null;
-            }
-            console.error("[ensureProfile] Insert error:", error);
+        if (ensured.action === "conflict") {
+            console.error("[ensureProfile] Identity conflict for clerk user:", user.id);
             return null;
         }
 
-        return created as EnsuredProfile;
+        return {
+            id: ensured.profile.id,
+            clerk_id: ensured.profile.clerk_id,
+            display_name: ensured.profile.display_name,
+            username: ensured.profile.username,
+            role: ensured.profile.role,
+            avatar_url: ensured.profile.avatar_url,
+            bio: ensured.profile.bio,
+            wushsha_level: ensured.profile.wushsha_level ?? null,
+            is_verified: ensured.profile.is_verified,
+        } satisfies EnsuredProfile;
     } catch (err) {
         console.error("[ensureProfile]", err);
         return null;

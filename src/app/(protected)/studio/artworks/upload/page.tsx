@@ -18,13 +18,13 @@ export default async function UploadArtworkPage() {
             <div className="flex items-center gap-4">
                 <Link
                     href="/studio/artworks"
-                    className="p-2 rounded-lg hover:bg-ink/5 text-ink/50 hover:text-ink transition-colors"
+                    className="theme-icon-button text-theme-subtle hover:text-gold"
                 >
                     <ArrowRight className="w-5 h-5" />
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold text-ink">رفع عمل فني جديد</h1>
-                    <p className="text-ink/60 mt-2">شارك إبداعك مع العالم وحوله إلى منتجات رائعة</p>
+                    <h1 className="text-3xl font-bold text-theme">رفع عمل فني جديد</h1>
+                    <p className="text-theme-subtle mt-2">شارك إبداعك مع العالم وحوله إلى منتجات رائعة</p>
                 </div>
             </div>
 

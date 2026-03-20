@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import type { Database, DiscountCoupon } from "@/types/database";
+import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -26,7 +26,7 @@ export async function createDiscountCoupon(data: {
     details?: string | null;
     is_active?: boolean;
 }) {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { error: "غير مصرح" };
 
     const sb = getAdminSb();
@@ -75,7 +75,7 @@ export async function getAllDiscountCoupons() {
 }
 
 export async function toggleCouponStatus(id: string, currentStatus: boolean) {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { error: "غير مصرح" };
 
     const sb = getAdminSb();
@@ -94,7 +94,7 @@ export async function toggleCouponStatus(id: string, currentStatus: boolean) {
 }
 
 export async function deleteDiscountCoupon(id: string) {
-    const user = await currentUser();
+    const user = await getCurrentUserOrDevAdmin();
     if (!user) return { error: "غير مصرح" };
 
     const sb = getAdminSb();
