@@ -78,7 +78,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
     return (
         <div className="min-h-screen bg-bg" dir="rtl">
             {/* ─── Hero / Cover ─── */}
-            <div className="relative h-64 md:h-80 bg-gradient-to-b from-gold/[0.05] to-transparent">
+            <div className="relative h-52 sm:h-64 md:h-80 bg-gradient-to-b from-gold/[0.05] to-transparent">
                 {artist.cover_url && (
                     <Image
                         src={artist.cover_url}
@@ -91,12 +91,12 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                 <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/50 to-transparent" />
             </div>
 
-            <div className="max-w-5xl mx-auto px-6 -mt-20 relative z-10">
+            <div className="relative z-10 mx-auto -mt-16 max-w-5xl px-4 sm:-mt-20 sm:px-6">
                 {/* ─── Profile Card ─── */}
                 <div className="theme-surface-panel rounded-[2rem] p-6 sm:p-8 mb-10">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-end gap-6">
+                    <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
                         {/* Avatar */}
-                        <div className="w-32 h-32 rounded-3xl border-4 border-theme-subtle overflow-hidden bg-theme-surface shrink-0 shadow-2xl">
+                        <div className="h-28 w-28 shrink-0 overflow-hidden rounded-3xl border-4 border-theme-subtle bg-theme-surface shadow-2xl sm:h-32 sm:w-32">
                             {artist.avatar_url ? (
                                 <Image src={artist.avatar_url} alt={artist.display_name} width={128} height={128} className="object-cover w-full h-full" />
                             ) : (
@@ -108,7 +108,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
 
                         <div className="flex-1">
                             <p className="text-xs uppercase tracking-[0.35em] text-theme-faint mb-3">Artist Profile</p>
-                            <h1 className="text-3xl md:text-4xl font-bold text-theme flex items-center gap-2">
+                            <h1 className="flex flex-wrap items-center gap-2 text-3xl font-bold text-theme md:text-4xl">
                                 {artist.display_name}
                                 {artist.is_verified && <span className="text-gold text-lg">✦</span>}
                             </h1>
@@ -116,7 +116,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                             {artist.bio && (
                                 <p className="text-theme-subtle text-sm mt-3 max-w-xl leading-relaxed">{artist.bio}</p>
                             )}
-                            <div className="flex items-center gap-4 mt-4">
+                            <div className="mt-4 flex flex-wrap items-center gap-4">
                                 <FollowArtistButton
                                     artistId={artist.id}
                                     artistUsername={artist.username}
@@ -126,12 +126,12 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                         </div>
 
                         {/* Stats */}
-                        <div className="flex gap-3 sm:min-w-[190px]">
-                            <div className="rounded-2xl bg-theme-faint border border-theme-subtle px-5 py-4 text-center">
+                        <div className="grid w-full grid-cols-2 gap-3 sm:w-auto sm:min-w-[210px]">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-4 text-center sm:px-5">
                                 <span className="text-2xl font-bold text-theme">{artworks.length}</span>
                                 <span className="block text-[10px] text-theme-faint mt-0.5">عمل فني</span>
                             </div>
-                            <div className="rounded-2xl bg-theme-faint border border-theme-subtle px-5 py-4 text-center">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-4 text-center sm:px-5">
                                 <span className="text-2xl font-bold text-theme">{artist.total_sales || 0}</span>
                                 <span className="block text-[10px] text-theme-faint mt-0.5">مبيعات</span>
                             </div>
@@ -141,13 +141,13 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
 
                 {/* ─── Links ─── */}
                 {(artist.website || activeSocials.length > 0) && (
-                    <div className="flex flex-wrap gap-3 mb-12">
+                    <div className="mb-12 flex flex-wrap gap-3">
                         {artist.website && (
                             <a
                                 href={artist.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="theme-surface-panel flex items-center gap-2 px-4 py-2 rounded-xl text-xs text-theme-subtle hover:text-gold hover:border-gold/30 transition-all"
+                                className="theme-surface-panel inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs text-theme-subtle transition-all hover:border-gold/30 hover:text-gold"
                             >
                                 <Globe className="w-3.5 h-3.5" />
                                 الموقع الشخصي
@@ -160,7 +160,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                                 href={url as string}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="theme-surface-panel flex items-center gap-2 px-4 py-2 rounded-xl text-xs text-theme-subtle hover:text-gold hover:border-gold/30 transition-all"
+                                className="theme-surface-panel inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs text-theme-subtle transition-all hover:border-gold/30 hover:text-gold"
                             >
                                 {socialLabels[platform] || platform}
                                 <ExternalLink className="w-3 h-3" />
@@ -175,7 +175,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                 </div>
 
                 {artworks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pb-20">
+                    <div className="grid grid-cols-2 gap-4 pb-20 sm:gap-5 md:grid-cols-3 lg:grid-cols-4">
                         {artworks.map((artwork: any) => (
                             <Link
                                 key={artwork.id}

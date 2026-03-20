@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquareText, Plus, Minus, Send, CheckCircle2, Ticket, ChevronRight } from "lucide-react";
+import { MessageSquareText, Plus, Minus, Send, CheckCircle2, Ticket } from "lucide-react";
 import { submitSupportTicket } from "@/app/actions/support";
 
 const FAQ_DATA = [
@@ -50,11 +50,11 @@ export function SupportClient() {
     };
 
     return (
-        <div className="min-h-screen pt-28 pb-20 px-4">
-            <div className="max-w-4xl mx-auto space-y-16">
+        <div className="min-h-screen px-4 pt-24 pb-16 sm:pt-28 sm:pb-20">
+            <div className="mx-auto max-w-6xl space-y-12 sm:space-y-16">
 
                 {/* --- HEADER & DIRECT CHAT --- */}
-                <section className="theme-surface-panel rounded-[2rem] text-center space-y-6 px-6 py-10 sm:px-10">
+                <section className="theme-surface-panel space-y-6 rounded-[2rem] px-6 py-10 text-center sm:px-10">
                     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-block p-4 rounded-full bg-gold/10 text-gold mb-2">
                         <MessageSquareText className="w-10 h-10" />
                     </motion.div>
@@ -64,6 +64,24 @@ export function SupportClient() {
                     <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-theme-subtle max-w-xl mx-auto text-lg leading-relaxed">
                         سواءً كان عندك استفسار عن طلبك، أو تبغى تصمم قطعتك الخاصة، نحن هنا لخدمتك دائماً.
                     </motion.p>
+
+                    <div className="grid gap-3 text-right sm:grid-cols-3">
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-4">
+                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">LIVE HELP</p>
+                            <p className="mt-2 text-sm font-bold text-theme">محادثة فورية</p>
+                            <p className="mt-1 text-xs leading-6 text-theme-subtle">للاستفسارات السريعة ومتابعة الحالات الحالية.</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-4">
+                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">SUPPORT TICKET</p>
+                            <p className="mt-2 text-sm font-bold text-theme">تذكرة رسمية</p>
+                            <p className="mt-1 text-xs leading-6 text-theme-subtle">للمشكلات التي تحتاج متابعة ورسائل موثقة.</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-4">
+                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">RESPONSE TIME</p>
+                            <p className="mt-2 text-sm font-bold text-theme">خلال وقت العمل</p>
+                            <p className="mt-1 text-xs leading-6 text-theme-subtle">عادةً خلال دقائق للمحادثة، وقريبًا للتذاكر.</p>
+                        </div>
+                    </div>
                     
                     <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }} className="pt-2">
                         <button
@@ -78,10 +96,10 @@ export function SupportClient() {
                     </motion.div>
                 </section>
 
-                <div className="grid md:grid-cols-5 gap-12">
+                <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
                     
                     {/* --- FAQ SECTION --- */}
-                    <div className="md:col-span-3 space-y-8">
+                    <div className="space-y-8 lg:col-span-7">
                         <div>
                             <h2 className="text-2xl font-bold text-theme mb-2">الأسئلة الشائعة</h2>
                             <p className="text-theme-subtle text-sm">أبرز الاستفسارات التي تصلنا من عملائنا.</p>
@@ -124,8 +142,8 @@ export function SupportClient() {
                     </div>
 
                     {/* --- TICKET FORM SECTION --- */}
-                    <div className="md:col-span-2">
-                        <div className="theme-surface-panel rounded-3xl p-6 sm:p-8 sticky top-32">
+                    <div className="lg:col-span-5">
+                        <div className="theme-surface-panel rounded-3xl p-6 sm:p-8 xl:sticky xl:top-32">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2.5 rounded-xl bg-theme-subtle text-theme">
                                     <Ticket className="w-5 h-5" />

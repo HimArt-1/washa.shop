@@ -38,9 +38,9 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
 
     return (
         <div className="min-h-[60vh] bg-bg pt-6 sm:pt-8 pb-12 sm:pb-16" dir="rtl">
-            <div className="max-w-7xl mx-auto px-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Breadcrumb ─── */}
-                <nav className="flex items-center gap-2 text-xs text-theme-faint mb-8">
+                <nav className="mb-8 flex flex-wrap items-center gap-2 text-xs text-theme-faint">
                     <Link href="/" className="hover:text-gold transition-colors">الرئيسية</Link>
                     <span>/</span>
                     <Link href="/gallery" className="hover:text-gold transition-colors">المعرض</Link>
@@ -49,9 +49,9 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                 </nav>
 
                 {/* ─── Main Content ─── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
                     {/* Image */}
-                    <div className="theme-surface-panel rounded-[2rem] p-4">
+                    <div className="theme-surface-panel rounded-[2rem] p-3 sm:p-4">
                         <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle">
                             <Image
                                 src={artwork.image_url}
@@ -65,7 +65,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                     </div>
 
                     {/* Info */}
-                    <div className="theme-surface-panel rounded-[2rem] p-8 lg:p-10 flex flex-col justify-center">
+                    <div className="theme-surface-panel flex flex-col justify-center rounded-[2rem] p-6 sm:p-8 lg:p-10">
                         {/* Category Badge */}
                         {artwork.category && (
                             <span className="inline-block w-fit text-xs bg-gold/10 text-gold px-3 py-1 rounded-full mb-4">
@@ -78,9 +78,9 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                         {/* Artist */}
                         <Link
                             href={`/artists/${artwork.artist?.username}`}
-                            className="flex items-center gap-3 mb-6 group"
+                            className="group mb-6 flex items-center gap-3"
                         >
-                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-theme-soft bg-surface">
+                            <div className="h-12 w-12 overflow-hidden rounded-full border-2 border-theme-soft bg-surface">
                                 {artwork.artist?.avatar_url ? (
                                     <Image src={artwork.artist.avatar_url} alt="" width={48} height={48} className="object-cover" />
                                 ) : (
@@ -104,7 +104,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                         )}
 
                         {/* Details Grid */}
-                        <div className="grid grid-cols-2 gap-4 mb-8">
+                        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             {artwork.medium && (
                                 <div className="p-3 bg-theme-faint border border-theme-subtle rounded-xl">
                                     <span className="text-[10px] text-theme-faint block">الخامة</span>
@@ -131,7 +131,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
 
                         {/* Price + Add to Cart */}
                         {artwork.price && (
-                            <div className="flex items-center gap-4 mb-6">
+                            <div className="mb-6 flex items-center gap-4">
                                 <span className="text-3xl font-bold text-gold">{Number(artwork.price).toLocaleString()} ر.س</span>
                             </div>
                         )}
@@ -141,7 +141,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
 
                         {/* Tags */}
                         {artwork.tags && artwork.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-6">
+                            <div className="mt-6 flex flex-wrap gap-2">
                                 {artwork.tags.map((tag: string) => (
                                     <Link
                                         key={tag}
@@ -163,7 +163,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                 {similarArtworks.length > 0 && (
                     <div className="mt-20">
                         <h2 className="text-2xl font-bold text-theme mb-8">أعمال قد تعجبك</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                        <div className="grid grid-cols-2 gap-4 sm:gap-5 md:grid-cols-4">
                             {similarArtworks.map((item: any) => (
                                 <Link
                                     key={item.id}
