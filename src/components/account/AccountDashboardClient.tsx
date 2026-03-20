@@ -134,15 +134,15 @@ export function AccountDashboardClient({
     };
 
     return (
-        <div className="pt-8 pb-16">
+        <div className="pb-16 pt-6 sm:pt-8">
             <div className="mx-auto max-w-5xl px-4 sm:px-6">
                 <OnboardingBanner />
 
                 <motion.div variants={containerVariants} initial="hidden" animate="show">
                     {/* ─── Profile Header ─── */}
-                    <motion.div variants={itemVariants} className="mb-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-theme-soft bg-surface shrink-0 relative group">
+                    <motion.div variants={itemVariants} className="mb-8 flex flex-col gap-5 md:mb-10 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 border-theme-soft bg-surface group">
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10 backdrop-blur-sm">
                                     <Link href="/account/settings" className="text-theme text-xs font-bold px-2 py-1 bg-white/20 rounded-lg backdrop-blur-md">تعديل</Link>
                                 </div>
@@ -157,20 +157,20 @@ export function AccountDashboardClient({
                                 )}
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold text-theme">
+                                <h1 className="text-2xl font-bold text-theme sm:text-[1.9rem]">
                                     مرحباً، {profile?.display_name || currentUser.firstName || "مستخدم وشّى"}
                                 </h1>
-                                <p className="text-theme-faint text-sm mt-1">
+                                <p className="mt-1 text-sm text-theme-faint">
                                     {roleLabel} · @{profile?.username || "user"}
                                 </p>
-                                <div className="mt-2">
+                                <div className="mt-3">
                                     <PushSubscribeButton />
                                 </div>
                             </div>
                         </div>
 
                         {/* Completeness Widget */}
-                        <div className="flex w-full items-center gap-4 rounded-2xl border border-theme-subtle bg-surface/30 p-4 md:w-auto">
+                        <div className="flex w-full items-center gap-4 rounded-2xl border border-theme-subtle bg-surface/30 p-4 sm:p-5 md:w-auto md:min-w-[290px]">
                             <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                                     <path className="text-white/[0.05]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
@@ -196,14 +196,14 @@ export function AccountDashboardClient({
                     {isSubscriber && !applicationStatus && visibility.join_artist && (
                         <motion.div variants={itemVariants}>
                             <Link href="/join" className="block mb-8 group">
-                                <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-l from-gold/[0.06] via-gold/[0.03] to-transparent p-6 hover:border-gold/40 transition-all duration-500">
+                                <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-gradient-to-l from-gold/[0.06] via-gold/[0.03] to-transparent p-5 transition-all duration-500 hover:border-gold/40 sm:p-6">
                                     <div className="absolute top-0 left-0 w-32 h-32 bg-gold/[0.05] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-                                    <div className="relative flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
+                                    <div className="relative flex items-center justify-between gap-4">
+                                        <div className="flex min-w-0 items-center gap-4">
                                             <div className="w-14 h-14 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
                                                 <Star className="w-7 h-7 text-gold" />
                                             </div>
-                                            <div>
+                                            <div className="min-w-0">
                                                 <h3 className="font-bold text-theme text-base mb-1">
                                                     انضم كفنان وشّاي
                                                 </h3>
@@ -221,7 +221,7 @@ export function AccountDashboardClient({
 
                     {/* ─── Application Status (if pending/reviewing) ─── */}
                     {isSubscriber && applicationStatus && applicationStatus !== "accepted" && (
-                        <motion.div variants={itemVariants} className="mb-8 rounded-2xl border border-theme-subtle bg-surface/30 p-6">
+                        <motion.div variants={itemVariants} className="mb-8 rounded-2xl border border-theme-subtle bg-surface/30 p-5 sm:p-6">
                             <div className="flex items-center gap-4">
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${applicationStatus === "pending" || applicationStatus === "reviewing"
                                     ? "bg-amber-500/10 border border-amber-500/20"
@@ -250,31 +250,31 @@ export function AccountDashboardClient({
                     )}
 
                     {/* ─── Quick Links Grid ─── */}
-                    <motion.div variants={containerVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <motion.div variants={containerVariants} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         {links.map((link) => (
                             <motion.div key={link.href} variants={itemVariants}>
                                 <Link
                                     href={link.href}
-                                    className="group block p-5 rounded-2xl border border-theme-subtle hover:border-gold/20 transition-all duration-500 bg-surface/30 hover:bg-surface/50 relative overflow-hidden h-full"
+                                    className="group relative block h-full overflow-hidden rounded-2xl border border-theme-subtle bg-surface/30 p-5 transition-all duration-500 hover:border-gold/20 hover:bg-surface/50"
                                 >
                                     <div className={`absolute inset-0 bg-gradient-to-br ${link.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-                                    <div className="relative flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-theme-subtle flex items-center justify-center group-hover:bg-theme-soft transition-colors">
+                                    <div className="relative flex items-center justify-between gap-4">
+                                        <div className="flex min-w-0 items-center gap-4">
+                                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-theme-subtle transition-colors group-hover:bg-theme-soft">
                                                 <link.icon className="w-5 h-5 text-theme-subtle group-hover:text-gold transition-colors" />
                                             </div>
-                                            <div>
-                                                <h3 className="font-bold text-theme text-sm flex items-center gap-2">
+                                            <div className="min-w-0">
+                                                <h3 className="flex items-center gap-2 text-sm font-bold text-theme">
                                                     {link.title}
                                                     {link.badge !== undefined && link.badge > 0 && (
                                                         <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full">{link.badge}</span>
                                                     )}
                                                 </h3>
-                                                <p className="text-xs text-theme-faint mt-0.5">{link.description}</p>
+                                                <p className="mt-0.5 text-xs leading-6 text-theme-faint">{link.description}</p>
                                             </div>
                                         </div>
-                                        <ArrowLeft className="w-4 h-4 text-fg/10 group-hover:text-gold/40 transition-colors" />
+                                        <ArrowLeft className="h-4 w-4 shrink-0 text-fg/10 transition-colors group-hover:text-gold/40" />
                                     </div>
                                 </Link>
                             </motion.div>

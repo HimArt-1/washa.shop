@@ -1140,18 +1140,18 @@ export async function createExclusiveDesign(formData: {
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const { error } = await supabase.from("exclusive_designs").insert({
+    const { data, error } = await supabase.from("exclusive_designs").insert({
         title: formData.title.trim(),
         description: formData.description?.trim() || null,
         image_url: formData.image_url.trim(),
         sort_order: formData.sort_order ?? 0,
         is_active: true,
-    });
+    }).select("id, title, description, image_url, sort_order, is_active").single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !data) return { success: false, error: error?.message || "تعذر إنشاء التصميم" };
     revalidatePath("/dashboard/exclusive-designs");
     revalidatePath("/design");
-    return { success: true };
+    return { success: true, design: data };
 }
 
 export async function updateExclusiveDesign(id: string, formData: Partial<{
@@ -1164,15 +1164,17 @@ export async function updateExclusiveDesign(id: string, formData: Partial<{
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from("exclusive_designs")
         .update(formData)
-        .eq("id", id);
+        .eq("id", id)
+        .select("id, title, description, image_url, sort_order, is_active")
+        .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error || !data) return { success: false, error: error?.message || "تعذر تحديث التصميم" };
     revalidatePath("/dashboard/exclusive-designs");
     revalidatePath("/design");
-    return { success: true };
+    return { success: true, design: data };
 }
 
 export async function deleteExclusiveDesign(id: string) {

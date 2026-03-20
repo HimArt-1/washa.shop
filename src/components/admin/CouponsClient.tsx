@@ -12,8 +12,10 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
     const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
     const [isCreating, setIsCreating] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState("");
     const [copiedCode, setCopiedCode] = useState("");
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     // Form state
     const [code, setCode] = useState("");
@@ -68,12 +70,18 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا الكود؟")) return;
-        const result = await deleteDiscountCoupon(id);
+    const handleDelete = async () => {
+        if (!confirmDeleteId) return;
+        setIsDeleting(true);
+        const targetId = confirmDeleteId;
+        const result = await deleteDiscountCoupon(targetId);
+        setIsDeleting(false);
+        setConfirmDeleteId(null);
         if (result.success) {
-            setCoupons(coupons.filter(c => c.id !== id));
+            setCoupons(coupons.filter(c => c.id !== targetId));
+            return;
         }
+        setError(result.error || "تعذر حذف كود الخصم الآن.");
     };
 
     const copyToClipboard = (text: string) => {
@@ -84,6 +92,11 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
 
     return (
         <div className="space-y-6">
+            {error && !isCreating && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {error}
+                </div>
+            )}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-black text-theme-strong">كوبونات الخصم</h1>
@@ -295,7 +308,10 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                     {coupon.is_active ? "إيقاف" : "تفعيل"}
                                 </button>
                                 <button
-                                    onClick={() => handleDelete(coupon.id)}
+                                    onClick={() => {
+                                        setError("");
+                                        setConfirmDeleteId(coupon.id);
+                                    }}
                                     className="p-2 bg-theme-faint border border-theme-subtle text-theme-subtle hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                                 >
                                     <Trash2 className="w-4 h-4" />
@@ -313,6 +329,49 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                     <p className="text-theme-subtle">لم تقم بإنشاء أي أكواد خصم بعد.</p>
                 </div>
             )}
+
+            <AnimatePresence>
+                {confirmDeleteId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 16 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 16 }}
+                            className="theme-surface-panel w-full max-w-sm rounded-[1.5rem] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.16)]"
+                        >
+                            <p className="text-xs uppercase tracking-[0.24em] text-theme-faint">Delete Coupon</p>
+                            <h3 className="mt-2 text-lg font-bold text-theme">حذف كود الخصم</h3>
+                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
+                                سيتم حذف هذا الكوبون نهائيًا من القائمة الحالية.
+                            </p>
+                            <div className="mt-6 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    disabled={isDeleting}
+                                    className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                                >
+                                    {isDeleting ? <Check className="w-4 h-4 animate-pulse" /> : <Trash2 className="w-4 h-4" />}
+                                    حذف الكوبون
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -160,6 +160,21 @@ function csvCell(value: unknown) {
     return `"${raw.replace(/"/g, '""')}"`;
 }
 
+type FeedbackTone = "error" | "success" | "info";
+
+type FeedbackState = {
+    tone: FeedbackTone;
+    message: string;
+};
+
+type ConfirmState = {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    tone?: "danger" | "success" | "warning" | "gold";
+    onConfirm: () => Promise<void> | void;
+};
+
 export function ApplicationsClient({
     applications,
     count,
@@ -188,10 +203,43 @@ export function ApplicationsClient({
         credentials: Array<{ id: string; full_name: string; email: string | null; tempPassword: string }>;
         failures: Array<{ id: string; full_name: string; email: string | null; error: string }>;
     } | null>(null);
+    const [feedback, setFeedback] = useState<FeedbackState | null>(null);
+    const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+    const [confirmLoading, setConfirmLoading] = useState(false);
 
     useEffect(() => {
         setSelectedIds((prev) => prev.filter((id) => applications.some((app) => app.id === id)));
     }, [applications]);
+
+    useEffect(() => {
+        if (!feedback) return;
+        const timeout = window.setTimeout(() => setFeedback(null), 4500);
+        return () => window.clearTimeout(timeout);
+    }, [feedback]);
+
+    const showFeedback = (tone: FeedbackTone, message: string) => {
+        setFeedback({ tone, message });
+    };
+
+    const requestConfirmation = (state: ConfirmState) => {
+        setConfirmState(state);
+    };
+
+    const closeConfirmation = () => {
+        if (confirmLoading) return;
+        setConfirmState(null);
+    };
+
+    const executeConfirmation = async () => {
+        if (!confirmState) return;
+        setConfirmLoading(true);
+        try {
+            await confirmState.onConfirm();
+            setConfirmState(null);
+        } finally {
+            setConfirmLoading(false);
+        }
+    };
 
     const navigate = (next: {
         status?: string;
@@ -246,13 +294,30 @@ export function ApplicationsClient({
 
     const handleReview = async (id: string, decision: "accepted" | "rejected") => {
         const label = decision === "accepted" ? "قبول" : "رفض";
-        if (!confirm(`هل أنت متأكد من ${label} هذا الطلب؟`)) return;
-
-        setReviewingId(id);
-        await reviewApplication(id, decision, reviewNotes || undefined);
-        setReviewingId(null);
-        setReviewNotes("");
-        router.refresh();
+        requestConfirmation({
+            title: `${label} الطلب`,
+            description: `سيتم ${label} هذا الطلب${reviewNotes ? " مع حفظ ملاحظات المراجع الحالية." : "."}`,
+            confirmLabel: label,
+            tone: decision === "rejected" ? "danger" : "success",
+            onConfirm: async () => {
+                setReviewingId(id);
+                try {
+                    const result = await reviewApplication(id, decision, reviewNotes || undefined);
+                    if (!result?.success) {
+                        showFeedback("error", result?.error || `تعذر ${label} الطلب الآن.`);
+                        return;
+                    }
+                    setReviewNotes("");
+                    showFeedback("success", decision === "accepted" ? "تم قبول الطلب بنجاح." : "تم رفض الطلب بنجاح.");
+                    router.refresh();
+                } catch (error) {
+                    console.error("Application review failed", error);
+                    showFeedback("error", `تعذر ${label} الطلب الآن. حاول مرة أخرى.`);
+                } finally {
+                    setReviewingId(null);
+                }
+            },
+        });
     };
 
     const handleAcceptAndCreate = (id: string) => {
@@ -289,7 +354,7 @@ export function ApplicationsClient({
         const source = mode === "selected" ? selectedApplications : applications;
 
         if (source.length === 0) {
-            alert(mode === "selected" ? "لا يوجد طلبات محددة للتصدير." : "لا توجد نتائج حالية للتصدير.");
+            showFeedback("info", mode === "selected" ? "لا يوجد طلبات محددة للتصدير." : "لا توجد نتائج حالية للتصدير.");
             return;
         }
 
@@ -362,17 +427,25 @@ export function ApplicationsClient({
 
     const handleServerExport = async () => {
         setServerExporting(true);
-        const res = await exportAdminApplicationsCsv({
-            status: currentStatus,
-            joinType: currentJoinType,
-            gender: currentGender,
-            ageBand: currentAgeBand,
-            identityState: currentIdentityState,
-        });
+        let res: Awaited<ReturnType<typeof exportAdminApplicationsCsv>>;
+        try {
+            res = await exportAdminApplicationsCsv({
+                status: currentStatus,
+                joinType: currentJoinType,
+                gender: currentGender,
+                ageBand: currentAgeBand,
+                identityState: currentIdentityState,
+            });
+        } catch (error) {
+            console.error("Server export failed", error);
+            showFeedback("error", "فشل التصدير من الخادم.");
+            setServerExporting(false);
+            return;
+        }
         setServerExporting(false);
 
         if (!res?.success || typeof res.csv !== "string" || typeof res.filename !== "string") {
-            alert("فشل التصدير من الخادم.");
+            showFeedback("error", "فشل التصدير من الخادم.");
             return;
         }
 
@@ -385,16 +458,17 @@ export function ApplicationsClient({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
+        showFeedback("success", "تم تجهيز ملف التصدير من الخادم.");
     };
 
     const handleBulkReview = async (decision: "accepted" | "reviewing" | "rejected") => {
         if (selectedIds.length === 0) {
-            alert("حدد طلبًا واحدًا على الأقل أولًا.");
+            showFeedback("info", "حدد طلبًا واحدًا على الأقل أولًا.");
             return;
         }
 
         if (actionableSelectedIds.length === 0) {
-            alert("الطلبات المحددة ليست في حالة تسمح بتنفيذ هذا الإجراء.");
+            showFeedback("info", "الطلبات المحددة ليست في حالة تسمح بتنفيذ هذا الإجراء.");
             return;
         }
 
@@ -405,83 +479,115 @@ export function ApplicationsClient({
                 ? `\nسيتم تجاهل ${nonActionableSelectedCount} طلبًا لأن حالته الحالية لا تسمح بهذا الإجراء.`
                 : "";
 
-        if (!confirm(`سيتم ${actionLabel} ${actionableSelectedIds.length} طلبًا.${ignoredMessage}`)) return;
+        requestConfirmation({
+            title: `${actionLabel} الطلبات المحددة`,
+            description: `سيتم ${actionLabel} ${actionableSelectedIds.length} طلبًا.${ignoredMessage}`,
+            confirmLabel: actionLabel,
+            tone: decision === "rejected" ? "danger" : decision === "reviewing" ? "warning" : "success",
+            onConfirm: async () => {
+                setBulkLoading(decision);
+                try {
+                    const res = await bulkReviewApplications(actionableSelectedIds, decision, bulkNotes || undefined);
 
-        setBulkLoading(decision);
-        const res = await bulkReviewApplications(actionableSelectedIds, decision, bulkNotes || undefined);
-        setBulkLoading(null);
+                    if (!res.success) {
+                        showFeedback("error", res.error || "فشل تنفيذ الإجراء الجماعي.");
+                        return;
+                    }
 
-        if (!res.success) {
-            alert(res.error || "فشل تنفيذ الإجراء الجماعي.");
-            return;
-        }
+                    setSelectedIds([]);
+                    setBulkNotes("");
+                    router.refresh();
 
-        setSelectedIds([]);
-        setBulkNotes("");
-        router.refresh();
-
-        const completed = res.updated ?? actionableSelectedIds.length;
-        alert(
-            decision === "accepted"
-                ? `تم قبول ${completed} طلبًا بنجاح.`
-                : decision === "reviewing"
-                ? `تم نقل ${completed} طلبًا إلى قيد المراجعة بنجاح.`
-                : `تم رفض ${completed} طلبًا بنجاح.`
-        );
+                    const completed = res.updated ?? actionableSelectedIds.length;
+                    showFeedback(
+                        "success",
+                        decision === "accepted"
+                            ? `تم قبول ${completed} طلبًا بنجاح.`
+                            : decision === "reviewing"
+                            ? `تم نقل ${completed} طلبًا إلى قيد المراجعة بنجاح.`
+                            : `تم رفض ${completed} طلبًا بنجاح.`
+                    );
+                } catch (error) {
+                    console.error("Bulk review failed", error);
+                    showFeedback("error", "تعذر تنفيذ الإجراء الجماعي الآن.");
+                } finally {
+                    setBulkLoading(null);
+                }
+            },
+        });
     };
 
     const handleBulkProvision = async () => {
         if (selectedIds.length === 0) {
-            alert("حدد طلبًا واحدًا على الأقل أولًا.");
+            showFeedback("info", "حدد طلبًا واحدًا على الأقل أولًا.");
             return;
         }
 
         if (provisionableSelectedIds.length === 0) {
-            alert("لا توجد ضمن المحدد طلبات مقبولة تحتاج تجهيز حسابات.");
+            showFeedback("info", "لا توجد ضمن المحدد طلبات مقبولة تحتاج تجهيز حسابات.");
             return;
         }
 
         const strategyLabel =
             provisioningStrategyOptions.find((option) => option.value === provisionStrategy)?.label ?? provisionStrategy;
 
-        if (
-            !confirm(
-                `سيتم تجهيز ${provisionableSelectedIds.length} طلبًا مقبولًا.\nاستراتيجية الدور: ${strategyLabel}${
-                    provisionStrategy !== "subscriber" ? `\nمستوى الوشّاي: ${provisionLevel}` : ""
-                }`
-            )
-        ) {
-            return;
-        }
+        requestConfirmation({
+            title: "تشغيل المقبولين المحددين",
+            description: `سيتم تجهيز ${provisionableSelectedIds.length} طلبًا مقبولًا.\nاستراتيجية الدور: ${strategyLabel}${
+                provisionStrategy !== "subscriber" ? `\nمستوى الوشّاي: ${provisionLevel}` : ""
+            }`,
+            confirmLabel: "تشغيل الآن",
+            tone: "gold",
+            onConfirm: async () => {
+                setBulkLoading("provision");
+                try {
+                    const res = await bulkProvisionAcceptedApplications(provisionableSelectedIds, {
+                        roleStrategy: provisionStrategy,
+                        wushshaLevel: provisionLevel,
+                    });
 
-        setBulkLoading("provision");
-        const res = await bulkProvisionAcceptedApplications(provisionableSelectedIds, {
-            roleStrategy: provisionStrategy,
-            wushshaLevel: provisionLevel,
+                    if (
+                        !("processed" in res) ||
+                        !Array.isArray((res as any).failures) ||
+                        !Array.isArray((res as any).credentials)
+                    ) {
+                        showFeedback("error", res.error || "فشل تجهيز الحسابات.");
+                        return;
+                    }
+
+                    const report = res as {
+                        processed: number;
+                        succeeded: number;
+                        failed: number;
+                        credentials: Array<{ id: string; full_name: string; email: string | null; tempPassword: string }>;
+                        failures: Array<{ id: string; full_name: string; email: string | null; error: string }>;
+                    };
+
+                    const failedIds = new Set(report.failures.map((failure) => failure.id));
+                    setSelectedIds((prev) =>
+                        prev.filter((id) => !provisionableSelectedIds.includes(id) || failedIds.has(id))
+                    );
+                    setBulkProvisionResult(report);
+                    router.refresh();
+                    showFeedback(
+                        report.failed > 0 ? "info" : "success",
+                        report.failed > 0
+                            ? `اكتمل التشغيل مع ${report.failed} حالة تحتاج مراجعة.`
+                            : `تم تشغيل ${report.succeeded} حسابًا بنجاح.`
+                    );
+                } catch (error) {
+                    console.error("Bulk provisioning failed", error);
+                    showFeedback("error", "تعذر تجهيز الحسابات الآن.");
+                } finally {
+                    setBulkLoading(null);
+                }
+            },
         });
-        setBulkLoading(null);
-
-        if (!("processed" in res) || !Array.isArray((res as any).failures) || !Array.isArray((res as any).credentials)) {
-            alert(res.error || "فشل تجهيز الحسابات.");
-            return;
-        }
-
-        const report = res as {
-            processed: number;
-            succeeded: number;
-            failed: number;
-            credentials: Array<{ id: string; full_name: string; email: string | null; tempPassword: string }>;
-            failures: Array<{ id: string; full_name: string; email: string | null; error: string }>;
-        };
-
-        const failedIds = new Set(report.failures.map((failure) => failure.id));
-        setSelectedIds((prev) => prev.filter((id) => !provisionableSelectedIds.includes(id) || failedIds.has(id)));
-        setBulkProvisionResult(report);
-        router.refresh();
     };
 
     return (
         <div className="space-y-6">
+            {feedback && <FeedbackBanner feedback={feedback} onDismiss={() => setFeedback(null)} />}
             {/* ─── Status Tabs ─── */}
             <div className="theme-surface-panel flex gap-1 rounded-xl p-1">
                 {statuses.map((s) => (
@@ -1086,6 +1192,117 @@ export function ApplicationsClient({
                     onClose={() => setBulkProvisionResult(null)}
                 />
             )}
+
+            <ConfirmationDialog
+                state={confirmState}
+                loading={confirmLoading}
+                onClose={closeConfirmation}
+                onConfirm={executeConfirmation}
+            />
+        </div>
+    );
+}
+
+function FeedbackBanner({
+    feedback,
+    onDismiss,
+}: {
+    feedback: FeedbackState;
+    onDismiss: () => void;
+}) {
+    const palette =
+        feedback.tone === "success"
+            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+            : feedback.tone === "info"
+            ? "border-sky-500/20 bg-sky-500/10 text-sky-200"
+            : "border-red-500/20 bg-red-500/10 text-red-200";
+
+    return (
+        <div className={`flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm ${palette}`}>
+            <p className="leading-relaxed">{feedback.message}</p>
+            <button
+                onClick={onDismiss}
+                className="rounded-lg p-1 text-current/80 transition-colors hover:bg-black/10 hover:text-current"
+                aria-label="إغلاق"
+            >
+                <X className="h-4 w-4" />
+            </button>
+        </div>
+    );
+}
+
+function ConfirmationDialog({
+    state,
+    loading,
+    onClose,
+    onConfirm,
+}: {
+    state: ConfirmState | null;
+    loading: boolean;
+    onClose: () => void;
+    onConfirm: () => Promise<void>;
+}) {
+    if (!state) return null;
+
+    const confirmClass =
+        state.tone === "danger"
+            ? "border-red-500/20 bg-red-500/10 text-red-200 hover:bg-red-500/15"
+            : state.tone === "warning"
+            ? "border-amber-500/20 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15"
+            : state.tone === "gold"
+            ? "border-gold/20 bg-gold/10 text-gold hover:bg-gold/15"
+            : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15";
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_60%,transparent)] p-4 backdrop-blur-sm"
+            onClick={loading ? undefined : onClose}
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, y: 8 }}
+                onClick={(event) => event.stopPropagation()}
+                className="theme-surface-panel w-full max-w-md rounded-2xl p-6 shadow-2xl"
+            >
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-theme-faint">Confirmation</p>
+                        <h3 className="mt-2 text-lg font-bold text-theme">{state.title}</h3>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="rounded-lg p-2 text-theme-subtle transition-colors hover:bg-theme-subtle disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+
+                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-theme-subtle">
+                    {state.description}
+                </p>
+
+                <div className="mt-6 flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={loading}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${confirmClass}`}
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        {state.confirmLabel}
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
 }

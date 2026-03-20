@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,6 +37,22 @@ export function AdminSidebar({
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const pathname = usePathname();
+
+    useEffect(() => {
+        setIsMobileOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (isMobileOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+        }
+
+        return () => {
+            document.body.style.overflow = "";
+        };
+    }, [isMobileOpen]);
 
     const navGroups: NavGroup[] = [
         {
@@ -141,6 +157,24 @@ export function AdminSidebar({
 
             {/* ─── Navigation ─── */}
             <nav className="flex-1 py-3 px-2.5 flex flex-col gap-4 overflow-y-auto styled-scrollbar">
+                {!isCollapsed && (
+                    <div className="px-2.5">
+                        <div className="grid grid-cols-3 gap-2 rounded-2xl border border-theme-subtle bg-theme-faint/70 p-2">
+                            <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
+                                <p className="text-[10px] text-theme-faint">الانضمام</p>
+                                <p className="mt-1 text-sm font-bold text-gold">{pendingApps}</p>
+                            </div>
+                            <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
+                                <p className="text-[10px] text-theme-faint">التصميم</p>
+                                <p className="mt-1 text-sm font-bold text-gold">{pendingDesignOrders}</p>
+                            </div>
+                            <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
+                                <p className="text-[10px] text-theme-faint">الدعم</p>
+                                <p className="mt-1 text-sm font-bold text-gold">{pendingSupportTickets}</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {navGroups.map((group, gi) => (
                     <div key={gi} className="space-y-0.5">
                         {!isCollapsed && (
@@ -238,6 +272,7 @@ export function AdminSidebar({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
+                            className="space-y-2"
                         >
                             <Link
                                 href="/"
@@ -251,6 +286,13 @@ export function AdminSidebar({
                                 <Home className="w-4 h-4" />
                                 العودة للصفحة الرئيسية
                             </Link>
+                            <Link
+                                href="/store"
+                                className="flex items-center justify-center gap-2 rounded-xl border border-theme-soft bg-theme-faint px-3 py-2.5 text-xs font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-gold"
+                            >
+                                <Store className="w-4 h-4" />
+                                زيارة المتجر العام
+                            </Link>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -263,7 +305,7 @@ export function AdminSidebar({
             {/* Mobile Hamburger Button */}
             <button
                 onClick={() => setIsMobileOpen(true)}
-                className="fixed top-4 right-4 z-50 md:hidden p-3 bg-surface/90 backdrop-blur-xl border border-theme-subtle rounded-xl text-theme-soft"
+                className="fixed right-3 top-3 z-50 rounded-2xl border border-theme-subtle bg-[color-mix(in_srgb,var(--wusha-surface)_92%,transparent)] p-3 text-theme-soft shadow-[0_12px_30px_-18px_rgba(0,0,0,0.5)] backdrop-blur-xl md:hidden"
                 aria-label="فتح القائمة"
             >
                 <Menu className="w-5 h-5" />
@@ -295,10 +337,10 @@ export function AdminSidebar({
             <AnimatePresence>
                 {isMobileOpen && (
                     <motion.aside
-                        className="fixed right-0 top-0 h-screen w-[280px] bg-surface/95 backdrop-blur-2xl border-l border-theme-subtle flex flex-col z-50 md:hidden"
-                        initial={{ x: 280 }}
+                        className="fixed right-0 top-0 h-screen w-[min(86vw,320px)] bg-surface/95 backdrop-blur-2xl border-l border-theme-subtle flex flex-col z-50 md:hidden"
+                        initial={{ x: 320 }}
                         animate={{ x: 0 }}
-                        exit={{ x: 280 }}
+                        exit={{ x: 320 }}
                         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                     >
                         {sidebarContent}

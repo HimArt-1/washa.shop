@@ -828,7 +828,7 @@ export function AnnouncementsClient({
                 )}
             </AnimatePresence>
 
-            <section className="theme-surface-panel relative overflow-hidden rounded-[28px] p-6 md:p-7">
+            <section className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6 md:p-7">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.12),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_28%)]" />
                 <div className="relative grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
                     <div className="space-y-5">
@@ -853,7 +853,7 @@ export function AnnouncementsClient({
 
                         <div className="space-y-3">
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">قوالب تشغيل سريعة</p>
-                            <div className="grid gap-3 md:grid-cols-2">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 {announcementPresets.map((preset) => (
                                     <button
                                         key={preset.id}
@@ -870,7 +870,7 @@ export function AnnouncementsClient({
                     </div>
 
                     <div className="grid gap-4">
-                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-5">
+                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-4 sm:p-5">
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">الطابور الحي</p>
                             <div className="mt-4 space-y-3">
                                 {operationsSnapshot.liveNow.length > 0 ? (
@@ -895,7 +895,7 @@ export function AnnouncementsClient({
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-5">
+                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-4 sm:p-5">
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">الإطلاق القادم</p>
                             <div className="mt-4 space-y-3">
                                 {operationsSnapshot.upcoming.length > 0 ? (
@@ -925,7 +925,7 @@ export function AnnouncementsClient({
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-5">
+                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-4 sm:p-5">
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">خريطة التوزيع</p>
                             <div className="mt-4 grid gap-4 lg:grid-cols-2">
                                 <div className="space-y-2">
@@ -971,7 +971,7 @@ export function AnnouncementsClient({
                             </div>
                         </div>
 
-                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-5">
+                        <div className="rounded-[24px] border border-theme-subtle bg-theme-faint p-4 sm:p-5">
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">صحة النظام</p>
                             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
@@ -1017,7 +1017,7 @@ export function AnnouncementsClient({
             </section>
 
             {/* ─── Stats Cards ─── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {[
                     { label: "الإجمالي", value: stats.total, color: "text-theme-soft", bg: "bg-theme-faint border-theme-subtle" },
                     { label: "نشطة حالياً", value: stats.active, color: "text-emerald-400", bg: stats.active > 0 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-theme-faint border-theme-subtle" },
@@ -1033,7 +1033,7 @@ export function AnnouncementsClient({
             </div>
 
             <section className="grid gap-4 xl:grid-cols-[0.95fr,1.05fr]">
-                <div className="theme-surface-panel rounded-[26px] p-5">
+                <div className="theme-surface-panel rounded-[26px] p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">Performance Radar</p>
@@ -1044,7 +1044,7 @@ export function AnnouncementsClient({
                         </span>
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-xs text-theme-faint">Views</p>
                             <p className="mt-2 text-2xl font-black text-theme">{engagement.totals.views}</p>
@@ -1091,7 +1091,7 @@ export function AnnouncementsClient({
                     </div>
                 </div>
 
-                <div className="theme-surface-panel rounded-[26px] p-5">
+                <div className="theme-surface-panel rounded-[26px] p-4 sm:p-5">
                     <div className="grid gap-4 lg:grid-cols-2">
                         <div>
                             <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">أفضل الحملات</p>
@@ -1184,15 +1184,15 @@ export function AnnouncementsClient({
             </section>
 
             {/* ─── Toolbar ─── */}
-            <div className="flex items-center gap-3 flex-wrap">
-                <div className="relative flex-1 max-w-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full flex-1 sm:max-w-sm">
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
                     <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث في الإعلانات..."
                         className="input-dark w-full rounded-lg py-2 pr-10 pl-4 text-sm transition-all" />
                 </div>
                 <button onClick={() => { resetForm(); setShowForm(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gold/10 text-gold border border-gold/20 rounded-lg text-sm font-bold hover:bg-gold/20 transition-all">
+                    className="flex min-h-[42px] items-center justify-center gap-2 rounded-lg border border-gold/20 bg-gold/10 px-4 py-2 text-sm font-bold text-gold transition-all hover:bg-gold/20">
                     <Plus className="w-4 h-4" /> إعلان جديد
                 </button>
             </div>
@@ -1204,9 +1204,9 @@ export function AnnouncementsClient({
                         initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                         className="theme-surface-panel overflow-hidden rounded-2xl border-gold/15"
                     >
-                        <div className="p-6 space-y-5">
+                        <div className="space-y-5 p-5 sm:p-6">
                             {/* Header */}
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
                                 <h3 className="font-bold text-theme-strong flex items-center gap-2">
                                     <Megaphone className="w-5 h-5 text-gold" />
                                     {editingId ? "تعديل الإعلان" : "إعلان جديد"}
@@ -1505,7 +1505,7 @@ export function AnnouncementsClient({
                                 {/* Trigger Type */}
                                 <div>
                                     <label className="block text-[11px] font-medium text-theme-subtle mb-2">متى يظهر الإعلان؟</label>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                                         {(Object.entries(triggerLabels) as [TriggerType, typeof triggerLabels[TriggerType]][]).map(([key, val]) => (
                                             <button key={key}
                                                 onClick={() => updateTrigger({ type: key })}
@@ -1542,7 +1542,7 @@ export function AnnouncementsClient({
                                         <label className="block text-[11px] font-medium text-theme-subtle mb-2">
                                             <MousePointerClick className="w-3 h-3 inline ml-1" /> الصفحات المستهدفة
                                         </label>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                             {PAGE_OPTIONS.map((p) => {
                                                 const selected = form.trigger.targetPages?.includes(p.value) || false;
                                                 return (
@@ -1580,7 +1580,7 @@ export function AnnouncementsClient({
                                 )}
 
                                 {/* Frequency + Dismissible */}
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid gap-3 sm:grid-cols-2">
                                     <div>
                                         <label className="block text-[11px] font-medium text-theme-subtle mb-1.5">تكرار الظهور</label>
                                         <select value={form.trigger.frequency}
@@ -1603,7 +1603,7 @@ export function AnnouncementsClient({
                             </div>
 
                             {/* Link */}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 <div>
                                     <label className="block text-xs font-medium text-theme-subtle mb-1.5">رابط (اختياري)</label>
                                     <input type="url" value={form.link}
@@ -1644,7 +1644,7 @@ export function AnnouncementsClient({
                             )}
 
                             {/* Scheduling */}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid gap-3 sm:grid-cols-2">
                                 <div>
                                     <label className="block text-xs font-medium text-theme-subtle mb-1.5 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" /> بداية العرض
@@ -1664,20 +1664,20 @@ export function AnnouncementsClient({
                             </div>
 
                             {/* Active + Submit */}
-                            <div className="flex items-center justify-between pt-2">
+                            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" checked={form.isActive}
                                         onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
                                         className="rounded border-theme-soft" />
                                     <span className="text-sm text-theme-soft">نشط فوراً</span>
                                 </label>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                                     <button onClick={resetForm}
-                                        className="px-4 py-2 text-sm text-theme-subtle hover:text-theme-soft transition-colors">
+                                        className="min-h-[42px] px-4 py-2 text-sm text-theme-subtle hover:text-theme-soft transition-colors">
                                         إلغاء
                                     </button>
                                     <button onClick={handleSubmit} disabled={loading}
-                                        className="px-6 py-2.5 bg-gold/20 text-gold font-bold rounded-xl hover:bg-gold/30 transition-all disabled:opacity-50 flex items-center gap-2 text-sm">
+                                        className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gold/20 px-6 py-2.5 text-sm font-bold text-gold transition-all hover:bg-gold/30 disabled:opacity-50">
                                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                         {editingId ? "حفظ التعديلات" : "إنشاء الإعلان"}
                                     </button>
@@ -1715,7 +1715,7 @@ export function AnnouncementsClient({
                                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
                                     className={`px-5 py-4 hover:bg-theme-faint transition-all ${!a.isActive ? "opacity-50" : ""}`}
                                 >
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                                         {/* Template Preview Mini */}
                                         {a.mediaUrl ? (
                                             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-theme-subtle bg-[color:var(--surface-elevated)]">
@@ -1782,7 +1782,7 @@ export function AnnouncementsClient({
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex items-center gap-1 shrink-0">
+                                        <div className="flex flex-wrap items-center gap-1 shrink-0 sm:justify-end">
                                             <button onClick={() => handleToggle(a.id)}
                                                 className={`p-2 rounded-lg transition-all ${a.isActive ? "text-emerald-400 hover:bg-emerald-500/10" : "text-theme-faint hover:bg-theme-faint"}`}
                                                 title={a.isActive ? "إيقاف" : "تفعيل"}>

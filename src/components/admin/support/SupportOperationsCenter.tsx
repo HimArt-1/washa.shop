@@ -131,12 +131,12 @@ function SummaryCard({
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} p-5`}
+            className={`${subtlePanelClass} p-4 sm:p-5`}
         >
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                    <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl border"
@@ -178,7 +178,7 @@ function QueueLane({
         <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} h-full p-5`}
+            className={`${subtlePanelClass} h-full p-4 sm:p-5`}
         >
             <div className="mb-5">
                 <h3 className="text-lg font-bold text-theme">{title}</h3>
@@ -304,7 +304,7 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
+                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,119,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
                     <div className="relative space-y-6">

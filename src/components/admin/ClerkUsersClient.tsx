@@ -166,7 +166,7 @@ export function ClerkUsersClient({
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border border-theme-subtle bg-surface/50 p-5 backdrop-blur-sm"
+                    className="theme-surface-panel rounded-2xl p-4 backdrop-blur-sm sm:p-5"
                 >
                     <div className="flex items-center gap-3">
                         <div className="rounded-xl bg-gold/10 p-2.5">
@@ -174,7 +174,7 @@ export function ClerkUsersClient({
                         </div>
                         <div>
                             <p className="text-xs font-medium text-theme-subtle">إجمالي مستخدمي Clerk</p>
-                            <p className="text-2xl font-bold text-theme">{totalCount}</p>
+                            <p className="text-xl font-bold text-theme sm:text-2xl">{totalCount}</p>
                         </div>
                     </div>
                 </motion.div>
@@ -183,26 +183,26 @@ export function ClerkUsersClient({
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <Link
                     href="/dashboard/users"
-                    className="flex items-center gap-2 text-sm text-theme-subtle transition-colors hover:text-gold"
+                    className="inline-flex min-h-[40px] items-center gap-2 text-sm text-theme-subtle transition-colors hover:text-gold"
                 >
                     <UserCog className="h-4 w-4" />
                     العودة إلى مركز الهوية
                 </Link>
 
-                <form onSubmit={handleSearch} className="relative">
+                <form onSubmit={handleSearch} className="relative w-full sm:w-auto">
                     <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-faint" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث بالبريد أو الاسم أو المعرف..."
-                        className="w-72 rounded-xl border border-theme-subtle bg-surface/50 py-2.5 pl-4 pr-10 text-sm text-theme placeholder:text-theme-faint focus:border-gold/30 focus:outline-none"
+                        className="input-dark w-full rounded-xl py-2.5 pl-4 pr-10 text-sm sm:w-72"
                     />
                 </form>
 
                 <button
                     onClick={exportToCSV}
-                    className="flex items-center gap-2 rounded-xl border border-theme-subtle bg-theme-subtle px-4 py-2.5 text-sm font-medium text-theme transition-all hover:border-gold/20 hover:text-gold"
+                    className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-medium text-theme transition-all hover:border-gold/20 hover:text-gold"
                 >
                     <Download className="h-4 w-4" />
                     تصدير (CSV)
@@ -218,10 +218,10 @@ export function ClerkUsersClient({
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="overflow-hidden rounded-2xl border border-theme-subtle bg-surface/30"
+                className="theme-surface-panel overflow-hidden rounded-2xl"
             >
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="min-w-[980px] w-full text-sm">
                         <thead>
                             <tr className="border-b border-theme-subtle bg-theme-faint">
                                 <th className="px-4 py-4 text-right font-medium text-theme-soft">المستخدم</th>
@@ -405,7 +405,7 @@ export function ClerkUsersClient({
                 </div>
 
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-theme-subtle bg-theme-faint px-4 py-3">
+                    <div className="flex flex-col gap-3 border-t border-theme-subtle bg-theme-faint px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-theme-subtle">
                             الصفحة {currentPage} من {totalPages}
                         </p>

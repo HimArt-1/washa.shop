@@ -75,6 +75,7 @@ export function UsersClient({
     const [changingRole, setChangingRole] = useState<string | null>(null);
     const [changingLevel, setChangingLevel] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -82,6 +83,8 @@ export function UsersClient({
     const [success, setSuccess] = useState<string | null>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [pendingDeleteUser, setPendingDeleteUser] = useState<any | null>(null);
+    const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -139,7 +142,6 @@ export function UsersClient({
     };
 
     const handleDelete = async (user: any) => {
-        if (!confirm(`هل أنت متأكد من حذف المستخدم "${user.display_name}"؟\n\nسيتم حذف جميع بياناته المرتبطة (أعمال، منتجات، طلبات).`)) return;
         setDeletingId(user.id);
         setError(null);
         try {
@@ -147,6 +149,7 @@ export function UsersClient({
             if (res.success) {
                 setSuccess("تم حذف المستخدم بنجاح");
                 setTimeout(() => setSuccess(null), 3000);
+                setPendingDeleteUser(null);
                 router.refresh();
             } else {
                 setError(res.error || "فشل الحذف");
@@ -177,12 +180,13 @@ export function UsersClient({
 
     const handleBulkDelete = async () => {
         if (selectedIds.size === 0) return;
-        if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} مستخدم؟\n\nسيتم حذف جميع بياناتهم المرتبطة.`)) return;
         setError(null);
+        setBulkDeleting(true);
         try {
             const res = await deleteUsers(Array.from(selectedIds));
             if (res.success) {
                 setSelectedIds(new Set());
+                setBulkDeleteRequested(false);
                 setSuccess(`تم حذف ${res.deleted} مستخدم بنجاح`);
                 setTimeout(() => setSuccess(null), 3000);
                 router.refresh();
@@ -191,6 +195,8 @@ export function UsersClient({
             }
         } catch (error) {
             setError(error instanceof Error ? error.message : "فشل الحذف");
+        } finally {
+            setBulkDeleting(false);
         }
     };
 
@@ -308,7 +314,7 @@ export function UsersClient({
                     {/* Bulk Delete */}
                     {selectedIds.size > 0 && (
                         <button
-                            onClick={handleBulkDelete}
+                            onClick={() => setBulkDeleteRequested(true)}
                             className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all"
                         >
                             <Trash2 className="w-4 h-4" />
@@ -512,7 +518,7 @@ export function UsersClient({
                                                 <Pencil className="w-4 h-4" />
                                             </button>
                                             <button
-                                                onClick={() => handleDelete(user)}
+                                                onClick={() => setPendingDeleteUser(user)}
                                                 disabled={deletingId === user.id}
                                                 className="p-2 rounded-lg text-theme-subtle hover:text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-50"
                                                 title="حذف"
@@ -597,6 +603,100 @@ export function UsersClient({
                 }}
                 onError={(msg) => setError(msg)}
             />
+
+            <ConfirmActionModal
+                open={!!pendingDeleteUser}
+                title="حذف المستخدم"
+                description={
+                    pendingDeleteUser
+                        ? `سيتم حذف المستخدم "${pendingDeleteUser.display_name}" مع جميع بياناته المرتبطة مثل الأعمال والمنتجات والطلبات.`
+                        : ""
+                }
+                confirmLabel="حذف المستخدم"
+                loading={!!pendingDeleteUser && deletingId === pendingDeleteUser.id}
+                onClose={() => setPendingDeleteUser(null)}
+                onConfirm={() => pendingDeleteUser && handleDelete(pendingDeleteUser)}
+            />
+
+            <ConfirmActionModal
+                open={bulkDeleteRequested}
+                title="حذف المستخدمين المحددين"
+                description={`سيتم حذف ${selectedIds.size} مستخدم مع بياناتهم المرتبطة.`}
+                confirmLabel="حذف المحدد"
+                loading={bulkDeleting}
+                onClose={() => setBulkDeleteRequested(false)}
+                onConfirm={handleBulkDelete}
+            />
+        </div>
+    );
+}
+
+function ConfirmActionModal({
+    open,
+    title,
+    description,
+    confirmLabel,
+    loading,
+    onClose,
+    onConfirm,
+}: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel: string;
+    loading: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_60%,transparent)] p-4 backdrop-blur-sm"
+            onClick={loading ? undefined : onClose}
+        >
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                onClick={(event) => event.stopPropagation()}
+                className="theme-surface-panel w-full max-w-md rounded-2xl p-6 shadow-2xl"
+            >
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-theme-faint">Confirmation</p>
+                        <h3 className="mt-2 text-lg font-bold text-theme">{title}</h3>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        disabled={loading}
+                        className="rounded-lg p-2 text-theme-subtle transition-colors hover:bg-theme-subtle disabled:opacity-40"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <p className="mt-4 text-sm leading-relaxed text-theme-subtle">{description}</p>
+
+                <div className="mt-6 flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={loading}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        {confirmLabel}
+                    </button>
+                </div>
+            </motion.div>
         </div>
     );
 }

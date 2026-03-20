@@ -173,11 +173,11 @@ function MetricCard({
     const GrowthIcon = growthTone?.icon;
 
     return (
-        <div className={`${subtlePanelClass} p-5`}>
+        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                    <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl border"
@@ -226,7 +226,7 @@ function FinanceQueueCard({
               : "border-emerald-500/20 bg-emerald-500/[0.04]";
 
     return (
-        <section className={`${subtlePanelClass} p-5`}>
+        <section className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <h3 className="text-lg font-bold text-theme">{title}</h3>
@@ -234,7 +234,7 @@ function FinanceQueueCard({
                 </div>
                 <Link
                     href="/dashboard/orders"
-                    className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
+                    className="inline-flex min-h-[38px] items-center rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
                 >
                     فتح الطلبات
                 </Link>
@@ -296,7 +296,7 @@ function MixBars({
     const max = Math.max(...items.map((item) => item.count), 1);
 
     return (
-        <div className={`${subtlePanelClass} p-5`}>
+        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5">
                 <h3 className="text-lg font-bold text-theme">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-theme-subtle">{subtitle}</p>
@@ -310,7 +310,7 @@ function MixBars({
                                 <span className="text-theme">{item.label}</span>
                                 <span className="font-bold text-theme-soft">{item.count}</span>
                             </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-white/8">
+                            <div className="h-2 overflow-hidden rounded-full bg-theme-faint">
                                 <div
                                     className="h-full rounded-full"
                                     style={{
@@ -417,7 +417,7 @@ export function AnalyticsClient({
 
     return (
         <div className="space-y-6">
-            <section className={`${panelClass} p-6 md:p-7`}>
+            <section className={`${panelClass} p-5 sm:p-6 md:p-7`}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(206,174,127,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_30%)]" />
                 <div className="relative space-y-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -426,7 +426,7 @@ export function AnalyticsClient({
                                 <Wallet className="h-3.5 w-3.5" />
                                 غرفة التحصيل والإيراد
                             </span>
-                            <h2 className="mt-4 text-2xl font-black text-theme md:text-3xl">
+                            <h2 className="mt-4 text-2xl font-black text-theme sm:text-3xl">
                                 صورة مالية يومية تُظهر أين يدخل الإيراد وأين يتعثر.
                             </h2>
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
@@ -438,7 +438,7 @@ export function AnalyticsClient({
                         <div className="flex flex-wrap gap-2 xl:justify-end">
                             <button
                                 onClick={exportCSV}
-                                className="inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-soft transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
+                                className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-soft transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
                             >
                                 <Download className="h-4 w-4" />
                                 تصدير التقرير
@@ -448,7 +448,7 @@ export function AnalyticsClient({
                                     key={option.id}
                                     onClick={() => handlePeriodChange(option.id)}
                                     disabled={loading}
-                                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                                    className={`min-h-[42px] rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                                         period === option.id
                                             ? "border-gold/40 bg-gold/15 text-gold"
                                             : "border-theme-subtle bg-theme-faint text-theme-soft hover:border-gold/20 hover:bg-theme-subtle hover:text-gold"
@@ -461,25 +461,25 @@ export function AnalyticsClient({
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-3">
-                        <div className={`${subtlePanelClass} p-5`}>
+                        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">إيراد اليوم</p>
-                            <p className="mt-3 text-3xl font-black text-theme">{formatCurrency(data.finance.todayRevenue)}</p>
+                            <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{formatCurrency(data.finance.todayRevenue)}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 {data.finance.todayOrders} طلبًا دخل إلى خط الإيراد منذ بداية اليوم.
                             </p>
                         </div>
 
-                        <div className={`${subtlePanelClass} p-5`}>
+                        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">معدل التحصيل</p>
-                            <p className="mt-3 text-3xl font-black text-theme">{formatPercent(data.finance.collectionRate)}</p>
+                            <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{formatPercent(data.finance.collectionRate)}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 نسبة الطلبات المدفوعة فعليًا من إجمالي الطلبات خلال الفترة.
                             </p>
                         </div>
 
-                        <div className={`${subtlePanelClass} p-5`}>
+                        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">حجم المتابعة</p>
-                            <p className="mt-3 text-3xl font-black text-theme">{data.finance.activeRevenueQueue}</p>
+                            <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{data.finance.activeRevenueQueue}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 طلبات تحتاج متابعة دفع مباشرة بين معلّق ومتعثّر.
                             </p>
@@ -536,7 +536,7 @@ export function AnalyticsClient({
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.35fr,0.95fr]">
-                <div className={`${panelClass} p-6`}>
+                <div className={`${panelClass} p-5 sm:p-6`}>
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-theme">مسار الإيراد اليومي</h3>
@@ -549,7 +549,8 @@ export function AnalyticsClient({
                             <p className="mt-1 text-theme-faint">إجمالي الإيراد</p>
                         </div>
                     </div>
-                    <div className="h-80">
+                    <div className="-mx-2 overflow-x-auto px-2">
+                        <div className="h-80 min-w-[640px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <ComposedChart data={revenueChartData}>
                                 <defs>
@@ -584,6 +585,7 @@ export function AnalyticsClient({
                                 <Bar dataKey="orders" name="طلبات مدفوعة" fill="rgba(206,174,127,0.32)" radius={[5, 5, 0, 0]} />
                             </ComposedChart>
                         </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
@@ -628,7 +630,7 @@ export function AnalyticsClient({
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
-                <div className={`${panelClass} p-6`}>
+                <div className={`${panelClass} p-5 sm:p-6`}>
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-theme">نبض النمو</h3>
@@ -641,7 +643,8 @@ export function AnalyticsClient({
                             <p className="mt-1 text-theme-faint">مستخدمون جدد</p>
                         </div>
                     </div>
-                    <div className="h-72">
+                    <div className="-mx-2 overflow-x-auto px-2">
+                        <div className="h-72 min-w-[560px]">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={usersChartData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -657,10 +660,11 @@ export function AnalyticsClient({
                                 <Bar dataKey="users" name="مستخدمون جدد" fill="#ceae7f" radius={[5, 5, 0, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
-                <div className={`${panelClass} p-6`}>
+                <div className={`${panelClass} p-5 sm:p-6`}>
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
                             <h3 className="text-lg font-bold text-theme">محركات الإيراد</h3>

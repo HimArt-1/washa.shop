@@ -4,7 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Trash2, Download, Mail, Loader2 } from "lucide-react";
 import { deleteSubscriber } from "@/app/actions/settings";
-import { useRouter } from "next/navigation";
 
 interface Subscriber {
     id: string;
@@ -16,8 +15,8 @@ interface Subscriber {
 export function NewsletterClient({ subscribers: initial }: { subscribers: Subscriber[] }) {
     const [subscribers, setSubscribers] = useState(initial);
     const [deleting, setDeleting] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [toast, setToast] = useState<string | null>(null);
-    const router = useRouter();
 
     const showToast = (msg: string) => {
         setToast(msg);
@@ -25,10 +24,10 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("حذف هذا المشترك؟")) return;
         setDeleting(id);
         const result = await deleteSubscriber(id);
         setDeleting(null);
+        setConfirmDeleteId(null);
         if (result.success) {
             setSubscribers((prev) => prev.filter((s) => s.id !== id));
             showToast("تم الحذف ✓");
@@ -113,7 +112,7 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
                                 </div>
                             </div>
                             <button
-                                onClick={() => handleDelete(sub.id)}
+                                onClick={() => setConfirmDeleteId(sub.id)}
                                 disabled={deleting === sub.id}
                                 className="p-2 text-theme-faint hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50 shrink-0"
                             >
@@ -127,6 +126,46 @@ export function NewsletterClient({ subscribers: initial }: { subscribers: Subscr
                     ))
                 )}
             </div>
+
+            {confirmDeleteId && (
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
+                >
+                    <motion.div
+                        initial={{ scale: 0.95, y: 16 }}
+                        animate={{ scale: 1, y: 0 }}
+                        className="theme-surface-panel w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+                    >
+                        <p className="text-xs uppercase tracking-[0.24em] text-theme-faint">Delete Subscriber</p>
+                        <h3 className="mt-2 text-lg font-bold text-theme">حذف المشترك</h3>
+                        <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
+                            سيتم حذف هذا المشترك من قائمة النشرة البريدية.
+                        </p>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setConfirmDeleteId(null)}
+                                disabled={!!deleting}
+                                className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(confirmDeleteId)}
+                                disabled={!!deleting}
+                                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                            >
+                                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                حذف المشترك
+                            </button>
+                        </div>
+                    </motion.div>
+                </motion.div>
+            )}
         </div>
     );
 }

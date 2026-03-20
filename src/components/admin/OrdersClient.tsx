@@ -117,12 +117,12 @@ function SummaryCard({
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} p-5`}
+            className={`${subtlePanelClass} p-4 sm:p-5`}
         >
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                    <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl border"
@@ -159,14 +159,14 @@ function QueueLane({
         <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} h-full p-5`}
+            className={`${subtlePanelClass} h-full p-4 sm:p-5`}
         >
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <h3 className="text-lg font-bold text-theme">{title}</h3>
                     <p className="mt-2 text-sm leading-6 text-theme-subtle">{subtitle}</p>
                 </div>
-                <button onClick={onOpen} className="text-sm font-medium text-gold hover:text-gold-light">
+                <button onClick={onOpen} className="inline-flex min-h-[38px] items-center text-sm font-medium text-gold hover:text-gold-light">
                     {hrefLabel}
                 </button>
             </div>
@@ -217,6 +217,7 @@ export function OrdersClient({
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
     const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
     const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const navigate = (params: Record<string, string>) => {
         const sp = new URLSearchParams();
@@ -229,17 +230,18 @@ export function OrdersClient({
 
     const handleStatusChange = async (orderId: string, newStatus: string) => {
         setUpdatingOrder(orderId);
+        setErrorMessage(null);
         try {
             const result = await updateOrderStatus(orderId, newStatus);
             if (!result?.success) {
-                alert(result?.error || "تعذر تحديث حالة الطلب.");
+                setErrorMessage(result?.error || "تعذر تحديث حالة الطلب.");
                 return;
             }
 
             router.refresh();
         } catch (error) {
             console.error("Order status update failed", error);
-            alert("تعذر تحديث حالة الطلب الآن. حاول مرة أخرى.");
+            setErrorMessage("تعذر تحديث حالة الطلب الآن. حاول مرة أخرى.");
         } finally {
             setUpdatingOrder(null);
         }
@@ -257,12 +259,17 @@ export function OrdersClient({
     return (
         <div className="space-y-6">
             <InvoiceBuilder order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
+            {errorMessage ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {errorMessage}
+                </div>
+            ) : null}
 
             <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
+                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_30%)]" />
                     <div className="relative space-y-6">
@@ -276,7 +283,7 @@ export function OrdersClient({
                         </div>
 
                         <div className="max-w-3xl">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
+                            <h2 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
                                 صفحة الطلبات يجب أن تعمل كغرفة تشغيل، لا كجدول فقط.
                             </h2>
                             <p className="mt-4 text-sm leading-8 text-theme-subtle md:text-base">
@@ -342,7 +349,7 @@ export function OrdersClient({
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 }}
-                    className={`${panelClass} p-6`}
+                    className={`${panelClass} p-5 sm:p-6`}
                 >
                     <div className="space-y-4">
                         <div className="flex items-start justify-between gap-4">

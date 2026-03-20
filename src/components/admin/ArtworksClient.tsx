@@ -73,6 +73,8 @@ export function ArtworksClient({
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingArtwork, setEditingArtwork] = useState<any | null>(null);
     const [toast, setToast] = useState<string | null>(null);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [pendingDeleteArtwork, setPendingDeleteArtwork] = useState<any | null>(null);
 
     const showToast = (msg: string) => {
         setToast(msg);
@@ -90,21 +92,37 @@ export function ArtworksClient({
 
     const handleStatusChange = async (id: string, status: "published" | "rejected" | "archived") => {
         setUpdatingId(id);
-        await updateArtworkStatus(id, status);
-        setUpdatingId(null);
-        router.refresh();
+        setErrorMessage(null);
+        try {
+            const result = await updateArtworkStatus(id, status);
+            if (result?.success === false) {
+                setErrorMessage(result.error || "تعذر تحديث حالة العمل الفني.");
+                return;
+            }
+            router.refresh();
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : "تعذر تحديث حالة العمل الفني.");
+        } finally {
+            setUpdatingId(null);
+        }
     };
 
     const handleDelete = async (artwork: any) => {
-        if (!confirm(`هل أنت متأكد من حذف العمل الفني "${artwork.title}"؟\n\nسيتم حذفه نهائياً مع الصورة.`)) return;
+        setErrorMessage(null);
         setUpdatingId(artwork.id);
-        const result = await deleteArtworkAdmin(artwork.id, artwork.image_url);
-        setUpdatingId(null);
-        if (result.success) {
-            showToast("تم حذف العمل الفني ✓");
-            router.refresh();
-        } else {
-            showToast(result.error || "فشل الحذف");
+        try {
+            const result = await deleteArtworkAdmin(artwork.id, artwork.image_url);
+            if (result.success) {
+                showToast("تم حذف العمل الفني ✓");
+                setPendingDeleteArtwork(null);
+                router.refresh();
+            } else {
+                setErrorMessage(result.error || "فشل حذف العمل الفني.");
+            }
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : "فشل حذف العمل الفني.");
+        } finally {
+            setUpdatingId(null);
         }
     };
 
@@ -117,6 +135,11 @@ export function ArtworksClient({
 
     return (
         <div className="space-y-6">
+            {errorMessage ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {errorMessage}
+                </div>
+            ) : null}
             {/* Toast */}
             <AnimatePresence>
                 {toast && (
@@ -132,13 +155,13 @@ export function ArtworksClient({
             </AnimatePresence>
 
             {/* Header: Tabs + Add Button */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="theme-surface-panel flex gap-1 overflow-x-auto rounded-xl p-1">
                     {statuses.map((s) => (
                         <button
                             key={s.value}
                             onClick={() => navigate({ status: s.value, page: "1" })}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                            className={`min-h-[40px] px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
                                 currentStatus === s.value
                                     ? "bg-gold/10 text-gold"
                                     : "text-theme-subtle hover:text-theme-soft hover:bg-theme-faint"
@@ -150,7 +173,7 @@ export function ArtworksClient({
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gold px-4 py-2.5 text-sm font-bold text-[var(--wusha-bg)] transition-colors hover:bg-gold/90"
+                    className="shrink-0 inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-gold px-4 py-2.5 text-sm font-bold text-[var(--wusha-bg)] transition-colors hover:bg-gold/90"
                 >
                     <Plus className="w-4 h-4" />
                     إضافة عمل فني
@@ -277,7 +300,7 @@ export function ArtworksClient({
                                     </button>
                                 )}
                                 <button
-                                    onClick={() => handleDelete(artwork)}
+                                    onClick={() => setPendingDeleteArtwork(artwork)}
                                     disabled={updatingId === artwork.id}
                                     className="p-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all disabled:opacity-50"
                                     title="حذف"
@@ -312,7 +335,7 @@ export function ArtworksClient({
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-theme-faint">{count} عمل فني</p>
                     <div className="flex items-center gap-2">
                         <button
@@ -352,6 +375,56 @@ export function ArtworksClient({
                 categories={categories}
                 artwork={editingArtwork}
             />
+
+            <AnimatePresence>
+                {pendingDeleteArtwork ? (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    >
+                        <div
+                            className="absolute inset-0 bg-[color-mix(in_srgb,var(--wusha-bg)_60%,transparent)] backdrop-blur-sm"
+                            onClick={() => setPendingDeleteArtwork(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                            className="theme-surface-panel relative z-10 w-full max-w-md rounded-2xl p-5 sm:p-6"
+                        >
+                            <h3 className="text-lg font-bold text-theme">تأكيد حذف العمل الفني</h3>
+                            <p className="mt-3 text-sm leading-7 text-theme-subtle">
+                                سيتم حذف العمل الفني
+                                <span className="mx-1 font-bold text-theme">{pendingDeleteArtwork.title}</span>
+                                نهائيًا مع الصورة المرتبطة به.
+                            </p>
+                            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    onClick={() => handleDelete(pendingDeleteArtwork)}
+                                    disabled={updatingId === pendingDeleteArtwork.id}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 disabled:opacity-50"
+                                >
+                                    {updatingId === pendingDeleteArtwork.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="w-4 h-4" />
+                                    )}
+                                    تأكيد الحذف
+                                </button>
+                                <button
+                                    onClick={() => setPendingDeleteArtwork(null)}
+                                    disabled={updatingId === pendingDeleteArtwork.id}
+                                    className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm font-medium text-theme-subtle"
+                                >
+                                    إلغاء
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                ) : null}
+            </AnimatePresence>
         </div>
     );
 }

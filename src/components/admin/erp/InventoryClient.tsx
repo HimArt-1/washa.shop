@@ -41,6 +41,7 @@ export default function InventoryClient({
 }: Props) {
     const router = useRouter();
     const [inventory] = useState(initialInventory);
+    const [feedback, setFeedback] = useState<{ tone: "error" | "success"; message: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [stockFilter, setStockFilter] = useState<StockFilter>("all");
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -128,26 +129,50 @@ export default function InventoryClient({
         const delta = editNewQty - item.quantity;
         if (delta === 0) { setEditingId(null); return; }
         setEditSaving(true);
-        const res = await quickAdjustInventory(item.sku_id, item.warehouse_id, delta);
-        setEditSaving(false);
-        if (res.error) alert(res.error);
-        setEditingId(null);
-        router.refresh();
+        setFeedback(null);
+        try {
+            const res = await quickAdjustInventory(item.sku_id, item.warehouse_id, delta);
+            if (res.error) {
+                setFeedback({ tone: "error", message: res.error });
+                return;
+            }
+            setFeedback({ tone: "success", message: "تم تحديث الكمية بنجاح." });
+            setEditingId(null);
+            router.refresh();
+        } catch (error) {
+            setFeedback({ tone: "error", message: error instanceof Error ? error.message : "تعذر تحديث الكمية الآن." });
+        } finally {
+            setEditSaving(false);
+        }
     };
 
     // ─── Full Adjust Modal ───────────────────────────────
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (quantityToAdd === 0) return alert("الكمية يجب ألا تكون صفراً");
+        if (quantityToAdd === 0) {
+            setFeedback({ tone: "error", message: "الكمية يجب ألا تكون صفراً." });
+            return;
+        }
         setIsSaving(true);
-        const { error } = await adjustInventory(
-            selectedSkuId, selectedWarehouseId, quantityToAdd,
-            quantityToAdd > 0 ? 'addition' : 'adjustment', notes
-        );
-        if (error) alert(error);
-        else { setIsAdjusting(false); router.refresh(); }
-        setIsSaving(false);
+        setFeedback(null);
+        try {
+            const { error } = await adjustInventory(
+                selectedSkuId, selectedWarehouseId, quantityToAdd,
+                quantityToAdd > 0 ? 'addition' : 'adjustment', notes
+            );
+            if (error) {
+                setFeedback({ tone: "error", message: error });
+                return;
+            }
+            setFeedback({ tone: "success", message: "تم تنفيذ الجرد بنجاح." });
+            setIsAdjusting(false);
+            router.refresh();
+        } catch (error) {
+            setFeedback({ tone: "error", message: error instanceof Error ? error.message : "تعذر تنفيذ الجرد الآن." });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // ─── Stock Status Helpers ────────────────────────────
@@ -174,6 +199,14 @@ export default function InventoryClient({
 
     return (
         <div className="space-y-6">
+            {feedback && (
+                <div className={`rounded-2xl border px-4 py-3 text-sm ${feedback.tone === "success"
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                    : "border-red-500/20 bg-red-500/10 text-red-200"
+                    }`}>
+                    {feedback.message}
+                </div>
+            )}
 
             {/* ══ Stats Cards ══ */}
             {stats && !hideStatsSummary && (

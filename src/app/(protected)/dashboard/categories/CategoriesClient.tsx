@@ -21,6 +21,7 @@ interface Category {
 export function CategoriesClient({ categories: initial }: { categories: Category[] }) {
     const [categories, setCategories] = useState(initial);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [showAdd, setShowAdd] = useState(false);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
@@ -72,7 +73,6 @@ export function CategoriesClient({ categories: initial }: { categories: Category
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذه الفئة؟")) return;
         const result = await deleteCategory(id);
         if (result.success) {
             setCategories((prev) => prev.filter((c) => c.id !== id));
@@ -80,6 +80,7 @@ export function CategoriesClient({ categories: initial }: { categories: Category
         } else {
             showToast("خطأ: " + result.error);
         }
+        setConfirmDeleteId(null);
     };
 
     const startEdit = (cat: Category) => {
@@ -221,7 +222,7 @@ export function CategoriesClient({ categories: initial }: { categories: Category
                                         <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(cat.id)}
+                                        onClick={() => setConfirmDeleteId(cat.id)}
                                         className="p-2 text-theme-faint hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                     >
                                         <Trash2 className="w-3.5 h-3.5" />
@@ -235,6 +236,47 @@ export function CategoriesClient({ categories: initial }: { categories: Category
                     ))
                 )}
             </div>
+
+            <AnimatePresence>
+                {confirmDeleteId && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 16 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 16 }}
+                            className="theme-surface-panel w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+                        >
+                            <p className="text-xs uppercase tracking-[0.24em] text-theme-faint">Delete Category</p>
+                            <h3 className="mt-2 text-lg font-bold text-theme">حذف الفئة</h3>
+                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
+                                سيتم حذف هذه الفئة من النظام الحالي.
+                            </p>
+                            <div className="mt-6 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteId(null)}
+                                    className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDelete(confirmDeleteId)}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    حذف الفئة
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -63,7 +63,7 @@ export function StoreFilters({
                         <button
                             key={t.value}
                             onClick={() => router.push(`/store?${buildParams({ type: t.value })}`)}
-                            className={`shrink-0 rounded-2xl border px-4 py-2.5 text-xs font-medium transition-all ${
+                            className={`min-h-[42px] shrink-0 rounded-2xl border px-4 py-2.5 text-xs font-medium transition-all ${
                                 currentType === t.value
                                     ? "border-gold/30 bg-gold/10 text-gold"
                                     : "border-transparent text-theme-faint hover:bg-theme-subtle"
@@ -94,7 +94,7 @@ export function StoreFilters({
 
                 {/* In-Stock Toggle */}
                 <label className="flex items-center justify-between gap-3 rounded-2xl border border-theme-soft bg-theme-faint px-4 py-3 sm:min-w-[220px]">
-                    <span className="text-sm font-medium text-theme-subtle transition-colors group-hover:text-theme">
+                    <span className="text-sm font-medium text-theme-subtle transition-colors">
                         المتوفر فقط
                     </span>
                     <div className="relative">

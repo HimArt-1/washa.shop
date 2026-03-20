@@ -86,7 +86,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1">
                 {TABS.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
@@ -94,7 +94,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "theme-surface-panel text-gold border-gold/30" : "bg-theme-faint text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"}`}
+                            className={`flex min-h-[42px] shrink-0 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "theme-surface-panel text-gold border-gold/30" : "bg-theme-faint text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"}`}
                         >
                             <Icon className="w-4 h-4" />
                             {tab.label}
@@ -124,10 +124,10 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
 function SectionCard({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd: () => void }) {
     return (
-        <div className="theme-surface-panel rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
+        <div className="theme-surface-panel rounded-2xl p-5 sm:p-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold text-theme">{title}</h2>
-                <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
+                <button onClick={onAdd} className="inline-flex min-h-[42px] items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
                     <Plus className="w-4 h-4" /> إضافة
                 </button>
             </div>
@@ -157,9 +157,9 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
             <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="theme-surface-panel relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-6 shadow-2xl"
+                className="theme-surface-panel relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl p-5 shadow-2xl sm:p-6"
             >
-                <div className="flex items-center justify-between mb-6">
+                <div className="mb-6 flex items-center justify-between">
                     <h3 className="text-lg font-bold text-theme">{title}</h3>
                     <button onClick={onClose} className="p-2 hover:bg-theme-subtle rounded-lg transition-colors">
                         <X className="w-5 h-5 text-theme-subtle" />
@@ -191,6 +191,51 @@ function getActionError(result: any) {
     return null;
 }
 
+function ConfirmDialog({
+    open,
+    title,
+    description,
+    confirmLabel = "حذف",
+    loading = false,
+    onClose,
+    onConfirm,
+}: {
+    open: boolean;
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    loading?: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+}) {
+    return (
+        <Modal open={open} onClose={loading ? () => undefined : onClose} title={title}>
+            <div className="space-y-4">
+                <p className="text-sm leading-relaxed text-theme-subtle">{description}</p>
+                <div className="flex gap-3 pt-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className={btnSecondary + " flex-1 disabled:cursor-not-allowed disabled:opacity-40"}
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={loading}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        {confirmLabel}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
 // ─── Image Uploader ─────────────────────────────────────
 
 function ImageUploader({ value, onChange, folder, label }: {
@@ -201,6 +246,7 @@ function ImageUploader({ value, onChange, folder, label }: {
 }) {
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState(value);
+    const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,6 +256,7 @@ function ImageUploader({ value, onChange, folder, label }: {
         const localUrl = URL.createObjectURL(file);
         setPreview(localUrl);
         setUploading(true);
+        setError(null);
 
         try {
             const formData = new FormData();
@@ -221,12 +268,12 @@ function ImageUploader({ value, onChange, folder, label }: {
                 onChange(result.url);
             } else {
                 setPreview(value);
-                alert(result.error || "فشل رفع الصورة");
+                setError(result.error || "فشل رفع الصورة");
             }
         } catch (error) {
             console.error("Smart-store image upload failed", error);
             setPreview(value);
-            alert("تعذر رفع الصورة الآن. حاول مرة أخرى.");
+            setError("تعذر رفع الصورة الآن. حاول مرة أخرى.");
         } finally {
             URL.revokeObjectURL(localUrl);
             setUploading(false);
@@ -266,11 +313,16 @@ function ImageUploader({ value, onChange, folder, label }: {
                 </div>
             )}
             {/* Upload button */}
-            <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-theme-subtle border border-dashed border-theme-soft hover:border-gold/30 cursor-pointer transition-colors text-sm text-theme-subtle hover:text-theme-soft w-fit">
+            <label className="flex min-h-[42px] w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-theme-soft bg-theme-subtle px-4 py-2.5 text-sm text-theme-subtle transition-colors hover:border-gold/30 hover:text-theme-soft">
                 <Upload className="w-4 h-4" />
                 {uploading ? "جاري الرفع..." : (preview || value) ? "تغيير الصورة" : "رفع صورة من الجهاز"}
                 <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" disabled={uploading} />
             </label>
+            {error ? (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                    {error}
+                </div>
+            ) : null}
             {/* Hidden input for form */}
             <input type="hidden" name={label === "صورة أمام" ? "image_front_url" : label === "صورة خلف" ? "image_back_url" : "image_url"} value={preview || value || ""} />
         </div>
@@ -285,8 +337,10 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
     const [editing, setEditing] = useState<CustomDesignGarment | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
     const openEdit = (g: CustomDesignGarment) => { setEditing(g); setImageUrl(g.image_url ?? ""); setError(null); };
@@ -315,8 +369,10 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
         }
     }, [editing, onRefresh, imageUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذه القطعة؟ سيتم حذف جميع الألوان والمقاسات المرتبطة.")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteGarment(id);
@@ -328,8 +384,11 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف القطعة الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -409,13 +468,22 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
                             </span>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => openEdit(g)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
-                                <button onClick={() => handleDelete(g.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                <button onClick={() => setPendingDeleteId(g.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل القطعة" : "إضافة قطعة جديدة"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف القطعة"
+                description="سيتم حذف هذه القطعة مع جميع الألوان والمقاسات المرتبطة بها."
+                confirmLabel="حذف القطعة"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -428,9 +496,11 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
     const [editing, setEditing] = useState<CustomDesignColor | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [filterGarment, setFilterGarment] = useState<string>("all");
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(c => c.garment_id === filterGarment);
     const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
@@ -460,8 +530,10 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
         }
     }, [editing, onRefresh, imageUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذا اللون؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteColor(id);
@@ -473,8 +545,11 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف اللون الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -535,7 +610,7 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(c)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(c.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
                         );
@@ -543,6 +618,15 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل اللون" : "إضافة لون جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف اللون"
+                description="سيتم حذف هذا اللون من المكتبة الحالية."
+                confirmLabel="حذف اللون"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -559,8 +643,10 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     const [editing, setEditing] = useState<T | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
     const openEdit = (item: T) => { setEditing(item); setImageUrl(item.image_url ?? ""); setError(null); };
@@ -589,8 +675,10 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
         }
     }, [editing, onRefresh, onUpsert, imageUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذا العنصر؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await onDelete(id);
@@ -602,8 +690,11 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف العنصر الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh, onDelete]);
+    }, [onRefresh, onDelete, pendingDeleteId]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -653,7 +744,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(item.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(item.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
                                 </div>
                             </div>
                         </div>
@@ -661,6 +752,15 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل العنصر" : "إضافة عنصر جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف العنصر"
+                description="سيتم حذف هذا العنصر من المكتبة الحالية."
+                confirmLabel="حذف العنصر"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -681,10 +781,12 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
     const [editing, setEditing] = useState<CustomDesignSize | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [filterGarment, setFilterGarment] = useState<string>("all");
     const [frontUrl, setFrontUrl] = useState("");
     const [backUrl, setBackUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(s => s.garment_id === filterGarment);
     const openAdd = () => { setIsAdding(true); setFrontUrl(""); setBackUrl(""); setError(null); };
@@ -715,8 +817,10 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
         }
     }, [editing, onRefresh, frontUrl, backUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذا المقاس؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteSize(id);
@@ -728,8 +832,11 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف المقاس الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -793,7 +900,7 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(s)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(s.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(s.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
                         );
@@ -801,6 +908,15 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل المقاس" : "إضافة مقاس جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف المقاس"
+                description="سيتم حذف هذا المقاس من القطعة الحالية."
+                confirmLabel="حذف المقاس"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -813,9 +929,11 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
     const [editing, setEditing] = useState<CustomDesignColorPackage | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [packageColors, setPackageColors] = useState<{ hex: string; name: string }[]>([]);
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -844,8 +962,10 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
         }
     }, [editing, onRefresh, packageColors, imageUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذه الباقة؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteColorPackage(id);
@@ -857,8 +977,11 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف الباقة الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const openEdit = (item: CustomDesignColorPackage) => {
         setEditing(item);
@@ -933,7 +1056,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(pkg)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(pkg.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(pkg.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
                                 </div>
                             </div>
                         </div>
@@ -941,6 +1064,15 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل الباقة" : "إضافة باقة جديدة"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف باقة الألوان"
+                description="سيتم حذف باقة الألوان الحالية من المكتبة."
+                confirmLabel="حذف الباقة"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -953,10 +1085,12 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
     const [editing, setEditing] = useState<CustomDesignStudioItem | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [mainImage, setMainImage] = useState("");
     const [mockupImage, setMockupImage] = useState("");
     const [modelImage, setModelImage] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const openAdd = () => { setIsAdding(true); setMainImage(""); setMockupImage(""); setModelImage(""); setError(null); };
     const openEdit = (s: CustomDesignStudioItem) => {
@@ -994,8 +1128,10 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
         }
     }, [editing, onRefresh, mainImage, mockupImage, modelImage]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذا التصميم من ستيديو وشّى؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteStudioItem(id);
@@ -1007,8 +1143,11 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف تصميم الاستوديو الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -1080,7 +1219,7 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(item)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
                         </div>
@@ -1088,6 +1227,15 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل تصميم الاستوديو" : "إضافة تصميم استوديو جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف تصميم الاستوديو"
+                description="سيتم حذف هذا التصميم من مكتبة ستيديو وشّى."
+                confirmLabel="حذف التصميم"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }
@@ -1105,11 +1253,13 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
     const [editing, setEditing] = useState<GarmentStudioMockup | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const [filterGarment, setFilterGarment] = useState<string>("all");
     const [frontUrl, setFrontUrl] = useState("");
     const [backUrl, setBackUrl] = useState("");
     const [modelUrl, setModelUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
     const filtered = filterGarment === "all" ? items : items.filter(m => m.garment_id === filterGarment);
 
@@ -1149,8 +1299,10 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
         }
     }, [editing, onRefresh, frontUrl, backUrl, modelUrl]);
 
-    const handleDelete = useCallback(async (id: string) => {
-        if (!confirm("حذف هذا الموكب؟")) return;
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
         setError(null);
         try {
             const result = await deleteGarmentStudioMockup(id);
@@ -1162,8 +1314,11 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
             onRefresh();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف الموكب الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
         }
-    }, [onRefresh]);
+    }, [onRefresh, pendingDeleteId]);
 
     const getGarmentName = (id: string) => garments.find(g => g.id === id)?.name ?? "—";
     const getStudioName = (id: string) => studioItems.find(s => s.id === id)?.name ?? "—";
@@ -1290,7 +1445,7 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
                             <div className="flex items-center justify-end">
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(m)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
-                                    <button onClick={() => handleDelete(m.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                    <button onClick={() => setPendingDeleteId(m.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>
                             </div>
                         </div>
@@ -1298,6 +1453,15 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
                 </div>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل الموكب" : "إضافة موكب جاهز جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف الموكب"
+                description="سيتم حذف هذا الموكب الجاهز من الربط الحالي."
+                confirmLabel="حذف الموكب"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
         </SectionCard>
     );
 }

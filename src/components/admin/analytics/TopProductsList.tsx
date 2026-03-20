@@ -37,11 +37,11 @@ export default function TopProductsList({ products }: TopProductsListProps) {
 
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
                 {products.map((product, index) => (
-                    <div 
+                    <div
                         key={product.id}
-                        className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-gold/30 hover:bg-theme-subtle"
+                        className="group flex flex-col gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-gold/30 hover:bg-theme-subtle sm:flex-row sm:items-center sm:justify-between"
                     >
-                        <div className="flex items-center gap-4">
+                        <div className="flex min-w-0 items-center gap-4">
                             <span className="text-2xl font-black text-theme-faint group-hover:text-gold/50 transition-colors w-6">
                                 {index + 1}
                             </span>
@@ -59,12 +59,12 @@ export default function TopProductsList({ products }: TopProductsListProps) {
                                     </div>
                                 )}
                             </div>
-                            <div>
-                                <h4 className="text-theme font-medium text-sm line-clamp-1">{product.title}</h4>
+                            <div className="min-w-0">
+                                <h4 className="text-theme font-medium text-sm line-clamp-2 sm:line-clamp-1">{product.title}</h4>
                                 <p className="text-theme-subtle text-xs mt-1">{product.total_sold} وحدة مباعة</p>
                             </div>
                         </div>
-                        <div className="text-left">
+                        <div className="self-end text-right sm:self-auto sm:text-left">
                             <span className="block text-gold font-bold text-sm">
                                 {new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(product.revenue)}
                             </span>

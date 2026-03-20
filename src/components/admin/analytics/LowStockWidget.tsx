@@ -32,7 +32,7 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
             {/* Subtle Warning Glow */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 blur-[100px] rounded-full pointer-events-none" />
 
-            <div className="relative z-10 flex items-center justify-between mb-6">
+            <div className="relative z-10 mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
                         <AlertTriangle className="w-5 h-5 text-red-400" />
@@ -43,7 +43,7 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
                     </div>
                 </div>
                 
-                <span className="bg-red-500/20 text-red-400 text-xs font-bold px-3 py-1 rounded-full border border-red-500/30">
+                <span className="w-fit bg-red-500/20 text-red-400 text-xs font-bold px-3 py-1 rounded-full border border-red-500/30">
                     {items.length} تنبيهات
                 </span>
             </div>
@@ -53,9 +53,9 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
                     const isCritical = item.quantity <= 2;
                     
                     return (
-                        <div 
+                        <div
                             key={item.id}
-                            className={`flex items-start gap-4 p-4 rounded-2xl border transition-colors ${
+                            className={`flex flex-col gap-3 rounded-2xl border p-4 transition-colors sm:flex-row sm:items-start sm:gap-4 ${
                                 isCritical 
                                 ? "bg-red-500/5 border-red-500/20 hover:border-red-500/50" 
                                 : "bg-theme-faint border-theme-subtle hover:border-gold/30 hover:bg-theme-subtle"
@@ -88,7 +88,7 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
                                 </div>
                             </div>
 
-                            <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex flex-row-reverse items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-start shrink-0">
                                 <span className={`font-bold text-lg ${isCritical ? 'text-red-400' : 'text-gold'}`}>
                                     {item.quantity}
                                 </span>

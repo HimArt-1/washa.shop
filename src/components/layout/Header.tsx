@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, User } from "lucide-react";
+import { Menu, X, Search, User, Home, ArrowUpLeft } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
@@ -19,6 +20,7 @@ const navItems = [
 ];
 
 export function Header({ visibility }: { visibility?: { gallery?: boolean; store?: boolean; design_piece?: boolean; hero_auth_buttons?: boolean; join_artist?: boolean; signup?: boolean; join?: boolean; ai_section?: boolean; } }) {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,6 +40,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
     
     return true;
   });
+
+  const isNavItemActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -71,6 +76,10 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
       document.body.style.overflow = "";
     };
   }, [isMobileMenuOpen]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const headerBg =
     isScrolled || isMobileMenuOpen
@@ -130,8 +139,19 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               {filteredNavItems.map((item, index) => (
                 <Link key={item.href} href={item.href} className="group">
                   <motion.span
-                    className="relative inline-block transition-colors duration-300 text-sm font-medium py-2 group-hover:text-[var(--wusha-gold)]"
-                    style={{ color: "color-mix(in srgb, var(--wusha-text) 70%, transparent)" }}
+                    className={`relative inline-block rounded-full px-3 py-2 text-sm font-medium transition-colors duration-300 ${
+                      isNavItemActive(item.href)
+                        ? "text-[var(--wusha-gold)]"
+                        : "group-hover:text-[var(--wusha-gold)]"
+                    }`}
+                    style={{
+                      color: isNavItemActive(item.href)
+                        ? "var(--wusha-gold)"
+                        : "color-mix(in srgb, var(--wusha-text) 70%, transparent)",
+                      backgroundColor: isNavItemActive(item.href)
+                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
+                        : "transparent",
+                    }}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.08 + 0.2 }}
@@ -304,14 +324,14 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
 
             {/* Menu Content — تحت الهيدر */}
             <motion.div
-              className="relative flex min-h-full items-center justify-center px-6 pt-20 pb-12"
+              className="relative flex min-h-full items-start justify-center overflow-y-auto px-4 pt-20 pb-10 sm:px-6"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
               <div
-                className="w-full max-w-sm rounded-[2rem] border px-6 py-7 shadow-2xl"
+                className="w-full max-w-sm rounded-[2rem] border px-5 py-6 shadow-2xl sm:px-6 sm:py-7"
                 style={{
                   background:
                     "linear-gradient(180deg, color-mix(in srgb, var(--wusha-surface) 96%, transparent), color-mix(in srgb, var(--wusha-surface-2) 82%, transparent))",
@@ -332,6 +352,96 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                   </p>
                 </div>
 
+                <div className="mb-5 grid grid-cols-2 gap-2.5">
+                  <Link
+                    href="/"
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold transition-all duration-300 ${
+                      pathname === "/" ? "text-[var(--wusha-gold)]" : "text-theme"
+                    }`}
+                    style={{
+                      backgroundColor: pathname === "/"
+                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
+                        : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                      borderColor: pathname === "/"
+                        ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
+                        : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>الرئيسية</span>
+                    <Home className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/search"
+                    className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold transition-all duration-300 ${
+                      pathname === "/search" ? "text-[var(--wusha-gold)]" : "text-theme"
+                    }`}
+                    style={{
+                      backgroundColor: pathname === "/search"
+                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
+                        : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                      borderColor: pathname === "/search"
+                        ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
+                        : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span>البحث</span>
+                    <Search className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={() => {
+                      toggleCart(true);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
+                    style={{
+                      backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                      borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                    }}
+                  >
+                    <span>السلة</span>
+                    <div className="flex items-center gap-2">
+                      {hasMounted && getCartCount() > 0 && (
+                        <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-[var(--wusha-bg)]">
+                          {getCartCount() > 99 ? "99+" : getCartCount()}
+                        </span>
+                      )}
+                      <ShoppingBag className="h-4 w-4" />
+                    </div>
+                  </button>
+                  <SignedIn>
+                    <Link
+                      href="/account"
+                      className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
+                      style={{
+                        backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                        borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                      }}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <span>حسابي</span>
+                      <User className="h-4 w-4" />
+                    </Link>
+                  </SignedIn>
+                  <SignedOut>
+                    {visibility?.hero_auth_buttons !== false && (
+                      <Link
+                        href="/sign-in"
+                        className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
+                        style={{
+                          backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                          borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                        }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        <span>الدخول</span>
+                        <User className="h-4 w-4" />
+                      </Link>
+                    )}
+                  </SignedOut>
+                </div>
+
                 <div className="space-y-2">
                   {filteredNavItems.map((item, index) => (
                     <motion.div
@@ -342,16 +452,24 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     >
                       <Link
                         href={item.href}
-                        className="flex items-center justify-between rounded-2xl border px-4 py-4 text-lg font-bold transition-all duration-300 hover:-translate-y-0.5 hover:text-[var(--wusha-gold)]"
+                        className={`flex items-center justify-between rounded-2xl border px-4 py-4 text-lg font-bold transition-all duration-300 hover:-translate-y-0.5 ${
+                          isNavItemActive(item.href) ? "text-[var(--wusha-gold)]" : "hover:text-[var(--wusha-gold)]"
+                        }`}
                         style={{
-                          color: "color-mix(in srgb, var(--wusha-text) 88%, transparent)",
-                          backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                          borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                          color: isNavItemActive(item.href)
+                            ? "var(--wusha-gold)"
+                            : "color-mix(in srgb, var(--wusha-text) 88%, transparent)",
+                          backgroundColor: isNavItemActive(item.href)
+                            ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
+                            : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                          borderColor: isNavItemActive(item.href)
+                            ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
+                            : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
                         }}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
                         <span>{item.label}</span>
-                        <span className="text-sm text-theme-faint">↗</span>
+                        <ArrowUpLeft className="h-4 w-4 text-theme-faint" />
                       </Link>
                     </motion.div>
                   ))}

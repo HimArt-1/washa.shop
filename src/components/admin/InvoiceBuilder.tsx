@@ -19,6 +19,7 @@ interface InvoiceBuilderProps {
 export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
     const [config, setConfig] = useState<InvoiceConfig>(defaultInvoiceConfig);
     const [previewHtml, setPreviewHtml] = useState("");
+    const [feedback, setFeedback] = useState<{ tone: "success" | "error"; message: string } | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
 
     // Load saved settings on mount
@@ -43,12 +44,15 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
 
     const handleSaveConfig = () => {
         localStorage.setItem("wusha_invoice_config", JSON.stringify(config));
-        alert("تم حفظ إعدادات الفاتورة بنجاح");
+        setFeedback({ tone: "success", message: "تم حفظ إعدادات الفاتورة بنجاح." });
     };
 
     const handlePrint = () => {
         if (!order) return;
-        openInvoicePrint(order, config);
+        const opened = openInvoicePrint(order, config);
+        if (!opened) {
+            setFeedback({ tone: "error", message: "يرجى السماح بالنوافذ المنبثقة لفتح الفاتورة." });
+        }
     };
 
     const updateConfig = (key: keyof InvoiceConfig, value: any) => {
@@ -103,6 +107,14 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-5 space-y-8 pb-24 styled-scrollbar">
+                            {feedback && (
+                                <div className={`rounded-xl border px-4 py-3 text-sm ${feedback.tone === "success"
+                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                                    : "border-red-500/20 bg-red-500/10 text-red-200"
+                                    }`}>
+                                    {feedback.message}
+                                </div>
+                            )}
 
                             {/* Templates */}
                             <div className="space-y-3">

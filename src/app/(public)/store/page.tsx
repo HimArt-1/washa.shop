@@ -30,15 +30,32 @@ export default async function StorePage({
     const { data: products, count, totalPages } = await getProducts(page, type, inStockOnly, sort);
 
     return (
-        <div className="min-h-[60vh] pt-6 sm:pt-8 pb-12 sm:pb-16" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
+        <div className="min-h-[60vh] pb-12 pt-6 sm:pb-16 sm:pt-8" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Header ─── */}
-                <div className="text-center mb-12 theme-surface-panel rounded-[2rem] px-6 py-10 sm:px-10">
+                <div className="mb-10 theme-surface-panel rounded-[2rem] px-5 py-8 text-center sm:mb-12 sm:px-8 sm:py-10 lg:px-10">
+                    <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs">
+                        <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 font-semibold text-gold">
+                            {count || 0} منتج متاح الآن
+                        </span>
+                        <Link
+                            href="/search"
+                            className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                        >
+                            بحث سريع
+                        </Link>
+                        <Link
+                            href="/design"
+                            className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                        >
+                            صمّم قطعتك
+                        </Link>
+                    </div>
                     <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">STORE</p>
-                    <h1 className="text-4xl md:text-5xl font-black mb-3" style={{ color: "var(--wusha-text)" }}>
+                    <h1 className="mb-3 text-3xl font-black sm:text-4xl md:text-5xl" style={{ color: "var(--wusha-text)" }}>
                         المتجر
                     </h1>
-                    <p className="text-sm text-theme-subtle max-w-2xl mx-auto">
+                    <p className="mx-auto max-w-2xl text-sm leading-7 text-theme-subtle sm:text-[15px]">
                         اكتشف قطع وشّى الفنية بتجربة قراءة أوضح في الفاتح والداكن. لدينا الآن {count || 0} منتجًا فنيًا فريدًا.
                     </p>
                 </div>
@@ -49,7 +66,7 @@ export default async function StorePage({
                 {/* ─── Grid ─── */}
                 {products && products.length > 0 ? (
                     <>
-                        <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
                             {products.map((product: any) => (
                                 <ProductCard key={product.id} product={product} />
                             ))}
@@ -57,7 +74,7 @@ export default async function StorePage({
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="mt-12 flex flex-wrap items-center justify-center gap-2">
+                            <div className="mt-10 flex flex-wrap items-center justify-center gap-2.5 sm:mt-12">
                                 {[...Array(totalPages)].map((_, i) => {
                                     const params = new URLSearchParams();
                                     if (type !== "all") params.set("type", type);
@@ -82,8 +99,11 @@ export default async function StorePage({
                         )}
                     </>
                 ) : (
-                    <div className="theme-surface-panel rounded-[2rem] px-6 py-24 text-center">
-                        <p className="text-theme-subtle">لا توجد منتجات</p>
+                    <div className="theme-surface-panel rounded-[2rem] px-6 py-16 text-center sm:py-24">
+                        <p className="text-base font-semibold text-theme">لا توجد منتجات مطابقة حاليًا</p>
+                        <p className="mt-2 text-sm text-theme-subtle">
+                            جرّب تغيير النوع أو الترتيب أو توسيع النتائج المتاحة.
+                        </p>
                     </div>
                 )}
             </div>

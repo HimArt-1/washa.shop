@@ -18,13 +18,19 @@ export default function AccountLayout({
                     borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",
                 }}
             >
-                <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
-                    <Logo size="sm" />
-                    <div className="flex items-center gap-2">
+                <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <Logo size="sm" />
+                        <div className="hidden sm:block">
+                            <p className="text-[11px] font-bold tracking-[0.18em] text-theme-faint">ACCOUNT</p>
+                            <p className="text-xs text-theme-subtle">مساحتك الشخصية داخل وشّى</p>
+                        </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
                         <ThemeToggle />
                         <Link
                             href="/"
-                            className="inline-flex items-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-3 py-2 text-sm transition-colors hover:border-gold/25 hover:text-[var(--wusha-gold)]"
+                            className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-3 py-2 text-sm transition-colors hover:border-gold/25 hover:text-[var(--wusha-gold)]"
                             style={{ color: "color-mix(in srgb, var(--wusha-text) 50%, transparent)" }}
                         >
                             <span className="hidden sm:inline">العودة للموقع</span>

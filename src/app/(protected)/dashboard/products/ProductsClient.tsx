@@ -77,6 +77,7 @@ export function ProductsClient({
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkLoading, setBulkLoading] = useState(false);
     const [barcodeProductId, setBarcodeProductId] = useState<string | null>(null);
+    const [bulkDeleteRequested, setBulkDeleteRequested] = useState(false);
 
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -174,13 +175,13 @@ export function ProductsClient({
     };
 
     const bulkDelete = async () => {
-        if (!confirm(`هل أنت متأكد من حذف ${selectedIds.size} منتج؟`)) return;
         setBulkLoading(true);
         const ids = Array.from(selectedIds);
         for (const id of ids) {
             await deleteProduct(id);
         }
         setBulkLoading(false);
+        setBulkDeleteRequested(false);
         setSelectedIds(new Set());
         showToast(`تم حذف ${selectedIds.size} منتج ✓`);
         router.refresh();
@@ -311,7 +312,7 @@ export function ProductsClient({
                                     className="text-[10px] px-2 py-1 rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all disabled:opacity-50">
                                     غير متوفر
                                 </button>
-                                <button onClick={bulkDelete} disabled={bulkLoading}
+                                <button onClick={() => setBulkDeleteRequested(true)} disabled={bulkLoading}
                                     className="text-[10px] px-2 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50">
                                     حذف
                                 </button>
@@ -545,6 +546,49 @@ export function ProductsClient({
                 onSuccess={() => { setEditingProduct(null); showToast("تم تحديث المنتج ✓"); router.refresh(); }}
                 onError={(msg) => setError(msg)}
             />
+
+            <AnimatePresence>
+                {bulkDeleteRequested && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 16 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 16 }}
+                            className="theme-surface-panel w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+                        >
+                            <p className="text-xs uppercase tracking-[0.24em] text-theme-faint">Bulk Delete</p>
+                            <h3 className="mt-2 text-lg font-bold text-theme">حذف المنتجات المحددة</h3>
+                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
+                                سيتم حذف {selectedIds.size} منتجًا من القائمة الحالية.
+                            </p>
+                            <div className="mt-6 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkDeleteRequested(false)}
+                                    disabled={bulkLoading}
+                                    className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={bulkDelete}
+                                    disabled={bulkLoading}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                                >
+                                    {bulkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    حذف المحدد
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

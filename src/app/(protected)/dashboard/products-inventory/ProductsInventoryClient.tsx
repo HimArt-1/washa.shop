@@ -214,12 +214,12 @@ function SummaryCard({
         <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} p-5`}
+            className={`${subtlePanelClass} p-4 sm:p-5`}
         >
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                    <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl border"
@@ -278,7 +278,7 @@ function InventoryQueueCard({
               : "border-emerald-500/20 bg-emerald-500/[0.04]";
 
     return (
-        <section className={`${subtlePanelClass} p-5`}>
+        <section className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5">
                 <h3 className="text-lg font-bold text-theme">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-theme-subtle">{subtitle}</p>
@@ -346,7 +346,7 @@ function FulfillmentQueueCard({
     items: ProductsInventoryClientProps["fulfillmentSnapshot"]["shippingDesk"];
 }) {
     return (
-        <section className={`${subtlePanelClass} p-5`}>
+        <section className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <h3 className="text-lg font-bold text-theme">{title}</h3>
@@ -354,7 +354,7 @@ function FulfillmentQueueCard({
                 </div>
                 <Link
                     href="/dashboard/orders"
-                    className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
+                    className="inline-flex min-h-[38px] items-center rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
                 >
                     فتح مركز الطلبات
                 </Link>
@@ -735,7 +735,7 @@ export function ProductsInventoryClient({
 
     return (
         <div className="space-y-6">
-            <section className={`${panelClass} p-6 md:p-7`}>
+            <section className={`${panelClass} p-5 sm:p-6 md:p-7`}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(206,174,127,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.12),transparent_30%)]" />
                 <div className="relative space-y-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -744,7 +744,7 @@ export function ProductsInventoryClient({
                                 <Warehouse className="h-3.5 w-3.5" />
                                 مركز التنفيذ والمخزون
                             </span>
-                            <h2 className="mt-4 text-2xl font-black text-theme md:text-3xl">
+                            <h2 className="mt-4 text-2xl font-black text-theme sm:text-3xl">
                                 قراءة واحدة لحالة المخزون، ضغط التنفيذ، ومخاطر الشحن قبل أن تتحول إلى تعطّل.
                             </h2>
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
@@ -779,7 +779,7 @@ export function ProductsInventoryClient({
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-[1.15fr,0.85fr]">
-                        <div className={`${subtlePanelClass} p-5`}>
+                        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">صحة التنفيذ</p>
                             <div className="mt-4 flex items-end justify-between gap-4">
                                 <div>
@@ -787,7 +787,7 @@ export function ProductsInventoryClient({
                                     <p className={`mt-2 text-sm font-semibold ${healthMeta.className}`}>{healthMeta.label}</p>
                                 </div>
                                 <div className="w-full max-w-[260px]">
-                                    <div className="h-2 overflow-hidden rounded-full bg-white/8">
+                                    <div className="h-2 overflow-hidden rounded-full bg-theme-faint">
                                         <div
                                             className={`h-full rounded-full ${
                                                 healthScore >= 85 ? "bg-emerald-400" : healthScore >= 65 ? "bg-amber-400" : "bg-red-400"
@@ -800,7 +800,7 @@ export function ProductsInventoryClient({
                             </div>
                         </div>
 
-                        <div className={`${subtlePanelClass} p-5`}>
+                        <div className={`${subtlePanelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">نبض التنفيذ</p>
                             <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                                 <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
@@ -870,7 +870,7 @@ export function ProductsInventoryClient({
                 />
             </section>
 
-            <section className={`${panelClass} p-6`}>
+            <section className={`${panelClass} p-5 sm:p-6`}>
                 <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="max-w-3xl">
                         <span className="inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs font-semibold text-theme-soft">
@@ -889,7 +889,7 @@ export function ProductsInventoryClient({
                     <div className="flex flex-wrap gap-2">
                         <button
                             onClick={exportAutomationQueue}
-                            className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold transition-colors hover:bg-gold/15"
+                            className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-4 py-2 text-sm font-semibold text-gold transition-colors hover:bg-gold/15"
                         >
                             <Download className="h-4 w-4" />
                             تصدير قائمة العمل
@@ -910,7 +910,7 @@ export function ProductsInventoryClient({
                                 <button
                                     key={filter}
                                     onClick={() => setAutomationFilter(filter)}
-                                    className={`rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                                    className={`min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
                                         automationFilter === filter
                                             ? "border-gold/40 bg-gold/15 text-gold"
                                             : "border-theme-subtle bg-theme-faint text-theme-soft hover:border-gold/20 hover:bg-theme-subtle hover:text-gold"
@@ -955,7 +955,7 @@ export function ProductsInventoryClient({
                 </div>
 
                 {bulkExecuteReport ? (
-                    <div className="theme-surface-panel mt-6 rounded-[24px] p-5">
+                    <div className="theme-surface-panel mt-6 rounded-[24px] p-4 sm:p-5">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                             <div>
                                 <p className="text-sm font-bold text-theme">تقرير التنفيذ الجماعي</p>
@@ -1007,7 +1007,7 @@ export function ProductsInventoryClient({
                 ) : null}
 
                 {selectedRestockActions.length > 0 ? (
-                    <div className="mt-6 rounded-[24px] border border-gold/20 bg-gold/[0.07] p-5">
+                    <div className="mt-6 rounded-[24px] border border-gold/20 bg-gold/[0.07] p-4 sm:p-5">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                             <div>
                                 <p className="text-sm font-bold text-gold">شريط التنفيذ الجماعي</p>
@@ -1036,7 +1036,7 @@ export function ProductsInventoryClient({
                         </div>
                     </div>
                 ) : selectableVisibleActionIds.length > 0 ? (
-                    <div className="theme-surface-panel mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] px-5 py-4">
+                    <div className="theme-surface-panel mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] px-4 py-4 sm:px-5">
                         <p className="text-sm text-theme-subtle">
                             يمكنك تحديد عناصر التعبئة الظاهرة وبدء التنفيذ الجماعي مباشرة من هذه الطبقة.
                         </p>
@@ -1060,7 +1060,7 @@ export function ProductsInventoryClient({
                             return (
                                 <div
                                     key={item.id}
-                                    className={`rounded-[24px] border bg-theme-faint p-5 ${
+                                    className={`rounded-[24px] border bg-theme-faint p-4 sm:p-5 ${
                                         isSelected ? "border-gold/30 ring-1 ring-gold/20" : "border-theme-subtle"
                                     }`}
                                 >
@@ -1104,7 +1104,7 @@ export function ProductsInventoryClient({
                                             </div>
                                         </div>
 
-                                        <div className="grid min-w-[250px] grid-cols-2 gap-3 xl:max-w-[320px]">
+                                        <div className="grid grid-cols-2 gap-3 xl:min-w-[250px] xl:max-w-[320px]">
                                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                                 <p className="text-[11px] text-theme-faint">الكمية الحالية</p>
                                                 <p className="mt-2 text-xl font-black text-theme">{item.currentQty}</p>

@@ -404,8 +404,8 @@ export function openInvoicePrint(order: InvoiceOrder, config?: InvoiceConfig) {
     const html = generateInvoiceHTML(order, config);
     const win = window.open("", "_blank", "width=900,height=800,scrollbars=yes");
     if (!win) {
-        alert("يرجى السماح بالنوافذ المنبثقة لفتح الفاتورة");
-        return;
+        console.warn("[openInvoicePrint] Popup was blocked by the browser.");
+        return false;
     }
     // Set a tiny delay to ensure the window has fully opened before writing (safari bug workaround)
     setTimeout(() => {
@@ -418,5 +418,6 @@ export function openInvoicePrint(order: InvoiceOrder, config?: InvoiceConfig) {
             win.print();
         }, 1000);
     }, 50);
-}
 
+    return true;
+}

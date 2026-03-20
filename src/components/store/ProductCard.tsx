@@ -61,6 +61,7 @@ export function ProductCard({ product }: ProductCardProps) {
     const [liked, setLiked] = useState(false);
     const [likesCount, setLikesCount] = useState(0);
     const [mounted, setMounted] = useState(false);
+    const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
 
     useEffect(() => {
         setMounted(true);
@@ -105,15 +106,21 @@ export function ProductCard({ product }: ProductCardProps) {
         e.preventDefault();
         e.stopPropagation();
         const url = `${typeof window !== "undefined" ? window.location.origin : ""}/products/${product.id}`;
-        if (navigator.share) {
-            await navigator.share({
-                title: product.title,
-                text: `${product.title} — وشّى`,
-                url,
-            });
-        } else {
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: product.title,
+                    text: `${product.title} — وشّى`,
+                    url,
+                });
+                return;
+            }
+
             await navigator.clipboard.writeText(url);
-            alert("تم نسخ الرابط!");
+            setShareFeedback("copied");
+            window.setTimeout(() => setShareFeedback("idle"), 1800);
+        } catch {
+            setShareFeedback("idle");
         }
     };
 
@@ -121,7 +128,7 @@ export function ProductCard({ product }: ProductCardProps) {
         return (
             <Link
                 href={`/products/${product.id}`}
-                className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500 block"
+                className="group theme-surface-panel block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30"
             >
                 <div className="aspect-square relative overflow-hidden">
                     <Image
@@ -151,13 +158,13 @@ export function ProductCard({ product }: ProductCardProps) {
                         ) : null}
                     </div>
                 </div>
-                <div className="p-3 bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)]">
-                    <h3 className="text-sm font-bold truncate group-hover:text-gold transition-colors" style={{ color: "var(--wusha-text)" }}>
+                <div className="bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)] p-3 sm:p-4">
+                    <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold transition-colors group-hover:text-gold" style={{ color: "var(--wusha-text)" }}>
                         {product.title}
                     </h3>
-                    <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-[10px] text-theme-subtle">{product.store_name || product.artist?.display_name}</span>
-                        <span suppressHydrationWarning className="text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                        <span className="line-clamp-1 text-[10px] text-theme-subtle">{product.store_name || product.artist?.display_name}</span>
+                        <span suppressHydrationWarning className="shrink-0 text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                     </div>
                 </div>
             </Link>
@@ -167,7 +174,7 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <Link
             href={`/products/${product.id}`}
-            className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all duration-500 block relative"
+            className="group theme-surface-panel relative block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30"
         >
             <div className="aspect-square relative overflow-hidden">
                 <Image
@@ -198,42 +205,50 @@ export function ProductCard({ product }: ProductCardProps) {
                 </div>
 
                 {/* Action buttons on hover */}
-                <div className="absolute bottom-2 left-2 right-2 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="absolute bottom-2 left-2 right-2 flex justify-center gap-2 opacity-100 transition-all duration-300 sm:translate-y-2 sm:opacity-0 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">
                     <SignedIn>
                         <button
                             onClick={handleWishlist}
-                            className={`p-2 rounded-2xl backdrop-blur-md border transition-colors ${inWishlist ? "bg-gold/20 text-gold border-gold/30" : "text-on-dark border-white/10 bg-[color:rgba(15,15,15,0.46)] hover:bg-gold/20 hover:text-gold hover:border-gold/20"
+                            className={`flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${inWishlist ? "border-gold/30 bg-gold/20 text-gold" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
                                 }`}
                             title={inWishlist ? "إزالة من المحفوظات" : "إضافة للمحفوظات"}
                         >
                             <Bookmark className={`w-4 h-4 ${inWishlist ? "fill-current" : ""}`} />
+                            <span className="text-[10px] font-medium sm:hidden">حفظ</span>
                         </button>
                         <button
                             onClick={handleLike}
-                            className={`p-2 rounded-2xl backdrop-blur-md border transition-colors flex items-center gap-1 ${liked ? "bg-red-500/20 text-red-400 border-red-400/20" : "text-on-dark border-white/10 bg-[color:rgba(15,15,15,0.46)] hover:bg-red-500/20 hover:text-red-400 hover:border-red-400/20"
+                            className={`flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${liked ? "border-red-400/20 bg-red-500/20 text-red-400" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-red-400/20 hover:bg-red-500/20 hover:text-red-400"
                                 }`}
                             title={liked ? "إلغاء الإعجاب" : "إعجاب"}
                         >
                             <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-                            {likesCount > 0 && <span className="text-[10px]">{likesCount}</span>}
+                            {likesCount > 0 ? <span className="text-[10px]">{likesCount}</span> : <span className="text-[10px] font-medium sm:hidden">إعجاب</span>}
                         </button>
                     </SignedIn>
                     <button
                         onClick={handleShare}
-                        className="p-2 rounded-2xl backdrop-blur-md border border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:bg-gold/20 hover:text-gold hover:border-gold/20 transition-colors"
+                        className="flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border border-white/10 bg-[color:rgba(15,15,15,0.46)] px-2.5 text-on-dark backdrop-blur-md transition-colors hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
                         title="مشاركة"
                     >
                         <Share2 className="w-4 h-4" />
+                        <span className="text-[10px] font-medium sm:hidden">مشاركة</span>
                     </button>
                 </div>
+
+                {shareFeedback === "copied" && (
+                    <div className="absolute bottom-14 left-2 right-2 rounded-2xl border border-gold/20 bg-[color:rgba(15,15,15,0.58)] px-3 py-2 text-center text-[11px] font-medium text-gold backdrop-blur-md">
+                        تم نسخ رابط المنتج
+                    </div>
+                )}
             </div>
-            <div className="p-3 bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)]">
-                <h3 className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">
+            <div className="bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)] p-3 sm:p-4">
+                <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold text-theme transition-colors group-hover:text-gold">
                     {product.title}
                 </h3>
-                <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-theme-faint">{product.store_name || product.artist?.display_name}</span>
-                    <span suppressHydrationWarning className="text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                    <span className="line-clamp-1 text-[10px] text-theme-faint">{product.store_name || product.artist?.display_name}</span>
+                    <span suppressHydrationWarning className="shrink-0 text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                 </div>
             </div>
         </Link>

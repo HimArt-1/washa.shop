@@ -69,6 +69,7 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
     const [headers, setHeaders] = useState<string[]>([]);
     const [mappedColumns, setMappedColumns] = useState<MappedColumn[]>([]);
     const [importResult, setImportResult] = useState<{ success: number; errors: number; log: string[] } | null>(null);
+    const [parseError, setParseError] = useState<string | null>(null);
 
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editingName, setEditingName] = useState("");
@@ -103,6 +104,7 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
         setHeaders([]);
         setMappedColumns([]);
         setImportResult(null);
+        setParseError(null);
         setEditingIndex(null);
         setShowAddColumn(false);
     };
@@ -113,6 +115,7 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
         const file = e.target.files?.[0];
         if (!file) return;
         setFileOptions(file);
+        setParseError(null);
 
         Papa.parse(file, {
             header: true,
@@ -134,7 +137,7 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                 }
             },
             error: (error) => {
-                alert("حدث خطأ أثناء قراءة الملف. يرجى التأكد من أنه ملف CSV صالح.");
+                setParseError("حدث خطأ أثناء قراءة الملف. يرجى التأكد من أنه ملف CSV صالح.");
                 console.error(error);
             }
         });
@@ -246,6 +249,11 @@ export function SmartImportModal({ isOpen, onClose, onSuccess }: SmartImportModa
                         {/* STEP 1: UPLOAD */}
                         {step === "upload" && (
                             <div className="h-full flex flex-col items-center justify-center py-20">
+                                {parseError && (
+                                    <div className="mb-6 w-full max-w-md rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                        {parseError}
+                                    </div>
+                                )}
                                 <FileSpreadsheet className="w-20 h-20 text-gold mb-6 opacity-50" />
                                 <h3 className="text-2xl font-bold text-theme mb-2">ارفع جدول المنتجات</h3>
                                 <p className="text-theme-subtle max-w-md text-center mb-8">

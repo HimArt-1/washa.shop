@@ -68,7 +68,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-8">
+        <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-6 sm:space-y-8">
             {/* Success/Error Message */}
             {state.message && (
                 <div className={`p-4 rounded-xl text-sm font-medium ${state.success ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"}`}>
@@ -77,14 +77,14 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             )}
 
             {/* Avatar & Cover */}
-            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
+            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-5 sm:p-6">
                 <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">الصور</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
                         <label className="block text-sm font-medium text-theme-soft mb-2">صورة الملف الشخصي</label>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                            <div className="w-24 h-24 rounded-2xl overflow-hidden border-2 border-theme-soft bg-theme-subtle flex items-center justify-center shrink-0">
+                            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-theme-soft bg-theme-subtle shrink-0">
                                 {avatarUrl ? (
                                     <Image src={avatarUrl} alt="" width={96} height={96} className="object-cover w-full h-full" />
                                 ) : (
@@ -120,7 +120,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                             setUploadingAvatar(false);
                                         }}
                                     />
-                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 transition-colors">
+                                    <span className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20">
                                         {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
                                         {uploadingAvatar ? "جاري الرفع..." : "رفع صورة"}
                                     </span>
@@ -141,7 +141,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                     <div>
                         <label className="block text-sm font-medium text-theme-soft mb-2">صورة الغلاف</label>
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                            <div className="w-full max-w-[180px] h-24 rounded-2xl overflow-hidden border-2 border-theme-soft bg-theme-subtle flex items-center justify-center shrink-0">
+                            <div className="flex h-24 w-full max-w-[220px] items-center justify-center overflow-hidden rounded-2xl border-2 border-theme-soft bg-theme-subtle shrink-0">
                                 {coverUrl ? (
                                     <Image src={coverUrl} alt="" width={180} height={96} className="object-cover w-full h-full" />
                                 ) : (
@@ -177,7 +177,7 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
                                             setUploadingCover(false);
                                         }}
                                     />
-                                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 transition-colors">
+                                    <span className="inline-flex min-h-[42px] items-center gap-2 rounded-xl bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20">
                                         {uploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
                                         {uploadingCover ? "جاري الرفع..." : "رفع غلاف"}
                                     </span>
@@ -198,10 +198,10 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             </div>
 
             {/* Basic Info */}
-            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
+            <div className="theme-surface-panel space-y-6 rounded-[2rem] p-5 sm:p-6">
                 <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">البيانات الأساسية</h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                     <div>
                         <label className="block text-sm font-medium text-theme-soft mb-2">الاسم المعروض</label>
                         <input
@@ -240,10 +240,10 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
 
             {/* Social Links (Only for Wushsha & Admin) */}
             {(userRole === "wushsha" || userRole === "admin") && (
-                <div className="theme-surface-panel space-y-6 rounded-[2rem] p-6">
+                <div className="theme-surface-panel space-y-6 rounded-[2rem] p-5 sm:p-6">
                     <h3 className="text-lg font-bold text-theme border-b border-theme-subtle pb-4">التواجد الرقمي</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
                             <label className="flex items-center gap-2 text-sm font-medium text-theme-soft mb-2">
                                 <Globe className="w-4 h-4" /> الموقع الشخصي
@@ -293,11 +293,11 @@ export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFor
             )}
 
             {/* Actions */}
-            <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="btn-gold flex items-center justify-center gap-2 rounded-xl px-8 py-3 font-bold shadow-lg shadow-gold/20 disabled:opacity-50"
+                    className="btn-gold flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-8 py-3 font-bold shadow-lg shadow-gold/20 disabled:opacity-50 sm:w-auto"
                 >
                     {isPending ? (
                         <>

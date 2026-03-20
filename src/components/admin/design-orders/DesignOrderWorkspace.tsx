@@ -136,7 +136,7 @@ function ResultUpload({
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="flex items-center gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4 sm:flex-row sm:items-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)]">
                 <Icon className="h-5 w-5 text-theme-faint" />
             </div>
@@ -151,7 +151,7 @@ function ResultUpload({
                 )}
             </div>
 
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-theme-subtle bg-theme-faint px-3 py-2 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30">
+            <label className="inline-flex min-h-[42px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-theme-subtle bg-theme-faint px-3 py-2 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 sm:justify-start">
                 {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                 {uploading ? "جاري..." : currentUrl ? "تغيير" : "رفع"}
                 <input
@@ -189,6 +189,8 @@ export function DesignOrderWorkspace({
     const [assignedTo, setAssignedTo] = useState(order.assigned_to ?? "");
     const [showRejectForm, setShowRejectForm] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
+    const [showSendConfirm, setShowSendConfirm] = useState(false);
+    const [showSkipConfirm, setShowSkipConfirm] = useState(false);
 
     const status = statusMeta[currentOrder.status];
     const next = nextStatuses[currentOrder.status] || [];
@@ -272,7 +274,6 @@ export function DesignOrderWorkspace({
     };
 
     const handleSkip = async () => {
-        if (!confirm("تجاوز النتائج وإكمال الطلب؟")) return;
         setLoading(true);
         setError(null);
         try {
@@ -283,6 +284,7 @@ export function DesignOrderWorkspace({
             }
 
             updateOrder({ skip_results: true, status: "completed" });
+            setShowSkipConfirm(false);
             refreshView();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر تجاوز النتائج.");
@@ -291,14 +293,24 @@ export function DesignOrderWorkspace({
         }
     };
 
+    const handlePrepareSendToCustomer = () => {
+        const priceNum = parseFloat(finalPrice);
+        if (Number.isNaN(priceNum) || priceNum <= 0) {
+            setError("يرجى إدخال سعر صحيح أكبر من الصفر.");
+            return;
+        }
+
+        setError(null);
+        setShowSkipConfirm(false);
+        setShowSendConfirm(true);
+    };
+
     const handleSendToCustomer = async () => {
         const priceNum = parseFloat(finalPrice);
         if (Number.isNaN(priceNum) || priceNum <= 0) {
-            alert("يرجى إدخال سعر صحيح أكبر من الصفر.");
+            setError("يرجى إدخال سعر صحيح أكبر من الصفر.");
             return;
         }
-        if (!confirm("هل أنت متأكد من اعتماد هذا الطلب وإرساله للعميل؟")) return;
-
         setLoading(true);
         setError(null);
         try {
@@ -313,6 +325,7 @@ export function DesignOrderWorkspace({
                 final_price: priceNum,
                 status: "awaiting_review",
             });
+            setShowSendConfirm(false);
             refreshView();
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر إرسال الطلب للعميل.");
@@ -323,7 +336,7 @@ export function DesignOrderWorkspace({
 
     const handleReject = async () => {
         if (!rejectReason.trim()) {
-            alert("يرجى ذكر سبب الرفض.");
+            setError("يرجى ذكر سبب الرفض.");
             return;
         }
 
@@ -380,16 +393,16 @@ export function DesignOrderWorkspace({
                     {error}
                 </div>
             ) : null}
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <Link
                     href="/dashboard/design-orders"
-                    className="inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-subtle transition-colors hover:text-theme"
+                    className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-subtle transition-colors hover:text-theme sm:justify-start"
                 >
                     <ArrowRight className="h-4 w-4" />
                     العودة إلى مركز العمليات
                 </Link>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <div className="rounded-2xl border border-gold/20 bg-gold/10 px-4 py-2 text-sm font-bold text-gold">
                         #{currentOrder.order_number}
                     </div>
@@ -404,7 +417,7 @@ export function DesignOrderWorkspace({
                 <motion.section
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="theme-surface-panel relative overflow-hidden rounded-[28px] p-6"
+                    className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6"
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(147,51,234,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.12),transparent_30%)]" />
                     <div className="relative space-y-5">
@@ -418,7 +431,7 @@ export function DesignOrderWorkspace({
                         </div>
 
                         <div>
-                            <h2 className="text-3xl font-black text-theme md:text-4xl">
+                            <h2 className="text-2xl font-black text-theme sm:text-3xl md:text-4xl">
                                 {currentOrder.customer_name || "طلب تصميم بدون اسم عميل واضح"}
                             </h2>
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
@@ -426,7 +439,7 @@ export function DesignOrderWorkspace({
                             </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">القطعة</p>
                                 <p className="mt-2 text-lg font-bold text-theme">{currentOrder.garment_name}</p>
@@ -451,7 +464,7 @@ export function DesignOrderWorkspace({
                 <motion.aside
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="theme-surface-panel rounded-[28px] p-6"
+                    className="theme-surface-panel rounded-[28px] p-5 sm:p-6"
                 >
                     <h3 className="text-lg font-bold text-theme">لوحة التحكم السريعة</h3>
                     <div className="mt-5 space-y-4">
@@ -478,7 +491,7 @@ export function DesignOrderWorkspace({
                             <div className="rounded-2xl border border-blue-500/15 bg-blue-500/[0.04] p-4">
                                 <p className="text-sm font-bold text-blue-200">قرار أولي على الطلب</p>
                                 {!showRejectForm ? (
-                                    <div className="mt-4 flex gap-3">
+                                    <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                                         <button
                                             onClick={() => handleStatusChange("in_progress")}
                                             disabled={loading}
@@ -495,7 +508,7 @@ export function DesignOrderWorkspace({
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="mt-4 space-y-3">
+                                        <div className="mt-4 space-y-3">
                                         <textarea
                                             value={rejectReason}
                                             onChange={(event) => setRejectReason(event.target.value)}
@@ -503,7 +516,7 @@ export function DesignOrderWorkspace({
                                             rows={3}
                                             className="input-dark w-full rounded-xl px-3 py-3 text-sm focus:border-red-500/30"
                                         />
-                                        <div className="flex gap-3">
+                                        <div className="flex flex-col gap-3 sm:flex-row">
                                             <button
                                                 onClick={handleReject}
                                                 disabled={loading}
@@ -564,7 +577,7 @@ export function DesignOrderWorkspace({
                                         className="input-dark w-full rounded-xl border-gold/20 px-4 py-3 text-sm focus:border-gold/40"
                                     />
                                     <button
-                                        onClick={handleSendToCustomer}
+                                        onClick={handlePrepareSendToCustomer}
                                         disabled={loading || !finalPrice}
                                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold to-gold-light px-4 py-3 text-sm font-bold text-[var(--wusha-bg)] disabled:opacity-50"
                                     >
@@ -572,18 +585,71 @@ export function DesignOrderWorkspace({
                                         اعتماد وإرسال
                                     </button>
                                 </div>
+                                {showSendConfirm ? (
+                                    <div className="mt-4 space-y-3 rounded-2xl border border-gold/20 bg-theme-faint p-4">
+                                        <p className="text-sm font-semibold text-theme">
+                                            سيتم إرسال الطلب للعميل بالسعر النهائي:
+                                            <span className="mr-2 text-gold">{formatMoney(parseFloat(finalPrice) || null)}</span>
+                                        </p>
+                                        <div className="flex flex-col gap-3 sm:flex-row">
+                                            <button
+                                                onClick={handleSendToCustomer}
+                                                disabled={loading}
+                                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-gold to-gold-light px-4 py-3 text-sm font-bold text-[var(--wusha-bg)] disabled:opacity-50"
+                                            >
+                                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                تأكيد الإرسال
+                                            </button>
+                                            <button
+                                                onClick={() => setShowSendConfirm(false)}
+                                                disabled={loading}
+                                                className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-subtle"
+                                            >
+                                                إلغاء
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </div>
                         ) : null}
 
                         {!currentOrder.skip_results && currentOrder.status !== "completed" && currentOrder.status !== "cancelled" ? (
-                            <button
-                                onClick={handleSkip}
-                                disabled={loading}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm font-medium text-theme-subtle transition-colors hover:text-theme"
-                            >
-                                <Slash className="h-4 w-4" />
-                                تجاوز النتائج وإكمال الطلب
-                            </button>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setError(null);
+                                        setShowSendConfirm(false);
+                                        setShowSkipConfirm((current) => !current);
+                                    }}
+                                    disabled={loading}
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm font-medium text-theme-subtle transition-colors hover:text-theme"
+                                >
+                                    <Slash className="h-4 w-4" />
+                                    تجاوز النتائج وإكمال الطلب
+                                </button>
+                                {showSkipConfirm ? (
+                                    <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                                        <p className="text-sm font-semibold text-theme">سيتم إغلاق الطلب كمكتمل بدون إلزامية رفع النتائج.</p>
+                                        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                                            <button
+                                                onClick={handleSkip}
+                                                disabled={loading}
+                                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3 text-sm font-semibold text-theme"
+                                            >
+                                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                تأكيد التجاوز
+                                            </button>
+                                            <button
+                                                onClick={() => setShowSkipConfirm(false)}
+                                                disabled={loading}
+                                                className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-subtle"
+                                            >
+                                                رجوع
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
+                            </div>
                         ) : null}
                     </div>
                 </motion.aside>
@@ -593,7 +659,7 @@ export function DesignOrderWorkspace({
                 <motion.section
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="theme-surface-panel space-y-6 rounded-[28px] p-6"
+                    className="theme-surface-panel space-y-6 rounded-[28px] p-5 sm:p-6"
                 >
                     {(currentOrder.customer_name || currentOrder.customer_email || currentOrder.customer_phone) ? (
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
@@ -647,14 +713,14 @@ export function DesignOrderWorkspace({
                     ) : null}
 
                     <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-2 text-gold">
                                 <Settings2 className="h-4 w-4" />
                                 <p className="text-sm font-bold">AI Prompt</p>
                             </div>
                             <button
                                 onClick={handleCopyPrompt}
-                                className="inline-flex items-center gap-2 rounded-xl border border-gold/20 bg-gold/10 px-3 py-2 text-xs font-medium text-gold"
+                                className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-xl border border-gold/20 bg-gold/10 px-3 py-2 text-xs font-medium text-gold sm:justify-start"
                             >
                                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                                 {copied ? "تم النسخ" : "نسخ"}
@@ -687,7 +753,7 @@ export function DesignOrderWorkspace({
                 <motion.section
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="theme-surface-panel space-y-6 rounded-[28px] p-6"
+                    className="theme-surface-panel space-y-6 rounded-[28px] p-5 sm:p-6"
                 >
                     {!currentOrder.skip_results && currentOrder.status !== "cancelled" ? (
                         <div className="space-y-3">

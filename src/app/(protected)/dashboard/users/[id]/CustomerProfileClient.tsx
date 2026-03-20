@@ -47,7 +47,7 @@ function getRoleMeta(role: string) {
         default:
             return {
                 label: role,
-                className: "border-white/10 bg-white/[0.03] text-theme-subtle",
+                className: "border-theme-subtle bg-theme-faint text-theme-subtle",
             };
     }
 }
@@ -88,12 +88,12 @@ function SummaryCard({
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} p-5`}
+            className={`${subtlePanelClass} p-4 sm:p-5`}
         >
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
                     <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+                    <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl border"
@@ -168,7 +168,7 @@ export function CustomerProfileClient({
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
+                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
                     <div className="relative space-y-6">
@@ -181,8 +181,8 @@ export function CustomerProfileClient({
                             </span>
                         </div>
 
-                        <div className="flex items-start gap-5">
-                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white/10 bg-black/20">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-theme-subtle bg-theme-faint">
                                 {avatarUrl ? (
                                     <Image src={avatarUrl} alt="" width={96} height={96} className="h-full w-full object-cover" />
                                 ) : (
@@ -192,7 +192,7 @@ export function CustomerProfileClient({
 
                             <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
+                                    <h2 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
                                         {String(profile.display_name || "مستخدم")}
                                     </h2>
                                     <span className={`rounded-full border px-3 py-1 text-xs font-bold ${role.className}`}>
@@ -246,7 +246,7 @@ export function CustomerProfileClient({
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">حالة Clerk</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {identity.isTempProfile ? "مؤقت" : "مربوط"}
@@ -255,7 +255,7 @@ export function CustomerProfileClient({
                                     {String(profile.clerk_id || "—")}
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">بيانات التواصل</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {identity.hasContactInfo ? "مكتملة" : "ناقصة"}
@@ -264,7 +264,7 @@ export function CustomerProfileClient({
                                     {profile.email && profile.phone ? "البريد والهاتف متوفران" : "ينقص البريد أو الهاتف أو كلاهما"}
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">أصل الهوية</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {application ? "من طلب انضمام" : "مستخدم مباشر"}
@@ -280,10 +280,10 @@ export function CustomerProfileClient({
                 <motion.aside
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${subtlePanelClass} p-6`}
+                    className={`${subtlePanelClass} p-5 sm:p-6`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-theme-subtle bg-theme-faint">
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
@@ -381,22 +381,22 @@ export function CustomerProfileClient({
 
             <div className="grid gap-5 xl:grid-cols-[0.72fr_1.28fr]">
                 <section className="space-y-5">
-                    <div className={`${panelClass} p-5`}>
+                    <div className={`${panelClass} p-4 sm:p-5`}>
                         <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Identity Rail</p>
                         <div className="mt-4 space-y-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
                                 <p className="text-xs text-theme-faint">البريد الإلكتروني</p>
                                 <p className="mt-2 text-sm font-semibold text-theme">{profile.email || "غير متوفر"}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
                                 <p className="text-xs text-theme-faint">رقم الهاتف</p>
                                 <p className="mt-2 text-sm font-semibold text-theme">{profile.phone || "غير متوفر"}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
                                 <p className="text-xs text-theme-faint">Clerk ID</p>
                                 <p className="mt-2 break-all font-mono text-xs text-theme">{profile.clerk_id || "—"}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
                                 <p className="text-xs text-theme-faint">معرّف الملف</p>
                                 <p className="mt-2 break-all font-mono text-xs text-theme">{profile.id || "—"}</p>
                             </div>
@@ -404,10 +404,10 @@ export function CustomerProfileClient({
                     </div>
 
                     {application ? (
-                        <div className={`${panelClass} p-5`}>
+                        <div className={`${panelClass} p-4 sm:p-5`}>
                             <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Application Context</p>
                             <div className="mt-4 space-y-3">
-                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <p className="text-sm font-bold text-theme">طلب الانضمام المرتبط</p>
                                         <StatusBadge status={application.status} type="application" />
@@ -422,7 +422,7 @@ export function CustomerProfileClient({
                                         href={application.portfolio_url || "#"}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className={`rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-theme transition-colors ${application.portfolio_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
+                                        className={`rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4 text-sm text-theme transition-colors ${application.portfolio_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
                                     >
                                         <span className="inline-flex items-center gap-2">
                                             <FileText className="h-4 w-4 text-gold" />
@@ -433,7 +433,7 @@ export function CustomerProfileClient({
                                         href={application.instagram_url || "#"}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className={`rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-theme transition-colors ${application.instagram_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
+                                        className={`rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4 text-sm text-theme transition-colors ${application.instagram_url ? "hover:border-gold/30" : "pointer-events-none opacity-50"}`}
                                     >
                                         <span className="inline-flex items-center gap-2">
                                             <Globe className="h-4 w-4 text-accent" />
@@ -448,7 +448,7 @@ export function CustomerProfileClient({
 
                 <section className="space-y-5">
                     <div className={`${panelClass} overflow-hidden`}>
-                        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+                        <div className="flex items-center justify-between border-b border-theme-subtle px-4 py-4 sm:px-5">
                             <div>
                                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Commerce Rail</p>
                                 <h3 className="mt-2 text-xl font-bold text-theme">سجل الطلبات</h3>
@@ -457,9 +457,9 @@ export function CustomerProfileClient({
                         </div>
 
                         {orders.length > 0 ? (
-                            <div className="divide-y divide-white/6">
+                            <div className="divide-y divide-theme-faint">
                                 {orders.map((order) => (
-                                    <div key={order.id} className="px-5 py-4 transition-colors hover:bg-white/[0.02]">
+                                    <div key={order.id} className="px-4 py-4 transition-colors hover:bg-theme-faint sm:px-5">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
                                                 <p className="font-mono text-xs font-bold text-gold">#{order.order_number}</p>
@@ -493,7 +493,7 @@ export function CustomerProfileClient({
                     </div>
 
                     <div className={`${panelClass} overflow-hidden`}>
-                        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+                        <div className="flex items-center justify-between border-b border-theme-subtle px-4 py-4 sm:px-5">
                             <div>
                                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Support Rail</p>
                                 <h3 className="mt-2 text-xl font-bold text-theme">تذاكر الدعم</h3>
@@ -502,12 +502,12 @@ export function CustomerProfileClient({
                         </div>
 
                         {tickets.length > 0 ? (
-                            <div className="divide-y divide-white/6">
+                            <div className="divide-y divide-theme-faint">
                                 {tickets.map((ticket) => (
                                     <Link
                                         key={ticket.id}
                                         href={`/dashboard/support/${ticket.id}`}
-                                        className="block px-5 py-4 transition-colors hover:bg-white/[0.02]"
+                                        className="block px-4 py-4 transition-colors hover:bg-theme-faint sm:px-5"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">

@@ -67,6 +67,7 @@ interface WizardState {
     isSending: boolean;
     sent: boolean;
     studioCartAdded: boolean;
+    submissionError: string | null;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -88,6 +89,7 @@ const INITIAL_STATE: WizardState = {
     isSending: false,
     sent: false,
     studioCartAdded: false,
+    submissionError: null,
 };
 
 const TOTAL_STEPS = 9;
@@ -196,7 +198,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
     };
 
     const handleSend = useCallback(async () => {
-        setState((s) => ({ ...s, isSending: true }));
+        setState((s) => ({ ...s, isSending: true, submissionError: null }));
 
         let orderNumber: number | undefined;
 
@@ -263,14 +265,12 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                     referenceImageUrl = uploadResult.url;
                 } else {
                     console.error("Image upload failed:", uploadResult.error);
-                    alert(uploadResult.error || "تعذر رفع الصورة المرجعية الآن.");
-                    setState((s) => ({ ...s, isSending: false }));
+                    setState((s) => ({ ...s, isSending: false, submissionError: uploadResult.error || "تعذر رفع الصورة المرجعية الآن." }));
                     return;
                 }
             } catch (err) {
                 console.error("Image upload failed:", err);
-                alert("تعذر رفع الصورة المرجعية الآن. حاول مرة أخرى.");
-                setState((s) => ({ ...s, isSending: false }));
+                setState((s) => ({ ...s, isSending: false, submissionError: "تعذر رفع الصورة المرجعية الآن. حاول مرة أخرى." }));
                 return;
             }
         }
@@ -299,14 +299,12 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
             });
             if (result.error) {
                 console.error("Order creation error:", result.error);
-                alert(result.error || "تعذر إنشاء الطلب الآن.");
-                setState((s) => ({ ...s, isSending: false }));
+                setState((s) => ({ ...s, isSending: false, submissionError: result.error || "تعذر إنشاء الطلب الآن." }));
                 return;
             }
 
             if (!result.orderId) {
-                alert("تعذر إنشاء الطلب الآن. حاول مرة أخرى.");
-                setState((s) => ({ ...s, isSending: false }));
+                setState((s) => ({ ...s, isSending: false, submissionError: "تعذر إنشاء الطلب الآن. حاول مرة أخرى." }));
                 return;
             }
 
@@ -315,8 +313,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
             setActiveOrderId(result.orderId);
         } catch (err) {
             console.error("submitDesignOrder failed:", err);
-            alert("تعذر إرسال الطلب الآن. حاول مرة أخرى.");
-            setState((s) => ({ ...s, isSending: false }));
+            setState((s) => ({ ...s, isSending: false, submissionError: "تعذر إرسال الطلب الآن. حاول مرة أخرى." }));
             return;
         }
 
@@ -1719,41 +1716,48 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: Wi
                 </div>
             )}
 
-            <div className="flex items-center justify-between pt-6 border-t border-theme-subtle">
-                <button onClick={onBack} className={btnBack}>
-                    <ArrowRight className="w-4 h-4" />
-                    السابق
-                </button>
-                <button
-                    onClick={onSend}
-                    disabled={state.isSending}
-                    className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 disabled:opacity-50 ${
-                        state.method === "studio" 
-                        ? "bg-theme text-bg hover:bg-gold hover:text-bg" 
-                        : "bg-gradient-to-r from-gold to-gold-light text-bg hover:shadow-xl hover:shadow-gold/30"
-                    }`}
-                >
-                    {state.isSending ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />
-                            {state.method === "studio" ? "جاري الإضافة..." : "جاري الإرسال..."}
-                        </>
-                    ) : (
-                        <>
-                            {state.method === "studio" ? (
-                                <>
-                                    <Send className="w-4 h-4" />
-                                    إضافة للسلة
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="w-4 h-4" />
-                                    إرسال الطلب
-                                </>
-                            )}
-                        </>
-                    )}
-                </button>
+            <div className="space-y-4 pt-6 border-t border-theme-subtle">
+                {state.submissionError && (
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
+                        {state.submissionError}
+                    </div>
+                )}
+                <div className="flex items-center justify-between">
+                    <button onClick={onBack} className={btnBack}>
+                        <ArrowRight className="w-4 h-4" />
+                        السابق
+                    </button>
+                    <button
+                        onClick={onSend}
+                        disabled={state.isSending}
+                        className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 disabled:opacity-50 ${
+                            state.method === "studio" 
+                            ? "bg-theme text-bg hover:bg-gold hover:text-bg" 
+                            : "bg-gradient-to-r from-gold to-gold-light text-bg hover:shadow-xl hover:shadow-gold/30"
+                        }`}
+                    >
+                        {state.isSending ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />
+                                {state.method === "studio" ? "جاري الإضافة..." : "جاري الإرسال..."}
+                            </>
+                        ) : (
+                            <>
+                                {state.method === "studio" ? (
+                                    <>
+                                        <Send className="w-4 h-4" />
+                                        إضافة للسلة
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-4 h-4" />
+                                        إرسال الطلب
+                                    </>
+                                )}
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
         </>
     );

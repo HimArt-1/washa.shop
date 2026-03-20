@@ -59,8 +59,7 @@ interface ApplicationReviewWorkspaceProps {
     };
 }
 
-const panelClass =
-    "rounded-[24px] border border-white/8 bg-white/[0.03] backdrop-blur-xl";
+const panelClass = "theme-surface-panel rounded-[24px]";
 
 const genderLabelMap = {
     male: "ذكر",
@@ -104,13 +103,13 @@ function getPriorityMeta(priorityTier: string) {
         case "medium":
             return { label: "متوسط", className: "border-sky-500/20 bg-sky-500/10 text-sky-200" };
         default:
-            return { label: "منخفض", className: "border-white/10 bg-white/5 text-theme-subtle" };
+            return { label: "منخفض", className: "border-theme-subtle bg-theme-faint text-theme-subtle" };
     }
 }
 
 function ChecklistItem({ label, done }: { label: string; done: boolean }) {
     return (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3">
             <span className="text-sm text-theme">{label}</span>
             <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold ${
@@ -135,25 +134,31 @@ export function ApplicationReviewWorkspace({
     const [reviewNotes, setReviewNotes] = useState(application.reviewer_notes ?? "");
     const [showAcceptModal, setShowAcceptModal] = useState(false);
     const [showCreateClerkOnly, setShowCreateClerkOnly] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [pendingDecision, setPendingDecision] = useState<"accepted" | "rejected" | null>(null);
 
     const handleReview = async (decision: "accepted" | "rejected") => {
-        const label = decision === "accepted" ? "قبول" : "رفض";
-        if (!confirm(`هل أنت متأكد من ${label} هذا الطلب؟`)) return;
-
         setLoadingDecision(decision);
+        setError(null);
         try {
             const result = await reviewApplication(application.id, decision, reviewNotes || undefined);
             if (!result.success) {
-                alert(result.error || "فشل تحديث حالة الطلب");
+                setError(result.error || "فشل تحديث حالة الطلب");
                 return;
             }
 
+            setPendingDecision(null);
             router.refresh();
         } catch (error) {
-            alert(error instanceof Error ? error.message : "فشل تحديث حالة الطلب");
+            setError(error instanceof Error ? error.message : "فشل تحديث حالة الطلب");
         } finally {
             setLoadingDecision(null);
         }
+    };
+
+    const handlePrepareReview = (decision: "accepted" | "rejected") => {
+        setError(null);
+        setPendingDecision(decision);
     };
 
     const identityState = !application.hasProfile
@@ -180,10 +185,15 @@ export function ApplicationReviewWorkspace({
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            {error ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {error}
+                </div>
+            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                 <Link
                     href="/dashboard/applications"
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme"
+                    className="inline-flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme sm:justify-start"
                 >
                     <FolderOpenDot className="h-4 w-4" />
                     العودة إلى مركز طلبات الانضمام
@@ -193,7 +203,7 @@ export function ApplicationReviewWorkspace({
                     {workspaceContext.navigation.previous ? (
                         <Link
                             href={`/dashboard/applications/${workspaceContext.navigation.previous.id}`}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme"
+                            className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme"
                         >
                             <ArrowRight className="h-4 w-4" />
                             السابق
@@ -202,7 +212,7 @@ export function ApplicationReviewWorkspace({
                     {workspaceContext.navigation.next ? (
                         <Link
                             href={`/dashboard/applications/${workspaceContext.navigation.next.id}`}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme"
+                            className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-bold text-theme-subtle transition-colors hover:text-theme"
                         >
                             التالي
                             <ArrowLeft className="h-4 w-4" />
@@ -215,7 +225,7 @@ export function ApplicationReviewWorkspace({
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(8,8,8,0.92))] p-6 md:p-7"
+                    className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6 md:p-7"
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(92,184,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
                     <div className="relative space-y-6">
@@ -230,7 +240,7 @@ export function ApplicationReviewWorkspace({
                         </div>
 
                         <div className="max-w-3xl space-y-4">
-                            <h1 className="text-3xl font-black leading-tight text-theme md:text-4xl">
+                            <h1 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
                                 {application.full_name}
                             </h1>
                             <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
@@ -240,7 +250,7 @@ export function ApplicationReviewWorkspace({
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الوضع الحالي</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {application.status === "pending"
@@ -255,14 +265,14 @@ export function ApplicationReviewWorkspace({
                                     آخر تحديث {formatDistanceToNow(new Date(application.updated_at || application.created_at), { addSuffix: true, locale: ar })}
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الهوية</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {!application.hasProfile ? "غير مكتملة" : !application.hasClerkAccount ? "جزئية" : "مكتملة"}
                                 </p>
                                 <p className="mt-2 text-sm text-theme-subtle">{identityState}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الأولوية والخبرة</p>
                                 <p className="mt-3 text-2xl font-black text-theme">
                                     {application.experience_years ? `${application.experience_years} سنوات` : "غير محددة"}
@@ -276,7 +286,7 @@ export function ApplicationReviewWorkspace({
                                 {application.priorityReasons.map((reason: string) => (
                                     <span
                                         key={reason}
-                                        className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-bold text-theme-subtle"
+                                        className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] font-bold text-theme-subtle"
                                     >
                                         {reason}
                                     </span>
@@ -289,10 +299,10 @@ export function ApplicationReviewWorkspace({
                 <motion.aside
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6`}
+                    className={`${panelClass} p-5 sm:p-6`}
                 >
                     <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-theme-subtle bg-theme-faint">
                             <ShieldCheck className="h-5 w-5 text-gold" />
                         </div>
                         <div>
@@ -308,7 +318,7 @@ export function ApplicationReviewWorkspace({
                                     value={reviewNotes}
                                     onChange={(event) => setReviewNotes(event.target.value)}
                                     placeholder="ملاحظات المراجع قبل اتخاذ القرار..."
-                                    className="min-h-[120px] w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-theme outline-none transition-colors placeholder:text-theme-faint focus:border-gold/30"
+                                    className="input-dark min-h-[120px] w-full rounded-2xl px-4 py-3 text-sm"
                                 />
 
                                 <div className="grid gap-2">
@@ -320,7 +330,7 @@ export function ApplicationReviewWorkspace({
                                         قبول وإنشاء مستخدم
                                     </button>
                                     <button
-                                        onClick={() => handleReview("accepted")}
+                                        onClick={() => handlePrepareReview("accepted")}
                                         disabled={loadingDecision !== null}
                                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-60"
                                     >
@@ -328,7 +338,7 @@ export function ApplicationReviewWorkspace({
                                         قبول فقط
                                     </button>
                                     <button
-                                        onClick={() => handleReview("rejected")}
+                                        onClick={() => handlePrepareReview("rejected")}
                                         disabled={loadingDecision !== null}
                                         className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/20 disabled:opacity-60"
                                     >
@@ -336,6 +346,36 @@ export function ApplicationReviewWorkspace({
                                         رفض الطلب
                                     </button>
                                 </div>
+                                {pendingDecision ? (
+                                    <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                                        <p className="text-sm font-semibold text-theme">
+                                            {pendingDecision === "accepted"
+                                                ? "سيتم قبول الطلب بالملاحظات الحالية."
+                                                : "سيتم رفض الطلب بالملاحظات الحالية."}
+                                        </p>
+                                        <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                                            <button
+                                                onClick={() => handleReview(pendingDecision)}
+                                                disabled={loadingDecision !== null}
+                                                className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3 text-sm font-semibold text-theme disabled:opacity-60"
+                                            >
+                                                {loadingDecision === pendingDecision ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <CheckCheck className="h-4 w-4" />
+                                                )}
+                                                تأكيد القرار
+                                            </button>
+                                            <button
+                                                onClick={() => setPendingDecision(null)}
+                                                disabled={loadingDecision !== null}
+                                                className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm font-medium text-theme-subtle"
+                                            >
+                                                إلغاء
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : null}
                             </>
                         )}
 
@@ -377,10 +417,10 @@ export function ApplicationReviewWorkspace({
                             </div>
                         )}
 
-                        <div className="rounded-2xl border border-white/8 bg-black/20 p-4">
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-xs font-bold uppercase tracking-[0.18em] text-theme-faint">Queue Context</p>
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                                <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3">
                                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-theme-faint">موقعه في المراجعة</p>
                                     <p className="mt-2 text-lg font-bold text-theme">
                                         {workspaceContext.queue.reviewPosition
@@ -388,7 +428,7 @@ export function ApplicationReviewWorkspace({
                                             : "خارج طابور القرار"}
                                     </p>
                                 </div>
-                                <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                                <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3">
                                     <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-theme-faint">موقعه في التشغيل</p>
                                     <p className="mt-2 text-lg font-bold text-theme">
                                         {workspaceContext.queue.identityPosition
@@ -466,7 +506,7 @@ export function ApplicationReviewWorkspace({
                                     href={application.portfolio_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-theme transition-colors hover:border-gold/30"
+                                    className="flex items-center justify-between rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3 text-sm text-theme transition-colors hover:border-gold/30"
                                 >
                                     <span className="inline-flex items-center gap-2">
                                         <ExternalLink className="h-4 w-4 text-gold" />
@@ -480,7 +520,7 @@ export function ApplicationReviewWorkspace({
                                     href={application.instagram_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-theme transition-colors hover:border-gold/30"
+                                    className="flex items-center justify-between rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3 text-sm text-theme transition-colors hover:border-gold/30"
                                 >
                                     <span className="inline-flex items-center gap-2">
                                         <Instagram className="h-4 w-4 text-accent" />
@@ -490,7 +530,7 @@ export function ApplicationReviewWorkspace({
                                 </a>
                             ) : null}
 
-                            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                            <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-4">
                                 <p className="text-sm font-bold text-theme">حالة الربط الداخلي</p>
                                 <div className="mt-3 space-y-2 text-sm text-theme-subtle">
                                     <p>Profile: {application.hasProfile ? "موجود" : "غير موجود"}</p>
@@ -505,7 +545,7 @@ export function ApplicationReviewWorkspace({
                 <section className="space-y-5">
                     <div className={`${panelClass} p-5`}>
                         <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Motivation & Notes</p>
-                        <div className="mt-4 rounded-2xl border border-white/8 bg-black/20 p-5">
+                        <div className="mt-4 rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-5">
                             <p className="text-sm leading-8 text-theme-subtle">{application.motivation || "لا توجد رسالة دافع مرفقة."}</p>
                         </div>
 
@@ -523,7 +563,7 @@ export function ApplicationReviewWorkspace({
                                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Portfolio Assets</p>
                                 <h2 className="mt-2 text-xl font-bold text-theme">الأصول المرفقة</h2>
                             </div>
-                            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-bold text-theme-subtle">
+                            <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs font-bold text-theme-subtle">
                                 {(application.portfolio_images || []).length} ملفات
                             </span>
                         </div>
@@ -536,7 +576,7 @@ export function ApplicationReviewWorkspace({
                                         href={imageUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition-all hover:border-gold/30"
+                                        className="overflow-hidden rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] transition-all hover:border-gold/30"
                                     >
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img src={imageUrl} alt={`Portfolio ${index + 1}`} className="h-48 w-full object-cover" />
@@ -544,7 +584,7 @@ export function ApplicationReviewWorkspace({
                                 ))}
                             </div>
                         ) : (
-                            <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-black/10 px-4 py-12 text-center text-sm text-theme-subtle">
+                            <div className="mt-5 rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-12 text-center text-sm text-theme-subtle">
                                 <FileText className="mx-auto mb-3 h-6 w-6 text-theme-faint" />
                                 لا توجد صور أعمال مرفقة مع هذا الطلب.
                             </div>

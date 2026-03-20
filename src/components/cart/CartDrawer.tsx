@@ -19,6 +19,7 @@ export function CartDrawer() {
   const [promoCode, setPromoCode] = useState("");
   const [promoError, setPromoError] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   // Handle escape key
   useEffect(() => {
@@ -73,6 +74,7 @@ export function CartDrawer() {
 
   const handleCheckout = async () => {
     setIsCheckingOut(true);
+    setCheckoutError("");
     
     // Map CartItems to CheckoutItems
     const checkoutItems = items.map(item => ({
@@ -93,7 +95,7 @@ export function CartDrawer() {
       window.location.href = result.url; // Redirect to Stripe
     } else {
       console.error("Checkout failed:", result.error);
-      alert(result.error || "حدث خطأ أثناء الانتقال للدفع");
+      setCheckoutError(result.error || "حدث خطأ أثناء الانتقال للدفع");
     }
   };
 
@@ -293,6 +295,12 @@ export function CartDrawer() {
                     )}
                 </div>
 
+                {checkoutError && (
+                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {checkoutError}
+                  </div>
+                )}
+
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-theme-subtle text-sm">
                     <span>المجموع الفرعي</span>
@@ -317,7 +325,7 @@ export function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button 
                         onClick={() => toggleCart(false)}
                         className="btn-outline py-4 w-full rounded-xl text-sm font-bold border-theme-strong/20 hover:border-theme-strong"

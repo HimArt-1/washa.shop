@@ -104,7 +104,7 @@ function SummaryCard({
     return (
         <div className="theme-surface-panel rounded-[22px] p-4">
             <p className="text-[11px] font-semibold tracking-[0.18em] text-theme-faint uppercase">{title}</p>
-            <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+            <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
             <p className="mt-2 text-sm leading-6 text-theme-subtle">{subtitle}</p>
         </div>
     );
@@ -222,7 +222,7 @@ export function SupportCaseWorkspace({
 
     return (
         <div className="space-y-6">
-            <section className="theme-surface-panel relative overflow-hidden rounded-[28px] p-6 md:p-7">
+            <section className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6 md:p-7">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(56,189,248,0.10),transparent_28%)]" />
                 <div className="relative space-y-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -264,7 +264,7 @@ export function SupportCaseWorkspace({
                         </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                         <SummaryCard title="عمر التذكرة" value={ageLabel} subtitle="منذ فتح هذه الحالة حتى الآن." />
                         <SummaryCard title="آخر تحديث" value={lastUpdateLabel} subtitle="آخر نشاط على التذكرة بغض النظر عن الطرف." />
                         <SummaryCard title="عدد الرسائل" value={String(messageCount)} subtitle="يشمل الرسالة الافتتاحية والردود اللاحقة." />
@@ -283,7 +283,7 @@ export function SupportCaseWorkspace({
 
             <div className="grid gap-6 xl:grid-cols-[0.78fr,1.22fr]">
                 <aside className="space-y-6">
-                    <section className="theme-surface-panel rounded-[24px] p-5">
+                    <section className="theme-surface-panel rounded-[24px] p-4 sm:p-5">
                         <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint">
                                 {customerAvatar ? (
@@ -323,7 +323,7 @@ export function SupportCaseWorkspace({
                         ) : null}
                     </section>
 
-                    <section className="theme-surface-panel rounded-[24px] p-5">
+                    <section className="theme-surface-panel rounded-[24px] p-4 sm:p-5">
                         <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">سكة الإجراءات</p>
                         <div className="mt-4 grid gap-2">
                             {[
@@ -348,7 +348,7 @@ export function SupportCaseWorkspace({
                         </div>
                     </section>
 
-                    <section className="theme-surface-panel rounded-[24px] p-5">
+                    <section className="theme-surface-panel rounded-[24px] p-4 sm:p-5">
                         <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint uppercase">الخط الزمني</p>
                         <div className="mt-4 space-y-4">
                             {timeline.map((item) => (
@@ -363,7 +363,7 @@ export function SupportCaseWorkspace({
                 </aside>
 
                 <section className="theme-surface-panel rounded-[24px]">
-                    <div className="border-b border-theme-subtle px-5 py-4">
+                    <div className="border-b border-theme-subtle px-4 py-4 sm:px-5">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p className="text-lg font-bold text-theme">محادثة الدعم</p>
@@ -375,7 +375,7 @@ export function SupportCaseWorkspace({
                         </div>
                     </div>
 
-                    <div className="max-h-[620px] space-y-5 overflow-y-auto px-5 py-5">
+                    <div className="max-h-[620px] space-y-5 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
                         {messages.map((message, index) => {
                             const isAdmin = message.is_admin_reply;
                             const senderName = message.sender?.display_name || (isAdmin ? "الإدارة" : "العميل");
@@ -387,7 +387,7 @@ export function SupportCaseWorkspace({
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: Math.min(index * 0.03, 0.18) }}
-                                    className={clsx("flex gap-3", isAdmin ? "mr-auto max-w-[88%] flex-row-reverse" : "ml-auto max-w-[88%]")}
+                                    className={clsx("flex gap-3", isAdmin ? "mr-auto max-w-[94%] flex-row-reverse sm:max-w-[88%]" : "ml-auto max-w-[94%] sm:max-w-[88%]")}
                                 >
                                     <div className="relative shrink-0">
                                         <Image
@@ -428,7 +428,7 @@ export function SupportCaseWorkspace({
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="border-t border-theme-subtle px-5 py-5">
+                    <div className="border-t border-theme-subtle px-4 py-4 sm:px-5 sm:py-5">
                         {error ? (
                             <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                                 {error}
@@ -444,14 +444,14 @@ export function SupportCaseWorkspace({
                                 className="input-dark w-full rounded-2xl px-4 py-3 text-sm"
                             />
 
-                            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <p className="text-xs text-theme-faint">
                                     إذا كان الرد الإداري هو أول تفاعل من الفريق فستتحول التذكرة تلقائيًا إلى قيد المعالجة.
                                 </p>
                                 <button
                                     type="submit"
                                     disabled={!newMessage.trim() || isSending}
-                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-3 text-sm font-semibold text-blue-300 transition-colors hover:bg-blue-500/15 disabled:opacity-50"
+                                    className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-2xl border border-blue-500/30 bg-blue-500/10 px-5 py-3 text-sm font-semibold text-blue-300 transition-colors hover:bg-blue-500/15 disabled:opacity-50 sm:w-auto"
                                 >
                                     {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 -rotate-90 rtl:rotate-90" />}
                                     {isSending ? "جارٍ إرسال الرد..." : "إرسال الرد"}

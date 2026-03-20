@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Clock, Check, Loader2, X, Eye,
@@ -17,12 +18,8 @@ import {
 } from "lucide-react";
 import {
     getDesignOrderPublic,
-    approveDesignOrder,
     cancelDesignOrderByCustomer,
-    getGarmentPricing,
-    confirmDesignOrder,
 } from "@/app/actions/smart-store";
-import { useCartStore } from "@/stores/cartStore";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { DesignOrderChat } from "./DesignOrderChat";
 import { DesignResultsPopup } from "./DesignResultsPopup";
@@ -151,10 +148,13 @@ function getPrice(pricing: any, position: PrintPosition, size: PrintSize): numbe
 // ─── Main Component ─────────────────────────────────────
 
 export function OrderTracker({ orderId, trackerToken }: { orderId: string; trackerToken?: string | null }) {
+    const router = useRouter();
     const [order, setOrder] = useState<CustomDesignOrder | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [showResultsPopup, setShowResultsPopup] = useState(false);
+    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const fetchOrder = useCallback(async () => {
         const token = trackerToken ?? getStoredOrderToken(orderId);
@@ -174,17 +174,37 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
         return () => clearInterval(interval);
     }, [fetchOrder]);
 
-    const handleCancel = async () => {
-        if (!order || !confirm("هل أنت متأكد من إلغاء الطلب؟ لا يمكن التراجع.")) return;
+    const handleCancelRequest = () => {
+        if (!order || actionLoading) return;
+        setActionError(null);
+        setShowResultsPopup(false);
+        setShowCancelConfirm(true);
+    };
+
+    const handleCancelConfirm = async () => {
+        if (!order) return;
         setActionLoading(true);
-        await cancelDesignOrderByCustomer(order.id);
-        await fetchOrder();
-        setActionLoading(false);
+        setActionError(null);
+
+        try {
+            const result = await cancelDesignOrderByCustomer(order.id);
+            if (result?.error) {
+                setActionError(result.error);
+                return;
+            }
+
+            setShowCancelConfirm(false);
+            await fetchOrder();
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر إلغاء الطلب الآن.");
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const handleNewOrder = () => {
         clearOrderId();
-        window.location.reload();
+        router.push("/design");
     };
 
     if (loading) {
@@ -222,8 +242,61 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
                         order={order}
                         onClose={() => setShowResultsPopup(false)}
                         onConfirm={async () => { await fetchOrder(); setShowResultsPopup(false); }}
-                        onCancel={handleCancel}
+                        onCancel={handleCancelRequest}
                     />
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showCancelConfirm && order && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+                    >
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => !actionLoading && setShowCancelConfirm(false)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                            className="theme-surface-panel relative z-10 w-full max-w-md rounded-[2rem] p-6 sm:p-7"
+                        >
+                            <div className="mb-4 flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
+                                    <Ban className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-theme">تأكيد إلغاء الطلب</h3>
+                                    <p className="mt-1 text-sm text-theme-faint">
+                                        سيتم إلغاء طلب التصميم #{order.order_number} نهائيًا ولن تتمكن من التراجع بعد التنفيذ.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-soft">
+                                {order.garment_name} · {order.size_name} · {order.color_name}
+                            </div>
+
+                            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button
+                                    onClick={() => setShowCancelConfirm(false)}
+                                    disabled={actionLoading}
+                                    className="min-h-[46px] rounded-2xl border border-theme-soft px-5 text-sm font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-gold disabled:opacity-50"
+                                >
+                                    تراجع
+                                </button>
+                                <button
+                                    onClick={handleCancelConfirm}
+                                    disabled={actionLoading}
+                                    className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl bg-red-500 px-5 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                                >
+                                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4" />}
+                                    تأكيد الإلغاء
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -234,6 +307,12 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
                 </h1>
                 <p className="text-theme-subtle mt-2 text-sm">تتبع حالة تصميمك المخصص</p>
             </motion.div>
+
+            {actionError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
+                    {actionError}
+                </div>
+            )}
 
             {/* Progress Timeline */}
             {order.status !== "cancelled" && (

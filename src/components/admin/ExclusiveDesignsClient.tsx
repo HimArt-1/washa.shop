@@ -39,6 +39,8 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
     const [saving, setSaving] = useState<string | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Design | null>(null);
 
     const [form, setForm] = useState({
         title: "",
@@ -51,11 +53,13 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
         setForm({ title: "", description: "", image_url: "", sort_order: designs.length });
         setEditingId(null);
         setIsAdding(false);
+        setActionError(null);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setActionError(null);
         setUploading(true);
         const fd = new FormData();
         fd.append("file", file);
@@ -64,61 +68,81 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
         if (result.success) {
             setForm((f) => ({ ...f, image_url: result.url }));
         } else {
-            alert(result.error);
+            setActionError(result.error || "تعذر رفع الصورة الآن.");
         }
     };
 
     const handleSave = async () => {
         if (!form.title.trim() || !form.image_url.trim()) {
-            alert("العنوان والصورة مطلوبان");
+            setActionError("العنوان والصورة مطلوبان");
             return;
         }
+        setActionError(null);
         setSaving(editingId || "new");
-        if (editingId) {
-            const result = await updateExclusiveDesign(editingId, form);
-            if (result.success) {
-                setDesigns((d) =>
-                    d.map((x) => (x.id === editingId ? { ...x, ...form } : x))
-                );
-                resetForm();
+        try {
+            if (editingId) {
+                const result = await updateExclusiveDesign(editingId, form);
+                if (result.success) {
+                    const nextDesign = result.design as Design;
+                    setDesigns((d) =>
+                        d.map((x) => (x.id === editingId ? nextDesign : x))
+                    );
+                    resetForm();
+                } else {
+                    setActionError(result.error || "تعذر تحديث التصميم الآن.");
+                }
             } else {
-                alert(result.error);
+                const result = await createExclusiveDesign(form);
+                if (result.success) {
+                    const nextDesign = result.design as Design;
+                    setDesigns((d) => [...d, nextDesign]);
+                    resetForm();
+                } else {
+                    setActionError(result.error || "تعذر إنشاء التصميم الآن.");
+                }
             }
-        } else {
-            const result = await createExclusiveDesign(form);
-            if (result.success) {
-                setDesigns((d) => [...d, { ...form, id: "temp", is_active: true } as Design]);
-                resetForm();
-                window.location.reload(); // لتحميل الـ id الجديد
-            } else {
-                alert(result.error);
-            }
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر حفظ التصميم الآن.");
+        } finally {
+            setSaving(null);
         }
-        setSaving(null);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("حذف هذا التصميم؟")) return;
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        const id = deleteTarget.id;
+        setActionError(null);
         setDeleting(id);
-        const result = await deleteExclusiveDesign(id);
-        if (result.success) {
-            setDesigns((d) => d.filter((x) => x.id !== id));
-        } else {
-            alert(result.error);
+        try {
+            const result = await deleteExclusiveDesign(id);
+            if (result.success) {
+                setDesigns((d) => d.filter((x) => x.id !== id));
+                setDeleteTarget(null);
+            } else {
+                setActionError(result.error || "تعذر حذف التصميم الآن.");
+            }
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر حذف التصميم الآن.");
+        } finally {
+            setDeleting(null);
         }
-        setDeleting(null);
     };
 
     const handleToggleActive = async (d: Design) => {
+        setActionError(null);
         const result = await updateExclusiveDesign(d.id, { is_active: !d.is_active });
         if (result.success) {
+            const nextDesign = result.design as Design;
             setDesigns((list) =>
-                list.map((x) => (x.id === d.id ? { ...x, is_active: !d.is_active } : x))
+                list.map((x) => (x.id === d.id ? nextDesign : x))
             );
+        } else {
+            setActionError(result.error || "تعذر تحديث حالة التصميم الآن.");
         }
     };
 
     const startEdit = (d: Design) => {
+        setActionError(null);
         setForm({
             title: d.title,
             description: d.description || "",
@@ -131,7 +155,13 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
 
     return (
         <div className="space-y-6">
-            <div className="rounded-2xl border border-theme-subtle bg-surface/50 overflow-hidden">
+            {actionError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
+                    {actionError}
+                </div>
+            )}
+
+            <div className="theme-surface-panel overflow-hidden rounded-2xl">
                 <div className="p-6 border-b border-theme-subtle flex items-center justify-between">
                     <h3 className="font-bold text-theme">التصاميم الحصرية</h3>
                     <button
@@ -154,7 +184,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="p-6 rounded-xl border-2 border-gold/30 bg-gold/5 space-y-4"
+                                className="rounded-xl border-2 border-gold/30 bg-gold/5 p-6 space-y-4"
                             >
                                 <h4 className="font-bold text-theme">
                                     {editingId ? "تعديل التصميم" : "تصميم جديد"}
@@ -165,7 +195,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                         <input
                                             value={form.title}
                                             onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme"
+                                            className="input-dark w-full rounded-xl px-4 py-2"
                                             placeholder="اسم التصميم"
                                         />
                                     </div>
@@ -177,7 +207,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                             onChange={(e) =>
                                                 setForm({ ...form, sort_order: Number(e.target.value) || 0 })
                                             }
-                                            className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme"
+                                            className="input-dark w-full rounded-xl px-4 py-2"
                                         />
                                     </div>
                                 </div>
@@ -186,7 +216,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                     <textarea
                                         value={form.description}
                                         onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-xl bg-theme-subtle border border-theme-soft text-theme h-20"
+                                        className="input-dark h-20 w-full rounded-xl px-4 py-2"
                                         placeholder="وصف قصير للتصميم"
                                     />
                                 </div>
@@ -282,7 +312,7 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                                             <Pencil className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={() => handleDelete(d.id)}
+                                            onClick={() => setDeleteTarget(d)}
                                             disabled={deleting === d.id}
                                             className="p-1.5 rounded-lg bg-theme-subtle hover:bg-red-500/30 text-red-400"
                                         >
@@ -318,6 +348,55 @@ export function ExclusiveDesignsClient({ initialDesigns }: ExclusiveDesignsClien
                     )}
                 </div>
             </div>
+
+            <AnimatePresence>
+                {deleteTarget && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[90] flex items-center justify-center p-4"
+                    >
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => !deleting && setDeleteTarget(null)} />
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                            className="theme-surface-panel relative z-10 w-full max-w-md rounded-[2rem] p-6 sm:p-7"
+                        >
+                            <div className="mb-4 flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
+                                    <Trash2 className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-theme">حذف التصميم الحصري</h3>
+                                    <p className="mt-1 text-sm text-theme-faint">
+                                        سيتم حذف "{deleteTarget.title}" من المكتبة الحصرية. تأكد أنك لا تحتاجه قبل المتابعة.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button
+                                    onClick={() => setDeleteTarget(null)}
+                                    disabled={deleting === deleteTarget.id}
+                                    className="min-h-[46px] rounded-2xl border border-theme-soft px-5 text-sm font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-gold disabled:opacity-50"
+                                >
+                                    تراجع
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    disabled={deleting === deleteTarget.id}
+                                    className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl bg-red-500 px-5 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                                >
+                                    {deleting === deleteTarget.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    تأكيد الحذف
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

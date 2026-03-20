@@ -6,7 +6,6 @@ import Image from "next/image";
 import { createSKU } from "@/app/actions/erp/inventory";
 import { createClient } from "@supabase/supabase-js";
 import Barcode from 'react-barcode';
-import { QRCodeSVG } from 'qrcode.react';
 
 export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) {
     const [skus, setSkus] = useState(initialSKUs);
@@ -24,6 +23,7 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
     const [products, setProducts] = useState<any[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -31,34 +31,59 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
 
     const fetchProducts = async () => {
         setLoadingProducts(true);
-        const { data } = await supabase.from("products").select("id, title, type").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("products").select("id, title, type, image_url").order("created_at", { ascending: false });
         if (data) setProducts(data);
+        if (error) {
+            setActionError(error.message);
+        }
         setLoadingProducts(false);
     };
 
     const handleOpenAdd = () => {
+        setActionError(null);
         setIsAdding(true);
         fetchProducts();
     };
 
+    const resetForm = () => {
+        setSelectedProductId("");
+        setSize("");
+        setColorCode("");
+        setCustomSku("");
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        setActionError(null);
         setIsSaving(true);
 
-        const { sku, error } = await createSKU({
-            product_id: selectedProductId,
-            sku: customSku.trim() || undefined,
-            size: size || null,
-            color_code: colorCode || null
-        });
+        try {
+            const { sku, error } = await createSKU({
+                product_id: selectedProductId,
+                sku: customSku.trim() || undefined,
+                size: size || null,
+                color_code: colorCode || null
+            });
 
-        if (error) {
-            alert(error);
-        } else if (sku) {
-            window.location.reload();
+            if (error) {
+                setActionError(error);
+            } else if (sku) {
+                const selectedProduct = products.find((product) => product.id === selectedProductId);
+                setSkus((current) => [
+                    {
+                        ...sku,
+                        product: selectedProduct ?? null,
+                    },
+                    ...current,
+                ]);
+                resetForm();
+                setIsAdding(false);
+            }
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر إنشاء الباركود الآن.");
+        } finally {
+            setIsSaving(false);
         }
-
-        setIsSaving(false);
     };
 
     const filteredSkus = skus.filter(s =>
@@ -112,6 +137,12 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
 
     return (
         <div className="space-y-6">
+            {actionError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
+                    {actionError}
+                </div>
+            )}
+
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between gap-4">
                 <div className="relative max-w-sm w-full">
@@ -276,7 +307,11 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
                         <div className="flex justify-end gap-3 border-t border-theme-subtle bg-theme-faint p-6">
                             <button
                                 type="button"
-                                onClick={() => setIsAdding(false)}
+                                onClick={() => {
+                                    setIsAdding(false);
+                                    setActionError(null);
+                                    resetForm();
+                                }}
                                 className="px-5 py-2.5 rounded-xl font-medium border border-theme-soft hover:bg-theme-subtle transition-colors"
                             >
                                 إلغاء

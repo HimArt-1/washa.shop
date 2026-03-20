@@ -82,7 +82,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
     const isClosed = ticket.status === "closed" || ticket.status === "resolved";
 
     return (
-        <div className="relative flex min-h-[540px] flex-col overflow-hidden rounded-3xl border border-theme-subtle bg-theme-faint h-[calc(100vh-11rem)] sm:h-[calc(100vh-12rem)]">
+        <div className="relative flex min-h-[540px] h-[calc(100dvh-9.5rem)] flex-col overflow-hidden rounded-3xl border border-theme-subtle bg-theme-faint sm:h-[calc(100vh-12rem)]">
             {/* Header */}
             <div className="z-10 border-b border-theme-subtle bg-theme-faint p-4 sm:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -90,8 +90,8 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                         <Link href="/account/support" className="p-2 -ml-2 hover:bg-theme-subtle rounded-full transition-colors text-theme-subtle hover:text-theme">
                             <ArrowRight className="w-5 h-5" />
                         </Link>
-                        <div>
-                            <h2 className="text-lg font-bold text-theme max-w-[200px] sm:max-w-md truncate">{ticket.subject}</h2>
+                        <div className="min-w-0">
+                            <h2 className="max-w-[210px] text-lg font-bold text-theme line-clamp-2 sm:max-w-md sm:line-clamp-1">{ticket.subject}</h2>
                             <div className="flex flex-wrap items-center gap-2 mt-1">
                                 <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${statusObj.bg} ${statusObj.color}`}>
                                     <statusObj.icon className="w-2.5 h-2.5" />
@@ -120,7 +120,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.05 }}
                             className={clsx(
-                                "flex max-w-[92%] gap-3 sm:max-w-[75%]",
+                                "flex max-w-[96%] gap-3 sm:max-w-[75%]",
                                 isUser ? "mr-auto flex-row-reverse" : "ml-auto"
                             )}
                         >
@@ -182,7 +182,7 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
                         <button
                             type="submit"
                             disabled={!newMessage.trim() || isSubmitting}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-gold text-[#111] flex items-center justify-center hover:bg-gold-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-gold text-[#111] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />

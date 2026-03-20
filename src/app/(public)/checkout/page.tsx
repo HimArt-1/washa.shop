@@ -71,8 +71,8 @@ function CheckoutContent() {
 
     if (items.length === 0 && !success) {
         return (
-            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pt-28 pb-16 text-center sm:pt-32 sm:pb-20">
-                <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
+                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
                     <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6 mx-auto">
                         <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
                     </div>
@@ -80,7 +80,7 @@ function CheckoutContent() {
                     <p className="text-theme-subtle mb-8 max-w-md mx-auto">
                         لم تقم بإضافة أي منتجات للسلة بعد. تصفح المتجر واكتشف منتجاتنا الحصرية.
                     </p>
-                    <div className="flex flex-wrap gap-3 justify-center">
+                    <div className="flex flex-wrap justify-center gap-3">
                         <Link href="/store" className="btn-gold px-8 py-3 rounded-xl">
                             تصفح المتجر
                         </Link>
@@ -183,8 +183,8 @@ function CheckoutContent() {
 
     if (success) {
         return (
-            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pt-28 pb-16 text-center sm:pt-32 sm:pb-20">
-                <div className="theme-surface-panel rounded-[2rem] px-8 py-12 max-w-2xl">
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
+                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
@@ -247,9 +247,9 @@ function CheckoutContent() {
 
     // ─── خطوة العنوان وطريقة الدفع ───────────────────────────
     return (
-        <div className="min-h-screen pt-32 pb-20 bg-theme">
+        <div className="min-h-screen bg-theme pb-20 pt-28 sm:pt-32">
             <div className="container-wusha">
-                <div className="mb-8 theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-7">
+                <div className="mb-6 theme-surface-panel rounded-[2rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">CHECKOUT</p>
@@ -261,17 +261,17 @@ function CheckoutContent() {
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+                <div className="grid gap-6 lg:grid-cols-12 lg:gap-10 xl:gap-12">
                     {/* Form Section */}
-                    <div className="lg:col-span-7 space-y-8">
-                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8">
+                    <div className="space-y-6 lg:col-span-7 sm:space-y-8">
+                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <MapPin className="text-gold w-5 h-5" />
                                 عنوان الشحن
                             </h2>
 
                             <form id="checkout-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <div className="grid md:grid-cols-2 gap-4">
+                                <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <label className="text-sm text-theme-soft">الاسم الكامل</label>
                                         <div className="relative">
@@ -315,7 +315,7 @@ function CheckoutContent() {
                                     )}
                                 </div>
 
-                                <div className="grid md:grid-cols-3 gap-4">
+                                <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="space-y-2">
                                         <label className="text-sm text-theme-soft">المدينة</label>
                                         <input
@@ -348,7 +348,7 @@ function CheckoutContent() {
                             </form>
                         </div>
 
-                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <CreditCard className="text-gold w-5 h-5" />
                                 طريقة الدفع
@@ -363,14 +363,19 @@ function CheckoutContent() {
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                     >
-                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-white/30"
-                                            }`}>
-                                            {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"
+                                                }`}>
+                                                {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                            </div>
+                                            <div>
+                                                <span className="font-bold">الدفع عند الاستلام</span>
+                                                <p className="mt-1 text-xs text-theme-subtle">ادفع عند استلام الطلب داخل المملكة.</p>
+                                            </div>
                                         </div>
-                                        <span className="font-bold">الدفع عند الاستلام</span>
+                                        <span className="inline-flex w-fit rounded px-2 py-1 text-xs text-gold bg-gold/20">متاح</span>
                                     </div>
-                                    <span className="mt-3 inline-flex w-fit rounded px-2 py-1 text-xs text-gold sm:mt-0 sm:self-center bg-gold/20">متاح</span>
                                 </button>
 
                                 {process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY && (
@@ -382,17 +387,22 @@ function CheckoutContent() {
                                             : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                             }`}
                                     >
-                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === "stripe" ? "border-gold bg-gold" : "border-white/30"
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "stripe" ? "border-gold bg-gold" : "border-theme-soft"
                                                 }`}>
-                                                {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                                    {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold">الدفع الإلكتروني</span>
+                                                    <p className="mt-1 text-xs text-theme-subtle">ادفع مباشرة ببطاقاتك أو Apple Pay وMada.</p>
+                                                </div>
                                             </div>
-                                            <span className="font-bold">الدفع الإلكتروني</span>
+                                            <span className="inline-flex items-center gap-1 text-xs text-theme-subtle">
+                                                <Smartphone className="w-3.5 h-3.5" />
+                                                Visa · Mada · Apple Pay
+                                            </span>
                                         </div>
-                                        <span className="mt-3 inline-flex w-fit items-center gap-1 text-xs text-theme-subtle sm:mt-0 sm:self-center">
-                                            <Smartphone className="w-3.5 h-3.5" />
-                                            Visa · Mada · Apple Pay
-                                        </span>
                                     </button>
                                 )}
                             </div>
@@ -401,12 +411,20 @@ function CheckoutContent() {
 
                     {/* Order Summary */}
                     <div className="lg:col-span-5">
-                        <div className="theme-surface-panel rounded-[2rem] p-6 md:p-8 xl:sticky xl:top-32">
-                            <h2 className="text-xl font-bold mb-6">ملخص الطلب</h2>
+                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
+                            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                    <h2 className="text-xl font-bold">ملخص الطلب</h2>
+                                    <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
+                                </div>
+                                <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
+                                    {paymentMethod === "stripe" ? "دفع إلكتروني" : "دفع عند الاستلام"}
+                                </span>
+                            </div>
 
-                            <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="mb-6 space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar sm:max-h-[320px]">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size}`} className="flex gap-3 rounded-2xl bg-theme-faint p-3 sm:gap-4">
+                                    <div key={`${item.id}-${item.size}`} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -418,8 +436,8 @@ function CheckoutContent() {
                                                 x{item.quantity}
                                             </span>
                                         </div>
-                                        <div className="min-w-0">
-                                            <h4 className="line-clamp-1 text-sm font-medium">{item.title}</h4>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="line-clamp-2 text-sm font-medium">{item.title}</h4>
                                             <p className="text-theme-subtle text-xs">{item.artist_name}</p>
                                             {item.size && <p className="text-theme-subtle text-xs mt-0.5">الحجم: {item.size}</p>}
                                             <p className="text-gold text-sm font-bold mt-1">{(item.price * item.quantity).toLocaleString()} ر.س</p>
@@ -472,7 +490,7 @@ function CheckoutContent() {
                                 type="submit"
                                 form="checkout-form"
                                 disabled={isSubmitting}
-                                className="w-full btn-gold py-4 text-base font-bold rounded-xl mt-8 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="mt-8 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold btn-gold disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
                                     <Loader2 className="w-5 h-5 animate-spin" />

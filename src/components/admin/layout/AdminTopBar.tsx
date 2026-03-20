@@ -98,6 +98,49 @@ function getCategoryBadgeClasses(notification: AdminNotification) {
     }
 }
 
+function getPageMeta(pathname: string) {
+    const exactMatch = COMMAND_ITEMS.find((item) => item.href === pathname && !item.external);
+    if (exactMatch) {
+        return {
+            title: exactMatch.label,
+            description: "تنقل أسرع بين المراكز التشغيلية مع بحث أقرب إلى العمل الفعلي.",
+        };
+    }
+
+    if (pathname.startsWith("/dashboard/support/")) {
+        return {
+            title: "مساحة تذكرة الدعم",
+            description: "راجع الحالة والحوار والإجراءات من شاشة واحدة.",
+        };
+    }
+
+    if (pathname.startsWith("/dashboard/design-orders/")) {
+        return {
+            title: "مساحة طلب التصميم",
+            description: "تابع التنفيذ وأرسل النتائج وتحرك بين الحالات دون فقد السياق.",
+        };
+    }
+
+    if (pathname.startsWith("/dashboard/applications/")) {
+        return {
+            title: "مراجعة طلب الانضمام",
+            description: "اعتماد أو رفض الطلبات مع رؤية أوضح للبيانات والمرفقات.",
+        };
+    }
+
+    if (pathname.startsWith("/dashboard/users/")) {
+        return {
+            title: "ملف المستخدم",
+            description: "نظرة مركزة على الحساب والهوية والنشاط من شاشة واحدة.",
+        };
+    }
+
+    return {
+        title: "لوحة الإدارة",
+        description: "ملاحة تشغيلية أنظف بين الطلبات والدعم والمنتجات والإعدادات.",
+    };
+}
+
 export function AdminTopBar() {
     const router = useRouter();
     const pathname = usePathname();
@@ -107,6 +150,7 @@ export function AdminTopBar() {
     const [notifications, setNotifications] = useState<AdminNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const notificationSummary = { critical: 0, warning: 0, info: 0 };
+    const pageMeta = getPageMeta(pathname);
 
     for (const notification of notifications) {
         notificationSummary[notification.severity] += 1;
@@ -124,6 +168,10 @@ export function AdminTopBar() {
     useEffect(() => {
         if (notificationsOpen) fetchNotifications();
     }, [notificationsOpen, fetchNotifications]);
+
+    useEffect(() => {
+        setNotificationsOpen(false);
+    }, [pathname]);
 
     useEffect(() => {
         getUnreadNotificationsCount().then(setUnreadCount);
@@ -166,21 +214,39 @@ export function AdminTopBar() {
     return (
         <>
             <header className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--wusha-surface)_95%,transparent)] backdrop-blur-xl border-b border-theme-subtle">
-                <div className="flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
-                    {/* Search / Command Palette Trigger */}
-                    <button
-                        onClick={() => setSearchOpen(true)}
-                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-theme-subtle border border-theme-soft hover:border-gold/30 hover:bg-theme-soft transition-all duration-300 min-w-[200px] sm:min-w-[280px] text-right"
-                    >
-                        <Search className="w-4 h-4 text-theme-subtle shrink-0" />
-                        <span className="text-sm text-theme-subtle flex-1">بحث سريع...</span>
-                        <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-theme-subtle text-[10px] text-theme-subtle font-mono">
-                            <Command className="w-3 h-3" />K
-                        </kbd>
-                    </button>
+                <div className="flex flex-col gap-3 px-4 py-3 pr-16 sm:px-6 sm:pr-6 lg:px-8 lg:pr-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-bold tracking-[0.2em] text-theme-faint">ADMIN NAVIGATION</p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <h1 className="text-lg font-bold text-theme sm:text-xl">{pageMeta.title}</h1>
+                                <span className="inline-flex items-center rounded-full border border-gold/15 bg-gold/10 px-2.5 py-1 text-[10px] font-bold text-gold">
+                                    Cmd/Ctrl + K
+                                </span>
+                            </div>
+                            <p className="mt-1 line-clamp-1 text-xs text-theme-faint sm:text-sm">{pageMeta.description}</p>
+                        </div>
 
-                    {/* Right: Theme + Notifications + User */}
-                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setSearchOpen(true)}
+                            className="flex w-full items-center gap-3 rounded-xl border border-theme-soft bg-theme-subtle px-4 py-2.5 text-right transition-all duration-300 hover:border-gold/30 hover:bg-theme-soft sm:mr-auto sm:min-w-[260px] sm:w-auto"
+                        >
+                            <Search className="w-4 h-4 text-theme-subtle shrink-0" />
+                            <span className="text-sm text-theme-subtle flex-1">بحث سريع...</span>
+                            <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-theme-subtle text-[10px] text-theme-subtle font-mono">
+                                <Command className="w-3 h-3" />K
+                            </kbd>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <Link
+                            href="/"
+                            className="hidden lg:inline-flex items-center gap-2 rounded-xl border border-theme-soft bg-theme-faint px-3 py-2 text-xs font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-gold"
+                        >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            الموقع العام
+                        </Link>
                         <ThemeToggle />
                         <button
                             onClick={() => setNotificationsOpen(!notificationsOpen)}

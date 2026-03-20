@@ -62,6 +62,7 @@ export function OrdersClient({
     const [selectedDesignOrder, setSelectedDesignOrder] = useState<CustomDesignOrder | null>(null);
     const [cancelingId, setCancelingId] = useState<string | null>(null);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [cancelDialogOrder, setCancelDialogOrder] = useState<CustomDesignOrder | null>(null);
 
     const hasNoOrders = orders.length === 0 && designOrders.length === 0;
 
@@ -81,8 +82,14 @@ export function OrdersClient({
         }
     }, [searchParams]);
 
-    const handleCancelDesign = async (id: string) => {
-        if (!confirm("هل أنت متأكد من إلغاء طلب التصميم؟")) return;
+    const requestCancelDesign = (order: CustomDesignOrder) => {
+        setActionError(null);
+        setCancelDialogOrder(order);
+    };
+
+    const handleCancelDesign = async () => {
+        if (!cancelDialogOrder) return;
+        const id = cancelDialogOrder.id;
         setCancelingId(id);
         setActionError(null);
 
@@ -93,6 +100,8 @@ export function OrdersClient({
                 return;
             }
 
+            setCancelDialogOrder(null);
+            setSelectedDesignOrder((current) => (current?.id === id ? null : current));
             router.refresh();
         } catch (error) {
             setActionError(error instanceof Error ? error.message : "تعذر إلغاء الطلب الآن.");
@@ -117,7 +126,7 @@ export function OrdersClient({
     }
 
     return (
-        <div className="space-y-12">
+        <div className="space-y-10 sm:space-y-12">
             {actionError && (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
                     {actionError}
@@ -163,7 +172,7 @@ export function OrdersClient({
                                             <>
                                                 <button
                                                     onClick={() => setSelectedDesignOrder(dOrder)}
-                                                    className={`flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl py-2 text-xs font-bold text-bg shadow-lg transition-colors sm:flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20" : "bg-gold hover:bg-gold-light"}`}
+                                                    className={`flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-bg shadow-lg transition-colors sm:flex-1 ${dOrder.is_sent_to_customer ? "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20" : "bg-gold hover:bg-gold-light"}`}
                                                 >
                                                     {dOrder.is_sent_to_customer ? (
                                                         <>
@@ -203,25 +212,28 @@ export function OrdersClient({
                                                                 custom_design_url: dOrder.garment_image_url
                                                             }]
                                                         };
-                                                        openInvoicePrint(invoiceOrder);
+                                                        const opened = openInvoicePrint(invoiceOrder);
+                                                        if (!opened) {
+                                                            setActionError("يرجى السماح بالنوافذ المنبثقة لفتح الفاتورة.");
+                                                        }
                                                     }}
-                                                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:border-gold/20 hover:bg-gold/10 hover:text-gold sm:flex-1"
+                                                    className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-transparent bg-theme-subtle px-3 py-2 text-center text-xs font-bold text-theme transition-colors hover:border-gold/20 hover:bg-gold/10 hover:text-gold sm:flex-1"
                                                 >
                                                     <FileText className="w-4 h-4" /> الفاتورة الذكية
                                                 </button>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft sm:flex-1">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-theme-subtle px-3 py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft sm:flex-1">
                                                     تفاصيل الطلب <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                             </>
                                         ) : dOrder.status !== "cancelled" ? (
                                             <>
-                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-theme-subtle py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft">
+                                                <Link href={`/design/tracker?order=${dOrder.id}`} className="flex min-h-[46px] flex-1 items-center justify-center gap-2 rounded-xl bg-theme-subtle px-3 py-2 text-center text-xs font-bold text-theme transition-colors hover:bg-theme-soft">
                                                     تتبع الطلب والحوار <ExternalLink className="w-3.5 h-3.5" />
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleCancelDesign(dOrder.id)}
+                                                    onClick={() => requestCancelDesign(dOrder)}
                                                     disabled={cancelingId === dOrder.id}
-                                                    className="flex min-h-[44px] items-center justify-center rounded-xl bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                                                    className="flex min-h-[46px] items-center justify-center rounded-xl bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
                                                     title="إلغاء الطلب"
                                                 >
                                                     {cancelingId === dOrder.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
@@ -275,12 +287,12 @@ export function OrdersClient({
                                             const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                             return (
-                                                <div key={item.id} className="flex items-center gap-3 sm:gap-4">
+                                                <div key={item.id} className="flex items-center gap-3 rounded-2xl bg-theme-faint/60 px-3 py-2.5 sm:gap-4">
                                                     <div className="w-12 h-12 rounded-xl overflow-hidden border border-theme-faint bg-theme-faint shrink-0">
                                                         {imageUrl && <Image src={imageUrl} alt={title} width={48} height={48} className="object-cover w-full h-full" />}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="truncate text-sm text-theme">{title}</p>
+                                                        <p className="line-clamp-2 text-sm text-theme sm:line-clamp-1">{title}</p>
                                                         <p className="text-[10px] text-theme-faint">
                                                             {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
                                                         </p>
@@ -293,15 +305,20 @@ export function OrdersClient({
                                 )}
 
                                 <div className="mt-4 flex flex-col gap-3 border-t border-theme-faint pt-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         <div>
                                             <span className="text-xs text-theme-subtle block mb-0.5">الإجمالي</span>
                                             <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
                                         </div>
                                         {/* Invoice Button */}
                                         <button
-                                            onClick={() => openInvoicePrint(order)}
-                                            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-theme-soft px-3 py-1.5 text-[10px] font-bold text-theme-soft transition-all hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
+                                            onClick={() => {
+                                                const opened = openInvoicePrint(order);
+                                                if (!opened) {
+                                                    setActionError("يرجى السماح بالنوافذ المنبثقة لفتح الفاتورة.");
+                                                }
+                                            }}
+                                            className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-theme-soft px-3 py-2 text-[10px] font-bold text-theme-soft transition-all hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
                                             title="عرض الفاتورة"
                                         >
                                             <FileText className="w-4 h-4" />
@@ -327,16 +344,51 @@ export function OrdersClient({
                     }}
                     onCancel={async () => {
                         setActionError(null);
-                        const result = await cancelDesignOrderByCustomer(selectedDesignOrder.id);
-                        if (result?.error) {
-                            setActionError(result.error);
-                            return;
-                        }
-
                         setSelectedDesignOrder(null);
-                        router.refresh();
+                        requestCancelDesign(selectedDesignOrder);
                     }}
                 />
+            )}
+
+            {cancelDialogOrder && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => !cancelingId && setCancelDialogOrder(null)} />
+                    <div className="theme-surface-panel relative z-10 w-full max-w-md rounded-[2rem] p-6 sm:p-7">
+                        <div className="mb-4 flex items-start gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500/10 text-red-400">
+                                <XCircle className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-theme">تأكيد إلغاء طلب التصميم</h3>
+                                <p className="mt-1 text-sm text-theme-faint">
+                                    سيتم إلغاء التصميم #{cancelDialogOrder.order_number} وإيقاف متابعته من هذه الصفحة.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-soft">
+                            {cancelDialogOrder.garment_name} · {cancelDialogOrder.size_name} · {cancelDialogOrder.color_name}
+                        </div>
+
+                        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button
+                                onClick={() => setCancelDialogOrder(null)}
+                                disabled={cancelingId === cancelDialogOrder.id}
+                                className="min-h-[46px] rounded-2xl border border-theme-soft px-5 text-sm font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-gold disabled:opacity-50"
+                            >
+                                تراجع
+                            </button>
+                            <button
+                                onClick={handleCancelDesign}
+                                disabled={cancelingId === cancelDialogOrder.id}
+                                className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl bg-red-500 px-5 text-sm font-bold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                            >
+                                {cancelingId === cancelDialogOrder.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                                تأكيد الإلغاء
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

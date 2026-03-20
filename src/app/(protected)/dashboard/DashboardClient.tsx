@@ -322,7 +322,7 @@ function RevenueRunway({
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 lg:min-w-[320px]">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[320px]">
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-xs text-theme-faint">أفضل شهر</p>
                             <p className="mt-2 text-lg font-bold text-theme">{bestMonth.date}</p>
@@ -336,8 +336,9 @@ function RevenueRunway({
                     </div>
                 </div>
 
-                <div className="rounded-[26px] border border-theme-subtle bg-theme-faint p-5">
-                    <div className="grid h-[290px] grid-cols-12 items-end gap-2 md:gap-3">
+                <div className="rounded-[26px] border border-theme-subtle bg-theme-faint p-4 sm:p-5">
+                    <div className="overflow-x-auto pb-2">
+                        <div className="grid h-[290px] min-w-[640px] grid-cols-12 items-end gap-2 md:gap-3">
                         {data.map((item) => {
                             const revenueHeight = `${Math.max(10, (item.revenue / maxRevenue) * 100)}%`;
                             const ordersHeight = `${Math.max(8, (item.orders / maxOrders) * 72)}%`;
@@ -367,6 +368,7 @@ function RevenueRunway({
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-theme-subtle">
@@ -524,7 +526,7 @@ export function DashboardClient({
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
+                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
                 >
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_30%)]" />
                     <div className="relative space-y-6">
@@ -538,7 +540,7 @@ export function DashboardClient({
                         </div>
 
                         <div className="max-w-3xl">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
+                            <h2 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
                                 الداشبورد لم تعد مجرد تقارير، بل غرفة عمليات حية لوشّى.
                             </h2>
                             <p className="mt-4 text-sm leading-8 text-theme-subtle md:text-base">
@@ -547,7 +549,7 @@ export function DashboardClient({
                             </p>
                         </div>
 
-                        <div className="grid gap-3 md:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs text-theme-faint">عناصر تحتاج تدخل الآن</p>
                                 <p className="mt-2 text-3xl font-black text-theme">{attentionNow}</p>
@@ -597,7 +599,7 @@ export function DashboardClient({
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 }}
-                    className={`${panelClass} p-6`}
+                    className={`${panelClass} p-5 sm:p-6`}
                 >
                     <div className="space-y-5">
                         <div className="flex items-start justify-between gap-4">
@@ -611,7 +613,7 @@ export function DashboardClient({
 
                         <div className="flex items-center justify-center py-3">
                             <div
-                                className="grid h-44 w-44 place-items-center rounded-full p-3"
+                                className="grid h-36 w-36 place-items-center rounded-full p-3 sm:h-44 sm:w-44"
                                 style={{
                                     background: `conic-gradient(${healthMeta.accent} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
                                 }}
@@ -626,7 +628,7 @@ export function DashboardClient({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs text-theme-faint">حرج غير مقروء</p>
                                 <p className="mt-2 text-2xl font-black text-theme">{controlTower.ops.alertsCritical}</p>
@@ -692,7 +694,7 @@ export function DashboardClient({
                 <motion.section
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6`}
+                    className={`${panelClass} p-5 sm:p-6`}
                 >
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
@@ -908,7 +910,7 @@ export function DashboardClient({
                     </div>
 
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="min-w-[720px] w-full text-sm">
                             <thead>
                                 <tr className="border-b border-theme-subtle text-right text-xs text-theme-faint">
                                     <th className="px-6 py-4 font-medium">رقم الطلب</th>

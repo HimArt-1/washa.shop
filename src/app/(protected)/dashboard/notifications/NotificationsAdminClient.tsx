@@ -124,7 +124,7 @@ function FilterChip(props: {
             type="button"
             onClick={onClick}
             className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
+                "inline-flex min-h-[36px] items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors",
                 active
                     ? "border-gold/30 bg-gold/10 text-gold"
                     : "border-theme-subtle bg-theme-faint text-theme-subtle hover:border-gold/20 hover:text-theme"
@@ -149,6 +149,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
     const [severityFilter, setSeverityFilter] = useState<AdminNotificationSeverity | "all">("all");
     const [readFilter, setReadFilter] = useState<"all" | "unread">("all");
     const [pendingNotificationId, setPendingNotificationId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [isMarkingAll, startMarkAllTransition] = useTransition();
     const [isMarkingOne, startSingleTransition] = useTransition();
 
@@ -192,6 +193,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
 
         startSingleTransition(async () => {
             setPendingNotificationId(id);
+            setError(null);
             try {
                 const result = await markNotificationRead(id);
                 if (!result?.success) {
@@ -203,7 +205,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                     )
                 );
             } catch (error) {
-                window.alert(error instanceof Error ? error.message : "فشل تحديث الإشعار");
+                setError(error instanceof Error ? error.message : "فشل تحديث الإشعار");
             } finally {
                 setPendingNotificationId(null);
             }
@@ -214,6 +216,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
         if (unreadCount === 0 || isMarkingAll) return;
 
         startMarkAllTransition(async () => {
+            setError(null);
             try {
                 const result = await markAllNotificationsRead();
                 if (!result?.success) {
@@ -221,20 +224,25 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                 }
                 setItems((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
             } catch (error) {
-                window.alert(error instanceof Error ? error.message : "فشل تحديث الإشعارات");
+                setError(error instanceof Error ? error.message : "فشل تحديث الإشعارات");
             }
         });
     };
 
     return (
         <div className="space-y-6">
+            {error ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {error}
+                </div>
+            ) : null}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0 }}
                     className={cn(
-                        "rounded-2xl border p-5 backdrop-blur-sm",
+                        "rounded-2xl border p-4 sm:p-5 backdrop-blur-sm",
                         alerts.lowStock > 0 ? "border-amber-500/20 bg-amber-500/5" : "border-theme-subtle bg-theme-faint"
                     )}
                 >
@@ -260,7 +268,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                     className={cn(
-                        "rounded-2xl border p-5 backdrop-blur-sm",
+                        "rounded-2xl border p-4 sm:p-5 backdrop-blur-sm",
                         alerts.pendingOrders > 0 ? "border-blue-500/20 bg-blue-500/5" : "border-theme-subtle bg-theme-faint"
                     )}
                 >
@@ -286,7 +294,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                     className={cn(
-                        "rounded-2xl border p-5 backdrop-blur-sm",
+                        "rounded-2xl border p-4 sm:p-5 backdrop-blur-sm",
                         alerts.newUsersToday > 0 ? "border-emerald-500/20 bg-emerald-500/5" : "border-theme-subtle bg-theme-faint"
                     )}
                 >
@@ -309,13 +317,13 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
             </div>
 
             <div className="theme-surface-panel overflow-hidden rounded-2xl">
-                <div className="space-y-4 border-b border-theme-subtle px-5 py-4">
+                <div className="space-y-4 border-b border-theme-subtle px-4 py-4 sm:px-5">
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2">
                             <ShieldAlert className="h-4 w-4 text-gold" />
                             <h3 className="text-sm font-bold text-theme-strong">سجل تنبيهات الإدارة</h3>
                         </div>
-                        <span className="mr-auto text-xs text-theme-faint">
+                        <span className="mr-auto w-full text-xs text-theme-faint sm:w-auto">
                             {filteredNotifications.length} من {items.length} إشعار
                         </span>
                         <span className="inline-flex items-center rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] text-theme-subtle">
@@ -400,7 +408,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: index * 0.02 }}
                                     className={cn(
-                                        "border-r-2 px-5 py-4 transition-colors hover:bg-theme-faint",
+                                        "border-r-2 px-4 py-4 transition-colors hover:bg-theme-faint sm:px-5",
                                         severity.accent,
                                         !notification.is_read && "bg-gold/[0.02]"
                                     )}
@@ -446,7 +454,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                                                 {notification.link ? (
                                                     <Link
                                                         href={notification.link}
-                                                        className="text-[10px] font-semibold text-gold hover:text-gold-light"
+                                                        className="inline-flex min-h-[28px] items-center text-[10px] font-semibold text-gold hover:text-gold-light"
                                                     >
                                                         فتح
                                                     </Link>

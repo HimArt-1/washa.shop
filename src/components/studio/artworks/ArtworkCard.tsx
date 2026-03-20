@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MoreVertical, Trash2, ShoppingBag, Loader2 } from "lucide-react";
+import { MoreVertical, Trash2, ShoppingBag, Loader2, X } from "lucide-react";
 import { deleteArtwork } from "@/app/actions/artworks";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -16,18 +17,27 @@ interface Artwork {
 }
 
 export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+    const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleDelete = async () => {
-        if (!confirm("هل أنت متأكد من حذف هذا العمل الفني؟")) return;
-
         setIsDeleting(true);
+        setError(null);
         try {
-            await deleteArtwork(artwork.id, artwork.image_url);
+            const result = await deleteArtwork(artwork.id, artwork.image_url);
+            if (!result?.success) {
+                setError(result?.error || "حدث خطأ أثناء الحذف");
+                return;
+            }
+            setShowDeleteConfirm(false);
+            setShowMenu(false);
+            router.refresh();
         } catch (error) {
             console.error("Error deleting artwork:", error);
-            alert("حدث خطأ أثناء الحذف");
+            setError("حدث خطأ أثناء الحذف");
         } finally {
             setIsDeleting(false);
         }
@@ -41,6 +51,11 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
             exit={{ opacity: 0, scale: 0.9 }}
             className="group theme-surface-panel relative rounded-[1.75rem] overflow-hidden hover:shadow-lg transition-all duration-300"
         >
+            {error && (
+                <div className="absolute inset-x-3 top-3 z-20 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200 backdrop-blur-sm">
+                    {error}
+                </div>
+            )}
             {/* Image */}
             <div className="relative aspect-[3/4] bg-[color:color-mix(in_srgb,var(--wusha-text)_4%,transparent)]">
                 <Image
@@ -92,7 +107,11 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                             >
                                 <button
                                     disabled={isDeleting}
-                                    onClick={handleDelete}
+                                    onClick={() => {
+                                        setError(null);
+                                        setShowDeleteConfirm(true);
+                                        setShowMenu(false);
+                                    }}
                                     className="w-full text-right px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors disabled:opacity-50"
                                 >
                                     {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
@@ -113,6 +132,60 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
                     {new Date(artwork.created_at).toLocaleDateString('ar-SA')}
                 </p>
             </div>
+
+            <AnimatePresence>
+                {showDeleteConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-30 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 12 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 12 }}
+                            className="theme-surface-panel w-full max-w-xs rounded-2xl p-5 shadow-2xl"
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-theme-faint">Delete Artwork</p>
+                                    <h3 className="mt-2 text-base font-bold text-theme">حذف العمل الفني</h3>
+                                </div>
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    disabled={isDeleting}
+                                    className="rounded-lg p-2 text-theme-subtle transition-colors hover:bg-theme-subtle disabled:opacity-40"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
+                                سيتم حذف هذا العمل الفني من معرضك.
+                            </p>
+                            <div className="mt-5 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    disabled={isDeleting}
+                                    className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDelete}
+                                    disabled={isDeleting}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                                >
+                                    {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                    حذف العمل
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

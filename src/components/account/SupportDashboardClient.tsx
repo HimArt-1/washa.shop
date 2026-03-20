@@ -74,14 +74,14 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                         <h3 className="mt-2 text-lg font-bold text-theme">تذاكر الدعم</h3>
                         <p className="mt-1 text-sm text-theme-subtle">تابع حالة تذاكرك الحالية أو افتح تذكرة جديدة</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-center">
                             <p className="text-[11px] font-bold tracking-[0.18em] text-theme-faint">OPEN THREADS</p>
                             <p className="mt-1 text-lg font-bold text-theme">{initialTickets.length}</p>
                         </div>
                         <motion.button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="btn-gold py-2.5 px-5 flex items-center gap-2 text-sm"
+                            className="btn-gold flex min-h-[46px] items-center justify-center gap-2 px-5 py-2.5 text-sm"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                         >
@@ -122,31 +122,33 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                     className="group cursor-pointer rounded-[1.75rem] border border-theme-subtle bg-theme-faint p-5 transition-all duration-300 hover:border-gold/30 hover:bg-theme-subtle sm:p-6"
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="mb-2 flex flex-wrap items-center gap-3">
-                                            <div className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${status.bg} ${status.color}`}>
-                                                <status.icon className="w-3 h-3" />
-                                                <span>{status.label}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="mb-2 flex flex-wrap items-center gap-3">
+                                                <div className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold ${status.bg} ${status.color}`}>
+                                                    <status.icon className="w-3 h-3" />
+                                                    <span>{status.label}</span>
+                                                </div>
+                                                <span className="text-theme-subtle text-xs">#{ticket.id.slice(0, 8)}</span>
                                             </div>
-                                            <span className="text-theme-subtle text-xs">#{ticket.id.slice(0, 8)}</span>
+                                            <h4 className="line-clamp-2 text-base font-bold text-theme transition-colors group-hover:text-gold sm:line-clamp-1 sm:text-lg">
+                                                {ticket.subject}
+                                            </h4>
                                         </div>
-                                        <h4 className="text-lg font-bold text-theme group-hover:text-gold transition-colors truncate">
-                                            {ticket.subject}
-                                        </h4>
-                                    </div>
 
-                                    <div className="flex flex-wrap items-center gap-5 sm:justify-end shrink-0">
-                                        <div className="flex flex-col gap-1 items-start sm:items-end">
-                                            <span className="text-xs text-theme-subtle">الأهمية</span>
-                                            <span className={`text-sm font-medium ${prio.color}`}>{prio.label}</span>
+                                        <div className="shrink-0 rounded-2xl border border-theme-subtle bg-theme-surface px-4 py-3">
+                                            <div className="grid grid-cols-2 gap-4 sm:min-w-[220px]">
+                                                <div className="flex flex-col gap-1 items-start sm:items-end">
+                                                    <span className="text-xs text-theme-subtle">الأهمية</span>
+                                                    <span className={`text-sm font-medium ${prio.color}`}>{prio.label}</span>
+                                                </div>
+                                                <div className="flex flex-col gap-1 items-start sm:items-end">
+                                                    <span className="text-xs text-theme-subtle">آخر تحديث</span>
+                                                    <span className="text-sm text-theme-strong font-medium">
+                                                        {formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true, locale: ar })}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-1 items-start sm:items-end w-28">
-                                            <span className="text-xs text-theme-subtle">آخر تحديث</span>
-                                            <span className="text-sm text-theme-strong font-medium">
-                                                {formatDistanceToNow(new Date(ticket.updated_at), { addSuffix: true, locale: ar })}
-                                            </span>
-                                        </div>
-                                    </div>
                                     </div>
                                 </motion.div>
                             </Link>
@@ -170,9 +172,9 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                             initial={{ opacity: 0, scale: 0.95, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="theme-surface-panel relative w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl"
+                            className="theme-surface-panel relative max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl"
                         >
-                            <div className="p-6 sm:p-8">
+                            <div className="max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 sm:p-8">
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-xl font-bold text-theme">إنشاء تذكرة دعم</h3>
                                     <button

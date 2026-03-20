@@ -11,7 +11,7 @@ export function SettingsThemeSection() {
 
     return (
         <div
-            className="theme-surface-panel rounded-[2rem] p-6 transition-all duration-300"
+            className="theme-surface-panel rounded-[2rem] p-5 transition-all duration-300 sm:p-6"
             style={{
                 backgroundColor: "color-mix(in srgb, var(--wusha-surface) 50%, transparent)",
                 borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",
@@ -27,7 +27,7 @@ export function SettingsThemeSection() {
             <div className="grid gap-3 sm:grid-cols-2">
                 <button
                     onClick={() => setTheme("dark")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 ${
+                    className={`flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition-all duration-300 ${
                         theme === "dark"
                             ? "ring-2 ring-[var(--wusha-gold)]"
                             : "opacity-60 hover:opacity-100"
@@ -43,7 +43,7 @@ export function SettingsThemeSection() {
                 </button>
                 <button
                     onClick={() => setTheme("light")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-all duration-300 ${
+                    className={`flex min-h-[48px] items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium transition-all duration-300 ${
                         theme === "light"
                             ? "ring-2 ring-[var(--wusha-gold)]"
                             : "opacity-60 hover:opacity-100"

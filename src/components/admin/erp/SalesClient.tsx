@@ -21,7 +21,7 @@ export default function SalesClient({
 }: {
     initialSales: any[], warehouses: any[], skus: any[]
 }) {
-    const [sales] = useState(initialSales);
+    const [sales, setSales] = useState(initialSales);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSelling, setIsSelling] = useState(false);
     const [period, setPeriod] = useState<Period>("month");
@@ -34,6 +34,7 @@ export default function SalesClient({
     const [notes, setNotes] = useState("");
 
     const [isSaving, setIsSaving] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     // ── Analytics ──────────────────────────────────────────────
     const filteredByPeriod = useMemo(() => filterByPeriod(sales, period), [sales, period]);
@@ -83,26 +84,50 @@ export default function SalesClient({
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (quantity <= 0) return alert("الكمية غير صحيحة");
-        if (totalPrice < 0) return alert("السعر الإجمالي غير صحيح");
+        setActionError(null);
+        if (quantity <= 0) {
+            setActionError("الكمية غير صحيحة");
+            return;
+        }
+        if (totalPrice < 0) {
+            setActionError("السعر الإجمالي غير صحيح");
+            return;
+        }
 
         setIsSaving(true);
 
-        const { success, error } = await recordManualSale(
-            selectedSkuId,
-            quantity,
-            totalPrice,
-            selectedWarehouseId,
-            notes
-        );
+        try {
+            const { sale, error } = await recordManualSale(
+                selectedSkuId,
+                quantity,
+                totalPrice,
+                selectedWarehouseId,
+                notes
+            );
 
-        if (error) {
-            alert(error);
-        } else {
-            window.location.reload();
+            if (error) {
+                setActionError(error);
+                return;
+            }
+
+            const selectedSku = skus.find((sku) => sku.id === selectedSkuId);
+            const createdSale = {
+                ...sale,
+                sku: selectedSku ?? null,
+            };
+
+            setSales((current) => [createdSale, ...current]);
+            setIsSelling(false);
+            setSelectedSkuId("");
+            setSelectedWarehouseId(warehouses[0]?.id || "");
+            setQuantity(1);
+            setTotalPrice(0);
+            setNotes("");
+        } catch (error) {
+            setActionError(error instanceof Error ? error.message : "تعذر تسجيل البيع الآن.");
+        } finally {
+            setIsSaving(false);
         }
-
-        setIsSaving(false);
     };
 
     const filteredSales = sales.filter(item =>
@@ -128,6 +153,11 @@ export default function SalesClient({
 
     return (
         <div className="space-y-6">
+            {actionError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
+                    {actionError}
+                </div>
+            )}
 
             {/* ── Date Filter ── */}
             <div className="flex flex-wrap gap-2">
@@ -300,18 +330,23 @@ export default function SalesClient({
             {/* POS Modal */}
             {isSelling && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--wusha-bg)_80%,transparent)] backdrop-blur-sm">
-                    <div className="bg-surface border border-theme-soft rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="theme-surface-panel w-full max-w-lg overflow-hidden rounded-2xl flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between border-b border-theme-subtle bg-theme-faint p-6">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Store className="w-5 h-5 text-gold" />
                                 تسجيل بيع يدوي جديد (بدون متجر)
                             </h2>
-                            <button onClick={() => setIsSelling(false)} className="text-theme-subtle hover:text-theme transition-colors">
+                            <button onClick={() => { setIsSelling(false); setActionError(null); }} className="text-theme-subtle hover:text-theme transition-colors">
                                 إغلاق
                             </button>
                         </div>
 
                         <div className="p-6 overflow-y-auto">
+                            {actionError && (
+                                <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                    {actionError}
+                                </div>
+                            )}
                             <form id="sales-form" onSubmit={handleSave} className="space-y-5">
                                 <div className="p-4 bg-gold/5 border border-gold/10 rounded-xl text-sm leading-relaxed text-gold/80">
                                     هذه الواجهة تستخدم لعمليات البيع المباشرة (نقاط البيع في البوثات/المعارض).
@@ -392,7 +427,7 @@ export default function SalesClient({
                         <div className="flex justify-end gap-3 border-t border-theme-subtle bg-theme-faint p-6">
                             <button
                                 type="button"
-                                onClick={() => setIsSelling(false)}
+                                onClick={() => { setIsSelling(false); setActionError(null); }}
                                 className="px-5 py-2.5 rounded-xl font-medium border border-theme-soft hover:bg-theme-subtle transition-colors"
                             >
                                 إلغاء
