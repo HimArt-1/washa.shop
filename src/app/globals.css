@@ -37,6 +37,14 @@
   --glass-border: rgba(90, 62, 43, 0.15);
   --noise-opacity: 0.015;
 
+  /* Card and Mockup Design Variables (Light Cream) */
+  --card-bg-from: #fffefb;
+  --card-bg-to: #f5f2eb;
+  --card-text: #1a1612;
+  --card-text-muted: rgba(26, 22, 18, 0.7);
+  --card-border: rgba(154, 123, 61, 0.25);
+  --card-shadow: rgba(90, 62, 43, 0.1);
+
   /* مساحات */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
@@ -83,6 +91,14 @@
   --glass-premium-to: rgba(26, 26, 26, 0.6);
   --glass-border: rgba(206, 174, 127, 0.15);
   --noise-opacity: 0.025;
+
+  /* Card and Mockup Design Variables (Dark Heritage) */
+  --card-bg-from: #322014;
+  --card-bg-to: #1A110A;
+  --card-text: #f0ebe3;
+  --card-text-muted: rgba(240, 235, 227, 0.7);
+  --card-border: rgba(206, 174, 127, 0.4);
+  --card-shadow: rgba(0, 0, 0, 0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════
