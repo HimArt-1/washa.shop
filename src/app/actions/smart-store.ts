@@ -20,10 +20,21 @@ import type {
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
+    CustomDesignPreset,
+    CustomDesignOptionCompatibility,
 } from "@/types/database";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { getDesignOrderAccess } from "@/lib/design-order-access";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import {
+    buildDesignMetadataFromFormData,
+    type DesignMethod,
+    type PrintPosition,
+    type PrintSize,
+    type SmartStoreOptionType,
+    normalizeColorTokens,
+    normalizeDesignMetadata,
+} from "@/lib/design-intelligence";
 
 
 function getSmartStoreSb() {
@@ -142,6 +153,69 @@ function sanitizePublicDesignOrder(order: CustomDesignOrder): CustomDesignOrder 
     };
 }
 
+function normalizeStyleRow(row: CustomDesignStyle): CustomDesignStyle {
+    return {
+        ...row,
+        metadata: normalizeDesignMetadata(row.metadata),
+    };
+}
+
+function normalizeArtStyleRow(row: CustomDesignArtStyle): CustomDesignArtStyle {
+    return {
+        ...row,
+        metadata: normalizeDesignMetadata(row.metadata),
+    };
+}
+
+function normalizeColorPackageRow(row: CustomDesignColorPackage): CustomDesignColorPackage {
+    return {
+        ...row,
+        colors: normalizeColorTokens(row.colors),
+        metadata: normalizeDesignMetadata(row.metadata),
+    };
+}
+
+function normalizeStudioItemRow(row: CustomDesignStudioItem): CustomDesignStudioItem {
+    return {
+        ...row,
+        metadata: normalizeDesignMetadata(row.metadata),
+    };
+}
+
+function normalizePresetRow(row: CustomDesignPreset): CustomDesignPreset {
+    return {
+        ...row,
+        metadata: normalizeDesignMetadata(row.metadata),
+    };
+}
+
+function parseDesignMethodValue(value: FormDataEntryValue | null): DesignMethod | null {
+    return value === "from_text" || value === "from_image" || value === "studio" ? value : null;
+}
+
+function parsePrintPositionValue(value: FormDataEntryValue | null): PrintPosition | null {
+    return value === "chest" || value === "back" || value === "shoulder_right" || value === "shoulder_left" ? value : null;
+}
+
+function parsePrintSizeValue(value: FormDataEntryValue | null): PrintSize | null {
+    return value === "large" || value === "small" ? value : null;
+}
+
+function parseCompatibilityTypeValue(value: FormDataEntryValue | null): SmartStoreOptionType | null {
+    return value === "garment" ||
+        value === "style" ||
+        value === "art_style" ||
+        value === "color_package" ||
+        value === "studio_item" ||
+        value === "preset"
+        ? value
+        : null;
+}
+
+function parseCompatibilityRelationValue(value: FormDataEntryValue | null): CustomDesignOptionCompatibility["relation"] | null {
+    return value === "recommended" || value === "signature" || value === "avoid" ? value : null;
+}
+
 // ─── Public Reads ────────────────────────────────────────
 
 export async function getActiveGarments(): Promise<CustomDesignGarment[]> {
@@ -184,7 +258,7 @@ export async function getDesignStyles(): Promise<CustomDesignStyle[]> {
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-    return (data as CustomDesignStyle[]) ?? [];
+    return ((data as CustomDesignStyle[]) ?? []).map(normalizeStyleRow);
 }
 
 export async function getArtStyles(): Promise<CustomDesignArtStyle[]> {
@@ -194,7 +268,7 @@ export async function getArtStyles(): Promise<CustomDesignArtStyle[]> {
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-    return (data as CustomDesignArtStyle[]) ?? [];
+    return ((data as CustomDesignArtStyle[]) ?? []).map(normalizeArtStyleRow);
 }
 
 export async function getColorPackages(): Promise<CustomDesignColorPackage[]> {
@@ -204,7 +278,7 @@ export async function getColorPackages(): Promise<CustomDesignColorPackage[]> {
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-    return (data as CustomDesignColorPackage[]) ?? [];
+    return ((data as CustomDesignColorPackage[]) ?? []).map(normalizeColorPackageRow);
 }
 
 export async function getStudioItems(): Promise<CustomDesignStudioItem[]> {
@@ -214,7 +288,27 @@ export async function getStudioItems(): Promise<CustomDesignStudioItem[]> {
         .select("*")
         .eq("is_active", true)
         .order("sort_order");
-    return (data as CustomDesignStudioItem[]) ?? [];
+    return ((data as CustomDesignStudioItem[]) ?? []).map(normalizeStudioItemRow);
+}
+
+export async function getDesignPresets(): Promise<CustomDesignPreset[]> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("custom_design_presets")
+        .select("*")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("sort_order");
+    return ((data as CustomDesignPreset[]) ?? []).map(normalizePresetRow);
+}
+
+export async function getDesignCompatibilities(): Promise<CustomDesignOptionCompatibility[]> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("custom_design_option_compatibilities")
+        .select("*")
+        .order("score", { ascending: false });
+    return (data as CustomDesignOptionCompatibility[]) ?? [];
 }
 
 // ─── Admin: Get All (including inactive) ─────────────────
@@ -247,25 +341,44 @@ export async function getAllSizes(garmentId?: string): Promise<CustomDesignSize[
 export async function getAllStyles(): Promise<CustomDesignStyle[]> {
     const { sb } = await requireSmartStoreAdmin();
     const { data } = await sb.from("custom_design_styles").select("*").order("sort_order");
-    return (data as CustomDesignStyle[]) ?? [];
+    return ((data as CustomDesignStyle[]) ?? []).map(normalizeStyleRow);
 }
 
 export async function getAllArtStyles(): Promise<CustomDesignArtStyle[]> {
     const { sb } = await requireSmartStoreAdmin();
     const { data } = await sb.from("custom_design_art_styles").select("*").order("sort_order");
-    return (data as CustomDesignArtStyle[]) ?? [];
+    return ((data as CustomDesignArtStyle[]) ?? []).map(normalizeArtStyleRow);
 }
 
 export async function getAllColorPackages(): Promise<CustomDesignColorPackage[]> {
     const { sb } = await requireSmartStoreAdmin();
     const { data } = await sb.from("custom_design_color_packages").select("*").order("sort_order");
-    return (data as CustomDesignColorPackage[]) ?? [];
+    return ((data as CustomDesignColorPackage[]) ?? []).map(normalizeColorPackageRow);
 }
 
 export async function getAllStudioItems(): Promise<CustomDesignStudioItem[]> {
     const { sb } = await requireSmartStoreAdmin();
     const { data } = await sb.from("custom_design_studio_items").select("*").order("sort_order");
-    return (data as CustomDesignStudioItem[]) ?? [];
+    return ((data as CustomDesignStudioItem[]) ?? []).map(normalizeStudioItemRow);
+}
+
+export async function getAllDesignPresets(): Promise<CustomDesignPreset[]> {
+    const { sb } = await requireSmartStoreAdmin();
+    const { data } = await sb
+        .from("custom_design_presets")
+        .select("*")
+        .order("is_featured", { ascending: false })
+        .order("sort_order");
+    return ((data as CustomDesignPreset[]) ?? []).map(normalizePresetRow);
+}
+
+export async function getAllDesignCompatibilities(): Promise<CustomDesignOptionCompatibility[]> {
+    const { sb } = await requireSmartStoreAdmin();
+    const { data } = await sb
+        .from("custom_design_option_compatibilities")
+        .select("*")
+        .order("score", { ascending: false });
+    return (data as CustomDesignOptionCompatibility[]) ?? [];
 }
 
 // ─── Admin: Upsert ───────────────────────────────────────
@@ -350,6 +463,7 @@ export async function upsertStyle(formData: FormData) {
         name: formData.get("name") as string,
         description: (formData.get("description") as string) || null,
         image_url: (formData.get("image_url") as string) || null,
+        metadata: buildDesignMetadataFromFormData(formData),
         sort_order: Number(formData.get("sort_order") ?? 0),
         is_active: formData.get("is_active") === "true",
     };
@@ -371,6 +485,7 @@ export async function upsertArtStyle(formData: FormData) {
         name: formData.get("name") as string,
         description: (formData.get("description") as string) || null,
         image_url: (formData.get("image_url") as string) || null,
+        metadata: buildDesignMetadataFromFormData(formData),
         sort_order: Number(formData.get("sort_order") ?? 0),
         is_active: formData.get("is_active") === "true",
     };
@@ -391,8 +506,9 @@ export async function upsertColorPackage(formData: FormData) {
     const colorsRaw = formData.get("colors") as string;
     const payload = {
         name: formData.get("name") as string,
-        colors: colorsRaw ? JSON.parse(colorsRaw) : [],
+        colors: normalizeColorTokens(colorsRaw ? JSON.parse(colorsRaw) : []),
         image_url: (formData.get("image_url") as string) || null,
+        metadata: buildDesignMetadataFromFormData(formData),
         sort_order: Number(formData.get("sort_order") ?? 0),
         is_active: formData.get("is_active") === "true",
     };
@@ -417,6 +533,7 @@ export async function upsertStudioItem(formData: FormData) {
         main_image_url: (formData.get("main_image_url") as string) || null,
         mockup_image_url: (formData.get("mockup_image_url") as string) || null,
         model_image_url: (formData.get("model_image_url") as string) || null,
+        metadata: buildDesignMetadataFromFormData(formData),
         sort_order: Number(formData.get("sort_order") ?? 0),
         is_active: formData.get("is_active") === "true",
     };
@@ -428,6 +545,83 @@ export async function upsertStudioItem(formData: FormData) {
         const { error } = await sb.from("custom_design_studio_items").insert(payload);
         if (error) return { error: error.message };
     }
+    return { success: true };
+}
+
+export async function upsertDesignPreset(formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const id = formData.get("id") as string | null;
+    const payload = {
+        name: formData.get("name") as string,
+        slug: formData.get("slug") as string,
+        description: (formData.get("description") as string) || null,
+        story: (formData.get("story") as string) || null,
+        badge: (formData.get("badge") as string) || null,
+        image_url: (formData.get("image_url") as string) || null,
+        garment_id: (formData.get("garment_id") as string) || null,
+        design_method: parseDesignMethodValue(formData.get("design_method")),
+        style_id: (formData.get("style_id") as string) || null,
+        art_style_id: (formData.get("art_style_id") as string) || null,
+        color_package_id: (formData.get("color_package_id") as string) || null,
+        studio_item_id: (formData.get("studio_item_id") as string) || null,
+        print_position: parsePrintPositionValue(formData.get("print_position")),
+        print_size: parsePrintSizeValue(formData.get("print_size")),
+        metadata: buildDesignMetadataFromFormData(formData),
+        sort_order: Number(formData.get("sort_order") ?? 0),
+        is_featured: formData.get("is_featured") === "true",
+        is_active: formData.get("is_active") === "true",
+    };
+
+    if (id) {
+        const { error } = await sb.from("custom_design_presets").update(payload).eq("id", id);
+        if (error) return { error: error.message };
+    } else {
+        const { error } = await sb.from("custom_design_presets").insert(payload);
+        if (error) return { error: error.message };
+    }
+    return { success: true };
+}
+
+export async function upsertDesignCompatibility(formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const id = formData.get("id") as string | null;
+    const sourceType = parseCompatibilityTypeValue(formData.get("source_type"));
+    const targetType = parseCompatibilityTypeValue(formData.get("target_type"));
+    const sourceId = (formData.get("source_id") as string | null)?.trim() || null;
+    const targetId = (formData.get("target_id") as string | null)?.trim() || null;
+    const relation = parseCompatibilityRelationValue(formData.get("relation")) ?? "recommended";
+
+    if (!sourceType || !targetType || !sourceId || !targetId) {
+        return { error: "يجب تحديد المصدر والهدف قبل الحفظ." };
+    }
+
+    if (sourceType === targetType && sourceId === targetId) {
+        return { error: "لا يمكن ربط العنصر بنفسه داخل خريطة التوافق." };
+    }
+
+    const payload = {
+        source_type: sourceType,
+        source_id: sourceId,
+        target_type: targetType,
+        target_id: targetId,
+        relation,
+        score: Math.max(0, Math.min(100, Number(formData.get("score") ?? 50))),
+        reason: ((formData.get("reason") as string | null) || "").trim() || null,
+    };
+
+    if (id) {
+        const { error } = await sb
+            .from("custom_design_option_compatibilities")
+            .update(payload)
+            .eq("id", id);
+        if (error) return { error: error.message };
+    } else {
+        const { error } = await sb
+            .from("custom_design_option_compatibilities")
+            .insert(payload);
+        if (error) return { error: error.message };
+    }
+
     return { success: true };
 }
 
@@ -478,6 +672,23 @@ export async function deleteColorPackage(id: string) {
 export async function deleteStudioItem(id: string) {
     const { sb } = await requireSmartStoreAdmin();
     const { error } = await sb.from("custom_design_studio_items").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function deleteDesignPreset(id: string) {
+    const { sb } = await requireSmartStoreAdmin();
+    const { error } = await sb.from("custom_design_presets").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function deleteDesignCompatibility(id: string) {
+    const { sb } = await requireSmartStoreAdmin();
+    const { error } = await sb
+        .from("custom_design_option_compatibilities")
+        .delete()
+        .eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }

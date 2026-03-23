@@ -6,6 +6,8 @@ import {
     getColorPackages,
     getStudioItems,
     getAllGarmentStudioMockups,
+    getDesignPresets,
+    getDesignCompatibilities,
 } from "@/app/actions/smart-store";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
@@ -22,13 +24,15 @@ export default async function DesignYourPiecePage() {
         redirect("/");
     }
 
-    const [garments, styles, artStyles, colorPackages, studioItems, garmentStudioMockups] = await Promise.all([
+    const [garments, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities] = await Promise.all([
         getActiveGarments(),
         getDesignStyles(),
         getArtStyles(),
         getColorPackages(),
         getStudioItems(),
         getAllGarmentStudioMockups(),
+        getDesignPresets(),
+        getDesignCompatibilities(),
     ]);
 
     return (
@@ -46,6 +50,8 @@ export default async function DesignYourPiecePage() {
                     colorPackages={colorPackages}
                     studioItems={studioItems}
                     garmentStudioMockups={garmentStudioMockups}
+                    presets={presets}
+                    compatibilities={compatibilities}
                 />
             </div>
         </div>

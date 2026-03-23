@@ -37,6 +37,10 @@ import {
     deleteColorPackage,
     upsertStudioItem,
     deleteStudioItem,
+    upsertDesignPreset,
+    deleteDesignPreset,
+    upsertDesignCompatibility,
+    deleteDesignCompatibility,
     upsertGarmentStudioMockup,
     deleteGarmentStudioMockup,
     uploadSmartStoreImage,
@@ -50,11 +54,24 @@ import type {
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
+    CustomDesignPreset,
+    CustomDesignOptionCompatibility,
 } from "@/types/database";
+import {
+    getCompatibilityLookup,
+    normalizeColorTokens,
+    normalizeDesignMetadata,
+    rankDesignCandidates,
+    rankDesignPresets,
+    type DesignMethod,
+    type PrintPosition,
+    type PrintSize,
+    type RankedDesignCandidate,
+} from "@/lib/design-intelligence";
 
 // ─── Types ──────────────────────────────────────────────
 
-type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems" | "mockups";
+type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems" | "mockups" | "presets" | "intelligence";
 
 interface Props {
     garments: CustomDesignGarment[];
@@ -65,6 +82,8 @@ interface Props {
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
+    presets: CustomDesignPreset[];
+    compatibilities: CustomDesignOptionCompatibility[];
 }
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
@@ -76,11 +95,13 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
     { id: "colorPackages", label: "باقات الألوان", icon: SwatchBook },
     { id: "studioItems", label: "ستيديو وشّى", icon: Camera },
     { id: "mockups", label: "موكبات التصاميم", icon: ImagePlus },
+    { id: "presets", label: "الـ Presets", icon: Layers },
+    { id: "intelligence", label: "خريطة الذكاء", icon: Sparkles },
 ];
 
 // ─── Component ──────────────────────────────────────────
 
-export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups }: Props) {
+export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
     const [activeTab, setActiveTab] = useState<TabId>("garments");
     const router = useRouter();
 
@@ -112,6 +133,19 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                     {activeTab === "colorPackages" && <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />}
                     {activeTab === "studioItems" && <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />}
                     {activeTab === "mockups" && <MockupsTab items={garmentStudioMockups} garments={garments} studioItems={studioItems} onRefresh={() => router.refresh()} />}
+                    {activeTab === "presets" && <PresetsTab items={presets} garments={garments} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />}
+                    {activeTab === "intelligence" && (
+                        <IntelligenceTab
+                            compatibilities={compatibilities}
+                            garments={garments}
+                            styles={styles}
+                            artStyles={artStyles}
+                            colorPackages={colorPackages}
+                            studioItems={studioItems}
+                            presets={presets}
+                            onRefresh={() => router.refresh()}
+                        />
+                    )}
                 </motion.div>
             </AnimatePresence>
         </div>
@@ -122,14 +156,16 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 //  Shared UI Helpers
 // ═══════════════════════════════════════════════════════════
 
-function SectionCard({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd: () => void }) {
+function SectionCard({ children, title, onAdd }: { children: React.ReactNode; title: string; onAdd?: () => void }) {
     return (
         <div className="theme-surface-panel rounded-2xl p-5 sm:p-6">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold text-theme">{title}</h2>
-                <button onClick={onAdd} className="inline-flex min-h-[42px] items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
-                    <Plus className="w-4 h-4" /> إضافة
-                </button>
+                {onAdd ? (
+                    <button onClick={onAdd} className="inline-flex min-h-[42px] items-center gap-2 px-4 py-2 rounded-xl bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors text-sm font-medium">
+                        <Plus className="w-4 h-4" /> إضافة
+                    </button>
+                ) : null}
             </div>
             {children}
         </div>
@@ -184,11 +220,133 @@ function InlineError({ message }: { message: string | null }) {
     );
 }
 
+function getMethodLabel(method: DesignMethod | "") {
+    if (method === "from_text") return "من نص";
+    if (method === "from_image") return "من صورة";
+    if (method === "studio") return "ستيديو وشّى";
+    return "غير محدد";
+}
+
+function getPrintPositionLabel(position: PrintPosition | "") {
+    if (position === "chest") return "الصدر";
+    if (position === "back") return "الظهر";
+    if (position === "shoulder_right") return "الكتف الأيمن";
+    if (position === "shoulder_left") return "الكتف الأيسر";
+    return "غير محدد";
+}
+
+function getPrintSizeLabel(size: PrintSize | "") {
+    if (size === "large") return "كبير";
+    if (size === "small") return "صغير";
+    return "غير محدد";
+}
+
+function getRelationBadgeClass(relation: CustomDesignOptionCompatibility["relation"] | null) {
+    if (relation === "signature") return "border border-gold/20 bg-gold/10 text-gold";
+    if (relation === "avoid") return "border border-red-500/20 bg-red-500/10 text-red-300";
+    return "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200";
+}
+
+function getRelationLabel(relation: CustomDesignOptionCompatibility["relation"] | null) {
+    if (relation === "signature") return "Signature";
+    if (relation === "recommended") return "موصى به";
+    if (relation === "avoid") return "أقل انسجامًا";
+    return null;
+}
+
 function getActionError(result: any) {
     if (!result) return "حدث خطأ غير متوقع.";
     if (typeof result.error === "string" && result.error.trim()) return result.error;
     if (result.success === false && typeof result.message === "string" && result.message.trim()) return result.message;
     return null;
+}
+
+function MetadataFields({
+    defaults,
+    mode,
+}: {
+    defaults?: {
+        creative_direction?: string | null;
+        energy?: string | null;
+        complexity?: string | null;
+        luxury_tier?: string | null;
+        story_hook?: string | null;
+        palette_family?: string | null;
+        keywords?: string[];
+        moods?: string[];
+        audiences?: string[];
+        placements?: string[];
+        recommended_methods?: string[];
+        notes?: string | null;
+    };
+    mode?: "style" | "artStyle" | "colorPackage" | "preset" | "studioItem";
+}) {
+    return (
+        <div className="space-y-4 rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+            <div>
+                <p className="text-sm font-bold text-theme">طبقة الذكاء الإبداعي</p>
+                <p className="mt-1 text-xs text-theme-subtle">هذه الحقول تُستخدم في التوصية والترتيب والـ presets داخل الواجهة العامة.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Creative Direction">
+                    <input name="creative_direction" defaultValue={defaults?.creative_direction ?? ""} className={inputCls} placeholder="quiet luxury minimalism" />
+                </FormField>
+                <FormField label="Story Hook">
+                    <input name="story_hook" defaultValue={defaults?.story_hook ?? ""} className={inputCls} placeholder="قطعة تبدو باهظة بدون ضجيج" />
+                </FormField>
+                <FormField label="Energy">
+                    <select name="energy" defaultValue={defaults?.energy ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="low">هادئ</option>
+                        <option value="medium">متوازن</option>
+                        <option value="high">عالٍ</option>
+                    </select>
+                </FormField>
+                <FormField label="Complexity">
+                    <select name="complexity" defaultValue={defaults?.complexity ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="balanced">Balanced</option>
+                        <option value="bold">Bold</option>
+                    </select>
+                </FormField>
+                <FormField label="Luxury Tier">
+                    <select name="luxury_tier" defaultValue={defaults?.luxury_tier ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="core">Core</option>
+                        <option value="signature">Signature</option>
+                        <option value="editorial">Editorial</option>
+                    </select>
+                </FormField>
+                {mode === "colorPackage" ? (
+                    <FormField label="Palette Family">
+                        <input name="palette_family" defaultValue={defaults?.palette_family ?? ""} className={inputCls} placeholder="dark contrast" />
+                    </FormField>
+                ) : (
+                    <FormField label="Recommended Methods">
+                        <input name="recommended_methods" defaultValue={(defaults?.recommended_methods ?? []).join(", ")} className={inputCls} placeholder="from_text, from_image" />
+                    </FormField>
+                )}
+                <FormField label="Keywords">
+                    <input name="keywords" defaultValue={(defaults?.keywords ?? []).join(", ")} className={inputCls} placeholder="luxury, editorial, heritage" />
+                </FormField>
+                <FormField label="Moods">
+                    <input name="moods" defaultValue={(defaults?.moods ?? []).join(", ")} className={inputCls} placeholder="هادئ, فاخر, جريء" />
+                </FormField>
+                <FormField label="Audiences">
+                    <input name="audiences" defaultValue={(defaults?.audiences ?? []).join(", ")} className={inputCls} placeholder="drops, daily luxury, gifts" />
+                </FormField>
+                <FormField label="Placements">
+                    <input name="placements" defaultValue={(defaults?.placements ?? []).join(", ")} className={inputCls} placeholder="chest, back, shoulder_right" />
+                </FormField>
+            </div>
+
+            <FormField label="ملاحظات داخلية">
+                <textarea name="notes" defaultValue={defaults?.notes ?? ""} className={inputCls} rows={3} placeholder="ما الذي يميّز هذا الخيار؟ ومتى يُفضّل استخدامه؟" />
+            </FormField>
+        </div>
+    );
 }
 
 function ConfirmDialog({
@@ -635,7 +793,7 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
 //  Generic Items Tab (Styles, Art Styles)
 // ═══════════════════════════════════════════════════════════
 
-function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; sort_order?: number; is_active: boolean }>({
+function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; sort_order?: number; is_active: boolean; metadata?: unknown }>({
     items, title, onUpsert, onDelete, onRefresh, folder,
 }: {
     items: T[]; title: string; onUpsert: (fd: FormData) => Promise<any>; onDelete: (id: string) => Promise<any>; onRefresh: () => void; folder: string;
@@ -651,6 +809,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
     const openEdit = (item: T) => { setEditing(item); setImageUrl(item.image_url ?? ""); setError(null); };
     const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
+    const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -717,6 +876,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                     <option value="false">غير نشط</option>
                 </select>
             </FormField>
+            <MetadataFields defaults={metadataDefaults} mode={folder === "styles" ? "style" : "artStyle"} />
             <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "جاري الحفظ..." : "حفظ"}</button>
                 <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
@@ -738,6 +898,9 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                             )}
                             <p className="font-medium text-theme truncate">{item.name}</p>
                             {item.description && <p className="text-xs text-theme-subtle mt-1 line-clamp-2">{item.description}</p>}
+                            {normalizeDesignMetadata(item.metadata).creative_direction && (
+                                <p className="mt-2 text-[10px] font-bold text-gold/90">{normalizeDesignMetadata(item.metadata).creative_direction}</p>
+                            )}
                             <div className="flex items-center justify-between mt-3">
                                 <span className={`text-xs px-2 py-1 rounded-full ${item.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                     {item.is_active ? "نشط" : "معطل"}
@@ -934,6 +1097,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -985,7 +1149,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
 
     const openEdit = (item: CustomDesignColorPackage) => {
         setEditing(item);
-        setPackageColors(Array.isArray(item.colors) ? item.colors : []);
+        setPackageColors(normalizeColorTokens(item.colors));
         setImageUrl(item.image_url ?? "");
         setError(null);
     };
@@ -1029,6 +1193,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                     <option value="false">غير نشط</option>
                 </select>
             </FormField>
+            <MetadataFields defaults={metadataDefaults} mode="colorPackage" />
             <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "جاري الحفظ..." : "حفظ"}</button>
                 <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
@@ -1045,6 +1210,9 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                         <div key={pkg.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
                             {pkg.image_url && <img src={pkg.image_url} alt={pkg.name} className="w-full h-24 object-cover rounded-lg mb-2 bg-theme-subtle" />}
                             <p className="font-medium text-theme mb-2">{pkg.name}</p>
+                            {normalizeDesignMetadata(pkg.metadata).palette_family && (
+                                <p className="mb-2 text-[10px] font-bold text-gold/90">{normalizeDesignMetadata(pkg.metadata).palette_family}</p>
+                            )}
                             <div className="flex gap-1 mb-3">
                                 {(Array.isArray(pkg.colors) ? pkg.colors : []).map((c: any, i: number) => (
                                     <div key={i} className="w-6 h-6 rounded-full border border-theme-soft" style={{ backgroundColor: c.hex }} title={c.name} />
@@ -1463,5 +1631,908 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
                 onConfirm={handleDelete}
             />
         </SectionCard>
+    );
+}
+
+function PresetsTab({
+    items,
+    garments,
+    styles,
+    artStyles,
+    colorPackages,
+    studioItems,
+    onRefresh,
+}: {
+    items: CustomDesignPreset[];
+    garments: CustomDesignGarment[];
+    styles: CustomDesignStyle[];
+    artStyles: CustomDesignArtStyle[];
+    colorPackages: CustomDesignColorPackage[];
+    studioItems: CustomDesignStudioItem[];
+    onRefresh: () => void;
+}) {
+    const [editing, setEditing] = useState<CustomDesignPreset | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
+
+    const openAdd = () => {
+        setIsAdding(true);
+        setImageUrl("");
+        setError(null);
+    };
+
+    const openEdit = (preset: CustomDesignPreset) => {
+        setEditing(preset);
+        setImageUrl(preset.image_url ?? "");
+        setError(null);
+    };
+
+    const closeModal = () => {
+        setEditing(null);
+        setIsAdding(false);
+        setImageUrl("");
+        setError(null);
+    };
+
+    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_url", imageUrl);
+            const result = await upsertDesignPreset(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ الـ preset الآن.");
+        } finally {
+            setLoading(false);
+        }
+    }, [editing, imageUrl, onRefresh]);
+
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        setDeleteLoading(true);
+        setError(null);
+        try {
+            const result = await deleteDesignPreset(pendingDeleteId);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف الـ preset الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
+        }
+    }, [onRefresh, pendingDeleteId]);
+
+    const form = (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
+            <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="اسم الـ Preset">
+                    <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} />
+                </FormField>
+                <FormField label="Slug">
+                    <input name="slug" defaultValue={editing?.slug ?? ""} required className={inputCls} />
+                </FormField>
+            </div>
+            <FormField label="وصف مختصر">
+                <textarea name="description" defaultValue={editing?.description ?? ""} className={inputCls} rows={2} />
+            </FormField>
+            <FormField label="Story / Pitch">
+                <textarea name="story" defaultValue={editing?.story ?? ""} className={inputCls} rows={3} />
+            </FormField>
+            <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Badge">
+                    <input name="badge" defaultValue={editing?.badge ?? ""} className={inputCls} />
+                </FormField>
+                <FormField label="صورة الـ Preset">
+                    <ImageUploader value={imageUrl} onChange={setImageUrl} folder="presets" />
+                </FormField>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FormField label="القطعة">
+                    <select name="garment_id" defaultValue={editing?.garment_id ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {garments.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                </FormField>
+                <FormField label="طريقة التصميم">
+                    <select name="design_method" defaultValue={editing?.design_method ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="from_text">من نص</option>
+                        <option value="from_image">من صورة</option>
+                        <option value="studio">ستيديو وشّى</option>
+                    </select>
+                </FormField>
+                <FormField label="النمط">
+                    <select name="style_id" defaultValue={editing?.style_id ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {styles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                </FormField>
+                <FormField label="الأسلوب">
+                    <select name="art_style_id" defaultValue={editing?.art_style_id ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {artStyles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                </FormField>
+                <FormField label="باقة الألوان">
+                    <select name="color_package_id" defaultValue={editing?.color_package_id ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {colorPackages.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                </FormField>
+                <FormField label="عنصر الستوديو">
+                    <select name="studio_item_id" defaultValue={editing?.studio_item_id ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {studioItems.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                </FormField>
+                <FormField label="موضع الطباعة">
+                    <select name="print_position" defaultValue={editing?.print_position ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="chest">الصدر</option>
+                        <option value="back">الظهر</option>
+                        <option value="shoulder_right">الكتف الأيمن</option>
+                        <option value="shoulder_left">الكتف الأيسر</option>
+                    </select>
+                </FormField>
+                <FormField label="حجم الطباعة">
+                    <select name="print_size" defaultValue={editing?.print_size ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        <option value="large">كبير</option>
+                        <option value="small">صغير</option>
+                    </select>
+                </FormField>
+                <FormField label="الترتيب">
+                    <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
+                </FormField>
+                <FormField label="Featured">
+                    <select name="is_featured" defaultValue={editing?.is_featured ? "true" : "false"} className={inputCls}>
+                        <option value="true">نعم</option>
+                        <option value="false">لا</option>
+                    </select>
+                </FormField>
+                <FormField label="الحالة">
+                    <select name="is_active" defaultValue={editing?.is_active !== false ? "true" : "false"} className={inputCls}>
+                        <option value="true">نشط</option>
+                        <option value="false">غير نشط</option>
+                    </select>
+                </FormField>
+            </div>
+            <MetadataFields defaults={metadataDefaults} mode="preset" />
+            <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "جاري الحفظ..." : "حفظ"}</button>
+                <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
+            </div>
+        </form>
+    );
+
+    return (
+        <SectionCard title="الـ Presets الجاهزة" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
+            {items.length === 0 ? <EmptyState text="لا توجد presets بعد." /> : (
+                <div className="grid gap-4 lg:grid-cols-2">
+                    {items.map((preset) => (
+                        <div key={preset.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
+                                        {preset.badge || "Preset"}
+                                    </div>
+                                    <p className="mt-3 text-lg font-bold text-theme">{preset.name}</p>
+                                    {preset.description && <p className="mt-1 text-sm text-theme-subtle">{preset.description}</p>}
+                                </div>
+                                <div className="flex gap-1">
+                                    <button onClick={() => openEdit(preset)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
+                                    <button onClick={() => setPendingDeleteId(preset.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                {preset.design_method ? <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">{preset.design_method}</span> : null}
+                                {preset.metadata?.creative_direction ? <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">{preset.metadata.creative_direction}</span> : null}
+                                {preset.is_featured ? <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-200">Featured</span> : null}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل Preset" : "إضافة Preset جديدة"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف الـ Preset"
+                description="سيتم حذف هذا المسار الجاهز من مكتبة التوصيات."
+                confirmLabel="حذف الـ Preset"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
+        </SectionCard>
+    );
+}
+
+function IntelligenceScenarioSummary({
+    garmentName,
+    method,
+    printPosition,
+    printSize,
+    presetName,
+    styleName,
+    artStyleName,
+    colorPackageName,
+}: {
+    garmentName?: string | null;
+    method: DesignMethod | "";
+    printPosition: PrintPosition | "";
+    printSize: PrintSize | "";
+    presetName?: string | null;
+    styleName?: string | null;
+    artStyleName?: string | null;
+    colorPackageName?: string | null;
+}) {
+    const chips = [
+        garmentName ? `القطعة: ${garmentName}` : null,
+        method ? `الطريقة: ${getMethodLabel(method)}` : null,
+        printPosition ? `الموضع: ${getPrintPositionLabel(printPosition)}` : null,
+        printSize ? `الحجم: ${getPrintSizeLabel(printSize)}` : null,
+        presetName ? `Preset: ${presetName}` : null,
+        styleName ? `النمط: ${styleName}` : null,
+        artStyleName ? `الأسلوب: ${artStyleName}` : null,
+        colorPackageName ? `البالِت: ${colorPackageName}` : null,
+    ].filter(Boolean) as string[];
+
+    if (chips.length === 0) return null;
+
+    return (
+        <div className="flex flex-wrap gap-2">
+            {chips.map((chip) => (
+                <span key={chip} className="rounded-full border border-theme-soft bg-theme-subtle px-3 py-1 text-[11px] font-bold text-theme-subtle">
+                    {chip}
+                </span>
+            ))}
+        </div>
+    );
+}
+
+function RecommendationPreviewList<T extends { id: string; name: string; description?: string | null; story?: string | null; metadata?: unknown }>({
+    title,
+    desc,
+    items,
+}: {
+    title: string;
+    desc: string;
+    items: RankedDesignCandidate<T>[];
+}) {
+    const topItems = items.slice(0, 4);
+
+    return (
+        <div className="theme-surface-panel rounded-2xl p-5">
+            <div className="mb-4">
+                <h3 className="text-base font-bold text-theme">{title}</h3>
+                <p className="mt-1 text-xs leading-6 text-theme-subtle">{desc}</p>
+            </div>
+
+            {topItems.length === 0 ? (
+                <EmptyState text="لا توجد نتائج لهذه المجموعة." />
+            ) : (
+                <div className="grid gap-3">
+                    {topItems.map((entry, index) => {
+                        const item = entry.item;
+                        const metadata = normalizeDesignMetadata(item.metadata);
+                        return (
+                            <div key={item.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gold/10 text-[11px] font-black text-gold">
+                                                {index + 1}
+                                            </span>
+                                            <p className="text-sm font-bold text-theme">{item.name}</p>
+                                        </div>
+                                        {(item.description || item.story) ? (
+                                            <p className="mt-2 text-xs leading-6 text-theme-subtle">
+                                                {item.description || item.story}
+                                            </p>
+                                        ) : null}
+                                        {metadata.creative_direction ? (
+                                            <p className="mt-2 text-[11px] font-bold text-gold/90">{metadata.creative_direction}</p>
+                                        ) : null}
+                                        {metadata.story_hook ? (
+                                            <p className="mt-1 text-[11px] leading-6 text-theme-faint">{metadata.story_hook}</p>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 sm:max-w-[40%] sm:justify-end">
+                                        <span className="rounded-full border border-theme-soft bg-theme-subtle px-3 py-1 text-[10px] font-bold text-theme-subtle">
+                                            score {Math.round(entry.score)}
+                                        </span>
+                                        {entry.relation ? (
+                                            <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${getRelationBadgeClass(entry.relation)}`}>
+                                                {getRelationLabel(entry.relation)}
+                                            </span>
+                                        ) : null}
+                                        {metadata.luxury_tier ? (
+                                            <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[10px] font-bold text-gold">
+                                                {metadata.luxury_tier}
+                                            </span>
+                                        ) : null}
+                                        {metadata.palette_family ? (
+                                            <span className="rounded-full border border-theme-soft bg-theme-subtle px-3 py-1 text-[10px] font-bold text-theme-subtle">
+                                                {metadata.palette_family}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                {entry.signals.length > 0 ? (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {entry.signals.slice(0, 3).map((signal) => (
+                                            <span key={signal} className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] font-bold text-theme">
+                                                {signal}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function IntelligenceTab({
+    compatibilities,
+    garments,
+    styles,
+    artStyles,
+    colorPackages,
+    studioItems,
+    presets,
+    onRefresh,
+}: {
+    compatibilities: CustomDesignOptionCompatibility[];
+    garments: CustomDesignGarment[];
+    styles: CustomDesignStyle[];
+    artStyles: CustomDesignArtStyle[];
+    colorPackages: CustomDesignColorPackage[];
+    studioItems: CustomDesignStudioItem[];
+    presets: CustomDesignPreset[];
+    onRefresh: () => void;
+}) {
+    const [editing, setEditing] = useState<CustomDesignOptionCompatibility | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [sourceType, setSourceType] = useState<CustomDesignOptionCompatibility["source_type"]>("style");
+    const [targetType, setTargetType] = useState<CustomDesignOptionCompatibility["target_type"]>("art_style");
+    const [previewGarmentId, setPreviewGarmentId] = useState("");
+    const [previewMethod, setPreviewMethod] = useState<DesignMethod | "">("");
+    const [previewPrintPosition, setPreviewPrintPosition] = useState<PrintPosition | "">("");
+    const [previewPrintSize, setPreviewPrintSize] = useState<PrintSize | "">("");
+    const [previewPresetId, setPreviewPresetId] = useState("");
+    const [previewStyleId, setPreviewStyleId] = useState("");
+    const [previewArtStyleId, setPreviewArtStyleId] = useState("");
+    const [previewColorPackageId, setPreviewColorPackageId] = useState("");
+
+    const collections: Record<CustomDesignOptionCompatibility["source_type"], Array<{ id: string; name: string }>> = {
+        garment: garments,
+        style: styles,
+        art_style: artStyles,
+        color_package: colorPackages,
+        studio_item: studioItems,
+        preset: presets,
+    };
+
+    const resolveLabel = (type: CustomDesignOptionCompatibility["source_type"], id: string) =>
+        collections[type]?.find((item) => item.id === id)?.name ?? "—";
+
+    const openAdd = () => {
+        setIsAdding(true);
+        setEditing(null);
+        setSourceType("style");
+        setTargetType("art_style");
+        setError(null);
+    };
+
+    const openEdit = (item: CustomDesignOptionCompatibility) => {
+        setEditing(item);
+        setIsAdding(false);
+        setSourceType(item.source_type);
+        setTargetType(item.target_type);
+        setError(null);
+    };
+
+    const closeModal = () => {
+        setEditing(null);
+        setIsAdding(false);
+        setError(null);
+        setSourceType("style");
+        setTargetType("art_style");
+    };
+
+    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            const result = await upsertDesignCompatibility(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (submitError) {
+            setError(submitError instanceof Error ? submitError.message : "تعذر حفظ الربط الآن.");
+        } finally {
+            setLoading(false);
+        }
+    }, [editing, onRefresh]);
+
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        setDeleteLoading(true);
+        setError(null);
+        try {
+            const result = await deleteDesignCompatibility(pendingDeleteId);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (deleteError) {
+            setError(deleteError instanceof Error ? deleteError.message : "تعذر حذف الربط الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
+        }
+    }, [onRefresh, pendingDeleteId]);
+
+    const signature = compatibilities.filter((item) => item.relation === "signature").slice(0, 8);
+    const avoid = compatibilities.filter((item) => item.relation === "avoid").slice(0, 8);
+    const recommended = compatibilities.filter((item) => item.relation === "recommended").slice(0, 8);
+    const sortedCompatibilities = [...compatibilities].sort((a, b) => {
+        const relationWeight = { signature: 3, recommended: 2, avoid: 1 };
+        const relationDiff = relationWeight[b.relation] - relationWeight[a.relation];
+        return relationDiff !== 0 ? relationDiff : b.score - a.score;
+    });
+
+    const activePresets = presets.filter((item) => item.is_active);
+    const activeStyles = styles.filter((item) => item.is_active);
+    const activeArtStyles = artStyles.filter((item) => item.is_active);
+    const activeColorPackages = colorPackages.filter((item) => item.is_active);
+    const activeStudioItems = studioItems.filter((item) => item.is_active);
+
+    const selectedGarment = garments.find((item) => item.id === previewGarmentId) ?? null;
+    const selectedPreset = activePresets.find((item) => item.id === previewPresetId) ?? null;
+    const selectedStyle = activeStyles.find((item) => item.id === previewStyleId) ?? null;
+    const selectedArtStyle = activeArtStyles.find((item) => item.id === previewArtStyleId) ?? null;
+    const selectedColorPackage = activeColorPackages.find((item) => item.id === previewColorPackageId) ?? null;
+
+    const presetStyleLookup = getCompatibilityLookup(compatibilities, "preset", selectedPreset?.id, "style");
+    const garmentStyleLookup = getCompatibilityLookup(compatibilities, "garment", selectedGarment?.id, "style");
+    const styleArtLookup = getCompatibilityLookup(compatibilities, "style", selectedStyle?.id, "art_style");
+    const garmentArtLookup = getCompatibilityLookup(compatibilities, "garment", selectedGarment?.id, "art_style");
+    const styleColorLookup = getCompatibilityLookup(compatibilities, "style", selectedStyle?.id, "color_package");
+    const artColorLookup = getCompatibilityLookup(compatibilities, "art_style", selectedArtStyle?.id, "color_package");
+    const garmentColorLookup = getCompatibilityLookup(compatibilities, "garment", selectedGarment?.id, "color_package");
+    const garmentStudioLookup = getCompatibilityLookup(compatibilities, "garment", selectedGarment?.id, "studio_item");
+
+    const previewPresets = rankDesignPresets(activePresets, {
+        garmentId: selectedGarment?.id,
+        method: previewMethod || undefined,
+        printPosition: previewPrintPosition || undefined,
+        printSize: previewPrintSize || undefined,
+        metadataAnchors: [
+            { label: "النمط المختار", metadata: selectedStyle?.metadata, weight: 0.95 },
+            { label: "الأسلوب المختار", metadata: selectedArtStyle?.metadata, weight: 0.9 },
+            { label: "البالِت المختارة", metadata: selectedColorPackage?.metadata, weight: 0.8 },
+        ],
+    });
+
+    const previewStyles = rankDesignCandidates(activeStyles, {
+        preferredId: selectedPreset?.style_id,
+        method: previewMethod || undefined,
+        printPosition: previewPrintPosition || undefined,
+        lookups: [
+            { lookup: presetStyleLookup, label: "الـ preset", weight: 1.05 },
+            { lookup: garmentStyleLookup, label: "القطعة الحالية", weight: 0.7 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: selectedPreset?.metadata, weight: 0.7 },
+        ],
+    });
+
+    const previewArtStyles = rankDesignCandidates(activeArtStyles, {
+        preferredId: selectedPreset?.art_style_id,
+        method: previewMethod || undefined,
+        printPosition: previewPrintPosition || undefined,
+        lookups: [
+            { lookup: styleArtLookup, label: "النمط المختار", weight: 1.05 },
+            { lookup: garmentArtLookup, label: "القطعة الحالية", weight: 0.55 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: selectedPreset?.metadata, weight: 0.65 },
+            { label: "النمط المختار", metadata: selectedStyle?.metadata, weight: 1 },
+        ],
+    });
+
+    const previewColorPackages = rankDesignCandidates(activeColorPackages, {
+        preferredId: selectedPreset?.color_package_id,
+        method: previewMethod || undefined,
+        printPosition: previewPrintPosition || undefined,
+        lookups: [
+            { lookup: styleColorLookup, label: "النمط المختار", weight: 0.95 },
+            { lookup: artColorLookup, label: "الأسلوب المختار", weight: 0.9 },
+            { lookup: garmentColorLookup, label: "القطعة الحالية", weight: 0.55 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: selectedPreset?.metadata, weight: 0.55 },
+            { label: "النمط المختار", metadata: selectedStyle?.metadata, weight: 0.85 },
+            { label: "الأسلوب المختار", metadata: selectedArtStyle?.metadata, weight: 0.95 },
+        ],
+    });
+
+    const previewStudioItems = rankDesignCandidates(activeStudioItems, {
+        preferredId: selectedPreset?.studio_item_id,
+        method: previewMethod === "studio" ? "studio" : undefined,
+        printPosition: previewPrintPosition || undefined,
+        lookups: [
+            { lookup: garmentStudioLookup, label: "القطعة الحالية", weight: 0.8 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: selectedPreset?.metadata, weight: 0.6 },
+            { label: "النمط المختار", metadata: selectedStyle?.metadata, weight: 0.45 },
+        ],
+    });
+
+    const form = (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
+            <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="نوع المصدر">
+                    <select
+                        name="source_type"
+                        value={sourceType}
+                        onChange={(event) => setSourceType(event.target.value as CustomDesignOptionCompatibility["source_type"])}
+                        className={inputCls}
+                    >
+                        <option value="garment">قطعة</option>
+                        <option value="style">نمط</option>
+                        <option value="art_style">أسلوب</option>
+                        <option value="color_package">باقة ألوان</option>
+                        <option value="studio_item">عنصر ستوديو</option>
+                        <option value="preset">Preset</option>
+                    </select>
+                </FormField>
+                <FormField label="العنصر المصدر">
+                    <select name="source_id" defaultValue={editing?.source_id ?? ""} className={inputCls} required>
+                        <option value="">اختر المصدر</option>
+                        {collections[sourceType].map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                    </select>
+                </FormField>
+                <FormField label="نوع الهدف">
+                    <select
+                        name="target_type"
+                        value={targetType}
+                        onChange={(event) => setTargetType(event.target.value as CustomDesignOptionCompatibility["target_type"])}
+                        className={inputCls}
+                    >
+                        <option value="garment">قطعة</option>
+                        <option value="style">نمط</option>
+                        <option value="art_style">أسلوب</option>
+                        <option value="color_package">باقة ألوان</option>
+                        <option value="studio_item">عنصر ستوديو</option>
+                        <option value="preset">Preset</option>
+                    </select>
+                </FormField>
+                <FormField label="العنصر الهدف">
+                    <select name="target_id" defaultValue={editing?.target_id ?? ""} className={inputCls} required>
+                        <option value="">اختر الهدف</option>
+                        {collections[targetType].map((item) => (
+                            <option key={item.id} value={item.id}>{item.name}</option>
+                        ))}
+                    </select>
+                </FormField>
+                <FormField label="نوع العلاقة">
+                    <select name="relation" defaultValue={editing?.relation ?? "recommended"} className={inputCls}>
+                        <option value="signature">Signature</option>
+                        <option value="recommended">Recommended</option>
+                        <option value="avoid">Avoid</option>
+                    </select>
+                </FormField>
+                <FormField label="الدرجة">
+                    <input name="score" type="number" min={0} max={100} defaultValue={editing?.score ?? 50} className={inputCls} />
+                </FormField>
+            </div>
+            <FormField label="التفسير">
+                <textarea
+                    name="reason"
+                    defaultValue={editing?.reason ?? ""}
+                    className={inputCls}
+                    rows={3}
+                    placeholder="لماذا هذه العلاقة منطقية؟ أو لماذا ينبغي تجنبها؟"
+                />
+            </FormField>
+            <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading} className={btnPrimary}>
+                    {loading ? "جاري الحفظ..." : "حفظ الربط"}
+                </button>
+                <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
+            </div>
+        </form>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+                <div className="theme-surface-panel rounded-2xl p-5">
+                    <p className="text-sm text-theme-subtle">إجمالي التوافقات</p>
+                    <p className="mt-2 text-3xl font-black text-theme">{compatibilities.length}</p>
+                </div>
+                <div className="theme-surface-panel rounded-2xl p-5">
+                    <p className="text-sm text-theme-subtle">Signature Pairings</p>
+                    <p className="mt-2 text-3xl font-black text-gold">{signature.length}</p>
+                </div>
+                <div className="theme-surface-panel rounded-2xl p-5">
+                    <p className="text-sm text-theme-subtle">Presets حيّة</p>
+                    <p className="mt-2 text-3xl font-black text-theme">{presets.filter((item) => item.is_active).length}</p>
+                </div>
+            </div>
+
+            <SectionCard title="مختبر التوصية">
+                <div className="space-y-5">
+                    <p className="text-sm leading-7 text-theme-subtle">
+                        جرّب سيناريو حقيقي وشاهد كيف يرتّب المحرك أفضل الـ presets والأنماط والأساليب وباقات الألوان وعناصر الستوديو بناءً على اختياراتك الحالية.
+                    </p>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <FormField label="القطعة">
+                            <select value={previewGarmentId} onChange={(event) => setPreviewGarmentId(event.target.value)} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                {garments.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                        <FormField label="طريقة التصميم">
+                            <select value={previewMethod} onChange={(event) => setPreviewMethod(event.target.value as DesignMethod | "")} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                <option value="from_text">من نص</option>
+                                <option value="from_image">من صورة</option>
+                                <option value="studio">ستيديو وشّى</option>
+                            </select>
+                        </FormField>
+                        <FormField label="موضع الطباعة">
+                            <select value={previewPrintPosition} onChange={(event) => setPreviewPrintPosition(event.target.value as PrintPosition | "")} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                <option value="chest">الصدر</option>
+                                <option value="back">الظهر</option>
+                                <option value="shoulder_right">الكتف الأيمن</option>
+                                <option value="shoulder_left">الكتف الأيسر</option>
+                            </select>
+                        </FormField>
+                        <FormField label="حجم الطباعة">
+                            <select value={previewPrintSize} onChange={(event) => setPreviewPrintSize(event.target.value as PrintSize | "")} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                <option value="large">كبير</option>
+                                <option value="small">صغير</option>
+                            </select>
+                        </FormField>
+                        <FormField label="Preset مرجعية">
+                            <select value={previewPresetId} onChange={(event) => setPreviewPresetId(event.target.value)} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                {activePresets.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                        <FormField label="النمط المرجعي">
+                            <select value={previewStyleId} onChange={(event) => setPreviewStyleId(event.target.value)} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                {activeStyles.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                        <FormField label="الأسلوب المرجعي">
+                            <select value={previewArtStyleId} onChange={(event) => setPreviewArtStyleId(event.target.value)} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                {activeArtStyles.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                        <FormField label="البالِت المرجعية">
+                            <select value={previewColorPackageId} onChange={(event) => setPreviewColorPackageId(event.target.value)} className={inputCls}>
+                                <option value="">غير محدد</option>
+                                {activeColorPackages.map((item) => (
+                                    <option key={item.id} value={item.id}>{item.name}</option>
+                                ))}
+                            </select>
+                        </FormField>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setPreviewGarmentId("");
+                                setPreviewMethod("");
+                                setPreviewPrintPosition("");
+                                setPreviewPrintSize("");
+                                setPreviewPresetId("");
+                                setPreviewStyleId("");
+                                setPreviewArtStyleId("");
+                                setPreviewColorPackageId("");
+                            }}
+                            className={btnSecondary}
+                        >
+                            تصفير السيناريو
+                        </button>
+                        <IntelligenceScenarioSummary
+                            garmentName={selectedGarment?.name}
+                            method={previewMethod}
+                            printPosition={previewPrintPosition}
+                            printSize={previewPrintSize}
+                            presetName={selectedPreset?.name}
+                            styleName={selectedStyle?.name}
+                            artStyleName={selectedArtStyle?.name}
+                            colorPackageName={selectedColorPackage?.name}
+                        />
+                    </div>
+
+                    <div className="grid gap-4 xl:grid-cols-2">
+                        <RecommendationPreviewList
+                            title="أفضل Presets"
+                            desc="الترتيب هنا يتأثر بالقطعة والطريقة وموضع الطباعة وأي metadata مشتركة بين اختياراتك الحالية."
+                            items={previewPresets}
+                        />
+                        <RecommendationPreviewList
+                            title="أفضل الأنماط"
+                            desc="هذه النتائج تمزج بين الـ preset المختارة، التوافقات المباشرة، والانسجام في الطاقة والفخامة والتعقيد."
+                            items={previewStyles}
+                        />
+                        <RecommendationPreviewList
+                            title="أفضل الأساليب"
+                            desc="يتم ترتيب الأساليب بحسب النمط الحالي والقطعة وعلاقة الـ metadata بينهما."
+                            items={previewArtStyles}
+                        />
+                        <RecommendationPreviewList
+                            title="أفضل باقات الألوان"
+                            desc="البالِت تصعد أو تهبط بحسب النمط والأسلوب وعائلة الألوان والطاقة والـ luxury tier."
+                            items={previewColorPackages}
+                        />
+                    </div>
+
+                    <RecommendationPreviewList
+                        title="أفضل عناصر الستوديو"
+                        desc="عناصر الستوديو تتأثر بالقطعة الحالية وبأي preset أو نمط يمنحها سياقًا أقوى."
+                        items={previewStudioItems}
+                    />
+                </div>
+            </SectionCard>
+
+            <SectionCard title="إدارة خريطة التوافق" onAdd={openAdd}>
+                <InlineError message={!isAdding && !editing ? error : null} />
+                {sortedCompatibilities.length === 0 ? (
+                    <EmptyState text="لا توجد روابط توافق بعد." />
+                ) : (
+                    <div className="grid gap-3">
+                        {sortedCompatibilities.map((item) => (
+                            <div key={item.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-sm font-bold text-theme">{resolveLabel(item.source_type, item.source_id)}</span>
+                                            <span className="text-theme-faint">→</span>
+                                            <span className="text-sm font-bold text-theme">{resolveLabel(item.target_type, item.target_id)}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                                                item.relation === "signature"
+                                                    ? "border border-gold/20 bg-gold/10 text-gold"
+                                                    : item.relation === "avoid"
+                                                        ? "border border-red-500/20 bg-red-500/10 text-red-300"
+                                                        : "border border-theme-soft bg-theme-subtle text-theme-subtle"
+                                            }`}>
+                                                {item.relation}
+                                            </span>
+                                            <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">
+                                                score {item.score}
+                                            </span>
+                                            <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-faint">
+                                                {item.source_type} → {item.target_type}
+                                            </span>
+                                        </div>
+                                        {item.reason ? <p className="text-xs leading-6 text-theme-subtle">{item.reason}</p> : null}
+                                    </div>
+                                    <div className="flex gap-1 self-start">
+                                        <button onClick={() => openEdit(item)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
+                                        <button onClick={() => setPendingDeleteId(item.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </SectionCard>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+                <SectionCard title="Signature Pairings">
+                    <div className="grid gap-3">
+                        {signature.map((item) => (
+                            <div key={item.id} className="rounded-xl border border-theme-subtle bg-theme-faint p-4">
+                                <p className="font-bold text-theme">{resolveLabel(item.source_type, item.source_id)}</p>
+                                <p className="mt-1 text-sm text-theme-subtle">→ {resolveLabel(item.target_type, item.target_id)}</p>
+                                {item.reason ? <p className="mt-2 text-xs leading-6 text-theme-faint">{item.reason}</p> : null}
+                            </div>
+                        ))}
+                    </div>
+                </SectionCard>
+                <SectionCard title="Recommended Pairings">
+                    <div className="grid gap-3">
+                        {recommended.map((item) => (
+                            <div key={item.id} className="rounded-xl border border-theme-subtle bg-theme-faint p-4">
+                                <p className="font-bold text-theme">{resolveLabel(item.source_type, item.source_id)}</p>
+                                <p className="mt-1 text-sm text-theme-subtle">→ {resolveLabel(item.target_type, item.target_id)}</p>
+                                {item.reason ? <p className="mt-2 text-xs leading-6 text-theme-faint">{item.reason}</p> : null}
+                            </div>
+                        ))}
+                    </div>
+                </SectionCard>
+                <SectionCard title="Avoid Pairings">
+                    <div className="grid gap-3">
+                        {avoid.map((item) => (
+                            <div key={item.id} className="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+                                <p className="font-bold text-theme">{resolveLabel(item.source_type, item.source_id)}</p>
+                                <p className="mt-1 text-sm text-theme-subtle">→ {resolveLabel(item.target_type, item.target_id)}</p>
+                                {item.reason ? <p className="mt-2 text-xs leading-6 text-theme-faint">{item.reason}</p> : null}
+                            </div>
+                        ))}
+                    </div>
+                </SectionCard>
+            </div>
+            <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل ربط التوافق" : "إضافة ربط توافق جديد"}>
+                {form}
+            </Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف ربط التوافق"
+                description="سيتم حذف هذه العلاقة من خريطة الذكاء، ولن تظهر بعدها في التوصيات."
+                confirmLabel="حذف الربط"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
+        </div>
     );
 }

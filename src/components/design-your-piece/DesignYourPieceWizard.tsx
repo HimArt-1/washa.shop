@@ -29,7 +29,10 @@ import {
     Minimize2,
     Loader2,
     UserCircle,
-    Lock
+    Lock,
+    Wand2,
+    Layers3,
+    BadgeCheck,
 } from "lucide-react";
 import { useAuth, SignInButton, SignUpButton } from "@clerk/nextjs";
 import Link from "next/link";
@@ -44,12 +47,24 @@ import type {
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
+    CustomDesignPreset,
+    CustomDesignOptionCompatibility,
 } from "@/types/database";
+import {
+    getCompatibilityLookup,
+    rankDesignCandidates,
+    rankDesignPresets,
+    type DesignIntelligenceMetadata,
+    type PrintPosition,
+    type PrintSize,
+    type RankedDesignCandidate,
+} from "@/lib/design-intelligence";
 
 // ─── Types ──────────────────────────────────────────────
 
 interface WizardState {
     step: number;
+    preset: CustomDesignPreset | null;
     garment: CustomDesignGarment | null;
     color: CustomDesignColor | null;
     size: CustomDesignSize | null;
@@ -62,8 +77,8 @@ interface WizardState {
     textPrompt: string;
     imageFile: File | null;
     imagePreview: string | null;
-    printPosition: string | null;
-    printSize: string | null;
+    printPosition: PrintPosition | null;
+    printSize: PrintSize | null;
     isSending: boolean;
     sent: boolean;
     studioCartAdded: boolean;
@@ -72,6 +87,7 @@ interface WizardState {
 
 const INITIAL_STATE: WizardState = {
     step: 1,
+    preset: null,
     garment: null,
     color: null,
     size: null,
@@ -113,6 +129,8 @@ interface Props {
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
+    presets: CustomDesignPreset[];
+    compatibilities: CustomDesignOptionCompatibility[];
 }
 
 // ─── Main Wizard ────────────────────────────────────────
@@ -120,7 +138,16 @@ interface Props {
 import { OrderTracker, getStoredOrderAccess, storeOrderId, clearOrderId } from "./OrderTracker";
 import { getDesignOrderPublic } from "@/app/actions/smart-store";
 
-export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackages, studioItems, garmentStudioMockups }: Props) {
+export function DesignYourPieceWizard({
+    garments,
+    styles,
+    artStyles,
+    colorPackages,
+    studioItems,
+    garmentStudioMockups,
+    presets,
+    compatibilities,
+}: Props) {
     const { isSignedIn } = useAuth();
     const { addItem, toggleCart } = useCartStore();
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
@@ -131,6 +158,108 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [checkingOrder, setCheckingOrder] = useState(true);
     const [showAuthModal, setShowAuthModal] = useState(false);
+
+    const presetStyleLookup = getCompatibilityLookup(compatibilities, "preset", state.preset?.id, "style");
+    const garmentStyleLookup = getCompatibilityLookup(compatibilities, "garment", state.garment?.id, "style");
+    const styleArtLookup = getCompatibilityLookup(compatibilities, "style", state.style?.id, "art_style");
+    const garmentArtLookup = getCompatibilityLookup(compatibilities, "garment", state.garment?.id, "art_style");
+    const styleColorLookup = getCompatibilityLookup(compatibilities, "style", state.style?.id, "color_package");
+    const artColorLookup = getCompatibilityLookup(compatibilities, "art_style", state.artStyle?.id, "color_package");
+    const garmentColorLookup = getCompatibilityLookup(compatibilities, "garment", state.garment?.id, "color_package");
+    const garmentStudioLookup = getCompatibilityLookup(compatibilities, "garment", state.garment?.id, "studio_item");
+
+    const featuredPresets = rankDesignPresets(
+        presets.filter((preset) => preset.is_featured),
+        {
+            garmentId: state.garment?.id,
+            method: state.method ?? undefined,
+            printPosition: state.printPosition,
+            printSize: state.printSize,
+            metadataAnchors: [
+                { label: "النمط المختار", metadata: state.style?.metadata, weight: 0.95 },
+                { label: "الأسلوب المختار", metadata: state.artStyle?.metadata, weight: 0.9 },
+                { label: "البالِت المختارة", metadata: state.colorPackage?.metadata, weight: 0.8 },
+            ],
+        }
+    );
+
+    const styleRecommendations = rankDesignCandidates(styles, {
+        preferredId: state.preset?.style_id,
+        method: state.method ?? undefined,
+        printPosition: state.printPosition,
+        lookups: [
+            { lookup: presetStyleLookup, label: "الـ preset", weight: 1.05 },
+            { lookup: garmentStyleLookup, label: "القطعة الحالية", weight: 0.7 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: state.preset?.metadata, weight: 0.7 },
+        ],
+    });
+
+    const artStyleRecommendations = rankDesignCandidates(artStyles, {
+        preferredId: state.preset?.art_style_id,
+        method: state.method ?? undefined,
+        printPosition: state.printPosition,
+        lookups: [
+            { lookup: styleArtLookup, label: "النمط المختار", weight: 1.05 },
+            { lookup: garmentArtLookup, label: "القطعة الحالية", weight: 0.55 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: state.preset?.metadata, weight: 0.65 },
+            { label: "النمط المختار", metadata: state.style?.metadata, weight: 1 },
+        ],
+    });
+
+    const colorPackageRecommendations = rankDesignCandidates(colorPackages, {
+        preferredId: state.preset?.color_package_id,
+        method: state.method ?? undefined,
+        printPosition: state.printPosition,
+        lookups: [
+            { lookup: styleColorLookup, label: "النمط المختار", weight: 0.95 },
+            { lookup: artColorLookup, label: "الأسلوب المختار", weight: 0.9 },
+            { lookup: garmentColorLookup, label: "القطعة الحالية", weight: 0.55 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: state.preset?.metadata, weight: 0.55 },
+            { label: "النمط المختار", metadata: state.style?.metadata, weight: 0.85 },
+            { label: "الأسلوب المختار", metadata: state.artStyle?.metadata, weight: 0.95 },
+        ],
+    });
+
+    const studioRecommendations = rankDesignCandidates(studioItems, {
+        preferredId: state.preset?.studio_item_id,
+        method: state.method === "studio" ? "studio" : undefined,
+        printPosition: state.printPosition,
+        lookups: [
+            { lookup: garmentStudioLookup, label: "القطعة الحالية", weight: 0.8 },
+        ],
+        metadataAnchors: [
+            { label: "الـ preset", metadata: state.preset?.metadata, weight: 0.6 },
+            { label: "النمط المختار", metadata: state.style?.metadata, weight: 0.45 },
+        ],
+    }).map((entry) => entry.item);
+
+    const applyPreset = useCallback((preset: CustomDesignPreset) => {
+        const garment = preset.garment_id ? garments.find((item) => item.id === preset.garment_id) ?? null : null;
+        const style = preset.style_id ? styles.find((item) => item.id === preset.style_id) ?? null : null;
+        const artStyle = preset.art_style_id ? artStyles.find((item) => item.id === preset.art_style_id) ?? null : null;
+        const colorPackage = preset.color_package_id ? colorPackages.find((item) => item.id === preset.color_package_id) ?? null : null;
+        const studioItem = preset.studio_item_id ? studioItems.find((item) => item.id === preset.studio_item_id) ?? null : null;
+
+        setState((current) => ({
+            ...current,
+            preset,
+            garment: garment ?? current.garment,
+            style: style ?? current.style,
+            artStyle: artStyle ?? current.artStyle,
+            colorPackage: colorPackage ?? current.colorPackage,
+            studioItem: studioItem ?? current.studioItem,
+            method: preset.design_method ?? current.method,
+            printPosition: preset.print_position ?? current.printPosition,
+            printSize: preset.print_size ?? current.printSize,
+            submissionError: null,
+        }));
+    }, [artStyles, colorPackages, garments, studioItems, styles]);
 
     // Check for existing active order on mount
     useEffect(() => {
@@ -463,6 +592,92 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                 </div>
             </div>
 
+            {(featuredPresets.length > 0 || state.preset) && (
+                <div className="max-w-5xl mx-auto">
+                    <div className="rounded-3xl border border-gold/15 bg-[linear-gradient(135deg,rgba(206,174,127,0.10),rgba(255,255,255,0.02))] p-5 sm:p-6">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-bold text-gold">
+                                    <Wand2 className="h-3.5 w-3.5" />
+                                    Design Intelligence
+                                </div>
+                                <h2 className="mt-3 text-lg font-bold text-theme">Presets جاهزة بدل البدء من الصفر</h2>
+                                <p className="mt-1 text-sm text-theme-subtle">
+                                    اختر اتجاهًا إبداعيًا جاهزًا وسيقوم النظام بتعبئة النمط والأسلوب والبالِت المناسبة مبدئيًا.
+                                </p>
+                            </div>
+                            {state.preset ? (
+                                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                                    <span className="font-bold">المفعّل الآن:</span> {state.preset.name}
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            <div className="md:col-span-2 xl:col-span-3">
+                                <RecommendationInsightPanel
+                                    entry={featuredPresets[0]}
+                                    title="أقرب Preset الآن"
+                                    desc="هذا الاقتراح يتغير حسب القطعة، طريقة التنفيذ، وقراراتك الحالية داخل الويزرد."
+                                />
+                            </div>
+                            {featuredPresets.map((entry) => {
+                                const preset = entry.item;
+                                const isActive = state.preset?.id === preset.id;
+                                return (
+                                    <button
+                                        key={preset.id}
+                                        type="button"
+                                        onClick={() => applyPreset(preset)}
+                                        className={`rounded-2xl border p-4 text-right transition-all ${
+                                            isActive
+                                                ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
+                                                : "border-theme-soft bg-theme-faint hover:border-gold/30 hover:bg-theme-subtle"
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-bold text-theme-subtle">
+                                                    <BadgeCheck className="h-3 w-3" />
+                                                    {preset.badge || "Curated"}
+                                                </div>
+                                                <p className="mt-3 text-base font-bold text-theme">{preset.name}</p>
+                                                {preset.description ? (
+                                                    <p className="mt-1 line-clamp-2 text-xs leading-6 text-theme-subtle">{preset.description}</p>
+                                                ) : null}
+                                            </div>
+                                            <Layers3 className={`h-5 w-5 shrink-0 ${isActive ? "text-gold" : "text-theme-faint"}`} />
+                                        </div>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {entry.signals.slice(0, 2).map((signal) => (
+                                                <span key={signal} className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-200">
+                                                    {signal}
+                                                </span>
+                                            ))}
+                                            {preset.design_method ? (
+                                                <span className="rounded-full border border-gold/20 bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
+                                                    {preset.design_method === "from_text" ? "من نص" : preset.design_method === "from_image" ? "من صورة" : "ستيديو وشّى"}
+                                                </span>
+                                            ) : null}
+                                            {preset.print_position ? (
+                                                <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">
+                                                    {preset.print_position === "chest" ? "صدر" : preset.print_position === "back" ? "ظهر" : preset.print_position === "shoulder_right" ? "كتف أيمن" : "كتف أيسر"}
+                                                </span>
+                                            ) : null}
+                                            {preset.metadata?.creative_direction ? (
+                                                <span className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">
+                                                    {preset.metadata.creative_direction}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ─── Step Content ─── */}
             <div className="max-w-4xl mx-auto">
                 <AnimatePresence mode="wait">
@@ -505,7 +720,7 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                                     if (s.imagePreview) URL.revokeObjectURL(s.imagePreview);
                                     return { ...s, imageFile: file, imagePreview: preview };
                                 })}
-                                studioItems={studioItems}
+                                studioItems={studioRecommendations}
                                 selectedStudioItem={state.studioItem}
                                 onSelectStudioItem={(si) => setState((s) => ({ ...s, studioItem: si }))}
                                 selectedGarment={state.garment}
@@ -515,14 +730,14 @@ export function DesignYourPieceWizard({ garments, styles, artStyles, colorPackag
                             />
                         )}
                         {state.step === 6 && (
-                            <StepStyle items={styles} selected={state.style} onSelect={(s) => setState((st) => ({ ...st, style: s }))} onBack={goBack} onNext={goNext} />
+                            <StepStyle items={styleRecommendations} selected={state.style} onSelect={(s) => setState((st) => ({ ...st, style: s }))} onBack={goBack} onNext={goNext} />
                         )}
                         {state.step === 7 && (
-                            <StepArtStyle items={artStyles} selected={state.artStyle} onSelect={(a) => setState((s) => ({ ...s, artStyle: a }))} onBack={goBack} onNext={goNext} />
+                            <StepArtStyle items={artStyleRecommendations} selected={state.artStyle} onSelect={(a) => setState((s) => ({ ...s, artStyle: a }))} onBack={goBack} onNext={goNext} />
                         )}
                         {state.step === 8 && (
                             <StepColorPalette
-                                packages={colorPackages}
+                                packages={colorPackageRecommendations}
                                 selectedPackage={state.colorPackage}
                                 onSelectPackage={(p) => setState((s) => ({ ...s, colorPackage: p }))}
                                 customColors={state.customColors}
@@ -601,6 +816,109 @@ function StepHeader({ title, desc }: { title: string; desc: string }) {
         <div className="mb-8">
             <h2 className="text-xl sm:text-2xl font-bold text-theme">{title}</h2>
             <p className="text-theme-subtle mt-1 text-sm">{desc}</p>
+        </div>
+    );
+}
+
+function getLuxuryTierLabel(value: DesignIntelligenceMetadata["luxury_tier"] | null | undefined) {
+    if (value === "signature") return "Signature";
+    if (value === "editorial") return "Editorial";
+    if (value === "core") return "Core";
+    return null;
+}
+
+function getEnergyLabel(value: DesignIntelligenceMetadata["energy"] | null | undefined) {
+    if (value === "high") return "طاقة عالية";
+    if (value === "medium") return "طاقة متوازنة";
+    if (value === "low") return "طاقة هادئة";
+    return null;
+}
+
+function getComplexityLabel(value: DesignIntelligenceMetadata["complexity"] | null | undefined) {
+    if (value === "bold") return "تكوين جريء";
+    if (value === "balanced") return "تكوين متوازن";
+    if (value === "minimal") return "تكوين ناعم";
+    return null;
+}
+
+type ExplainableRecommendationItem = {
+    name: string;
+    description?: string | null;
+    story?: string | null;
+    metadata?: DesignIntelligenceMetadata | null;
+};
+
+function RecommendationInsightPanel<T extends ExplainableRecommendationItem>({
+    entry,
+    title,
+    desc,
+}: {
+    entry: RankedDesignCandidate<T> | null | undefined;
+    title: string;
+    desc: string;
+}) {
+    if (!entry) return null;
+
+    const item = entry.item;
+    const highlight = item.metadata?.story_hook || item.story || item.description || desc;
+    const luxuryTier = getLuxuryTierLabel(item.metadata?.luxury_tier);
+    const energy = getEnergyLabel(item.metadata?.energy);
+    const complexity = getComplexityLabel(item.metadata?.complexity);
+
+    return (
+        <div className="mb-5 rounded-[28px] border border-gold/20 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.16),rgba(255,255,255,0.02)_58%)] p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-bold text-gold">
+                        <Wand2 className="h-3.5 w-3.5" />
+                        {title}
+                    </div>
+                    <h3 className="mt-3 text-base font-bold text-theme sm:text-lg">{item.name}</h3>
+                    <p className="mt-1 text-sm leading-7 text-theme-subtle">{highlight}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 sm:max-w-[45%] sm:justify-end">
+                    {entry.relation ? (
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
+                            entry.relation === "avoid"
+                                ? "border border-red-400/20 bg-red-500/10 text-red-200"
+                                : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                        }`}>
+                            {entry.relation === "signature" ? "ترشيح Signature" : entry.relation === "recommended" ? "موصى به" : "أقل انسجامًا"}
+                        </span>
+                    ) : null}
+                    {luxuryTier ? (
+                        <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[10px] font-bold text-gold">
+                            {luxuryTier}
+                        </span>
+                    ) : null}
+                    {energy ? (
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-bold text-theme-subtle">
+                            {energy}
+                        </span>
+                    ) : null}
+                    {complexity ? (
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-bold text-theme-subtle">
+                            {complexity}
+                        </span>
+                    ) : null}
+                    {item.metadata?.palette_family ? (
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-bold text-theme-subtle">
+                            {item.metadata.palette_family}
+                        </span>
+                    ) : null}
+                </div>
+            </div>
+
+            {entry.signals.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {entry.signals.slice(0, 3).map((signal) => (
+                        <span key={signal} className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] font-bold text-theme">
+                            {signal}
+                        </span>
+                    ))}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -1118,7 +1436,7 @@ function StudioItemCard({ item, isSelected, galleryImages, hasMockup, onSelect }
 // ═══════════════════════════════════════════════════════════
 
 function StepStyle({ items, selected, onSelect, onBack, onNext }: {
-    items: CustomDesignStyle[];
+    items: RankedDesignCandidate<CustomDesignStyle>[];
     selected: CustomDesignStyle | null;
     onSelect: (s: CustomDesignStyle) => void;
     onBack: () => void;
@@ -1127,11 +1445,17 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
     return (
         <>
             <StepHeader title="اختر النمط" desc="حدد نمط التصميم اللي يعجبك" />
+            <RecommendationInsightPanel
+                entry={items[0]}
+                title="أقرب نمط الآن"
+                desc="هذا الترشيح مرتب حسب القطعة الحالية، موضع الطباعة، وطريقة التصميم التي اخترتها."
+            />
             {items.length === 0 ? (
                 <div className="text-center py-20 text-theme-faint"><p>لا توجد أنماط متاحة حالياً</p></div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {items.map((s) => {
+                    {items.map((entry) => {
+                        const s = entry.item;
                         const isSelected = selected?.id === s.id;
                         return (
                             <motion.button
@@ -1154,7 +1478,42 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
                                 <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
                                     <p className="text-sm font-bold text-theme">{s.name}</p>
                                     {s.description && <p className="text-[10px] text-theme-subtle mt-0.5 line-clamp-1">{s.description}</p>}
+                                    {s.metadata?.creative_direction && (
+                                        <p className="mt-1 text-[10px] font-bold text-gold/90">{s.metadata.creative_direction}</p>
+                                    )}
                                 </div>
+                                {(s.metadata?.moods?.length || s.metadata?.luxury_tier) && (
+                                    <div className="absolute right-3 top-3 flex max-w-[75%] flex-wrap justify-end gap-1">
+                                        {s.metadata?.luxury_tier ? (
+                                            <span className="rounded-full border border-gold/20 bg-gold/10 px-2 py-1 text-[9px] font-bold text-gold">
+                                                {s.metadata.luxury_tier}
+                                            </span>
+                                        ) : null}
+                                        {s.metadata?.moods?.slice(0, 1).map((mood) => (
+                                            <span key={mood} className="rounded-full border border-white/10 bg-black/35 px-2 py-1 text-[9px] font-bold text-theme">
+                                                {mood}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                {(entry.signals.length > 0 || entry.relation) && (
+                                    <div className="absolute left-3 right-3 top-3 flex flex-wrap gap-1">
+                                        {entry.relation ? (
+                                            <span className={`rounded-full px-2 py-1 text-[9px] font-bold ${
+                                                entry.relation === "avoid"
+                                                    ? "border border-red-400/20 bg-red-500/10 text-red-200"
+                                                    : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                                            }`}>
+                                                {entry.relation === "signature" ? "Signature" : entry.relation === "recommended" ? "موصى به" : "أقل انسجامًا"}
+                                            </span>
+                                        ) : null}
+                                        {entry.signals.slice(0, 2).map((signal) => (
+                                            <span key={signal} className="rounded-full border border-white/10 bg-black/35 px-2 py-1 text-[9px] font-bold text-theme">
+                                                {signal}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 left-3 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
                                         <Check className="w-4 h-4 text-bg" />
@@ -1175,7 +1534,7 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
 // ═══════════════════════════════════════════════════════════
 
 function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
-    items: CustomDesignArtStyle[];
+    items: RankedDesignCandidate<CustomDesignArtStyle>[];
     selected: CustomDesignArtStyle | null;
     onSelect: (a: CustomDesignArtStyle) => void;
     onBack: () => void;
@@ -1184,11 +1543,17 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
     return (
         <>
             <StepHeader title="اختر الأسلوب" desc="حدد أسلوب الرسم للتصميم" />
+            <RecommendationInsightPanel
+                entry={items[0]}
+                title="أقرب أسلوب الآن"
+                desc="هذا الترشيح مبني على النمط المختار، القطعة الحالية، ونبرة التنفيذ الأقرب لطلبك."
+            />
             {items.length === 0 ? (
                 <div className="text-center py-20 text-theme-faint"><p>لا توجد أساليب متاحة حالياً</p></div>
             ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {items.map((a) => {
+                    {items.map((entry) => {
+                        const a = entry.item;
                         const isSelected = selected?.id === a.id;
                         return (
                             <motion.button
@@ -1210,7 +1575,30 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
                                 )}
                                 <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
                                     <p className="text-sm font-bold text-theme">{a.name}</p>
+                                    {a.metadata?.creative_direction && (
+                                        <p className="mt-1 text-[10px] font-bold text-gold/90">{a.metadata.creative_direction}</p>
+                                    )}
                                 </div>
+                                {(entry.relation || entry.signals.length > 0) ? (
+                                    <div className="absolute right-3 top-3">
+                                        <span className={`rounded-full px-2 py-1 text-[9px] font-bold ${
+                                            entry.relation === "avoid"
+                                                ? "border border-red-400/20 bg-red-500/10 text-red-200"
+                                                : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                                        }`}>
+                                            {entry.relation === "avoid" ? "أقل انسجامًا" : entry.relation === "signature" ? "تركيبة Signature" : "موصى به"}
+                                        </span>
+                                    </div>
+                                ) : null}
+                                {entry.signals.length > 0 ? (
+                                    <div className="absolute left-3 top-3 flex max-w-[60%] flex-wrap gap-1 justify-start">
+                                        {entry.signals.slice(0, 2).map((signal) => (
+                                            <span key={signal} className="rounded-full border border-white/10 bg-black/35 px-2 py-1 text-[9px] font-bold text-theme">
+                                                {signal}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : null}
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 left-3 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
                                         <Check className="w-4 h-4 text-bg" />
@@ -1231,7 +1619,7 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
 // ═══════════════════════════════════════════════════════════
 
 function StepColorPalette({ packages, selectedPackage, onSelectPackage, customColors, onCustomColorsChange, onBack, onNext }: {
-    packages: CustomDesignColorPackage[];
+    packages: RankedDesignCandidate<CustomDesignColorPackage>[];
     selectedPackage: CustomDesignColorPackage | null;
     onSelectPackage: (p: CustomDesignColorPackage | null) => void;
     customColors: string[];
@@ -1246,11 +1634,17 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
     return (
         <>
             <StepHeader title="اختر الألوان" desc="حدد باقة ألوان جاهزة أو خصص ألوانك" />
+            <RecommendationInsightPanel
+                entry={packages[0]}
+                title="أقرب بالِت الآن"
+                desc="رتبنا الألوان بحسب النمط، الأسلوب، ودرجة الفخامة والطاقة المتولدة من اختياراتك."
+            />
 
             {/* Packages */}
             {packages.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
-                    {packages.map((pkg) => {
+                    {packages.map((entry) => {
+                        const pkg = entry.item;
                         const isSelected = selectedPackage?.id === pkg.id;
                         return (
                             <motion.button
@@ -1264,11 +1658,32 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
                 `}
                             >
                                 <p className={`font-bold text-sm mb-3 ${isSelected ? "text-gold" : "text-theme"}`}>{pkg.name}</p>
+                                {pkg.metadata?.palette_family && (
+                                    <p className="mb-3 text-[10px] font-bold text-theme-subtle">{pkg.metadata.palette_family}</p>
+                                )}
                                 <div className="flex gap-1.5 flex-wrap">
                                     {(Array.isArray(pkg.colors) ? pkg.colors : []).map((c: any, i: number) => (
                                         <div key={i} className="w-7 h-7 rounded-full border border-theme-soft shadow-sm" style={{ backgroundColor: c.hex }} title={c.name} />
                                     ))}
                                 </div>
+                                {(entry.relation || entry.signals.length > 0) ? (
+                                    <div className={`mt-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${
+                                        entry.relation === "avoid"
+                                            ? "border border-red-400/20 bg-red-500/10 text-red-200"
+                                            : "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                                    }`}>
+                                        {entry.relation === "avoid" ? "أقل انسجامًا" : entry.relation === "signature" ? "Palette Signature" : "موصى به"}
+                                    </div>
+                                ) : null}
+                                {entry.signals.length > 0 ? (
+                                    <div className="mt-2 flex flex-wrap gap-1">
+                                        {entry.signals.slice(0, 2).map((signal) => (
+                                            <span key={signal} className="rounded-full border border-theme-soft bg-theme-subtle px-2 py-1 text-[10px] font-bold text-theme-subtle">
+                                                {signal}
+                                            </span>
+                                        ))}
+                                    </div>
+                                ) : null}
                                 {isSelected && (
                                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-3 flex items-center gap-1 text-gold text-xs">
                                         <Check className="w-3.5 h-3.5" /> محدد
@@ -1332,19 +1747,19 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
 //  Step 8: Print Placement & Pricing
 // ═══════════════════════════════════════════════════════════
 
-const PRINT_POSITIONS: { id: string; label: string; emoji: string; desc: string }[] = [
+const PRINT_POSITIONS: { id: PrintPosition; label: string; emoji: string; desc: string }[] = [
     { id: "chest", label: "الصدر", emoji: "👕", desc: "تصميم على الجهة الأمامية" },
     { id: "back", label: "الظهر", emoji: "🔄", desc: "تصميم على الجهة الخلفية" },
     { id: "shoulder_right", label: "الكتف الأيمن", emoji: "➡️", desc: "شعار على الكتف الأيمن" },
     { id: "shoulder_left", label: "الكتف الأيسر", emoji: "⬅️", desc: "شعار على الكتف الأيسر" },
 ];
 
-const PRINT_SIZES: { id: string; label: string; desc: string; icon: any }[] = [
+const PRINT_SIZES: { id: PrintSize; label: string; desc: string; icon: any }[] = [
     { id: "large", label: "مقاس كبير", desc: "تغطية واسعة وبارزة", icon: Maximize2 },
     { id: "small", label: "مقاس صغير", desc: "تصميم أنيق ومحدود", icon: Minimize2 },
 ];
 
-function getPrintPrice(pricing: any, pos: string, sz: string): number {
+function getPrintPrice(pricing: any, pos: PrintPosition, sz: PrintSize): number {
     if (!pricing) return 0;
     if (pos === "shoulder_right" || pos === "shoulder_left") {
         return sz === "large" ? (pricing.price_shoulder_large ?? 0) : (pricing.price_shoulder_small ?? 0);
@@ -1359,10 +1774,10 @@ import { getGarmentPricing } from "@/app/actions/smart-store";
 
 function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectPosition, onSelectSize, onBack, onNext }: {
     garment: CustomDesignGarment | null;
-    selectedPosition: string | null;
-    selectedSize: string | null;
-    onSelectPosition: (p: string) => void;
-    onSelectSize: (sz: string) => void;
+    selectedPosition: PrintPosition | null;
+    selectedSize: PrintSize | null;
+    onSelectPosition: (p: PrintPosition) => void;
+    onSelectSize: (sz: PrintSize) => void;
     onBack: () => void;
     onNext: () => void;
 }) {
@@ -1669,6 +2084,13 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: Wi
                         </div>
                     )}
                     <div className="space-y-4">
+                        {state.preset && (
+                            <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
+                                <p className="text-xs font-bold text-gold">Preset جاهزة</p>
+                                <p className="mt-1 text-sm font-bold text-theme">{state.preset.name}</p>
+                                {state.preset.story ? <p className="mt-1 text-xs leading-6 text-theme-subtle">{state.preset.story}</p> : null}
+                            </div>
+                        )}
                         <SummaryRow label="القطعة واللون" value={`${state.garment?.name} (${state.color?.name})`} color={state.color?.hex_code} />
                         <SummaryRow label="التصميم" value={state.studioItem?.name} />
                         <SummaryRow label="مكان الطباعة" value={`${state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : "أخرى"} - ${state.size?.name}`} />
@@ -1676,6 +2098,13 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: Wi
                 </div>
             ) : (
                 <div className="space-y-4 mb-8">
+                    {state.preset && (
+                        <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
+                            <p className="text-xs font-bold text-gold">Preset جاهزة</p>
+                            <p className="mt-1 text-sm font-bold text-theme">{state.preset.name}</p>
+                            {state.preset.story ? <p className="mt-1 text-xs leading-6 text-theme-subtle">{state.preset.story}</p> : null}
+                        </div>
+                    )}
                     <SummaryRow label="القطعة" value={state.garment?.name} />
                     <SummaryRow label="اللون" value={state.color?.name} color={state.color?.hex_code} />
                     <SummaryRow label="المقاس" value={state.size?.name} />

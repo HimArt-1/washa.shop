@@ -1,3 +1,10 @@
+import type {
+    DesignColorToken,
+    DesignIntelligenceMetadata,
+    DesignOptionCompatibility,
+    DesignPreset,
+} from "@/lib/design-intelligence";
+
 // ═══════════════════════════════════════════════════════════
 //  وشّى | WASHA — Database Types
 //  تعريفات TypeScript لجميع جداول قاعدة البيانات
@@ -342,6 +349,7 @@ export type CustomDesignStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -353,6 +361,7 @@ export type CustomDesignArtStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -362,8 +371,9 @@ export type CustomDesignArtStyle = {
 export type CustomDesignColorPackage = {
     id: string;
     name: string;
-    colors: { hex: string; name: string }[];
+    colors: DesignColorToken[];
     image_url: string | null;
+    metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -378,6 +388,7 @@ export type CustomDesignStudioItem = {
     main_image_url: string | null;
     mockup_image_url: string | null;
     model_image_url: string | null;
+    metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -395,6 +406,9 @@ export type GarmentStudioMockup = {
     created_at: string;
     updated_at: string;
 }
+
+export type CustomDesignPreset = DesignPreset;
+export type CustomDesignOptionCompatibility = DesignOptionCompatibility;
 
 // ─── ERP (Inventory, SKUs, Sales) ────────────────────────
 
@@ -636,6 +650,26 @@ export type Database = {
                 Row: GarmentStudioMockup;
                 Insert: Omit<GarmentStudioMockup, "id" | "created_at" | "updated_at" | "sort_order"> & { sort_order?: number };
                 Update: Partial<Omit<GarmentStudioMockup, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            custom_design_presets: {
+                Row: CustomDesignPreset;
+                Insert: Omit<CustomDesignPreset, "id" | "created_at" | "updated_at" | "sort_order" | "is_featured" | "is_active"> & {
+                    sort_order?: number;
+                    is_featured?: boolean;
+                    is_active?: boolean;
+                };
+                Update: Partial<Omit<CustomDesignPreset, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            custom_design_option_compatibilities: {
+                Row: CustomDesignOptionCompatibility;
+                Insert: Omit<CustomDesignOptionCompatibility, "id" | "created_at" | "updated_at" | "relation" | "score" | "reason"> & {
+                    relation?: DesignOptionCompatibility["relation"];
+                    score?: number;
+                    reason?: string | null;
+                };
+                Update: Partial<Omit<CustomDesignOptionCompatibility, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_orders: {
