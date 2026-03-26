@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { DesignProvider, useDesign } from './context/DesignContext';
 import { useDesignHistory } from './hooks/useDesignHistory';
@@ -11,26 +11,63 @@ import SplashScreen from './components/SplashScreen';
 import Toast from './components/ui/Toast';
 import DesignGallery from './components/DesignGallery';
 import ErrorBoundary from './components/ErrorBoundary';
+import { resizeDataUrl } from './lib/image';
 
 function AppContent() {
   const { step, mockupImage, isGenerating, state } = useDesign();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const { history, saveDesign, deleteDesign, clearHistory } = useDesignHistory();
+  const prevMockupRef = useRef<string | null>(null);
 
-  // Auto-save when mockup is generated
-  const prevMockupRef = useState<string | null>(null);
-  if (mockupImage && !isGenerating && mockupImage !== prevMockupRef[0]) {
-    prevMockupRef[1](mockupImage);
-    saveDesign({
-      garmentType: state.garmentType,
-      garmentColor: state.garmentColor,
-      style: state.style,
-      technique: state.technique,
-      palette: state.palette,
-      prompt: state.prompt,
-      thumbnail: mockupImage,
-    });
-  }
+  useEffect(() => {
+    let cancelled = false;
+
+    async function persistHistoryThumbnail() {
+      if (!mockupImage || isGenerating || mockupImage === prevMockupRef.current) {
+        return;
+      }
+
+      prevMockupRef.current = mockupImage;
+
+      try {
+        const thumbnail = await resizeDataUrl(mockupImage, {
+          maxDimension: 480,
+          quality: 0.68,
+          outputMimeType: 'image/jpeg',
+        });
+
+        if (cancelled) return;
+
+        saveDesign({
+          garmentType: state.garmentType,
+          garmentColor: state.garmentColor,
+          style: state.style,
+          technique: state.technique,
+          palette: state.palette,
+          prompt: state.prompt,
+          thumbnail: thumbnail.dataUrl,
+        });
+      } catch (error) {
+        console.warn('Failed to prepare history thumbnail:', error);
+      }
+    }
+
+    void persistHistoryThumbnail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isGenerating,
+    mockupImage,
+    saveDesign,
+    state.garmentColor,
+    state.garmentType,
+    state.palette,
+    state.prompt,
+    state.style,
+    state.technique,
+  ]);
 
   return (
     <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-hidden">

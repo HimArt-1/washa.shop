@@ -1,6 +1,25 @@
 // Use the integrated Next.js API instead of a separate local proxy server.
 const API_BASE_URL = '/api/washa-dtf-studio';
 
+async function parseApiResponse(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  if (!response.ok) {
+    if (response.status === 413) {
+      throw new Error('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.');
+    }
+
+    throw new Error(text || 'فشل الاتصال بالخادم');
+  }
+
+  throw new Error(text || 'استجابة غير متوقعة من الخادم');
+}
+
 export async function generateMockup(
   garmentType: string,
   color: string,
@@ -28,7 +47,7 @@ export async function generateMockup(
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    const data = await parseApiResponse(response);
     if (data.error) throw new Error(data.error);
     return data.imageUrl || null;
   } catch (error) {
@@ -51,7 +70,7 @@ export async function extractDesign(mockupImageBase64: string, mimeType: string)
       }),
     });
 
-    const data = await response.json();
+    const data = await parseApiResponse(response);
     if (data.error) throw new Error(data.error);
     return data.imageUrl || null;
   } catch (error) {

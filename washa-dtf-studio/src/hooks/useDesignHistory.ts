@@ -2,7 +2,34 @@ import { useState, useEffect, useCallback } from 'react';
 import { DesignHistoryItem } from '../types';
 
 const STORAGE_KEY = 'washa-design-history';
-const MAX_ITEMS = 20;
+const MAX_ITEMS = 12;
+
+function sanitizeHistory(items: DesignHistoryItem[]) {
+  return items.map(item => ({
+    ...item,
+    prompt: item.prompt.slice(0, 280),
+    thumbnail: item.thumbnail || null,
+  }));
+}
+
+function persistWithinQuota(items: DesignHistoryItem[]) {
+  const queue = sanitizeHistory(items).slice(0, MAX_ITEMS);
+
+  while (queue.length > 0) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+      return queue;
+    } catch (error) {
+      queue.pop();
+      if (queue.length === 0) {
+        console.warn('Failed to save design history:', error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+  }
+
+  return [];
+}
 
 export function useDesignHistory() {
   const [history, setHistory] = useState<DesignHistoryItem[]>([]);
@@ -21,11 +48,7 @@ export function useDesignHistory() {
 
   // Persist to localStorage
   const persist = useCallback((items: DesignHistoryItem[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    } catch (e) {
-      console.warn('Failed to save design history:', e);
-    }
+    return persistWithinQuota(items);
   }, []);
 
   const saveDesign = useCallback(
@@ -38,8 +61,7 @@ export function useDesignHistory() {
 
       setHistory(prev => {
         const updated = [newItem, ...prev].slice(0, MAX_ITEMS);
-        persist(updated);
-        return updated;
+        return persist(updated);
       });
 
       return newItem.id;
@@ -51,8 +73,7 @@ export function useDesignHistory() {
     (id: string) => {
       setHistory(prev => {
         const updated = prev.filter(item => item.id !== id);
-        persist(updated);
-        return updated;
+        return persist(updated);
       });
     },
     [persist]

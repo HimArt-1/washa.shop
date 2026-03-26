@@ -12,6 +12,7 @@ import {
   PALETTE_PROMPTS,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
+import { resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
 interface DesignContextType {
   // Wizard state
@@ -94,14 +95,25 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        const base64Data = base64String.split(',')[1];
-        updateState({
-          referenceImage: base64Data,
-          referenceImageMimeType: file.type,
-        });
-        showToast('تم رفع الصورة بنجاح', 'success');
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+          const resized = await resizeDataUrl(base64String, {
+            maxDimension: 1400,
+            quality: 0.8,
+            outputMimeType: 'image/jpeg',
+          });
+
+          updateState({
+            referenceImage: stripDataUrlPrefix(resized.dataUrl),
+            referenceImageMimeType: resized.mimeType,
+          });
+          showToast('تم رفع الصورة وتجهيزها بنجاح', 'success');
+        } catch (uploadError) {
+          console.error('Failed to process uploaded image:', uploadError);
+          setError('تعذر تجهيز الصورة المرجعية. حاول بصورة أصغر.');
+          showToast('تعذر تجهيز الصورة المرجعية', 'error');
+        }
       };
       reader.readAsDataURL(file);
     }
