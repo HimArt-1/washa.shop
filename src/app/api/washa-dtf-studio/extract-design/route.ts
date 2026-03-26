@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
-import { extractGeneratedImageDataUrl, getWashaDtfGenAiClient, WASHA_DTF_MODEL } from "@/lib/washa-dtf-studio";
+import { extractGeneratedImageDataUrl, getWashaDtfErrorDetails, getWashaDtfGenAiClient, WASHA_DTF_MODEL } from "@/lib/washa-dtf-studio";
 
 export const runtime = "nodejs";
 
@@ -48,9 +48,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ imageUrl });
     } catch (error) {
         console.error("[washa-dtf-studio.extract-design]", error);
+        const handled = getWashaDtfErrorDetails(error);
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : "فشل استخراج التصميم" },
-            { status: 500 }
+            { error: handled.message },
+            { status: handled.status }
         );
     }
 }

@@ -20,3 +20,47 @@ export function extractGeneratedImageDataUrl(response: any) {
 
     return null;
 }
+
+export function getWashaDtfErrorDetails(error: unknown): {
+    message: string;
+    status: number;
+} {
+    const fallbackMessage = error instanceof Error ? error.message : "فشل تنفيذ طلب Gemini";
+
+    let parsed: {
+        error?: {
+            code?: number;
+            message?: string;
+            status?: string;
+        };
+    } | null = null;
+
+    if (error instanceof Error) {
+        try {
+            parsed = JSON.parse(error.message);
+        } catch {
+            parsed = null;
+        }
+    }
+
+    const providerMessage = parsed?.error?.message || fallbackMessage;
+    const providerStatus = parsed?.error?.status || "";
+    const providerCode = parsed?.error?.code;
+
+    if (
+        /reported as leaked/i.test(providerMessage) ||
+        providerStatus === "PERMISSION_DENIED"
+    ) {
+        return {
+            message: "مفتاح Gemini الحالي مرفوض من Google. أنشئ مفتاحًا جديدًا وحدّثه في متغيرات البيئة على الخادم.",
+            status: 503,
+        };
+    }
+
+    return {
+        message: providerMessage,
+        status: typeof providerCode === "number" && providerCode >= 400 && providerCode < 600
+            ? providerCode
+            : 500,
+    };
+}

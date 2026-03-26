@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const CACHE_NAME = "wusha-v2";
+const CACHE_NAME = "wusha-v3";
 const OFFLINE_URL = "/offline.html";
 
 // Static assets to pre-cache
@@ -73,7 +73,13 @@ self.addEventListener("fetch", (event) => {
     const isDtfStudio = pathname === "/design/dtf-studio" || pathname.startsWith("/design/dtf-studio/");
 
     if (isDtfStudio) {
-        event.respondWith(fetch(request));
+        event.respondWith(
+            fetch(request).catch(() =>
+                request.mode === "navigate"
+                    ? caches.match(OFFLINE_URL).then((cached) => cached || new Response(null, { status: 503, statusText: "Service Unavailable" }))
+                    : new Response(null, { status: 503, statusText: "Service Unavailable" })
+            )
+        );
         return;
     }
 
@@ -122,5 +128,11 @@ self.addEventListener("fetch", (event) => {
     }
 
     // Everything else → network
-    event.respondWith(fetch(request));
+    event.respondWith(
+        fetch(request).catch(() =>
+            request.mode === "navigate"
+                ? caches.match(OFFLINE_URL).then((cached) => cached || new Response(null, { status: 503, statusText: "Service Unavailable" }))
+                : new Response(null, { status: 503, statusText: "Service Unavailable" })
+        )
+    );
 });
