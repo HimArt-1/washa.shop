@@ -73,9 +73,15 @@ export function AdditionalDesignMiniWizard({
             setArtStyles(a);
             setColorPackages(c);
             setPricing(p);
-            const styleMatch = s.find((x) => x.name === order.style_name);
-            const artMatch = a.find((x) => x.name === order.art_style_name);
-            const pkgMatch = c.find((x) => x.name === order.color_package_name);
+            const styleMatch = order.style_id
+                ? s.find((x) => x.id === order.style_id) ?? s.find((x) => x.name === order.style_name)
+                : s.find((x) => x.name === order.style_name);
+            const artMatch = order.art_style_id
+                ? a.find((x) => x.id === order.art_style_id) ?? a.find((x) => x.name === order.art_style_name)
+                : a.find((x) => x.name === order.art_style_name);
+            const pkgMatch = order.color_package_id
+                ? c.find((x) => x.id === order.color_package_id) ?? c.find((x) => x.name === order.color_package_name)
+                : c.find((x) => x.name === order.color_package_name);
             setSelectedStyle(styleMatch || null);
             setSelectedArtStyle(artMatch || null);
             setSelectedPackage(pkgMatch || null);
@@ -102,10 +108,13 @@ export function AdditionalDesignMiniWizard({
         const result = await submitAdditionalDesignOrder(order.id, {
             print_position: position,
             print_size: size,
+            style_id: selectedStyle.id,
             style_name: selectedStyle.name,
             style_image_url: selectedStyle.image_url,
+            art_style_id: selectedArtStyle.id,
             art_style_name: selectedArtStyle.name,
             art_style_image_url: selectedArtStyle.image_url,
+            color_package_id: selectedPackage?.id ?? null,
             color_package_name: selectedPackage?.name ?? null,
             custom_colors: customColors.length > 0 ? customColors : undefined,
         });

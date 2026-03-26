@@ -278,6 +278,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         design_piece: settings.visibility.design_piece ?? true,
+        design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -485,6 +486,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         label="صمم قطعتك (Design Your Piece)"
                         checked={visibility.design_piece ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece: v })}
+                    />
+                    <Toggle
+                        label="اختصار النموذج الجديد داخل صمم قطعتك"
+                        checked={visibility.design_piece_ai_switch ?? true}
+                        onChange={(v) => setVisibility({ ...visibility, design_piece_ai_switch: v })}
                     />
                 </div>
                 <button

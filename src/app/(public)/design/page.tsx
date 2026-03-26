@@ -52,6 +52,7 @@ export default async function DesignYourPiecePage() {
                     garmentStudioMockups={garmentStudioMockups}
                     presets={presets}
                     compatibilities={compatibilities}
+                    aiModelShortcutEnabled={visibility.design_piece_ai_switch !== false}
                 />
             </div>
         </div>

@@ -126,19 +126,38 @@ export function normalizeDesignMetadata(value: unknown): DesignIntelligenceMetad
 }
 
 export function buildDesignMetadataFromFormData(formData: FormData): DesignIntelligenceMetadata {
-    return normalizeDesignMetadata({
+    return buildDesignMetadataFromInput({
         creative_direction: formData.get("creative_direction"),
         energy: formData.get("energy"),
         complexity: formData.get("complexity"),
         luxury_tier: formData.get("luxury_tier"),
         story_hook: formData.get("story_hook"),
         palette_family: formData.get("palette_family"),
-        keywords: parseCsvList(formData.get("keywords")),
-        moods: parseCsvList(formData.get("moods")),
-        audiences: parseCsvList(formData.get("audiences")),
-        placements: parseCsvList(formData.get("placements")),
-        recommended_methods: parseCsvList(formData.get("recommended_methods")),
+        keywords: formData.get("keywords"),
+        moods: formData.get("moods"),
+        audiences: formData.get("audiences"),
+        placements: formData.get("placements"),
+        recommended_methods: formData.get("recommended_methods"),
         notes: formData.get("notes"),
+    });
+}
+
+export function buildDesignMetadataFromInput(input: Record<string, unknown>): DesignIntelligenceMetadata {
+    return normalizeDesignMetadata({
+        creative_direction: input.creative_direction,
+        energy: input.energy,
+        complexity: input.complexity,
+        luxury_tier: input.luxury_tier,
+        story_hook: input.story_hook,
+        palette_family: input.palette_family,
+        keywords: Array.isArray(input.keywords) ? input.keywords : parseCsvList(input.keywords as string | null | undefined),
+        moods: Array.isArray(input.moods) ? input.moods : parseCsvList(input.moods as string | null | undefined),
+        audiences: Array.isArray(input.audiences) ? input.audiences : parseCsvList(input.audiences as string | null | undefined),
+        placements: Array.isArray(input.placements) ? input.placements : parseCsvList(input.placements as string | null | undefined),
+        recommended_methods: Array.isArray(input.recommended_methods)
+            ? input.recommended_methods
+            : parseCsvList(input.recommended_methods as string | null | undefined),
+        notes: input.notes,
     });
 }
 

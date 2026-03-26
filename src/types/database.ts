@@ -898,14 +898,18 @@ export type CustomDesignOrder = {
     preset_id: string | null;
     preset_name: string | null;
     preset_fully_aligned: boolean;
+    style_id: string | null;
     style_name: string;
     style_image_url: string | null;
+    art_style_id: string | null;
     art_style_name: string;
     art_style_image_url: string | null;
 
     // Colors
+    color_package_id: string | null;
     color_package_name: string | null;
     custom_colors: any[];
+    studio_item_id: string | null;
 
     // AI Prompt
     ai_prompt: string;

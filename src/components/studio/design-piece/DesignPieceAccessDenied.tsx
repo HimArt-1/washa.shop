@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, ArrowLeft, FileCheck, Lock } from "lucide-react";
+import { Sparkles, ArrowLeft, Lock } from "lucide-react";
 
-export function DesignPieceAccessDenied() {
+export function DesignPieceAccessDenied({ redirectUrl = "/design" }: { redirectUrl?: string }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -32,14 +32,14 @@ export function DesignPieceAccessDenied() {
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <Link
-                        href="/sign-up"
+                        href={`/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`}
                         className="btn-gold inline-flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                         <Sparkles className="w-5 h-5" />
                         إنشاء حساب مجاني
                     </Link>
                     <Link
-                        href="/sign-in?redirect_url=/design"
+                        href={`/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`}
                         className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
                         <ArrowLeft className="w-5 h-5" />

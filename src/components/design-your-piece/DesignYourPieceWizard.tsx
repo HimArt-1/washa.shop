@@ -131,6 +131,7 @@ interface Props {
     garmentStudioMockups: GarmentStudioMockup[];
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
+    aiModelShortcutEnabled?: boolean;
 }
 
 function getPresetOverrideLabels(state: WizardState) {
@@ -163,6 +164,7 @@ export function DesignYourPieceWizard({
     garmentStudioMockups,
     presets,
     compatibilities,
+    aiModelShortcutEnabled = false,
 }: Props) {
     const { isSignedIn } = useAuth();
     const { addItem, toggleCart } = useCartStore();
@@ -377,6 +379,7 @@ export function DesignYourPieceWizard({
                     size_id: state.size?.id ?? undefined,
                     size_name: state.size?.name ?? "—",
                     design_method: "studio",
+                    studio_item_id: state.studioItem?.id ?? undefined,
                     text_prompt: state.studioItem?.name ?? undefined,
                     reference_image_url: state.studioItem?.mockup_image_url || state.studioItem?.main_image_url || undefined,
                     preset_id: state.preset?.id ?? undefined,
@@ -385,11 +388,11 @@ export function DesignYourPieceWizard({
                     print_position: state.printPosition ?? undefined,
                     print_size: state.printSize ?? undefined,
                 });
-                if ("error" in (result as any) && (result as any).error) {
+                if ("error" in result) {
                     setState((s) => ({
                         ...s,
                         isSending: false,
-                        submissionError: (result as any).error || "تعذر إنشاء طلب الاستوديو الآن."
+                        submissionError: result.error || "تعذر إنشاء طلب الاستوديو الآن."
                     }));
                     return;
                 }
@@ -463,16 +466,19 @@ export function DesignYourPieceWizard({
                 preset_id: state.preset?.id ?? undefined,
                 preset_name: state.preset?.name ?? undefined,
                 preset_fully_aligned: presetIsFullyAligned,
+                style_id: state.style?.id ?? undefined,
                 style_name: state.style?.name ?? "—",
                 style_image_url: state.style?.image_url ?? undefined,
+                art_style_id: state.artStyle?.id ?? undefined,
                 art_style_name: state.artStyle?.name ?? "—",
                 art_style_image_url: state.artStyle?.image_url ?? undefined,
+                color_package_id: state.colorPackage?.id ?? undefined,
                 color_package_name: state.colorPackage?.name ?? undefined,
                 custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
                 print_position: state.printPosition ?? undefined,
                 print_size: state.printSize ?? undefined,
             });
-            if (result.error) {
+            if ("error" in result) {
                 console.error("Order creation error:", result.error);
                 setState((s) => ({ ...s, isSending: false, submissionError: result.error || "تعذر إنشاء الطلب الآن." }));
                 return;
@@ -588,12 +594,24 @@ export function DesignYourPieceWizard({
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center"
             >
-                <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-gold/10 border border-gold/20 text-gold text-xs font-bold">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
-                    </span>
-                    نموذج تجريبي قيد التطوير (Beta)
+                <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs font-bold text-gold">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
+                        </span>
+                        نموذج تجريبي قيد التطوير (Beta)
+                    </div>
+                    {aiModelShortcutEnabled ? (
+                        <Link
+                            href="/design/ai"
+                            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200 transition-colors hover:border-emerald-300/35 hover:bg-emerald-500/15"
+                        >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            جرّب النموذج الجديد
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                        </Link>
+                    ) : null}
                 </div>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
                     صمّم قطعتك بنفسك

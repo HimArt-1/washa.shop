@@ -49,6 +49,7 @@ export type SiteSettingsType = {
         ai_section?: boolean;
         hero_auth_buttons?: boolean;
         design_piece?: boolean;
+        design_piece_ai_switch?: boolean;
     };
     site_info: Record<string, string>;
     shipping: Record<string, number>;
@@ -90,7 +91,17 @@ export type SiteSettingsType = {
 };
 
 const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
-    visibility: { gallery: false, store: false, signup: false, join: true, join_artist: true, ai_section: true, hero_auth_buttons: true, design_piece: true },
+    visibility: {
+        gallery: false,
+        store: false,
+        signup: false,
+        join: true,
+        join_artist: true,
+        ai_section: true,
+        hero_auth_buttons: true,
+        design_piece: true,
+        design_piece_ai_switch: true,
+    },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
     creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -271,6 +282,7 @@ export async function getSiteSettings() {
                 ai_section: v.ai_section ?? DEFAULT_SITE_SETTINGS.visibility.ai_section,
                 hero_auth_buttons: v.hero_auth_buttons ?? DEFAULT_SITE_SETTINGS.visibility.hero_auth_buttons,
                 design_piece: v.design_piece ?? DEFAULT_SITE_SETTINGS.visibility.design_piece,
+                design_piece_ai_switch: v.design_piece_ai_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_ai_switch,
             },
             site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
             shipping: settings.shipping || DEFAULT_SITE_SETTINGS.shipping,
@@ -662,6 +674,7 @@ export async function getPublicVisibility() {
             ai_section: true,
             hero_auth_buttons: true,
             design_piece: true,
+            design_piece_ai_switch: true,
         };
     }
     
@@ -683,6 +696,7 @@ export async function getPublicVisibility() {
             ai_section: visibility?.ai_section ?? true,
             hero_auth_buttons: visibility?.hero_auth_buttons ?? true,
             design_piece: visibility?.design_piece ?? true,
+            design_piece_ai_switch: visibility?.design_piece_ai_switch ?? true,
         };
     } catch (error) {
         // Return defaults if Supabase is not configured
@@ -695,6 +709,7 @@ export async function getPublicVisibility() {
             ai_section: true,
             hero_auth_buttons: true,
             design_piece: true,
+            design_piece_ai_switch: true,
         };
     }
 }
@@ -748,6 +763,8 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
     revalidatePath("/dashboard/settings");
     revalidatePath("/");
     revalidatePath("/account");
+    revalidatePath("/design");
+    revalidatePath("/design/ai");
     revalidatePath("/studio");
     if (key === "operational_rules") {
         revalidatePath("/dashboard/analytics");
