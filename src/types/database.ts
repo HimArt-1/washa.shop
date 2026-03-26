@@ -853,6 +853,19 @@ export type Database = {
 
 export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" | "completed" | "cancelled" | "modification_requested";
 
+export type DesignPricingSnapshot = {
+    garment_id: string | null;
+    garment_name: string;
+    captured_at: string;
+    base_price: number;
+    price_chest_large: number;
+    price_chest_small: number;
+    price_back_large: number;
+    price_back_small: number;
+    price_shoulder_large: number;
+    price_shoulder_small: number;
+}
+
 export type CustomDesignOrder = {
     id: string;
     order_number: number;
@@ -866,6 +879,7 @@ export type CustomDesignOrder = {
     customer_phone: string | null;
 
     // Selections
+    garment_id: string | null;
     garment_name: string;
     garment_image_url: string | null;
     color_name: string;
@@ -879,6 +893,9 @@ export type CustomDesignOrder = {
     reference_image_url: string | null;
 
     // Style
+    preset_id: string | null;
+    preset_name: string | null;
+    preset_fully_aligned: boolean;
     style_name: string;
     style_image_url: string | null;
     art_style_name: string;
@@ -911,6 +928,7 @@ export type CustomDesignOrder = {
     // Print Placement & Pricing
     print_position: string | null;
     print_size: string | null;
+    pricing_snapshot: DesignPricingSnapshot | null;
 
     // Timestamps
     created_at: string;

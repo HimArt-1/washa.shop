@@ -67,7 +67,7 @@ export function AdditionalDesignMiniWizard({
             getDesignStyles(),
             getArtStyles(),
             getColorPackages(),
-            getGarmentPricing(order.garment_name),
+            getGarmentPricing(order.garment_name, order.garment_id),
         ]).then(([s, a, c, p]) => {
             setStyles(s);
             setArtStyles(a);

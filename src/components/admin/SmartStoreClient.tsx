@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import {
     Camera,
     ImagePlus,
     Layers,
+    Search,
 } from "lucide-react";
 import {
     upsertGarment,
@@ -104,6 +105,16 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
 export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
     const [activeTab, setActiveTab] = useState<TabId>("garments");
     const router = useRouter();
+    const [garmentsState, setGarmentsState] = useState(garments);
+    const [colorsState, setColorsState] = useState(colors);
+
+    useEffect(() => {
+        setGarmentsState(garments);
+    }, [garments]);
+
+    useEffect(() => {
+        setColorsState(colors);
+    }, [colors]);
 
     return (
         <div className="space-y-6">
@@ -125,19 +136,19 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
             </div>
             <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                    {activeTab === "garments" && <GarmentsTab items={garments} onRefresh={() => router.refresh()} />}
-                    {activeTab === "colors" && <ColorsTab items={colors} garments={garments} onRefresh={() => router.refresh()} />}
-                    {activeTab === "sizes" && <SizesTab items={sizes} garments={garments} colors={colors} onRefresh={() => router.refresh()} />}
+                    {activeTab === "garments" && <GarmentsTab items={garmentsState} setItems={setGarmentsState} onFallbackRefresh={() => router.refresh()} />}
+                    {activeTab === "colors" && <ColorsTab items={colorsState} garments={garmentsState} setItems={setColorsState} onFallbackRefresh={() => router.refresh()} />}
+                    {activeTab === "sizes" && <SizesTab items={sizes} garments={garmentsState} colors={colorsState} onRefresh={() => router.refresh()} />}
                     {activeTab === "styles" && <StylesTab items={styles} onRefresh={() => router.refresh()} />}
                     {activeTab === "artStyles" && <ArtStylesTab items={artStyles} onRefresh={() => router.refresh()} />}
                     {activeTab === "colorPackages" && <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />}
                     {activeTab === "studioItems" && <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />}
-                    {activeTab === "mockups" && <MockupsTab items={garmentStudioMockups} garments={garments} studioItems={studioItems} onRefresh={() => router.refresh()} />}
-                    {activeTab === "presets" && <PresetsTab items={presets} garments={garments} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />}
+                    {activeTab === "mockups" && <MockupsTab items={garmentStudioMockups} garments={garmentsState} studioItems={studioItems} onRefresh={() => router.refresh()} />}
+                    {activeTab === "presets" && <PresetsTab items={presets} garments={garmentsState} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />}
                     {activeTab === "intelligence" && (
                         <IntelligenceTab
                             compatibilities={compatibilities}
-                            garments={garments}
+                            garments={garmentsState}
                             styles={styles}
                             artStyles={artStyles}
                             colorPackages={colorPackages}
@@ -396,11 +407,23 @@ function ConfirmDialog({
 
 // ─── Image Uploader ─────────────────────────────────────
 
-function ImageUploader({ value, onChange, folder, label }: {
+type SmartStoreImageFieldName =
+    | "image_url"
+    | "image_front_url"
+    | "image_back_url"
+    | "mockup_front_url"
+    | "mockup_back_url"
+    | "mockup_model_url"
+    | "main_image_url"
+    | "mockup_image_url"
+    | "model_image_url";
+
+function ImageUploader({ value, onChange, folder, label, fieldName = "image_url" }: {
     value: string;
     onChange: (url: string) => void;
     folder: string;
     label?: string;
+    fieldName?: SmartStoreImageFieldName;
 }) {
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState(value);
@@ -481,8 +504,8 @@ function ImageUploader({ value, onChange, folder, label }: {
                     {error}
                 </div>
             ) : null}
-            {/* Hidden input for form */}
-            <input type="hidden" name={label === "صورة أمام" ? "image_front_url" : label === "صورة خلف" ? "image_back_url" : "image_url"} value={preview || value || ""} />
+            {/* Hidden input for form (explicit fieldName; do not derive from Arabic labels) */}
+            <input type="hidden" name={fieldName} value={preview || value || ""} />
         </div>
     );
 }
@@ -491,7 +514,15 @@ function ImageUploader({ value, onChange, folder, label }: {
 //  Garments Tab
 // ═══════════════════════════════════════════════════════════
 
-function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRefresh: () => void }) {
+function GarmentsTab({
+    items,
+    setItems,
+    onFallbackRefresh,
+}: {
+    items: CustomDesignGarment[];
+    setItems: React.Dispatch<React.SetStateAction<CustomDesignGarment[]>>;
+    onFallbackRefresh: () => void;
+}) {
     const [editing, setEditing] = useState<CustomDesignGarment | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -519,13 +550,24 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
                 return;
             }
             closeModal();
-            onRefresh();
+            if (result && typeof result === "object" && "row" in result && result.row) {
+                const row = result.row as CustomDesignGarment;
+                setItems((prev) => {
+                    if (editing) return prev.map((g) => (g.id === row.id ? row : g));
+                    return [...prev, row].sort(
+                        (a, b) =>
+                            (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, "ar")
+                    );
+                });
+            } else {
+                onFallbackRefresh();
+            }
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حفظ القطعة الآن.");
         } finally {
             setLoading(false);
         }
-    }, [editing, onRefresh, imageUrl]);
+    }, [editing, onFallbackRefresh, imageUrl, setItems]);
 
     const handleDelete = useCallback(async () => {
         if (!pendingDeleteId) return;
@@ -539,14 +581,14 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
                 setError(actionError);
                 return;
             }
-            onRefresh();
+            setItems((prev) => prev.filter((g) => g.id !== id));
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف القطعة الآن.");
         } finally {
             setDeleteLoading(false);
             setPendingDeleteId(null);
         }
-    }, [onRefresh, pendingDeleteId]);
+    }, [pendingDeleteId, setItems]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -558,7 +600,7 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
                 <input name="slug" defaultValue={editing?.slug ?? ""} required className={inputCls} placeholder="مثال: tshirt" />
             </FormField>
             <FormField label="صورة القطعة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="garments" />
+                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="garments" fieldName="image_url" />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
@@ -650,7 +692,17 @@ function GarmentsTab({ items, onRefresh }: { items: CustomDesignGarment[]; onRef
 //  Colors Tab
 // ═══════════════════════════════════════════════════════════
 
-function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[]; garments: CustomDesignGarment[]; onRefresh: () => void }) {
+function ColorsTab({
+    items,
+    garments,
+    setItems,
+    onFallbackRefresh,
+}: {
+    items: CustomDesignColor[];
+    garments: CustomDesignGarment[];
+    setItems: React.Dispatch<React.SetStateAction<CustomDesignColor[]>>;
+    onFallbackRefresh: () => void;
+}) {
     const [editing, setEditing] = useState<CustomDesignColor | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -680,13 +732,24 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                 return;
             }
             closeModal();
-            onRefresh();
+            if (result && typeof result === "object" && "row" in result && result.row) {
+                const row = result.row as CustomDesignColor;
+                setItems((prev) => {
+                    if (editing) return prev.map((c) => (c.id === row.id ? row : c));
+                    return [...prev, row].sort(
+                        (a, b) =>
+                            (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name, "ar")
+                    );
+                });
+            } else {
+                onFallbackRefresh();
+            }
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حفظ اللون الآن.");
         } finally {
             setLoading(false);
         }
-    }, [editing, onRefresh, imageUrl]);
+    }, [editing, onFallbackRefresh, imageUrl, setItems]);
 
     const handleDelete = useCallback(async () => {
         if (!pendingDeleteId) return;
@@ -700,14 +763,14 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                 setError(actionError);
                 return;
             }
-            onRefresh();
+            setItems((prev) => prev.filter((c) => c.id !== id));
         } catch (error) {
             setError(error instanceof Error ? error.message : "تعذر حذف اللون الآن.");
         } finally {
             setDeleteLoading(false);
             setPendingDeleteId(null);
         }
-    }, [onRefresh, pendingDeleteId]);
+    }, [pendingDeleteId, setItems]);
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -724,7 +787,7 @@ function ColorsTab({ items, garments, onRefresh }: { items: CustomDesignColor[];
                 <input name="hex_code" type="color" defaultValue={editing?.hex_code ?? "#000000"} required className="w-16 h-10 rounded-lg cursor-pointer bg-transparent border border-theme-soft" />
             </FormField>
             <FormField label="صورة Mockup">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="colors" />
+                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="colors" fieldName="image_url" />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
@@ -865,7 +928,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                 <textarea name="description" defaultValue={editing?.description ?? ""} className={inputCls} rows={3} />
             </FormField>
             <FormField label="الصورة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder={folder} />
+                <ImageUploader value={imageUrl} onChange={setImageUrl} folder={folder} fieldName="image_url" />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={(editing as any)?.sort_order ?? 0} className={inputCls} />
@@ -1019,10 +1082,10 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: XL" />
             </FormField>
             <FormField label="صورة أمام">
-                <ImageUploader value={frontUrl} onChange={setFrontUrl} folder="sizes" label="صورة أمام" />
+                <ImageUploader value={frontUrl} onChange={setFrontUrl} folder="sizes" label="صورة أمام" fieldName="image_front_url" />
             </FormField>
             <FormField label="صورة خلف">
-                <ImageUploader value={backUrl} onChange={setBackUrl} folder="sizes" label="صورة خلف" />
+                <ImageUploader value={backUrl} onChange={setBackUrl} folder="sizes" label="صورة خلف" fieldName="image_back_url" />
             </FormField>
             <FormField label="الحالة">
                 <select name="is_active" defaultValue={editing?.is_active !== false ? "true" : "false"} className={inputCls}>
@@ -1170,7 +1233,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: باقة ذهبية" />
             </FormField>
             <FormField label="صورة الباقة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="color-packages" />
+                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="color-packages" fieldName="image_url" />
             </FormField>
             <FormField label="الألوان">
                 <div className="space-y-2">
@@ -1330,13 +1393,13 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                 <input name="price" type="number" step="0.01" min="0" defaultValue={editing?.price ?? 0} className={inputCls} />
             </FormField>
             <FormField label="صورة التصميم الرئيسية">
-                <ImageUploader value={mainImage} onChange={setMainImage} folder="studio-items" label="الصورة الرئيسية" />
+                <ImageUploader value={mainImage} onChange={setMainImage} folder="studio-items" label="الصورة الرئيسية" fieldName="main_image_url" />
             </FormField>
             <FormField label="صورة الـ Mockup (التفاصيل)">
-                <ImageUploader value={mockupImage} onChange={setMockupImage} folder="studio-items" label="صورة الموكب" />
+                <ImageUploader value={mockupImage} onChange={setMockupImage} folder="studio-items" label="صورة الموكب" fieldName="mockup_image_url" />
             </FormField>
             <FormField label="صورة على المودل">
-                <ImageUploader value={modelImage} onChange={setModelImage} folder="studio-items" label="صورة المودل" />
+                <ImageUploader value={modelImage} onChange={setModelImage} folder="studio-items" label="صورة المودل" fieldName="model_image_url" />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
@@ -1516,13 +1579,13 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
             </div>
 
             <FormField label="صورة الموكب — أمام (مطلوب)">
-                <ImageUploader value={frontUrl} onChange={setFrontUrl} folder="garment-mockups" label="صورة أمام" />
+                <ImageUploader value={frontUrl} onChange={setFrontUrl} folder="garment-mockups" label="صورة أمام" fieldName="mockup_front_url" />
             </FormField>
             <FormField label="صورة الموكب — خلف (اختياري)">
-                <ImageUploader value={backUrl} onChange={setBackUrl} folder="garment-mockups" label="صورة خلف" />
+                <ImageUploader value={backUrl} onChange={setBackUrl} folder="garment-mockups" label="صورة خلف" fieldName="mockup_back_url" />
             </FormField>
             <FormField label="صورة على موديل (اختياري)">
-                <ImageUploader value={modelUrl} onChange={setModelUrl} folder="garment-mockups" label="صورة المودل" />
+                <ImageUploader value={modelUrl} onChange={setModelUrl} folder="garment-mockups" label="صورة المودل" fieldName="mockup_model_url" />
             </FormField>
 
             <FormField label="الترتيب">
@@ -1658,7 +1721,20 @@ function PresetsTab({
     const [imageUrl, setImageUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [presetSearch, setPresetSearch] = useState("");
     const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
+
+    const filteredPresets = useMemo(() => {
+        const q = presetSearch.trim().toLowerCase();
+        if (!q) return items;
+        return items.filter((p) => {
+            const hay = [p.name, p.slug, p.description, p.badge, p.story, p.design_method]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
+            return hay.includes(q);
+        });
+    }, [items, presetSearch]);
 
     const openAdd = () => {
         setIsAdding(true);
@@ -1744,7 +1820,7 @@ function PresetsTab({
                     <input name="badge" defaultValue={editing?.badge ?? ""} className={inputCls} />
                 </FormField>
                 <FormField label="صورة الـ Preset">
-                    <ImageUploader value={imageUrl} onChange={setImageUrl} folder="presets" />
+                    <ImageUploader value={imageUrl} onChange={setImageUrl} folder="presets" fieldName="image_url" />
                 </FormField>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1830,8 +1906,24 @@ function PresetsTab({
         <SectionCard title="الـ Presets الجاهزة" onAdd={openAdd}>
             <InlineError message={!isAdding && !editing ? error : null} />
             {items.length === 0 ? <EmptyState text="لا توجد presets بعد." /> : (
+                <>
+                    <div className="mb-4">
+                        <label className="relative block">
+                            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-faint" />
+                            <input
+                                type="search"
+                                value={presetSearch}
+                                onChange={(e) => setPresetSearch(e.target.value)}
+                                placeholder="بحث في الاسم، الـ slug، الوصف، الـ badge، طريقة التصميم..."
+                                className={`${inputCls} pr-10`}
+                            />
+                        </label>
+                    </div>
+                    {filteredPresets.length === 0 ? (
+                        <EmptyState text="لا توجد نتائج تطابق البحث." />
+                    ) : (
                 <div className="grid gap-4 lg:grid-cols-2">
-                    {items.map((preset) => (
+                    {filteredPresets.map((preset) => (
                         <div key={preset.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
@@ -1854,6 +1946,8 @@ function PresetsTab({
                         </div>
                     ))}
                 </div>
+                    )}
+                </>
             )}
             <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل Preset" : "إضافة Preset جديدة"}>{form}</Modal>
             <ConfirmDialog
@@ -2035,6 +2129,8 @@ function IntelligenceTab({
     const [previewStyleId, setPreviewStyleId] = useState("");
     const [previewArtStyleId, setPreviewArtStyleId] = useState("");
     const [previewColorPackageId, setPreviewColorPackageId] = useState("");
+    const [compatListSearch, setCompatListSearch] = useState("");
+    const [compatRelationFilter, setCompatRelationFilter] = useState<"all" | CustomDesignOptionCompatibility["relation"]>("all");
 
     const collections: Record<CustomDesignOptionCompatibility["source_type"], Array<{ id: string; name: string }>> = {
         garment: garments,
@@ -2122,6 +2218,46 @@ function IntelligenceTab({
         const relationDiff = relationWeight[b.relation] - relationWeight[a.relation];
         return relationDiff !== 0 ? relationDiff : b.score - a.score;
     });
+
+    const filteredCompatibilities = useMemo(() => {
+        const q = compatListSearch.trim().toLowerCase();
+        const col: Record<CustomDesignOptionCompatibility["source_type"], Array<{ id: string; name: string }>> = {
+            garment: garments,
+            style: styles,
+            art_style: artStyles,
+            color_package: colorPackages,
+            studio_item: studioItems,
+            preset: presets,
+        };
+        const labelFor = (type: CustomDesignOptionCompatibility["source_type"], id: string) =>
+            col[type]?.find((item) => item.id === id)?.name ?? "—";
+        return sortedCompatibilities.filter((item) => {
+            if (compatRelationFilter !== "all" && item.relation !== compatRelationFilter) return false;
+            if (!q) return true;
+            const sourceLabel = labelFor(item.source_type, item.source_id).toLowerCase();
+            const targetLabel = labelFor(item.target_type as CustomDesignOptionCompatibility["source_type"], item.target_id).toLowerCase();
+            const reason = (item.reason ?? "").toLowerCase();
+            return (
+                sourceLabel.includes(q) ||
+                targetLabel.includes(q) ||
+                reason.includes(q) ||
+                item.source_type.toLowerCase().includes(q) ||
+                item.target_type.toLowerCase().includes(q) ||
+                item.relation.toLowerCase().includes(q) ||
+                String(item.score).includes(q)
+            );
+        });
+    }, [
+        sortedCompatibilities,
+        compatListSearch,
+        compatRelationFilter,
+        garments,
+        styles,
+        artStyles,
+        colorPackages,
+        studioItems,
+        presets,
+    ]);
 
     const activePresets = presets.filter((item) => item.is_active);
     const activeStyles = styles.filter((item) => item.is_active);
@@ -2446,8 +2582,38 @@ function IntelligenceTab({
                 {sortedCompatibilities.length === 0 ? (
                     <EmptyState text="لا توجد روابط توافق بعد." />
                 ) : (
+                    <>
+                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label className="relative block flex-1">
+                                <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-faint" />
+                                <input
+                                    type="search"
+                                    value={compatListSearch}
+                                    onChange={(e) => setCompatListSearch(e.target.value)}
+                                    placeholder="بحث في المصدر، الهدف، السبب، النوع، الدرجة..."
+                                    className={`${inputCls} pr-10`}
+                                />
+                            </label>
+                            <div className="w-full sm:min-w-[200px] sm:max-w-[240px]">
+                                <FormField label="تصفية حسب العلاقة">
+                                    <select
+                                        value={compatRelationFilter}
+                                        onChange={(e) => setCompatRelationFilter(e.target.value as typeof compatRelationFilter)}
+                                        className={inputCls}
+                                    >
+                                        <option value="all">الكل</option>
+                                        <option value="signature">Signature</option>
+                                        <option value="recommended">Recommended</option>
+                                        <option value="avoid">Avoid</option>
+                                    </select>
+                                </FormField>
+                            </div>
+                        </div>
+                        {filteredCompatibilities.length === 0 ? (
+                            <EmptyState text="لا توجد نتائج تطابق البحث أو التصفية." />
+                        ) : (
                     <div className="grid gap-3">
-                        {sortedCompatibilities.map((item) => (
+                        {filteredCompatibilities.map((item) => (
                             <div key={item.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                     <div className="space-y-2">
@@ -2483,6 +2649,8 @@ function IntelligenceTab({
                             </div>
                         ))}
                     </div>
+                        )}
+                    </>
                 )}
             </SectionCard>
 

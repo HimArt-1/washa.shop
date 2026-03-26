@@ -679,6 +679,17 @@ export function DesignOrderWorkspace({
                         <DetailCard icon={Shirt} label="القطعة" value={currentOrder.garment_name} imageUrl={currentOrder.garment_image_url} />
                         <DetailCard icon={Palette} label="اللون" value={currentOrder.color_name} color={currentOrder.color_hex} imageUrl={currentOrder.color_image_url} />
                         <DetailCard icon={Ruler} label="المقاس" value={currentOrder.size_name} />
+                        <DetailCard
+                            icon={Sparkles}
+                            label="Preset"
+                            value={
+                                currentOrder.preset_name
+                                    ? currentOrder.preset_fully_aligned
+                                        ? `${currentOrder.preset_name} (مطابقة بالكامل)`
+                                        : `${currentOrder.preset_name} (بداية ثم تخصيص)`
+                                    : "—"
+                            }
+                        />
                         <DetailCard icon={Sparkles} label="النمط" value={currentOrder.style_name} imageUrl={currentOrder.style_image_url} />
                         <DetailCard icon={SwatchBook} label="الأسلوب" value={currentOrder.art_style_name} imageUrl={currentOrder.art_style_image_url} />
                         <DetailCard

@@ -239,6 +239,15 @@ export function DesignOrdersClient({
                                         <td className="px-4 py-3">
                                             <p className="text-theme-strong text-sm">{order.garment_name}</p>
                                             <p className="text-[10px] text-theme-faint mt-0.5">{order.color_name} · {order.size_name}</p>
+                                            {order.preset_name ? (
+                                                <p className={`mt-1 inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${
+                                                    order.preset_fully_aligned
+                                                        ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                                                        : "border border-gold/20 bg-gold/10 text-gold"
+                                                }`}>
+                                                    {order.preset_fully_aligned ? `Preset: ${order.preset_name}` : `Preset start: ${order.preset_name}`}
+                                                </p>
+                                            ) : null}
                                         </td>
                                         {/* Status */}
                                         <td className="px-4 py-3">

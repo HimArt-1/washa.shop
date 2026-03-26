@@ -5,7 +5,7 @@
 //  تتبع الطلب + نافذة النتائج المذهلة
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -155,6 +155,7 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
     const [showResultsPopup, setShowResultsPopup] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchOrder = useCallback(async () => {
         const token = trackerToken ?? getStoredOrderToken(orderId);
@@ -166,12 +167,25 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
         if (data && data.status === "awaiting_review" && !showResultsPopup) {
             setShowResultsPopup(true);
         }
+
+        // Stop polling when reaching a terminal state to reduce DB load.
+        if (data && (data.status === "completed" || data.status === "cancelled")) {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        }
     }, [orderId, showResultsPopup, trackerToken]);
 
     useEffect(() => {
         fetchOrder();
-        const interval = setInterval(fetchOrder, 8000);
-        return () => clearInterval(interval);
+        intervalRef.current = setInterval(fetchOrder, 8000);
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+            }
+        };
     }, [fetchOrder]);
 
     const handleCancelRequest = () => {

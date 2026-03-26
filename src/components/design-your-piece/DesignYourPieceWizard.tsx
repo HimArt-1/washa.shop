@@ -133,6 +133,22 @@ interface Props {
     compatibilities: CustomDesignOptionCompatibility[];
 }
 
+function getPresetOverrideLabels(state: WizardState) {
+    if (!state.preset) return [];
+
+    const overrides: string[] = [];
+    if (state.preset.garment_id && state.garment?.id !== state.preset.garment_id) overrides.push("القطعة");
+    if (state.preset.design_method && state.method !== state.preset.design_method) overrides.push("الطريقة");
+    if (state.preset.style_id && state.style?.id !== state.preset.style_id) overrides.push("النمط");
+    if (state.preset.art_style_id && state.artStyle?.id !== state.preset.art_style_id) overrides.push("الأسلوب");
+    if (state.preset.color_package_id && state.colorPackage?.id !== state.preset.color_package_id) overrides.push("البالِت");
+    if (state.preset.studio_item_id && state.studioItem?.id !== state.preset.studio_item_id) overrides.push("عنصر الستيديو");
+    if (state.preset.print_position && state.printPosition !== state.preset.print_position) overrides.push("موقع الطباعة");
+    if (state.preset.print_size && state.printSize !== state.preset.print_size) overrides.push("حجم الطباعة");
+
+    return overrides;
+}
+
 // ─── Main Wizard ────────────────────────────────────────
 
 import { OrderTracker, getStoredOrderAccess, storeOrderId, clearOrderId } from "./OrderTracker";
@@ -158,6 +174,8 @@ export function DesignYourPieceWizard({
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
     const [checkingOrder, setCheckingOrder] = useState(true);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const presetOverrideLabels = getPresetOverrideLabels(state);
+    const presetIsFullyAligned = presetOverrideLabels.length === 0;
 
     const presetStyleLookup = getCompatibilityLookup(compatibilities, "preset", state.preset?.id, "style");
     const garmentStyleLookup = getCompatibilityLookup(compatibilities, "garment", state.garment?.id, "style");
@@ -337,7 +355,7 @@ export function DesignYourPieceWizard({
             if (state.garment) {
                 try {
                     const { getGarmentPricing } = await import("@/app/actions/smart-store");
-                    const pricing = await getGarmentPricing(state.garment.name);
+                    const pricing = await getGarmentPricing(state.garment.name, state.garment.id);
                     let printP = pricing.base_price;
                     if (state.printPosition === "chest") printP = state.printSize === "large" ? pricing.price_chest_large : pricing.price_chest_small;
                     else if (state.printPosition === "back") printP = state.printSize === "large" ? pricing.price_back_large : pricing.price_back_small;
@@ -346,6 +364,41 @@ export function DesignYourPieceWizard({
                 } catch (e) {
                     console.error("Failed to fetch accurate pricing for Studio add to cart", e);
                 }
+            }
+
+            try {
+                const { submitDesignOrder } = await import("@/app/actions/smart-store");
+                const result = await submitDesignOrder({
+                    garment_id: state.garment?.id ?? undefined,
+                    garment_name: state.garment?.name ?? "—",
+                    color_name: state.color?.name ?? "—",
+                    color_hex: state.color?.hex_code ?? "#000000",
+                    size_name: state.size?.name ?? "—",
+                    design_method: "studio",
+                    text_prompt: state.studioItem?.name ?? undefined,
+                    reference_image_url: state.studioItem?.mockup_image_url || state.studioItem?.main_image_url || undefined,
+                    preset_id: state.preset?.id ?? undefined,
+                    preset_name: state.preset?.name ?? undefined,
+                    preset_fully_aligned: presetIsFullyAligned,
+                    print_position: state.printPosition ?? undefined,
+                    print_size: state.printSize ?? undefined,
+                });
+                if ("error" in (result as any) && (result as any).error) {
+                    setState((s) => ({
+                        ...s,
+                        isSending: false,
+                        submissionError: (result as any).error || "تعذر إنشاء طلب الاستوديو الآن."
+                    }));
+                    return;
+                }
+            } catch (err) {
+                console.error("submitDesignOrder (studio) failed:", err);
+                setState((s) => ({
+                    ...s,
+                    isSending: false,
+                    submissionError: "تعذر إنشاء طلب الاستوديو الآن. حاول مرة أخرى."
+                }));
+                return;
             }
 
             const cartMockup = garmentStudioMockups.find(
@@ -361,21 +414,6 @@ export function DesignYourPieceWizard({
                 customGarment: `${state.garment?.name} (${state.color?.name})`,
                 customPosition: `${state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : "أخرى"} - ${state.size?.name || state.printSize}`,
             });
-
-            try {
-                const { submitDesignOrder } = await import("@/app/actions/smart-store");
-                await submitDesignOrder({
-                    garment_name: state.garment?.name ?? "—",
-                    color_name: state.color?.name ?? "—",
-                    color_hex: state.color?.hex_code ?? "#000000",
-                    size_name: state.size?.name ?? "—",
-                    design_method: "studio",
-                    text_prompt: state.studioItem?.name ?? undefined,
-                    reference_image_url: state.studioItem?.mockup_image_url || state.studioItem?.main_image_url || undefined,
-                    print_position: state.printPosition ?? undefined,
-                    print_size: state.printSize ?? undefined,
-                });
-            } catch (err) {}
 
             toggleCart(true);
             setState((s) => ({ ...s, isSending: false, studioCartAdded: true }));
@@ -408,6 +446,7 @@ export function DesignYourPieceWizard({
         try {
             const { submitDesignOrder } = await import("@/app/actions/smart-store");
             const result = await submitDesignOrder({
+                garment_id: state.garment?.id ?? undefined,
                 garment_name: state.garment?.name ?? "—",
                 garment_image_url: state.garment?.image_url ?? undefined,
                 color_name: state.color?.name ?? "—",
@@ -417,6 +456,9 @@ export function DesignYourPieceWizard({
                 design_method: state.method ?? "from_text",
                 text_prompt: state.textPrompt || undefined,
                 reference_image_url: referenceImageUrl,
+                preset_id: state.preset?.id ?? undefined,
+                preset_name: state.preset?.name ?? undefined,
+                preset_fully_aligned: presetIsFullyAligned,
                 style_name: state.style?.name ?? "—",
                 style_image_url: state.style?.image_url ?? undefined,
                 art_style_name: state.artStyle?.name ?? "—",
@@ -607,8 +649,20 @@ export function DesignYourPieceWizard({
                                 </p>
                             </div>
                             {state.preset ? (
-                                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                                    <span className="font-bold">المفعّل الآن:</span> {state.preset.name}
+                                <div className={`rounded-2xl px-4 py-3 text-sm ${presetIsFullyAligned ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200" : "border border-gold/20 bg-gold/10 text-gold"}`}>
+                                    <span className="font-bold">{presetIsFullyAligned ? "المفعّل الآن:" : "مبني على preset:"}</span> {state.preset.name}
+                                    {!presetIsFullyAligned ? (
+                                        <p className="mt-1 text-xs leading-6 text-theme-subtle">
+                                            خصصت يدويًا: {presetOverrideLabels.join("، ")}
+                                        </p>
+                                    ) : null}
+                                    <button
+                                        type="button"
+                                        onClick={() => setState((current) => ({ ...current, preset: null }))}
+                                        className="mt-2 inline-flex rounded-full border border-white/10 bg-black/15 px-3 py-1 text-[11px] font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold"
+                                    >
+                                        فك الارتباط عن الـ preset
+                                    </button>
                                 </div>
                             ) : null}
                         </div>
@@ -1786,7 +1840,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
 
     useEffect(() => {
         if (!garment) { setLoadingPricing(false); return; }
-        getGarmentPricing(garment.name).then((p) => {
+        getGarmentPricing(garment.name, garment.id).then((p) => {
             setPricing(p);
             setLoadingPricing(false);
         });
@@ -1921,6 +1975,8 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
 
 function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: WizardState; garmentStudioMockups: GarmentStudioMockup[]; onBack: () => void; onSend: () => void }) {
     const [previewIdx, setPreviewIdx] = useState(0);
+    const presetOverrideLabels = getPresetOverrideLabels(state);
+    const presetIsFullyAligned = presetOverrideLabels.length === 0;
 
     // Find pre-made mockup for this garment × studio item
     const mockup = (state.method === "studio" && state.garment && state.studioItem)
@@ -2086,9 +2142,14 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: Wi
                     <div className="space-y-4">
                         {state.preset && (
                             <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
-                                <p className="text-xs font-bold text-gold">Preset جاهزة</p>
+                                <p className="text-xs font-bold text-gold">{presetIsFullyAligned ? "Preset جاهزة" : "Preset كبداية إبداعية"}</p>
                                 <p className="mt-1 text-sm font-bold text-theme">{state.preset.name}</p>
                                 {state.preset.story ? <p className="mt-1 text-xs leading-6 text-theme-subtle">{state.preset.story}</p> : null}
+                                {!presetIsFullyAligned ? (
+                                    <p className="mt-2 text-xs leading-6 text-theme-subtle">
+                                        تم تخصيص الطلب يدويًا في: {presetOverrideLabels.join("، ")}
+                                    </p>
+                                ) : null}
                             </div>
                         )}
                         <SummaryRow label="القطعة واللون" value={`${state.garment?.name} (${state.color?.name})`} color={state.color?.hex_code} />
@@ -2100,9 +2161,14 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: Wi
                 <div className="space-y-4 mb-8">
                     {state.preset && (
                         <div className="rounded-xl border border-gold/20 bg-gold/5 p-4">
-                            <p className="text-xs font-bold text-gold">Preset جاهزة</p>
+                            <p className="text-xs font-bold text-gold">{presetIsFullyAligned ? "Preset جاهزة" : "Preset كبداية إبداعية"}</p>
                             <p className="mt-1 text-sm font-bold text-theme">{state.preset.name}</p>
                             {state.preset.story ? <p className="mt-1 text-xs leading-6 text-theme-subtle">{state.preset.story}</p> : null}
+                            {!presetIsFullyAligned ? (
+                                <p className="mt-2 text-xs leading-6 text-theme-subtle">
+                                    تم تخصيص الطلب يدويًا في: {presetOverrideLabels.join("، ")}
+                                </p>
+                            ) : null}
                         </div>
                     )}
                     <SummaryRow label="القطعة" value={state.garment?.name} />

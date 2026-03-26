@@ -22,6 +22,7 @@ import type {
     GarmentStudioMockup,
     CustomDesignPreset,
     CustomDesignOptionCompatibility,
+    DesignPricingSnapshot,
 } from "@/types/database";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { getDesignOrderAccess } from "@/lib/design-order-access";
@@ -57,6 +58,34 @@ const DESIGN_RESULT_PDF_TYPES = ["application/pdf"];
 const DESIGN_RESULT_MAX_SIZE = 8 * 1024 * 1024;
 const SMART_STORE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const SMART_STORE_IMAGE_MAX_SIZE = 8 * 1024 * 1024;
+const DESIGN_ORDER_STATUS_TRANSITIONS: Record<CustomDesignOrderStatus, CustomDesignOrderStatus[]> = {
+    new: ["in_progress", "cancelled"],
+    in_progress: ["awaiting_review", "cancelled"],
+    awaiting_review: ["completed", "in_progress"],
+    completed: [],
+    cancelled: [],
+    modification_requested: ["in_progress", "cancelled"],
+};
+
+type GarmentPricing = {
+    base_price: number;
+    price_chest_large: number;
+    price_chest_small: number;
+    price_back_large: number;
+    price_back_small: number;
+    price_shoulder_large: number;
+    price_shoulder_small: number;
+};
+
+const EMPTY_GARMENT_PRICING: GarmentPricing = {
+    base_price: 0,
+    price_chest_large: 0,
+    price_chest_small: 0,
+    price_back_large: 0,
+    price_back_small: 0,
+    price_shoulder_large: 0,
+    price_shoulder_small: 0,
+};
 
 function getDesignResultAllowedTypes(field: DesignResultField) {
     return field === "result_pdf_url" ? DESIGN_RESULT_PDF_TYPES : DESIGN_RESULT_IMAGE_TYPES;
@@ -75,10 +104,200 @@ function sanitizeSmartStoreFolder(folder: string) {
         .replace(/^\/|\/$/g, "");
 }
 
+function sanitizeHttpUrl(url: unknown): string | null {
+    if (typeof url !== "string") return null;
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    // Block control characters and extremely long inputs.
+    if (trimmed.length > 2048 || /[\u0000-\u001F\u007F]/.test(trimmed)) return null;
+
+    // Allow relative paths used by internal apps.
+    if (trimmed.startsWith("/")) return trimmed;
+
+    try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+        return trimmed;
+    } catch {
+        return null;
+    }
+}
+
 function buildSmartStoreImagePath(folder: string, file: File) {
     const ext = file.name.split(".").pop()?.trim().toLowerCase() || "png";
     const safeFolder = sanitizeSmartStoreFolder(folder) || "uploads";
     return `${safeFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+}
+
+function sanitizePlainText(value: unknown, maxLength = 500): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    return trimmed.slice(0, maxLength);
+}
+
+function parseNumberish(value: unknown, fallback = 0) {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseNumericInput(value: FormDataEntryValue | null, fallback = 0) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        return value;
+    }
+
+    return parseNumberish(typeof value === "string" ? value.trim() : value ?? fallback, fallback);
+}
+
+function parsePositiveAmount(value: unknown): number | null {
+    const parsed = parseNumberish(value, Number.NaN);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.round(parsed * 100) / 100;
+}
+
+function getOptionalUrl(formData: FormData, key: string) {
+    return sanitizeHttpUrl(formData.get(key));
+}
+
+function parseColorPackageTokens(raw: FormDataEntryValue | null) {
+    if (typeof raw !== "string" || raw.trim().length === 0) return [];
+
+    try {
+        return normalizeColorTokens(JSON.parse(raw));
+    } catch {
+        return null;
+    }
+}
+
+function hasOrderDeliverables(
+    order: Pick<
+        CustomDesignOrder,
+        "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url"
+    >
+) {
+    return Boolean(
+        order.result_design_url ||
+        order.result_mockup_url ||
+        order.result_pdf_url ||
+        order.modification_design_url
+    );
+}
+
+function getDesignStatusTransitionError(currentStatus: CustomDesignOrderStatus, nextStatus: CustomDesignOrderStatus) {
+    if (currentStatus === nextStatus) return null;
+    const allowedTransitions = DESIGN_ORDER_STATUS_TRANSITIONS[currentStatus] ?? [];
+    if (allowedTransitions.includes(nextStatus)) return null;
+    return `لا يمكن نقل الطلب من حالة ${currentStatus} إلى ${nextStatus}.`;
+}
+
+function calculatePlacementPrice(pricing: GarmentPricing, position: PrintPosition, size: PrintSize) {
+    if (position === "shoulder_right" || position === "shoulder_left") {
+        return size === "large" ? pricing.price_shoulder_large : pricing.price_shoulder_small;
+    }
+
+    if (position === "back") {
+        return size === "large" ? pricing.price_back_large : pricing.price_back_small;
+    }
+
+    return size === "large" ? pricing.price_chest_large : pricing.price_chest_small;
+}
+
+function calculateFinalDesignPrice(pricing: GarmentPricing, position: PrintPosition, size: PrintSize) {
+    return Math.round((pricing.base_price + calculatePlacementPrice(pricing, position, size)) * 100) / 100;
+}
+
+function normalizeGarmentPricing(value: Partial<GarmentPricing> | null | undefined): GarmentPricing {
+    return {
+        base_price: parseNumberish(value?.base_price, 0),
+        price_chest_large: parseNumberish(value?.price_chest_large, 0),
+        price_chest_small: parseNumberish(value?.price_chest_small, 0),
+        price_back_large: parseNumberish(value?.price_back_large, 0),
+        price_back_small: parseNumberish(value?.price_back_small, 0),
+        price_shoulder_large: parseNumberish(value?.price_shoulder_large, 0),
+        price_shoulder_small: parseNumberish(value?.price_shoulder_small, 0),
+    };
+}
+
+function buildPricingSnapshot(garmentId: string | null, garmentName: string, pricing: GarmentPricing): DesignPricingSnapshot {
+    return {
+        garment_id: garmentId,
+        garment_name: garmentName,
+        captured_at: new Date().toISOString(),
+        ...normalizeGarmentPricing(pricing),
+    };
+}
+
+function normalizePricingSnapshot(value: unknown): DesignPricingSnapshot | null {
+    if (!value || typeof value !== "object") return null;
+    const snapshot = value as Record<string, unknown>;
+    const garmentName = sanitizePlainText(snapshot.garment_name, 120);
+    const capturedAt = sanitizePlainText(snapshot.captured_at, 120);
+
+    if (!garmentName || !capturedAt) {
+        return null;
+    }
+
+    return {
+        garment_id: sanitizePlainText(snapshot.garment_id, 120),
+        garment_name: garmentName,
+        captured_at: capturedAt,
+        ...normalizeGarmentPricing(snapshot as Partial<GarmentPricing>),
+    };
+}
+
+async function getGarmentPricingRecord(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    garmentName: string,
+    garmentId?: string | null
+): Promise<GarmentPricing> {
+    const pricingSelect = "base_price, price_chest_large, price_chest_small, price_back_large, price_back_small, price_shoulder_large, price_shoulder_small";
+    const safeGarmentId = sanitizePlainText(garmentId, 120);
+    const safeGarmentName = sanitizePlainText(garmentName, 120);
+
+    if (safeGarmentId) {
+        const { data, error } = await sb
+            .from("custom_design_garments")
+            .select(pricingSelect)
+            .eq("id", safeGarmentId)
+            .single();
+        if (data) {
+            return normalizeGarmentPricing(data);
+        }
+        if (error) {
+            console.error("[getGarmentPricingRecord:id]", error);
+        }
+    }
+
+    if (!safeGarmentName) {
+        return EMPTY_GARMENT_PRICING;
+    }
+
+    const { data, error } = await sb
+        .from("custom_design_garments")
+        .select(pricingSelect)
+        .eq("name", safeGarmentName)
+        .single();
+
+    if (error || !data) {
+        if (error) {
+            console.error("[getGarmentPricingRecord:name]", error);
+        }
+        return EMPTY_GARMENT_PRICING;
+    }
+
+    return normalizeGarmentPricing(data);
+}
+
+function getPricingSnapshotForOrder(
+    order: Pick<CustomDesignOrder, "pricing_snapshot" | "garment_id" | "garment_name">,
+    fallbackPricing: GarmentPricing
+) : DesignPricingSnapshot {
+    const snapshot = normalizePricingSnapshot(order.pricing_snapshot);
+    if (snapshot) {
+        return snapshot;
+    }
+
+    return buildPricingSnapshot(order.garment_id ?? null, order.garment_name, fallbackPricing);
 }
 
 async function uploadSmartStoreBinary(
@@ -144,12 +363,14 @@ function sanitizePublicDesignOrder(order: CustomDesignOrder): CustomDesignOrder 
         tracker_token: "",
         user_id: null,
         parent_order_id: null,
+        garment_id: null,
         customer_name: null,
         customer_email: null,
         customer_phone: null,
         ai_prompt: "",
         admin_notes: null,
         assigned_to: null,
+        pricing_snapshot: null,
     };
 }
 
@@ -386,63 +607,92 @@ export async function getAllDesignCompatibilities(): Promise<CustomDesignOptionC
 export async function upsertGarment(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const name = sanitizePlainText(formData.get("name"), 120);
+    const slug = sanitizePlainText(formData.get("slug"), 120);
+    if (!name || !slug) {
+        return { error: "اسم القطعة والرابط المختصر مطلوبان." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        slug: formData.get("slug") as string,
-        image_url: (formData.get("image_url") as string) || null,
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        name,
+        slug,
+        image_url: getOptionalUrl(formData, "image_url"),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
-        base_price: Number(formData.get("base_price") ?? 0),
+        base_price: parseNumericInput(formData.get("base_price")),
         // Print Pricing
-        price_chest_large: Number(formData.get("price_chest_large") ?? 0),
-        price_chest_small: Number(formData.get("price_chest_small") ?? 0),
-        price_back_large: Number(formData.get("price_back_large") ?? 0),
-        price_back_small: Number(formData.get("price_back_small") ?? 0),
-        price_shoulder_large: Number(formData.get("price_shoulder_large") ?? 0),
-        price_shoulder_small: Number(formData.get("price_shoulder_small") ?? 0),
+        price_chest_large: parseNumericInput(formData.get("price_chest_large")),
+        price_chest_small: parseNumericInput(formData.get("price_chest_small")),
+        price_back_large: parseNumericInput(formData.get("price_back_large")),
+        price_back_small: parseNumericInput(formData.get("price_back_small")),
+        price_shoulder_large: parseNumericInput(formData.get("price_shoulder_large")),
+        price_shoulder_small: parseNumericInput(formData.get("price_shoulder_small")),
     };
 
     if (id) {
-        const { error } = await sb.from("custom_design_garments").update(payload).eq("id", id);
+        const { data, error } = await sb
+            .from("custom_design_garments")
+            .update(payload)
+            .eq("id", id)
+            .select("*")
+            .single();
         if (error) return { error: error.message };
-    } else {
-        const { error } = await sb.from("custom_design_garments").insert(payload);
-        if (error) return { error: error.message };
+        return { success: true as const, row: data as CustomDesignGarment };
     }
-    return { success: true };
+    const { data, error } = await sb.from("custom_design_garments").insert(payload).select("*").single();
+    if (error) return { error: error.message };
+    return { success: true as const, row: data as CustomDesignGarment };
 }
 
 export async function upsertColor(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const garmentId = sanitizePlainText(formData.get("garment_id"), 120);
+    const name = sanitizePlainText(formData.get("name"), 120);
+    const hexCode = sanitizePlainText(formData.get("hex_code"), 32);
+    if (!garmentId || !name || !hexCode) {
+        return { error: "بيانات اللون غير مكتملة." };
+    }
+
     const payload = {
-        garment_id: formData.get("garment_id") as string,
-        name: formData.get("name") as string,
-        hex_code: formData.get("hex_code") as string,
-        image_url: (formData.get("image_url") as string) || null,
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        garment_id: garmentId,
+        name,
+        hex_code: hexCode,
+        image_url: getOptionalUrl(formData, "image_url"),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
     };
 
     if (id) {
-        const { error } = await sb.from("custom_design_colors").update(payload).eq("id", id);
+        const { data, error } = await sb
+            .from("custom_design_colors")
+            .update(payload)
+            .eq("id", id)
+            .select("*")
+            .single();
         if (error) return { error: error.message };
-    } else {
-        const { error } = await sb.from("custom_design_colors").insert(payload);
-        if (error) return { error: error.message };
+        return { success: true as const, row: data as CustomDesignColor };
     }
-    return { success: true };
+    const { data, error } = await sb.from("custom_design_colors").insert(payload).select("*").single();
+    if (error) return { error: error.message };
+    return { success: true as const, row: data as CustomDesignColor };
 }
 
 export async function upsertSize(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const garmentId = sanitizePlainText(formData.get("garment_id"), 120);
+    const name = sanitizePlainText(formData.get("name"), 80);
+    if (!garmentId || !name) {
+        return { error: "بيانات المقاس غير مكتملة." };
+    }
+
     const payload = {
-        garment_id: formData.get("garment_id") as string,
-        color_id: (formData.get("color_id") as string) || null,
-        name: formData.get("name") as string,
-        image_front_url: (formData.get("image_front_url") as string) || null,
-        image_back_url: (formData.get("image_back_url") as string) || null,
+        garment_id: garmentId,
+        color_id: sanitizePlainText(formData.get("color_id"), 120),
+        name,
+        image_front_url: getOptionalUrl(formData, "image_front_url"),
+        image_back_url: getOptionalUrl(formData, "image_back_url"),
         is_active: formData.get("is_active") === "true",
     };
 
@@ -459,12 +709,17 @@ export async function upsertSize(formData: FormData) {
 export async function upsertStyle(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const name = sanitizePlainText(formData.get("name"), 120);
+    if (!name) {
+        return { error: "اسم النمط مطلوب." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        description: (formData.get("description") as string) || null,
-        image_url: (formData.get("image_url") as string) || null,
+        name,
+        description: sanitizePlainText(formData.get("description"), 2000),
+        image_url: getOptionalUrl(formData, "image_url"),
         metadata: buildDesignMetadataFromFormData(formData),
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
     };
 
@@ -481,12 +736,17 @@ export async function upsertStyle(formData: FormData) {
 export async function upsertArtStyle(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const name = sanitizePlainText(formData.get("name"), 120);
+    if (!name) {
+        return { error: "اسم الأسلوب مطلوب." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        description: (formData.get("description") as string) || null,
-        image_url: (formData.get("image_url") as string) || null,
+        name,
+        description: sanitizePlainText(formData.get("description"), 2000),
+        image_url: getOptionalUrl(formData, "image_url"),
         metadata: buildDesignMetadataFromFormData(formData),
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
     };
 
@@ -503,13 +763,21 @@ export async function upsertArtStyle(formData: FormData) {
 export async function upsertColorPackage(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
-    const colorsRaw = formData.get("colors") as string;
+    const colors = parseColorPackageTokens(formData.get("colors"));
+    const name = sanitizePlainText(formData.get("name"), 120);
+    if (colors === null) {
+        return { error: "صيغة ألوان الباقة غير صالحة." };
+    }
+    if (!name) {
+        return { error: "اسم باقة الألوان مطلوب." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        colors: normalizeColorTokens(colorsRaw ? JSON.parse(colorsRaw) : []),
-        image_url: (formData.get("image_url") as string) || null,
+        name,
+        colors,
+        image_url: getOptionalUrl(formData, "image_url"),
         metadata: buildDesignMetadataFromFormData(formData),
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
     };
 
@@ -526,15 +794,20 @@ export async function upsertColorPackage(formData: FormData) {
 export async function upsertStudioItem(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const name = sanitizePlainText(formData.get("name"), 120);
+    if (!name) {
+        return { error: "اسم عنصر الاستوديو مطلوب." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        description: (formData.get("description") as string) || null,
-        price: Number(formData.get("price") ?? 0),
-        main_image_url: (formData.get("main_image_url") as string) || null,
-        mockup_image_url: (formData.get("mockup_image_url") as string) || null,
-        model_image_url: (formData.get("model_image_url") as string) || null,
+        name,
+        description: sanitizePlainText(formData.get("description"), 2000),
+        price: parseNumericInput(formData.get("price")),
+        main_image_url: getOptionalUrl(formData, "main_image_url"),
+        mockup_image_url: getOptionalUrl(formData, "mockup_image_url"),
+        model_image_url: getOptionalUrl(formData, "model_image_url"),
         metadata: buildDesignMetadataFromFormData(formData),
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_active: formData.get("is_active") === "true",
     };
 
@@ -551,23 +824,29 @@ export async function upsertStudioItem(formData: FormData) {
 export async function upsertDesignPreset(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const name = sanitizePlainText(formData.get("name"), 120);
+    const slug = sanitizePlainText(formData.get("slug"), 120);
+    if (!name || !slug) {
+        return { error: "اسم الـ preset والرابط المختصر مطلوبان." };
+    }
+
     const payload = {
-        name: formData.get("name") as string,
-        slug: formData.get("slug") as string,
-        description: (formData.get("description") as string) || null,
-        story: (formData.get("story") as string) || null,
-        badge: (formData.get("badge") as string) || null,
-        image_url: (formData.get("image_url") as string) || null,
-        garment_id: (formData.get("garment_id") as string) || null,
+        name,
+        slug,
+        description: sanitizePlainText(formData.get("description"), 2000),
+        story: sanitizePlainText(formData.get("story"), 4000),
+        badge: sanitizePlainText(formData.get("badge"), 120),
+        image_url: getOptionalUrl(formData, "image_url"),
+        garment_id: sanitizePlainText(formData.get("garment_id"), 120),
         design_method: parseDesignMethodValue(formData.get("design_method")),
-        style_id: (formData.get("style_id") as string) || null,
-        art_style_id: (formData.get("art_style_id") as string) || null,
-        color_package_id: (formData.get("color_package_id") as string) || null,
-        studio_item_id: (formData.get("studio_item_id") as string) || null,
+        style_id: sanitizePlainText(formData.get("style_id"), 120),
+        art_style_id: sanitizePlainText(formData.get("art_style_id"), 120),
+        color_package_id: sanitizePlainText(formData.get("color_package_id"), 120),
+        studio_item_id: sanitizePlainText(formData.get("studio_item_id"), 120),
         print_position: parsePrintPositionValue(formData.get("print_position")),
         print_size: parsePrintSizeValue(formData.get("print_size")),
         metadata: buildDesignMetadataFromFormData(formData),
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        sort_order: parseNumericInput(formData.get("sort_order")),
         is_featured: formData.get("is_featured") === "true",
         is_active: formData.get("is_active") === "true",
     };
@@ -723,13 +1002,19 @@ export async function getStudioMockupForGarment(
 export async function upsertGarmentStudioMockup(formData: FormData) {
     const { sb } = await requireSmartStoreAdmin();
     const id = formData.get("id") as string | null;
+    const garmentId = sanitizePlainText(formData.get("garment_id"), 120);
+    const studioItemId = sanitizePlainText(formData.get("studio_item_id"), 120);
+    if (!garmentId || !studioItemId) {
+        return { error: "يجب تحديد القطعة وعنصر الاستوديو." };
+    }
+
     const payload = {
-        garment_id: formData.get("garment_id") as string,
-        studio_item_id: formData.get("studio_item_id") as string,
-        mockup_front_url: (formData.get("mockup_front_url") as string) || null,
-        mockup_back_url: (formData.get("mockup_back_url") as string) || null,
-        mockup_model_url: (formData.get("mockup_model_url") as string) || null,
-        sort_order: Number(formData.get("sort_order") ?? 0),
+        garment_id: garmentId,
+        studio_item_id: studioItemId,
+        mockup_front_url: getOptionalUrl(formData, "mockup_front_url"),
+        mockup_back_url: getOptionalUrl(formData, "mockup_back_url"),
+        mockup_model_url: getOptionalUrl(formData, "mockup_model_url"),
+        sort_order: parseNumericInput(formData.get("sort_order")),
     };
 
     if (id) {
@@ -815,6 +1100,7 @@ function generateAiPrompt(template: string, data: Record<string, string>): strin
 // ─── Submit Design Order (Public) ───────────────────────
 
 export async function submitDesignOrder(orderData: {
+    garment_id?: string | null;
     garment_name: string;
     garment_image_url?: string;
     color_name: string;
@@ -824,6 +1110,9 @@ export async function submitDesignOrder(orderData: {
     design_method: "from_text" | "from_image" | "studio";
     text_prompt?: string;
     reference_image_url?: string;
+    preset_id?: string;
+    preset_name?: string;
+    preset_fully_aligned?: boolean;
     style_name?: string;
     style_image_url?: string;
     art_style_name?: string;
@@ -837,6 +1126,22 @@ export async function submitDesignOrder(orderData: {
     print_size?: string;
 }) {
     const sb = getSmartStoreSb();
+    const garmentId = sanitizePlainText(orderData.garment_id, 120);
+    const garmentName = sanitizePlainText(orderData.garment_name, 120);
+    const colorName = sanitizePlainText(orderData.color_name, 120);
+    const sizeName = sanitizePlainText(orderData.size_name, 80);
+    const designMethod = parseDesignMethodValue(orderData.design_method);
+    const printPosition = parsePrintPositionValue(orderData.print_position ?? null);
+    const printSize = parsePrintSizeValue(orderData.print_size ?? null);
+
+    if (!garmentName || !colorName || !sizeName || !designMethod || !printPosition || !printSize) {
+        return { error: "بيانات الطلب الأساسية غير مكتملة أو غير صالحة." };
+    }
+    const pricingSnapshot = buildPricingSnapshot(
+        garmentId,
+        garmentName,
+        await getGarmentPricingRecord(sb, garmentName, garmentId)
+    );
 
     // 1. Get prompt template
     const template = await getDesignPromptTemplate();
@@ -848,22 +1153,29 @@ export async function submitDesignOrder(orderData: {
             ? orderData.custom_colors.join(", ")
             : `${orderData.color_name} (${orderData.color_hex})`;
 
+    // Sanitize externally-provided URLs so we don't store unsafe schemes (e.g. javascript:).
+    const safeGarmentImageUrl = sanitizeHttpUrl(orderData.garment_image_url);
+    const safeColorImageUrl = sanitizeHttpUrl(orderData.color_image_url);
+    const safeReferenceImageUrl = sanitizeHttpUrl(orderData.reference_image_url);
+    const safeStyleImageUrl = sanitizeHttpUrl(orderData.style_image_url);
+    const safeArtStyleImageUrl = sanitizeHttpUrl(orderData.art_style_image_url);
+
     // 3. User prompt or image note
     // If studio, handle separately
     let userPrompt = "—";
-    if (orderData.design_method === "from_text") {
-        userPrompt = orderData.text_prompt ?? "—";
-    } else if (orderData.design_method === "from_image") {
-        userPrompt = `[صورة مرجعية مرفقة: ${orderData.reference_image_url ?? "—"}]`;
-    } else if (orderData.design_method as unknown === "studio") {
-        userPrompt = `[تصميم من ستيديو وشّى: ${orderData.text_prompt ?? "—"}]`;
+    if (designMethod === "from_text") {
+        userPrompt = sanitizePlainText(orderData.text_prompt, 3000) ?? "—";
+    } else if (designMethod === "from_image") {
+        userPrompt = `[صورة مرجعية مرفقة: ${safeReferenceImageUrl ?? "—"}]`;
+    } else if (designMethod === "studio") {
+        userPrompt = `[تصميم من ستيديو وشّى: ${sanitizePlainText(orderData.text_prompt, 3000) ?? "—"}]`;
     }
 
     // Lookup authenticated user if they exist
     let userId: string | null = null;
-    let finalCustomerName = orderData.customer_name;
-    let finalCustomerEmail = orderData.customer_email;
-    let finalCustomerPhone = orderData.customer_phone;
+    let finalCustomerName = sanitizePlainText(orderData.customer_name, 120);
+    let finalCustomerEmail = sanitizePlainText(orderData.customer_email, 200);
+    let finalCustomerPhone = sanitizePlainText(orderData.customer_phone, 40);
 
     const user = await currentUser();
     if (user) {
@@ -883,11 +1195,11 @@ export async function submitDesignOrder(orderData: {
 
     // 4. Generate AI prompt
     const aiPrompt = generateAiPrompt(template, {
-        garment_name: orderData.garment_name,
-        color_name: orderData.color_name,
+        garment_name: garmentName,
+        color_name: colorName,
         color_hex: orderData.color_hex,
-        style_name: orderData.style_name || "—",
-        art_style_name: orderData.art_style_name || "—",
+        style_name: sanitizePlainText(orderData.style_name, 120) || "—",
+        art_style_name: sanitizePlainText(orderData.art_style_name, 120) || "—",
         colors: colorsStr,
         user_prompt: userPrompt,
     });
@@ -895,27 +1207,32 @@ export async function submitDesignOrder(orderData: {
     // 5. Insert order
     const payload = {
         user_id: userId,
-        garment_name: orderData.garment_name,
-        garment_image_url: orderData.garment_image_url || null,
-        color_name: orderData.color_name,
+        garment_id: garmentId,
+        garment_name: garmentName,
+        garment_image_url: safeGarmentImageUrl,
+        color_name: colorName,
         color_hex: orderData.color_hex,
-        color_image_url: orderData.color_image_url || null,
-        size_name: orderData.size_name,
-        design_method: orderData.design_method,
-        text_prompt: orderData.text_prompt || null,
-        reference_image_url: orderData.reference_image_url || null,
-        style_name: orderData.style_name || "—",
-        style_image_url: orderData.style_image_url || null,
-        art_style_name: orderData.art_style_name || "—",
-        art_style_image_url: orderData.art_style_image_url || null,
-        color_package_name: orderData.color_package_name || null,
-        custom_colors: orderData.custom_colors ?? [],
+        color_image_url: safeColorImageUrl,
+        size_name: sizeName,
+        design_method: designMethod,
+        text_prompt: sanitizePlainText(orderData.text_prompt, 3000),
+        reference_image_url: safeReferenceImageUrl,
+        preset_id: sanitizePlainText(orderData.preset_id, 120),
+        preset_name: sanitizePlainText(orderData.preset_name, 120),
+        preset_fully_aligned: orderData.preset_fully_aligned === true,
+        style_name: sanitizePlainText(orderData.style_name, 120) || "—",
+        style_image_url: safeStyleImageUrl,
+        art_style_name: sanitizePlainText(orderData.art_style_name, 120) || "—",
+        art_style_image_url: safeArtStyleImageUrl,
+        color_package_name: sanitizePlainText(orderData.color_package_name, 120),
+        custom_colors: Array.isArray(orderData.custom_colors) ? orderData.custom_colors : [],
         ai_prompt: aiPrompt,
         customer_name: finalCustomerName || null,
         customer_email: finalCustomerEmail || null,
         customer_phone: finalCustomerPhone || null,
-        print_position: orderData.print_position || null,
-        print_size: orderData.print_size || null,
+        print_position: printPosition,
+        print_size: printSize,
+        pricing_snapshot: pricingSnapshot,
     };
 
     const { data, error } = await sb
@@ -992,19 +1309,40 @@ export async function getDesignOrder(id: string): Promise<CustomDesignOrder | nu
 
 export async function updateDesignOrderStatus(id: string, status: CustomDesignOrderStatus) {
     const { sb } = await requireSmartStoreAdmin();
-    const { error, data: order } = await sb.from("custom_design_orders")
+    const { data: currentOrder } = await sb
+        .from("custom_design_orders")
+        .select("id, status, user_id, order_number, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
+        .eq("id", id)
+        .single();
+    const order = currentOrder as Pick<
+        CustomDesignOrder,
+        "id" | "status" | "user_id" | "order_number" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
+    > | null;
+    if (!order) return { error: "الطلب غير موجود." };
+
+    const transitionError = getDesignStatusTransitionError(order.status, status);
+    if (transitionError) {
+        return { error: transitionError };
+    }
+
+    if (status === "awaiting_review" && !order.skip_results && !hasOrderDeliverables(order)) {
+        return { error: "لا يمكن إرسال الطلب للمراجعة قبل رفع نتيجة واحدة على الأقل." };
+    }
+
+    const { error, data: updatedOrder } = await sb.from("custom_design_orders")
         .update({ status })
         .eq("id", id)
+        .eq("status", order.status)
         .select("user_id, order_number")
         .single();
-    if (error || !order) return { error: error?.message || "فشل تحديث الحالة" };
+    if (error || !updatedOrder) return { error: error?.message || "فشل تحديث الحالة" };
 
     // If awaiting_review and there's a user, notify them
-    if (status === "awaiting_review" && order.user_id) {
+    if (status === "awaiting_review" && updatedOrder.user_id) {
         await createUserNotification({
-            userId: order.user_id,
+            userId: updatedOrder.user_id,
             title: "تصميم مخصص 🎨",
-            message: `تصميمك (الطلب #${order.order_number}) جاهز الآن للمراجعة والتأكيد! يمكنك الاعتماد والتحويل للسلة أو طلب الإلغاء.`,
+            message: `تصميمك (الطلب #${updatedOrder.order_number}) جاهز الآن للمراجعة والتأكيد! يمكنك الاعتماد والتحويل للسلة أو طلب الإلغاء.`,
             type: "order_update",
             link: `/account/orders?design=${id}`,
         });
@@ -1017,7 +1355,12 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
 
 export async function uploadDesignResult(id: string, field: DesignResultField, url: string) {
     const { sb } = await requireSmartStoreAdmin();
-    const { error } = await sb.from("custom_design_orders").update({ [field]: url }).eq("id", id);
+    const safeUrl = sanitizeHttpUrl(url);
+    if (!safeUrl) {
+        return { error: "رابط النتيجة غير صالح." };
+    }
+
+    const { error } = await sb.from("custom_design_orders").update({ [field]: safeUrl }).eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }
@@ -1132,7 +1475,22 @@ export async function uploadDesignReferenceImage(formData: FormData) {
 
 export async function skipDesignResults(id: string) {
     const { sb } = await requireSmartStoreAdmin();
-    const { error } = await sb.from("custom_design_orders").update({ skip_results: true, status: "completed" }).eq("id", id);
+    const { data: order } = await sb
+        .from("custom_design_orders")
+        .select("status")
+        .eq("id", id)
+        .single();
+    const currentOrder = order as Pick<CustomDesignOrder, "status"> | null;
+    if (!currentOrder) return { error: "الطلب غير موجود." };
+    if (currentOrder.status === "completed" || currentOrder.status === "cancelled") {
+        return { error: "لا يمكن تجاوز النتائج لهذا الطلب في حالته الحالية." };
+    }
+
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({ skip_results: true, status: "completed" })
+        .eq("id", id)
+        .eq("status", currentOrder.status);
     if (error) return { error: error.message };
     return { success: true };
 }
@@ -1141,7 +1499,10 @@ export async function skipDesignResults(id: string) {
 
 export async function updateDesignOrderNotes(id: string, notes: string) {
     const { sb } = await requireSmartStoreAdmin();
-    const { error } = await sb.from("custom_design_orders").update({ admin_notes: notes }).eq("id", id);
+    const { error } = await sb
+        .from("custom_design_orders")
+        .update({ admin_notes: sanitizePlainText(notes, 5000) })
+        .eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }
@@ -1150,26 +1511,55 @@ export async function updateDesignOrderNotes(id: string, notes: string) {
 
 export async function sendDesignOrderToCustomer(id: string, finalPrice: number) {
     const { sb } = await requireSmartStoreAdmin();
+    const normalizedFinalPrice = parsePositiveAmount(finalPrice);
+    if (!normalizedFinalPrice) {
+        return { error: "السعر النهائي يجب أن يكون أكبر من صفر." };
+    }
+
+    const { data: currentOrder } = await sb
+        .from("custom_design_orders")
+        .select("status, user_id, order_number, is_sent_to_customer, print_position, print_size, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
+        .eq("id", id)
+        .single();
+    const order = currentOrder as Pick<
+        CustomDesignOrder,
+        "status" | "user_id" | "order_number" | "is_sent_to_customer" | "print_position" | "print_size" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
+    > | null;
+    if (!order) return { error: "الطلب غير موجود." };
+    if (order.is_sent_to_customer) {
+        return { error: "تم إرسال هذا الطلب للعميل بالفعل." };
+    }
+    if (order.status === "completed" || order.status === "cancelled") {
+        return { error: "لا يمكن إرسال هذا الطلب للعميل في حالته الحالية." };
+    }
+    if (!order.skip_results && !hasOrderDeliverables(order)) {
+        return { error: "ارفع نتيجة واحدة على الأقل قبل إرسال الطلب للعميل." };
+    }
+    if (!parsePrintPositionValue(order.print_position) || !parsePrintSizeValue(order.print_size)) {
+        return { error: "مواصفات الطباعة على الطلب غير مكتملة." };
+    }
 
     // Update the database to lock in the final price and mark it as sent
-    const { error, data: order } = await sb.from("custom_design_orders")
+    const { error, data: updatedOrder } = await sb.from("custom_design_orders")
         .update({
-            final_price: finalPrice,
+            final_price: normalizedFinalPrice,
             is_sent_to_customer: true,
             status: "awaiting_review",
         })
         .eq("id", id)
+        .eq("is_sent_to_customer", false)
+        .eq("status", order.status)
         .select("user_id, order_number")
         .single();
 
-    if (error || !order) return { error: error?.message || "فشل التحديث" };
+    if (error || !updatedOrder) return { error: error?.message || "فشل التحديث" };
 
     // Notify the user that their order is priced and ready for checkout
-    if (order.user_id) {
+    if (updatedOrder.user_id) {
         await createUserNotification({
-            userId: order.user_id,
+            userId: updatedOrder.user_id,
             title: "تصميم مخصص جاهز للدفع 🛍️",
-            message: `تم تسعير طلبك #${order.order_number} ليصبح جاهزاً للإضافة للسلة والدفع. يرجى مراجعته واعتماده.`,
+            message: `تم تسعير طلبك #${updatedOrder.order_number} ليصبح جاهزاً للإضافة للسلة والدفع. يرجى مراجعته واعتماده.`,
             type: "order_update",
             link: `/account/orders?design=${id}`,
         });
@@ -1202,32 +1592,7 @@ export async function getUserDesignOrders(): Promise<CustomDesignOrder[]> {
 }
 
 export async function approveDesignOrder(id: string) {
-    const profileId = await getCurrentProfileId();
-    if (!profileId) return { error: "يجب تسجيل الدخول" };
-
-    const sb = getSmartStoreSb();
-    const { error, data: order } = await sb
-        .from("custom_design_orders")
-        .update({ status: "completed" })
-        .eq("id", id)
-        .eq("user_id", profileId)
-        .in("status", ["awaiting_review"])
-        .select("user_id, order_number")
-        .single();
-    if (error) return { error: error.message };
-
-    if (order) {
-        await createAdminNotification({
-            title: "تأكيد تصميم مخصص ✅",
-            message: `قام العميل للتو بمراجعة وتأكيد التصميم للطلب #${order.order_number}.`,
-            type: "system_alert",
-            category: "design",
-            severity: "info",
-            link: "/dashboard/smart-store",
-        });
-    }
-
-    return { success: true };
+    return confirmDesignOrder(id);
 }
 
 export async function rejectDesignOrder(id: string, reason: string) {
@@ -1316,57 +1681,86 @@ export async function submitModificationRequest(orderId: string, requestText: st
 
 // ─── Get Garment Pricing ─────────────────────────────────
 
-export async function getGarmentPricing(garmentName: string) {
+export async function getGarmentPricing(garmentName: string, garmentId?: string | null) {
     const sb = getSmartStoreSb();
-    const { data } = await sb
-        .from("custom_design_garments")
-        .select("base_price, price_chest_large, price_chest_small, price_back_large, price_back_small, price_shoulder_large, price_shoulder_small")
-        .eq("name", garmentName)
-        .single();
-    if (!data) return {
-        base_price: 0,
-        price_chest_large: 0, price_chest_small: 0,
-        price_back_large: 0, price_back_small: 0,
-        price_shoulder_large: 0, price_shoulder_small: 0,
-    };
-    return data as {
-        base_price: number;
-        price_chest_large: number; price_chest_small: number;
-        price_back_large: number; price_back_small: number;
-        price_shoulder_large: number; price_shoulder_small: number;
-    };
+    return getGarmentPricingRecord(sb, garmentName, garmentId);
 }
 
 // ─── Confirm: Save Placement + Price ─────────────────────
 
-export async function confirmDesignOrder(id: string, position?: string | null, size?: string | null, price?: number | null) {
+export async function confirmDesignOrder(id: string, position?: string | null, size?: string | null, _clientPrice?: number | null) {
     const profileId = await getCurrentProfileId();
     if (!profileId) return { error: "يجب تسجيل الدخول" };
 
     const sb = getSmartStoreSb();
-    const updateData: Partial<CustomDesignOrder> = { status: "completed" };
-    if (position) updateData.print_position = position;
-    if (size) updateData.print_size = size;
-    if (price !== undefined && price !== null) updateData.final_price = price;
-
-    const { error } = await sb
+    const { data: currentOrder } = await sb
         .from("custom_design_orders")
-        .update(updateData)
-        .eq("id", id)
-        .eq("user_id", profileId)
-        .in("status", ["awaiting_review"]);
-    if (error) return { error: error.message };
-
-    const { data: order } = await sb
-        .from("custom_design_orders")
-        .select("order_number")
+        .select("order_number, garment_id, garment_name, status, print_position, print_size, is_sent_to_customer, final_price, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results, pricing_snapshot")
         .eq("id", id)
         .eq("user_id", profileId)
         .single();
-    if (order) {
+    const order = currentOrder as Pick<
+        CustomDesignOrder,
+        "order_number" | "garment_id" | "garment_name" | "status" | "print_position" | "print_size" | "is_sent_to_customer" | "final_price" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results" | "pricing_snapshot"
+    > | null;
+    if (!order) return { error: "الطلب غير موجود." };
+    if (order.status !== "awaiting_review") {
+        return { error: "لا يمكن تأكيد الطلب في حالته الحالية." };
+    }
+    if (!order.skip_results && !hasOrderDeliverables(order)) {
+        return { error: "لا توجد نتائج مرفوعة لهذا الطلب بعد." };
+    }
+
+    let finalPosition: PrintPosition | null = null;
+    let finalSize: PrintSize | null = null;
+
+    if (order.is_sent_to_customer) {
+        finalPosition = parsePrintPositionValue(order.print_position);
+        finalSize = parsePrintSizeValue(order.print_size);
+    } else {
+        finalPosition = parsePrintPositionValue(position ?? null) ?? parsePrintPositionValue(order.print_position);
+        finalSize = parsePrintSizeValue(size ?? null) ?? parsePrintSizeValue(order.print_size);
+    }
+
+    if (!finalPosition || !finalSize) {
+        return { error: "بيانات موقع أو حجم الطباعة غير مكتملة." };
+    }
+
+    const pricingSnapshot = order.is_sent_to_customer
+        ? normalizePricingSnapshot(order.pricing_snapshot)
+        : getPricingSnapshotForOrder(
+            order,
+            await getGarmentPricingRecord(sb, order.garment_name, order.garment_id)
+        );
+
+    const finalPrice = order.is_sent_to_customer
+        ? parsePositiveAmount(order.final_price)
+        : calculateFinalDesignPrice(pricingSnapshot ?? EMPTY_GARMENT_PRICING, finalPosition, finalSize);
+
+    if (!finalPrice) {
+        return { error: "تعذر احتساب السعر النهائي لهذا الطلب." };
+    }
+
+    const { error, data: updatedOrder } = await sb
+        .from("custom_design_orders")
+        .update({
+            status: "completed",
+            print_position: finalPosition,
+            print_size: finalSize,
+            final_price: finalPrice,
+            pricing_snapshot: pricingSnapshot ?? order.pricing_snapshot ?? null,
+        })
+        .eq("id", id)
+        .eq("user_id", profileId)
+        .eq("status", "awaiting_review")
+        .select("order_number")
+        .single();
+    if (error) return { error: error.message };
+
+    if (updatedOrder) {
         await createAdminNotification({
             title: "تأكيد تصميم مخصّص للسلة 🛒",
-            message: `قام العميل للتو بمراجعة وتأكيد التصميم للطلب #${order.order_number} وأضافه للسلة.`,
+            message: `قام العميل للتو بمراجعة وتأكيد التصميم للطلب #${updatedOrder.order_number} وأضافه للسلة.`,
             type: "system_alert",
             category: "design",
             severity: "info",
@@ -1396,6 +1790,15 @@ export async function submitAdditionalDesignOrder(
     if (!profileId) return { error: "يجب تسجيل الدخول" };
 
     const sb = getSmartStoreSb();
+    const printPosition = parsePrintPositionValue(data.print_position);
+    const printSize = parsePrintSizeValue(data.print_size);
+    const styleName = sanitizePlainText(data.style_name, 120);
+    const artStyleName = sanitizePlainText(data.art_style_name, 120);
+    const colorPackageName = sanitizePlainText(data.color_package_name, 120);
+
+    if (!printPosition || !printSize || !styleName || !artStyleName) {
+        return { error: "بيانات التصميم الإضافي غير مكتملة." };
+    }
 
     const { data: parent, error: fetchErr } = await sb
         .from("custom_design_orders")
@@ -1406,13 +1809,18 @@ export async function submitAdditionalDesignOrder(
 
     if (fetchErr || !parent) return { error: "الطلب الأساسي غير موجود" };
     const p = parent as CustomDesignOrder;
+    const parentPricingSnapshot = normalizePricingSnapshot(p.pricing_snapshot) ?? buildPricingSnapshot(
+        p.garment_id ?? null,
+        p.garment_name,
+        await getGarmentPricingRecord(sb, p.garment_name, p.garment_id ?? null)
+    );
 
     if (p.status !== "completed") return { error: "يجب تأكيد التصميم الأساسي أولاً" };
-    if (p.print_position === data.print_position) return { error: "اختر موقعاً مختلفاً عن التصميم الأساسي" };
+    if (p.print_position === printPosition) return { error: "اختر موقعاً مختلفاً عن التصميم الأساسي" };
 
     const template = await getDesignPromptTemplate();
-    const colorsStr = data.color_package_name
-        ? data.color_package_name
+    const colorsStr = colorPackageName
+        ? colorPackageName
         : data.custom_colors && data.custom_colors.length > 0
             ? data.custom_colors.join(", ")
             : `${p.color_name} (${p.color_hex})`;
@@ -1427,8 +1835,8 @@ export async function submitAdditionalDesignOrder(
         garment_name: p.garment_name,
         color_name: p.color_name,
         color_hex: p.color_hex,
-        style_name: data.style_name || "—",
-        art_style_name: data.art_style_name || "—",
+        style_name: styleName,
+        art_style_name: artStyleName,
         colors: colorsStr,
         user_prompt: userPrompt,
     });
@@ -1436,27 +1844,32 @@ export async function submitAdditionalDesignOrder(
     const payload = {
         user_id: p.user_id,
         parent_order_id: parentOrderId,
+        garment_id: p.garment_id ?? null,
         garment_name: p.garment_name,
-        garment_image_url: p.garment_image_url,
+        garment_image_url: sanitizeHttpUrl(p.garment_image_url),
         color_name: p.color_name,
         color_hex: p.color_hex,
-        color_image_url: p.color_image_url,
+        color_image_url: sanitizeHttpUrl(p.color_image_url),
         size_name: p.size_name,
         design_method: p.design_method,
         text_prompt: p.text_prompt,
-        reference_image_url: p.reference_image_url,
-        style_name: data.style_name || "—",
-        style_image_url: data.style_image_url || null,
-        art_style_name: data.art_style_name || "—",
-        art_style_image_url: data.art_style_image_url || null,
-        color_package_name: data.color_package_name || null,
-        custom_colors: data.custom_colors ?? [],
+        reference_image_url: sanitizeHttpUrl(p.reference_image_url),
+        preset_id: p.preset_id ?? null,
+        preset_name: p.preset_name ?? null,
+        preset_fully_aligned: p.preset_fully_aligned === true,
+        style_name: styleName,
+        style_image_url: sanitizeHttpUrl(data.style_image_url),
+        art_style_name: artStyleName,
+        art_style_image_url: sanitizeHttpUrl(data.art_style_image_url),
+        color_package_name: colorPackageName,
+        custom_colors: Array.isArray(data.custom_colors) ? data.custom_colors : [],
         ai_prompt: aiPrompt,
         customer_name: p.customer_name,
         customer_email: p.customer_email,
         customer_phone: p.customer_phone,
-        print_position: data.print_position,
-        print_size: data.print_size,
+        print_position: printPosition,
+        print_size: printSize,
+        pricing_snapshot: parentPricingSnapshot,
     };
 
     const { data: inserted, error } = await sb
@@ -1472,7 +1885,7 @@ export async function submitAdditionalDesignOrder(
         category: "design",
         severity: "info",
         title: "تصميم إضافي على الطلب 🎨",
-        message: `طلب تصميم إضافي #${inserted.order_number} — ${p.garment_name} (موقع: ${data.print_position}) مرتبط بالطلب #${p.order_number}`,
+        message: `طلب تصميم إضافي #${inserted.order_number} — ${p.garment_name} (موقع: ${printPosition}) مرتبط بالطلب #${p.order_number}`,
         link: "/dashboard/design-orders",
     });
 

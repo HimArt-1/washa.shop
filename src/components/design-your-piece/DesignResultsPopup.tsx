@@ -67,11 +67,11 @@ export function DesignResultsPopup({
     const images = [order.result_design_url, order.result_mockup_url].filter(Boolean) as string[];
 
     useEffect(() => {
-        getGarmentPricing(order.garment_name).then((p) => {
+        getGarmentPricing(order.garment_name, order.garment_id).then((p) => {
             setPricing(p);
             setLoadingPricing(false);
         });
-    }, [order.garment_name]);
+    }, [order.garment_id, order.garment_name]);
 
     const basePrice = pricing?.base_price ?? 0;
     const designPrice = position && size && pricing ? getPrice(pricing, position, size) : 0;
