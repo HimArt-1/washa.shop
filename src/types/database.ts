@@ -882,9 +882,11 @@ export type CustomDesignOrder = {
     garment_id: string | null;
     garment_name: string;
     garment_image_url: string | null;
+    color_id: string | null;
     color_name: string;
     color_hex: string;
     color_image_url: string | null;
+    size_id: string | null;
     size_name: string;
 
     // Design Method

@@ -371,8 +371,10 @@ export function DesignYourPieceWizard({
                 const result = await submitDesignOrder({
                     garment_id: state.garment?.id ?? undefined,
                     garment_name: state.garment?.name ?? "—",
+                    color_id: state.color?.id ?? undefined,
                     color_name: state.color?.name ?? "—",
                     color_hex: state.color?.hex_code ?? "#000000",
+                    size_id: state.size?.id ?? undefined,
                     size_name: state.size?.name ?? "—",
                     design_method: "studio",
                     text_prompt: state.studioItem?.name ?? undefined,
@@ -449,9 +451,11 @@ export function DesignYourPieceWizard({
                 garment_id: state.garment?.id ?? undefined,
                 garment_name: state.garment?.name ?? "—",
                 garment_image_url: state.garment?.image_url ?? undefined,
+                color_id: state.color?.id ?? undefined,
                 color_name: state.color?.name ?? "—",
                 color_hex: state.color?.hex_code ?? "#000000",
                 color_image_url: state.color?.image_url ?? undefined,
+                size_id: state.size?.id ?? undefined,
                 size_name: state.size?.name ?? "—",
                 design_method: state.method ?? "from_text",
                 text_prompt: state.textPrompt || undefined,
@@ -747,7 +751,7 @@ export function DesignYourPieceWizard({
                             <StepGarment garments={garments} selected={state.garment} onSelect={(g) => setState((s) => ({ ...s, garment: g, color: null, size: null }))} onNext={goNext} />
                         )}
                         {state.step === 2 && (
-                            <StepColor colors={colors} loading={loadingColors} selected={state.color} onSelect={(c) => setState((s) => ({ ...s, color: c }))} onBack={goBack} onNext={goNext} />
+                            <StepColor colors={colors} loading={loadingColors} selected={state.color} onSelect={(c) => setState((s) => ({ ...s, color: c, size: null }))} onBack={goBack} onNext={goNext} />
                         )}
                         {state.step === 3 && (
                             <StepSize sizes={sizes} loading={loadingSizes} selected={state.size} onSelect={(sz) => setState((s) => ({ ...s, size: sz }))} onBack={goBack} onNext={goNext} />

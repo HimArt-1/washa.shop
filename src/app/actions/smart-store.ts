@@ -136,6 +136,13 @@ function sanitizePlainText(value: unknown, maxLength = 500): string | null {
     return trimmed.slice(0, maxLength);
 }
 
+function sanitizeHexColor(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (!/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)) return null;
+    return trimmed;
+}
+
 function parseNumberish(value: unknown, fallback = 0) {
     const parsed = typeof value === "number" ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -288,6 +295,191 @@ async function getGarmentPricingRecord(
     return normalizeGarmentPricing(data);
 }
 
+async function getGarmentRecordById(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    garmentId: string
+): Promise<CustomDesignGarment | null> {
+    const { data, error } = await sb
+        .from("custom_design_garments")
+        .select("*")
+        .eq("id", garmentId)
+        .single();
+
+    if (error) {
+        console.error("[getGarmentRecordById]", error);
+    }
+
+    return (data as CustomDesignGarment) ?? null;
+}
+
+async function getColorRecordById(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    colorId: string
+): Promise<CustomDesignColor | null> {
+    const { data, error } = await sb
+        .from("custom_design_colors")
+        .select("*")
+        .eq("id", colorId)
+        .single();
+
+    if (error) {
+        console.error("[getColorRecordById]", error);
+    }
+
+    return (data as CustomDesignColor) ?? null;
+}
+
+async function getSizeRecordById(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    sizeId: string
+): Promise<CustomDesignSize | null> {
+    const { data, error } = await sb
+        .from("custom_design_sizes")
+        .select("*")
+        .eq("id", sizeId)
+        .single();
+
+    if (error) {
+        console.error("[getSizeRecordById]", error);
+    }
+
+    return (data as CustomDesignSize) ?? null;
+}
+
+type ResolvedDesignOrderSelections = {
+    garmentId: string | null;
+    garmentName: string;
+    garmentImageUrl: string | null;
+    colorId: string | null;
+    colorName: string;
+    colorHex: string;
+    colorImageUrl: string | null;
+    sizeId: string | null;
+    sizeName: string;
+    pricingSnapshot: DesignPricingSnapshot;
+};
+
+async function resolveDesignOrderSelections(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    orderData: {
+        garment_id?: string | null;
+        garment_name?: string | null;
+        garment_image_url?: string | null;
+        color_id?: string | null;
+        color_name?: string | null;
+        color_hex?: string | null;
+        color_image_url?: string | null;
+        size_id?: string | null;
+        size_name?: string | null;
+    }
+): Promise<ResolvedDesignOrderSelections | { error: string }> {
+    const safeGarmentId = sanitizePlainText(orderData.garment_id, 120);
+    const safeColorId = sanitizePlainText(orderData.color_id, 120);
+    const safeSizeId = sanitizePlainText(orderData.size_id, 120);
+
+    const [initialColorRecord, initialSizeRecord] = await Promise.all([
+        safeColorId ? getColorRecordById(sb, safeColorId) : Promise.resolve(null),
+        safeSizeId ? getSizeRecordById(sb, safeSizeId) : Promise.resolve(null),
+    ]);
+
+    if (safeColorId && !initialColorRecord) {
+        return { error: "اللون المحدد غير موجود." };
+    }
+
+    if (safeSizeId && !initialSizeRecord) {
+        return { error: "المقاس المحدد غير موجود." };
+    }
+
+    let colorRecord = initialColorRecord;
+    const sizeRecord = initialSizeRecord;
+    let effectiveColorId = colorRecord?.id ?? sizeRecord?.color_id ?? safeColorId ?? null;
+
+    if (!colorRecord && effectiveColorId) {
+        colorRecord = await getColorRecordById(sb, effectiveColorId);
+        if (!colorRecord) {
+            return { error: "اللون المحدد غير موجود." };
+        }
+    }
+
+    let effectiveGarmentId = safeGarmentId ?? colorRecord?.garment_id ?? sizeRecord?.garment_id ?? null;
+    let garmentRecord = effectiveGarmentId ? await getGarmentRecordById(sb, effectiveGarmentId) : null;
+
+    if (effectiveGarmentId && !garmentRecord) {
+        return { error: "القطعة المحددة غير موجودة." };
+    }
+
+    if (colorRecord?.garment_id) {
+        if (effectiveGarmentId && colorRecord.garment_id !== effectiveGarmentId) {
+            return { error: "اللون المحدد لا يتبع القطعة المختارة." };
+        }
+        if (!effectiveGarmentId) {
+            effectiveGarmentId = colorRecord.garment_id;
+            garmentRecord = await getGarmentRecordById(sb, effectiveGarmentId);
+            if (!garmentRecord) {
+                return { error: "القطعة المحددة غير موجودة." };
+            }
+        }
+    }
+
+    if (sizeRecord?.garment_id) {
+        if (effectiveGarmentId && sizeRecord.garment_id !== effectiveGarmentId) {
+            return { error: "المقاس المحدد لا يتبع القطعة المختارة." };
+        }
+        if (!effectiveGarmentId) {
+            effectiveGarmentId = sizeRecord.garment_id;
+            garmentRecord = await getGarmentRecordById(sb, effectiveGarmentId);
+            if (!garmentRecord) {
+                return { error: "القطعة المحددة غير موجودة." };
+            }
+        }
+    }
+
+    if (sizeRecord?.color_id) {
+        if (effectiveColorId && sizeRecord.color_id !== effectiveColorId) {
+            return { error: "المقاس المحدد لا يتبع اللون المختار." };
+        }
+        effectiveColorId = sizeRecord.color_id;
+        if (!colorRecord) {
+            colorRecord = await getColorRecordById(sb, effectiveColorId);
+            if (!colorRecord) {
+                return { error: "اللون المحدد غير موجود." };
+            }
+        }
+    }
+
+    const garmentName = garmentRecord?.name ?? sanitizePlainText(orderData.garment_name, 120);
+    const garmentImageUrl = garmentRecord?.image_url ?? sanitizeHttpUrl(orderData.garment_image_url);
+    const colorName = colorRecord?.name ?? sanitizePlainText(orderData.color_name, 120);
+    const colorHex = colorRecord?.hex_code ?? sanitizeHexColor(orderData.color_hex);
+    const colorImageUrl = colorRecord?.image_url ?? sanitizeHttpUrl(orderData.color_image_url);
+    const sizeName = sizeRecord?.name ?? sanitizePlainText(orderData.size_name, 80);
+
+    if (!garmentName || !colorName || !colorHex || !sizeName) {
+        return { error: "بيانات الطلب الأساسية غير مكتملة أو غير صالحة." };
+    }
+
+    const pricingSnapshot = buildPricingSnapshot(
+        effectiveGarmentId ?? null,
+        garmentName,
+        garmentRecord
+            ? normalizeGarmentPricing(garmentRecord)
+            : await getGarmentPricingRecord(sb, garmentName, effectiveGarmentId)
+    );
+
+    return {
+        garmentId: effectiveGarmentId ?? null,
+        garmentName,
+        garmentImageUrl,
+        colorId: colorRecord?.id ?? effectiveColorId ?? null,
+        colorName,
+        colorHex,
+        colorImageUrl,
+        sizeId: sizeRecord?.id ?? safeSizeId ?? null,
+        sizeName,
+        pricingSnapshot,
+    };
+}
+
 function getPricingSnapshotForOrder(
     order: Pick<CustomDesignOrder, "pricing_snapshot" | "garment_id" | "garment_name">,
     fallbackPricing: GarmentPricing
@@ -364,6 +556,8 @@ function sanitizePublicDesignOrder(order: CustomDesignOrder): CustomDesignOrder 
         user_id: null,
         parent_order_id: null,
         garment_id: null,
+        color_id: null,
+        size_id: null,
         customer_name: null,
         customer_email: null,
         customer_phone: null,
@@ -1103,9 +1297,11 @@ export async function submitDesignOrder(orderData: {
     garment_id?: string | null;
     garment_name: string;
     garment_image_url?: string;
+    color_id?: string | null;
     color_name: string;
     color_hex: string;
     color_image_url?: string;
+    size_id?: string | null;
     size_name: string;
     design_method: "from_text" | "from_image" | "studio";
     text_prompt?: string;
@@ -1126,22 +1322,30 @@ export async function submitDesignOrder(orderData: {
     print_size?: string;
 }) {
     const sb = getSmartStoreSb();
-    const garmentId = sanitizePlainText(orderData.garment_id, 120);
-    const garmentName = sanitizePlainText(orderData.garment_name, 120);
-    const colorName = sanitizePlainText(orderData.color_name, 120);
-    const sizeName = sanitizePlainText(orderData.size_name, 80);
     const designMethod = parseDesignMethodValue(orderData.design_method);
     const printPosition = parsePrintPositionValue(orderData.print_position ?? null);
     const printSize = parsePrintSizeValue(orderData.print_size ?? null);
 
-    if (!garmentName || !colorName || !sizeName || !designMethod || !printPosition || !printSize) {
+    if (!designMethod || !printPosition || !printSize) {
         return { error: "بيانات الطلب الأساسية غير مكتملة أو غير صالحة." };
     }
-    const pricingSnapshot = buildPricingSnapshot(
+    const resolvedSelections = await resolveDesignOrderSelections(sb, orderData);
+    if ("error" in resolvedSelections) {
+        return resolvedSelections;
+    }
+
+    const {
         garmentId,
         garmentName,
-        await getGarmentPricingRecord(sb, garmentName, garmentId)
-    );
+        garmentImageUrl,
+        colorId,
+        colorName,
+        colorHex,
+        colorImageUrl,
+        sizeId,
+        sizeName,
+        pricingSnapshot,
+    } = resolvedSelections;
 
     // 1. Get prompt template
     const template = await getDesignPromptTemplate();
@@ -1151,11 +1355,9 @@ export async function submitDesignOrder(orderData: {
         ? orderData.color_package_name
         : orderData.custom_colors && orderData.custom_colors.length > 0
             ? orderData.custom_colors.join(", ")
-            : `${orderData.color_name} (${orderData.color_hex})`;
+            : `${colorName} (${colorHex})`;
 
     // Sanitize externally-provided URLs so we don't store unsafe schemes (e.g. javascript:).
-    const safeGarmentImageUrl = sanitizeHttpUrl(orderData.garment_image_url);
-    const safeColorImageUrl = sanitizeHttpUrl(orderData.color_image_url);
     const safeReferenceImageUrl = sanitizeHttpUrl(orderData.reference_image_url);
     const safeStyleImageUrl = sanitizeHttpUrl(orderData.style_image_url);
     const safeArtStyleImageUrl = sanitizeHttpUrl(orderData.art_style_image_url);
@@ -1197,7 +1399,7 @@ export async function submitDesignOrder(orderData: {
     const aiPrompt = generateAiPrompt(template, {
         garment_name: garmentName,
         color_name: colorName,
-        color_hex: orderData.color_hex,
+        color_hex: colorHex,
         style_name: sanitizePlainText(orderData.style_name, 120) || "—",
         art_style_name: sanitizePlainText(orderData.art_style_name, 120) || "—",
         colors: colorsStr,
@@ -1209,10 +1411,12 @@ export async function submitDesignOrder(orderData: {
         user_id: userId,
         garment_id: garmentId,
         garment_name: garmentName,
-        garment_image_url: safeGarmentImageUrl,
+        garment_image_url: garmentImageUrl,
+        color_id: colorId,
         color_name: colorName,
-        color_hex: orderData.color_hex,
-        color_image_url: safeColorImageUrl,
+        color_hex: colorHex,
+        color_image_url: colorImageUrl,
+        size_id: sizeId,
         size_name: sizeName,
         design_method: designMethod,
         text_prompt: sanitizePlainText(orderData.text_prompt, 3000),
@@ -1249,7 +1453,7 @@ export async function submitDesignOrder(orderData: {
         category: "design",
         severity: "info",
         title: "طلب تصميم جديد 🎨",
-        message: `طلب تصميم جديد #${data.order_number} — ${orderData.garment_name} (${orderData.color_name}) من ${finalCustomerName || "عميل"}`,
+        message: `طلب تصميم جديد #${data.order_number} — ${garmentName} (${colorName}) من ${finalCustomerName || "عميل"}`,
         link: "/dashboard/design-orders",
     });
 
@@ -1259,8 +1463,8 @@ export async function submitDesignOrder(orderData: {
         finalCustomerName || '',
         finalCustomerEmail || '',
         finalCustomerPhone || '',
-        orderData.garment_name,
-        orderData.color_name,
+        garmentName,
+        colorName,
         orderData.design_method,
         data.id
     ).catch(err => console.error("Failed to send design order email async", err));
@@ -1847,9 +2051,11 @@ export async function submitAdditionalDesignOrder(
         garment_id: p.garment_id ?? null,
         garment_name: p.garment_name,
         garment_image_url: sanitizeHttpUrl(p.garment_image_url),
+        color_id: p.color_id ?? null,
         color_name: p.color_name,
         color_hex: p.color_hex,
         color_image_url: sanitizeHttpUrl(p.color_image_url),
+        size_id: p.size_id ?? null,
         size_name: p.size_name,
         design_method: p.design_method,
         text_prompt: p.text_prompt,
