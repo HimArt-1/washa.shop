@@ -108,13 +108,7 @@ export function PushSubscribeButton({
             }
 
             const reg = await navigator.serviceWorker.ready;
-            const existingSubscription = await reg.pushManager.getSubscription();
-            const subscription = existingSubscription || await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-                    ? (urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) as BufferSource)
-                    : undefined,
-            });
+            const subscription = await getOrCreatePushSubscription(reg);
 
             const json = subscription.toJSON();
             const response = await fetch("/api/push/subscribe", {
@@ -222,6 +216,38 @@ export function PushSubscribeButton({
             {loading ? "جاري..." : isEnabled ? labels.disable : labels.enable}
         </button>
     );
+}
+
+async function getOrCreatePushSubscription(reg: ServiceWorkerRegistration) {
+    const existingSubscription = await reg.pushManager.getSubscription();
+    if (existingSubscription) {
+        return existingSubscription;
+    }
+
+    const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        ? (urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) as BufferSource)
+        : undefined;
+
+    try {
+        return await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey,
+        });
+    } catch (error) {
+        if (error instanceof DOMException && error.name === "InvalidStateError") {
+            const staleSubscription = await reg.pushManager.getSubscription();
+            if (staleSubscription) {
+                await staleSubscription.unsubscribe().catch(() => false);
+            }
+
+            return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey,
+            });
+        }
+
+        throw error;
+    }
 }
 
 function getLabels(variant: "user" | "admin", permissionDenied: boolean) {

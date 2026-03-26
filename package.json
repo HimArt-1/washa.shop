@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:fix": "bash scripts/dev.sh",
+    "build:dtf-studio": "npm --prefix washa-dtf-studio ci && npm --prefix washa-dtf-studio run build",
+    "prebuild": "npm run build:dtf-studio",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

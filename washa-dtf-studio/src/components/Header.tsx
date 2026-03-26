@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { History, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
-import { studioAsset } from '../lib/assets';
+import { siteAsset } from '../lib/assets';
 
 interface HeaderProps {
   onOpenGallery: () => void;
@@ -23,8 +23,8 @@ export default function Header({ onOpenGallery }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between relative">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden shadow-[0_0_20px_rgba(201,168,106,0.4)] animate-glow-pulse">
-            <img src={studioAsset('washa-logo.png')} alt="وشّى" className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-washa-gold/15 bg-[radial-gradient(circle_at_35%_35%,rgba(201,168,106,0.18),rgba(11,11,12,0.95)_72%)] shadow-[0_0_20px_rgba(201,168,106,0.3)] animate-glow-pulse">
+            <img src={siteAsset('logo.png')} alt="وشّى" className="w-full h-full object-contain p-1.5" />
           </div>
           <div className="hidden sm:block">
             <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>

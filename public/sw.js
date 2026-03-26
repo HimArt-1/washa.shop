@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const CACHE_NAME = "wusha-v1";
+const CACHE_NAME = "wusha-v2";
 const OFFLINE_URL = "/offline.html";
 
 // Static assets to pre-cache
@@ -65,9 +65,17 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("fetch", (event) => {
     const { request } = event;
     const url = request.url;
+    const pathname = new URL(url).pathname;
 
     // Skip non-GET requests
     if (request.method !== "GET") return;
+
+    const isDtfStudio = pathname === "/design/dtf-studio" || pathname.startsWith("/design/dtf-studio/");
+
+    if (isDtfStudio) {
+        event.respondWith(fetch(request));
+        return;
+    }
 
     const isRSC = url.includes("_rsc=");
     const isDashboard = url.includes("/dashboard");

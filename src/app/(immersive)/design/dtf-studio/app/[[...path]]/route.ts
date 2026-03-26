@@ -1,6 +1,8 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
+import { getPublicVisibility } from "@/app/actions/settings";
+import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
 
 export const runtime = "nodejs";
 
@@ -18,12 +20,40 @@ function getContentType(filePath: string) {
     return "application/octet-stream";
 }
 
+function isHtmlShellRequest(relativePath: string, segments: string[]) {
+    return segments.length === 0 || (!path.extname(relativePath) && segments[0] !== "assets");
+}
+
+async function ensureDtfStudioAccess(request: NextRequest) {
+    const visibility = await getPublicVisibility();
+
+    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
+        return NextResponse.redirect(new URL("/design", request.url));
+    }
+
+    const access = await resolveDesignPieceAccess();
+
+    if (!access.allowed) {
+        return NextResponse.redirect(new URL("/design/dtf-studio", request.url));
+    }
+
+    return null;
+}
+
 export async function GET(
-    _request: NextRequest,
+    request: NextRequest,
     context: { params: { path?: string[] } }
 ) {
     const segments = context.params.path ?? [];
     const relativePath = segments.length > 0 ? path.join(...segments) : "index.html";
+
+    if (isHtmlShellRequest(relativePath, segments)) {
+        const guardResponse = await ensureDtfStudioAccess(request);
+        if (guardResponse) {
+            return guardResponse;
+        }
+    }
+
     const targetPath = path.join(DIST_ROOT, relativePath);
     const resolvedPath = path.resolve(targetPath);
 
