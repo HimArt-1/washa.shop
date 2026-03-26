@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, Wand2 } from "lucide-react";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { canAccessDesignPiece } from "@/app/actions/design-piece";
 import { DesignPieceWizard } from "@/components/studio/design-piece/DesignPieceWizard";
@@ -48,6 +48,15 @@ export default async function DesignAiPage() {
                         <ArrowRight className="h-4 w-4" />
                         العودة إلى النموذج الأساسي
                     </Link>
+                    {visibility.design_piece_dtf_studio_switch !== false ? (
+                        <Link
+                            href="/design/dtf-studio"
+                            className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-sm font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
+                        >
+                            <Wand2 className="h-4 w-4" />
+                            فتح استوديو DTF المطور
+                        </Link>
+                    ) : null}
                 </div>
 
                 {allowed ? <DesignPieceWizard /> : <DesignPieceAccessDenied redirectUrl="/design/ai" />}

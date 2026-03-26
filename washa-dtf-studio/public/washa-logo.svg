@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="250" fill="#B8A080"/>
+  <!-- Arabic calligraphy وشّى stylized mark -->
+  <g transform="translate(256,256)">
+    <!-- Main shape - stylized Arabic و/ش letterform -->
+    <!-- Left swooping tail -->
+    <path d="M-120,80 C-140,40 -130,-20 -100,-80 C-80,-120 -50,-140 -30,-100 C-20,-75 -40,-40 -60,0 C-80,40 -100,70 -120,80 Z" fill="white"/>
+    <!-- Center prong -->
+    <path d="M-40,80 C-50,40 -50,-30 -40,-100 C-35,-130 -20,-170 -5,-190 C5,-200 15,-195 20,-180 C25,-165 15,-130 10,-100 C0,-50 -10,20 -20,80 Z" fill="white"/>
+    <!-- Right prong (taller) -->
+    <path d="M30,80 C20,20 25,-60 35,-130 C40,-160 55,-200 70,-210 C80,-215 90,-205 95,-190 C100,-170 90,-130 80,-90 C65,-30 50,30 45,80 Z" fill="white"/>
+    <!-- Right swooping curve -->
+    <path d="M60,100 C80,90 120,50 140,0 C155,-35 160,-70 145,-90 C130,-100 110,-80 100,-50 C85,-10 70,50 60,100 Z" fill="white"/>
+    <!-- Bottom connecting curve -->
+    <path d="M-120,80 C-100,120 -60,140 -20,130 C10,125 40,120 60,100 C40,130 10,155 -30,160 C-70,165 -105,140 -120,80 Z" fill="white"/>
+  </g>
+</svg>

@@ -132,6 +132,7 @@ interface Props {
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
     aiModelShortcutEnabled?: boolean;
+    dtfStudioShortcutEnabled?: boolean;
 }
 
 function getPresetOverrideLabels(state: WizardState) {
@@ -165,6 +166,7 @@ export function DesignYourPieceWizard({
     presets,
     compatibilities,
     aiModelShortcutEnabled = false,
+    dtfStudioShortcutEnabled = false,
 }: Props) {
     const { isSignedIn } = useAuth();
     const { addItem, toggleCart } = useCartStore();
@@ -609,6 +611,16 @@ export function DesignYourPieceWizard({
                         >
                             <Sparkles className="h-3.5 w-3.5" />
                             جرّب النموذج الجديد
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                        </Link>
+                    ) : null}
+                    {dtfStudioShortcutEnabled ? (
+                        <Link
+                            href="/design/dtf-studio"
+                            className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
+                        >
+                            <Wand2 className="h-3.5 w-3.5" />
+                            استوديو DTF المطور
                             <ArrowLeft className="h-3.5 w-3.5" />
                         </Link>
                     ) : null}

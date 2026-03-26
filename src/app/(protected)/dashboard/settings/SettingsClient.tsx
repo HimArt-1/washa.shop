@@ -279,6 +279,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
+        design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -491,6 +492,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         label="اختصار النموذج الجديد داخل صمم قطعتك"
                         checked={visibility.design_piece_ai_switch ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece_ai_switch: v })}
+                    />
+                    <Toggle
+                        label="اختصار استوديو DTF المطور داخل صمم قطعتك"
+                        checked={visibility.design_piece_dtf_studio_switch ?? true}
+                        onChange={(v) => setVisibility({ ...visibility, design_piece_dtf_studio_switch: v })}
                     />
                 </div>
                 <button

@@ -53,6 +53,7 @@ export default async function DesignYourPiecePage() {
                     presets={presets}
                     compatibilities={compatibilities}
                     aiModelShortcutEnabled={visibility.design_piece_ai_switch !== false}
+                    dtfStudioShortcutEnabled={visibility.design_piece_dtf_studio_switch !== false}
                 />
             </div>
         </div>
