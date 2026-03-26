@@ -35,6 +35,13 @@ function TikTokIcon({ className }: { className?: string }) {
 }
 
 export default function BrandAssetsClient({ config }: { config: any }) {
+  const socialCardWebsite = (
+    config.business_card_website ||
+    config.brand_assets?.business_card_website ||
+    "www.washa.shop"
+  )
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "www.");
 
   const handleDownload = async (elementId: string, filename: string) => {
     const element = document.getElementById(elementId);
@@ -374,7 +381,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="social-card"
-                  className="w-full h-full rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-start overflow-hidden relative shadow-2xl border glass-premium hover-glow transition-all duration-700"
+                  className="w-full h-full rounded-2xl p-5 sm:p-6 flex flex-col items-center justify-start overflow-hidden relative shadow-2xl border glass-premium hover-glow transition-all duration-700"
                 >
                   
                   {/* Subtle Top Glow & Shimmers */}
@@ -383,59 +390,59 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   {/* Grainy Texture */}
                   <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
                   
-                  <div className="relative z-10 w-full flex flex-col items-center pt-4">
+                  <div className="relative z-10 flex w-full flex-1 flex-col items-center pt-2 min-h-0">
                     <Logo size="md" className="mb-4 drop-shadow-xl" />
                     <h2 className="text-xl font-bold text-theme-strong mb-1 tracking-wide">وشّى منصة الفن</h2>
-                    <p className="text-gold text-xs tracking-widest uppercase mb-8">@washha.sa</p>
+                    <p className="text-gold text-xs tracking-widest uppercase mb-6">@washha.sa</p>
 
                     {/* Social Buttons List */}
-                    <div className="w-full flex flex-col gap-3">
+                    <div className="w-full flex flex-col gap-2.5">
                       {config.social_instagram && (
-                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Instagram className="w-4.5 h-4.5 text-gold" />
+                        <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Instagram className="w-4 h-4 text-gold" />
                           </div>
-                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_instagram}</span>
+                          <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_instagram}</span>
                           <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_twitter && (
-                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Twitter className="w-4.5 h-4.5 text-gold" />
+                        <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Twitter className="w-4 h-4 text-gold" />
                           </div>
-                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_twitter}</span>
+                          <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_twitter}</span>
                           <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_tiktok && (
-                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <TikTokIcon className="w-4.5 h-4.5 text-gold" />
+                        <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <TikTokIcon className="w-4 h-4 text-gold" />
                           </div>
-                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_tiktok}</span>
+                          <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_tiktok}</span>
                           <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
                       {config.social_snapchat && (
-                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Ghost className="w-4.5 h-4.5 text-gold" />
+                        <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
+                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <Ghost className="w-4 h-4 text-gold" />
                           </div>
-                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_snapchat}</span>
+                          <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_snapchat}</span>
                           <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
 
                       {config.social_whatsapp && (
-                        <div className="w-full px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300 mt-1">
-                          <div className="w-9 h-9 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <MessageCircle className="w-4.5 h-4.5 text-green-500" />
+                        <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300 mt-0.5">
+                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
+                            <MessageCircle className="w-4 h-4 text-green-500" />
                           </div>
-                          <span className="text-theme-strong text-sm font-medium tracking-wide flex-1 text-left" dir="ltr">{config.social_whatsapp}</span>
+                          <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_whatsapp}</span>
                           <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
@@ -443,8 +450,13 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   </div>
 
                   {/* Web URL Footer Wrapper */}
-                  <div className="mt-auto relative z-10 w-full text-center pb-2">
-                    <span dir="ltr" className="text-theme-subtle text-xs tracking-[0.2em] uppercase block">www.washa.shop</span>
+                  <div className="relative z-10 mt-5 w-full border-t border-theme-subtle/60 pt-4 pb-1 text-center">
+                    <span
+                      dir="ltr"
+                      className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-theme-subtle/70 bg-theme-faint px-4 py-2 text-[11px] tracking-[0.18em] text-theme-subtle uppercase truncate"
+                    >
+                      {socialCardWebsite}
+                    </span>
                   </div>
                 </div>
               </motion.div>
