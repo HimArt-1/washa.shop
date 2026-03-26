@@ -1,10 +1,11 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { getSupabaseAdminClient } from "@/lib/supabase";
+import { ensureProfile } from "@/lib/ensure-profile";
 
 const ALLOWED_ROLES = ["admin", "wushsha", "subscriber"];
 
 export async function resolveDesignPieceAccess(): Promise<{
     allowed: boolean;
+    profileId?: string;
     reason?: "not_signed_in" | "guest_needs_approval" | "approved";
 }> {
     const user = await currentUser();
@@ -12,18 +13,7 @@ export async function resolveDesignPieceAccess(): Promise<{
         return { allowed: false, reason: "not_signed_in" };
     }
 
-    let supabase;
-    try {
-        supabase = getSupabaseAdminClient();
-    } catch {
-        return { allowed: false, reason: "guest_needs_approval" };
-    }
-
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, role")
-        .eq("clerk_id", user.id)
-        .single();
+    const profile = await ensureProfile();
 
     if (!profile) {
         return { allowed: false, reason: "guest_needs_approval" };
@@ -32,7 +22,7 @@ export async function resolveDesignPieceAccess(): Promise<{
     const role = profile.role as string;
 
     if (ALLOWED_ROLES.includes(role)) {
-        return { allowed: true, reason: "approved" };
+        return { allowed: true, reason: "approved", profileId: profile.id };
     }
 
     return { allowed: false, reason: "guest_needs_approval" };

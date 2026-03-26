@@ -409,6 +409,19 @@ export type GarmentStudioMockup = {
 
 export type CustomDesignPreset = DesignPreset;
 export type CustomDesignOptionCompatibility = DesignOptionCompatibility;
+export type DtfDesignHistory = {
+    id: string;
+    profile_id: string;
+    garment_type: string;
+    garment_color: string;
+    style: string;
+    technique: string;
+    palette: string;
+    prompt: string;
+    thumbnail_path: string | null;
+    thumbnail_url: string | null;
+    created_at: string;
+}
 
 // ─── ERP (Inventory, SKUs, Sales) ────────────────────────
 
@@ -695,6 +708,20 @@ export type Database = {
                 Insert: Partial<CustomDesignSettings>;
                 Update: Partial<CustomDesignSettings>;
                 Relationships: any[];
+            };
+            dtf_design_history: {
+                Row: DtfDesignHistory;
+                Insert: Omit<DtfDesignHistory, "created_at"> & { created_at?: string };
+                Update: Partial<Omit<DtfDesignHistory, "id" | "profile_id" | "created_at">>;
+                Relationships: [
+                    {
+                        foreignKeyName: "dtf_design_history_profile_id_fkey";
+                        columns: ["profile_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             admin_notifications: {
                 Row: AdminNotification;
