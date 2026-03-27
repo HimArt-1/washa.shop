@@ -212,5 +212,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
         orderId: orderRow.id,
         orderNumber: orderRow.order_number,
+        mockupUrl: mockupResult.url,
     });
 }

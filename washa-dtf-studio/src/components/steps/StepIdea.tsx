@@ -27,6 +27,14 @@ const CALLIGRAPHY_SUGGESTIONS = [
 export default function StepIdea() {
   const { state, updateState, nextStep, prevStep, handleImageUpload } = useDesign();
 
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
+    handleImageUpload(fakeEvent);
+  };
+
   const tabs = [
     { id: 'text', label: 'وصف فكرة', icon: Type },
     { id: 'calligraphy', label: 'مخطوطة', icon: PenLine },
@@ -220,6 +228,8 @@ export default function StepIdea() {
               className="space-y-5"
             >
               <div
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
                 className={cn(
                   'border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-all duration-500 bg-washa-bg/30',
                   state.referenceImage

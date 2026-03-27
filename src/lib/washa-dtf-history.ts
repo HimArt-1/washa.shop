@@ -4,7 +4,6 @@ import { ensureProfile } from "@/lib/ensure-profile";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { Database } from "@/types/database";
 
-const ALLOWED_ROLES = new Set(["admin", "wushsha", "subscriber"]);
 const HISTORY_LIMIT = 12;
 const THUMBNAIL_BUCKET = "designs";
 const THUMBNAIL_PREFIX = "dtf-history";
@@ -123,7 +122,7 @@ export async function requireWashaDtfHistoryAccess(): Promise<
     }
 
     const profile = await ensureProfile();
-    if (!profile || !ALLOWED_ROLES.has(profile.role)) {
+    if (!profile) {
         return { ok: false, status: 403, error: "غير مصرح لك باستخدام استوديو DTF" };
     }
 

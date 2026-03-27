@@ -213,8 +213,8 @@ export default function StepResult() {
 
   const handleConfirmOrder = () => setShowTerms(true);
   const handleAcceptTerms = async () => {
-    await submitOrder();
-    setShowTerms(false);
+    const success = await submitOrder();
+    if (success) setShowTerms(false);
   };
 
   return (

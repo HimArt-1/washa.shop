@@ -34,7 +34,7 @@ interface DesignContextType {
   // Order submission
   isSubmittingOrder: boolean;
   orderResult: OrderResult | null;
-  submitOrder: () => Promise<void>;
+  submitOrder: () => Promise<boolean>;
 
   // Actions
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -229,8 +229,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     showToast('جاري تحميل الملف...', 'success');
   };
 
-  const submitOrder = async () => {
-    if (!mockupImage) return;
+  const submitOrder = async (): Promise<boolean> => {
+    if (!mockupImage) return false;
 
     setIsSubmittingOrder(true);
     setError(null);
@@ -270,17 +270,20 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         if (!cartState.state) cartState.state = { items: [], coupon: null };
         if (!Array.isArray(cartState.state.items)) cartState.state.items = [];
 
+        // Use the Supabase URL returned from the API (not the raw base64)
+        const imageUrl = data.mockupUrl || '';
+
         const cartItem = {
           id: `dtf-order-${data.orderNumber}`,
           title: `تصميم DTF مخصص — ${state.garmentType} ${state.garmentColor}`,
           price: 0,
-          image_url: mockupImage || '',
+          image_url: imageUrl,
           artist_name: 'وشّى DTF Studio',
           quantity: 1,
           size: null,
           type: 'custom_design' as const,
           maxQuantity: 1,
-          customDesignUrl: mockupImage || '',
+          customDesignUrl: imageUrl,
           customGarment: state.garmentType,
           customPosition: 'chest',
         };
@@ -298,10 +301,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       }
 
       showToast(`تم إرسال طلبك بنجاح! رقم الطلب: #${data.orderNumber}`, 'success');
+      return true;
     } catch (err) {
       const msg = getReadableErrorMessage(err, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
       setError(msg);
       showToast(msg, 'error');
+      return false;
     } finally {
       setIsSubmittingOrder(false);
     }
