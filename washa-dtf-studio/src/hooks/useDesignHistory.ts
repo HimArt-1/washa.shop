@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { DesignHistoryItem } from '../types';
 
 const STORAGE_KEY = 'washa-design-history';
@@ -77,10 +77,11 @@ function mergeHistoryItems(...groups: DesignHistoryItem[][]) {
     .slice(0, MAX_ITEMS);
 }
 
-async function saveHistoryItemRemotely(item: DesignHistoryItem) {
+async function saveHistoryItemRemotely(item: DesignHistoryItem, signal?: AbortSignal) {
   const response = await fetch(HISTORY_ENDPOINT, {
     method: 'POST',
     credentials: 'same-origin',
+    signal,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -107,11 +108,71 @@ async function saveHistoryItemRemotely(item: DesignHistoryItem) {
 
 export function useDesignHistory() {
   const [history, setHistory] = useState<DesignHistoryItem[]>([]);
+  const pendingSaveControllersRef = useRef(new Map<string, AbortController>());
+  const deletedIdsRef = useRef(new Set<string>());
+  const mutationEpochRef = useRef(0);
 
   // Persist to localStorage
   const persist = useCallback((items: DesignHistoryItem[]) => {
     return persistWithinQuota(items);
   }, []);
+
+  const abortPendingSave = useCallback((id: string) => {
+    const controller = pendingSaveControllersRef.current.get(id);
+    if (!controller) {
+      return;
+    }
+
+    controller.abort();
+    pendingSaveControllersRef.current.delete(id);
+  }, []);
+
+  const abortAllPendingSaves = useCallback(() => {
+    pendingSaveControllersRef.current.forEach(controller => controller.abort());
+    pendingSaveControllersRef.current.clear();
+  }, []);
+
+  const queueRemoteSave = useCallback(
+    async (item: DesignHistoryItem) => {
+      abortPendingSave(item.id);
+
+      const controller = new AbortController();
+      const epochAtDispatch = mutationEpochRef.current;
+      pendingSaveControllersRef.current.set(item.id, controller);
+
+      try {
+        const savedItem = await saveHistoryItemRemotely(item, controller.signal);
+        if (!savedItem) {
+          return null;
+        }
+
+        if (controller.signal.aborted) {
+          return null;
+        }
+
+        if (deletedIdsRef.current.has(item.id)) {
+          return null;
+        }
+
+        if (epochAtDispatch !== mutationEpochRef.current) {
+          return null;
+        }
+
+        return savedItem;
+      } catch (error) {
+        if (controller.signal.aborted || (error instanceof Error && error.name === 'AbortError')) {
+          return null;
+        }
+
+        throw error;
+      } finally {
+        if (pendingSaveControllersRef.current.get(item.id) === controller) {
+          pendingSaveControllersRef.current.delete(item.id);
+        }
+      }
+    },
+    [abortPendingSave]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -145,7 +206,7 @@ export function useDesignHistory() {
         const unsyncedItems = localItems.filter(item => !remoteIds.has(item.id));
 
         unsyncedItems.forEach(item => {
-          void saveHistoryItemRemotely(item)
+          void queueRemoteSave(item)
             .then(savedItem => {
               if (!savedItem || cancelled) {
                 return;
@@ -167,8 +228,9 @@ export function useDesignHistory() {
 
     return () => {
       cancelled = true;
+      abortAllPendingSaves();
     };
-  }, [persist]);
+  }, [abortAllPendingSaves, persist, queueRemoteSave]);
 
   const saveDesign = useCallback(
     (item: Omit<DesignHistoryItem, 'id' | 'createdAt'>) => {
@@ -178,9 +240,10 @@ export function useDesignHistory() {
         createdAt: new Date().toISOString(),
       };
 
+      deletedIdsRef.current.delete(newItem.id);
       setHistory(prev => persist(mergeHistoryItems([newItem], prev)));
 
-      void saveHistoryItemRemotely(newItem)
+      void queueRemoteSave(newItem)
         .then(savedItem => {
           if (!savedItem) {
             return;
@@ -194,12 +257,14 @@ export function useDesignHistory() {
 
       return newItem.id;
     },
-    [persist]
+    [persist, queueRemoteSave]
   );
 
   const deleteDesign = useCallback(
     (id: string) => {
       const previousSnapshot = history;
+      deletedIdsRef.current.add(id);
+      abortPendingSave(id);
       setHistory(prev => persist(prev.filter(item => item.id !== id)));
 
       void fetch(`${HISTORY_ENDPOINT}/${encodeURIComponent(id)}`, {
@@ -211,14 +276,17 @@ export function useDesignHistory() {
         }
       }).catch(error => {
         console.warn('Failed to delete design history item remotely:', error);
+        deletedIdsRef.current.delete(id);
         setHistory(persist(previousSnapshot));
       });
     },
-    [history, persist]
+    [abortPendingSave, history, persist]
   );
 
   const clearHistory = useCallback(() => {
     const previousSnapshot = history;
+    mutationEpochRef.current += 1;
+    abortAllPendingSaves();
     setHistory([]);
     localStorage.removeItem(STORAGE_KEY);
 
@@ -231,9 +299,10 @@ export function useDesignHistory() {
       }
     }).catch(error => {
       console.warn('Failed to clear design history remotely:', error);
+      deletedIdsRef.current.clear();
       setHistory(persist(previousSnapshot));
     });
-  }, [history, persist]);
+  }, [abortAllPendingSaves, history, persist]);
 
   return {
     history,

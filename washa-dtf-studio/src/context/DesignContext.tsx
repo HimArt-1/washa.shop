@@ -65,6 +65,17 @@ const INITIAL_STATE: DesignState = {
   palette: 'نيون ساطع (Neon)',
 };
 
+function getReadableErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message) {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
 export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(INITIAL_STATE);
@@ -156,13 +167,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setError('فشل في توليد الصورة. يرجى المحاولة مرة أخرى.');
         showToast('فشل في توليد الصورة', 'error');
       }
-    } catch (err: any) {
-      setError(
-        err.message && err.message.includes("Requested entity was not found")
-          ? 'تعذر الوصول إلى خدمة Gemini الحالية. تحقق من تهيئة المفتاح على الخادم.'
-          : 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.'
-      );
-      showToast('حدث خطأ أثناء التوليد', 'error');
+    } catch (error) {
+      const message = getReadableErrorMessage(error, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
+      setError(message);
+      showToast(message, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -188,13 +196,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setError('فشل في استخراج التصميم.');
         showToast('فشل في استخراج التصميم', 'error');
       }
-    } catch (err: any) {
-      setError(
-        err.message && err.message.includes("Requested entity was not found")
-          ? 'تعذر الوصول إلى خدمة Gemini الحالية. تحقق من تهيئة المفتاح على الخادم.'
-          : 'حدث خطأ أثناء الاستخراج.'
-      );
-      showToast('حدث خطأ أثناء الاستخراج', 'error');
+    } catch (error) {
+      const message = getReadableErrorMessage(error, 'حدث خطأ أثناء الاستخراج.');
+      setError(message);
+      showToast(message, 'error');
     } finally {
       setIsExtracting(false);
     }

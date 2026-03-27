@@ -202,6 +202,25 @@ async function removeThumbnailPaths(
     }
 }
 
+async function findDtfHistoryItem(
+    supabase: SupabaseClient<Database>,
+    profileId: string,
+    itemId: string
+) {
+    const { data, error } = await supabase
+        .from("dtf_design_history")
+        .select("id, garment_type, garment_color, style, technique, palette, prompt, thumbnail_url, created_at")
+        .eq("profile_id", profileId)
+        .eq("id", itemId)
+        .maybeSingle();
+
+    if (error) {
+        throw new Error("تعذر قراءة عنصر السجل");
+    }
+
+    return data ? mapDtfHistoryRow(data) : null;
+}
+
 async function trimExcessHistory(
     supabase: SupabaseClient<Database>,
     profileId: string
@@ -261,6 +280,11 @@ export async function createDtfHistoryItem(
     rawPayload: RawCreateInput
 ) {
     const payload = sanitizeDtfHistoryCreateInput(rawPayload);
+    const existing = await findDtfHistoryItem(supabase, profileId, payload.id);
+    if (existing) {
+        return existing;
+    }
+
     let uploadedPath: string | null = null;
 
     try {
@@ -282,11 +306,15 @@ export async function createDtfHistoryItem(
 
         const { data, error } = await supabase
             .from("dtf_design_history")
-            .upsert(row)
+            .insert(row)
             .select("id, garment_type, garment_color, style, technique, palette, prompt, thumbnail_path, thumbnail_url, created_at")
             .single();
 
         if (error || !data) {
+            const afterInsertAttempt = await findDtfHistoryItem(supabase, profileId, payload.id);
+            if (afterInsertAttempt) {
+                return afterInsertAttempt;
+            }
             throw new Error("تعذر حفظ التصميم في السجل");
         }
 
