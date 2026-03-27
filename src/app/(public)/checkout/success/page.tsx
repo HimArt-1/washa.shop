@@ -77,26 +77,18 @@ function CheckoutSuccessContent() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 pt-8 w-full max-w-md">
-        <Link href="/account/orders" className="flex-1">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full btn-gold py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-gold/20"
-          >
+        <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Link href="/account/orders" className="w-full btn-gold py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-gold/20">
             متابعة الطلب
             <ArrowRight className="w-5 h-5" />
-          </motion.button>
-        </Link>
+          </Link>
+        </motion.div>
         
-        <Link href="/gallery" className="flex-1">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full bg-theme-surface border border-white/10 hover:border-gold/50 hover:bg-theme-faint text-theme-strong py-4 px-6 rounded-2xl font-bold transition-colors"
-          >
+        <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Link href="/gallery" className="w-full bg-theme-surface border border-white/10 hover:border-gold/50 hover:bg-theme-faint text-theme-strong py-4 px-6 rounded-2xl font-bold transition-colors flex items-center justify-center">
             مواصلة التسوق
-          </motion.button>
-        </Link>
+          </Link>
+        </motion.div>
       </div>
     </div>
   );

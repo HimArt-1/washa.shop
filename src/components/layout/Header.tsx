@@ -215,16 +215,12 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     </button>
                   </div>
                   
-                  <Link href="/account">
-                    <motion.button
-                      className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Link href="/account" className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer">
                       <User className="w-4 h-4" />
                       حسابي
-                    </motion.button>
-                  </Link>
+                    </Link>
+                  </motion.div>
                   <div className="[&_.cl-userButtonBox]:flex [&_.cl-userButtonTrigger]:rounded-xl">
                     <UserButton
                       afterSignOutUrl="/"
@@ -255,16 +251,12 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               </SignedIn>
               <SignedOut>
                 {visibility?.hero_auth_buttons !== false && (
-                  <Link href="/sign-in">
-                    <motion.button
-                      className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
+                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <Link href="/sign-in" className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer">
                       <User className="w-4 h-4" />
                       تسجيل الدخول
-                    </motion.button>
-                  </Link>
+                    </Link>
+                  </motion.div>
                 )}
               </SignedOut>
             </div>
@@ -544,11 +536,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 }}
                     >
-                      <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)}>
-                        <button className="btn-gold flex items-center gap-2 cursor-pointer py-3 px-6">
+                      <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)} className="btn-gold flex items-center gap-2 cursor-pointer py-3 px-6">
                           <User className="w-5 h-5" />
                           تسجيل الدخول
-                        </button>
                       </Link>
                     </motion.div>
                   )}

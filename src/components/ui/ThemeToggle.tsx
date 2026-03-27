@@ -13,17 +13,19 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
+  const resolvedTheme = mounted ? theme : "light";
+
   return (
     <motion.button
       onClick={toggleTheme}
       className="theme-toggle-pill group relative inline-flex items-center gap-2 overflow-hidden rounded-full px-2.5 py-2"
       whileHover={{ scale: 1.01, y: -1 }}
       whileTap={{ scale: 0.98 }}
-      aria-label={theme === "dark" ? "تفعيل النمط الفاتح" : "تفعيل النمط الداكن"}
-      aria-pressed={theme === "dark"}
+      aria-label={resolvedTheme === "dark" ? "تفعيل النمط الفاتح" : "تفعيل النمط الداكن"}
+      aria-pressed={resolvedTheme === "dark"}
     >
       <motion.span
-        key={mounted ? theme : "pending"}
+        key={mounted ? resolvedTheme : "pending"}
         initial={{ opacity: 0, scale: 0.85, rotate: -12 }}
         animate={{ opacity: 1, scale: 1, rotate: 0 }}
         transition={{ duration: 0.22 }}
@@ -34,7 +36,7 @@ export function ThemeToggle() {
           borderColor: "color-mix(in srgb, var(--wusha-gold) 16%, transparent)",
         }}
       >
-        {theme === "dark" ? (
+        {resolvedTheme === "dark" ? (
           <Sun className="h-4.5 w-4.5" />
         ) : (
           <Moon className="h-4.5 w-4.5" />
@@ -45,7 +47,7 @@ export function ThemeToggle() {
           المظهر
         </span>
         <span className="text-xs font-semibold text-theme-soft">
-          {mounted ? (theme === "dark" ? "داكن" : "فاتح") : "..." }
+          {mounted ? (resolvedTheme === "dark" ? "داكن" : "فاتح") : "..." }
         </span>
       </span>
     </motion.button>

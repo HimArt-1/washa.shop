@@ -50,7 +50,7 @@ function resolveTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => resolveTheme());
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const initialTheme = resolveTheme();
