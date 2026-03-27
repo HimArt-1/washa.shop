@@ -1,7 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { ensureProfile } from "@/lib/ensure-profile";
 
-const ALLOWED_ROLES = ["admin", "wushsha", "subscriber"];
+// Leave empty to allow ALL authenticated users.
+// Populate to restrict by role: ["admin", "wushsha", "subscriber"]
+const ALLOWED_ROLES: string[] = [];
 
 export async function resolveDesignPieceAccess(): Promise<{
     allowed: boolean;
@@ -19,9 +21,9 @@ export async function resolveDesignPieceAccess(): Promise<{
         return { allowed: false, reason: "guest_needs_approval" };
     }
 
-    const role = profile.role as string;
-
-    if (ALLOWED_ROLES.includes(role)) {
+    // If ALLOWED_ROLES is empty, any authenticated user with a profile is allowed.
+    // To restrict by role, populate the array above.
+    if (ALLOWED_ROLES.length === 0 || ALLOWED_ROLES.includes(profile.role as string)) {
         return { allowed: true, reason: "approved", profileId: profile.id };
     }
 
