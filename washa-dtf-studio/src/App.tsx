@@ -31,8 +31,8 @@ function AppContent() {
 
       try {
         const thumbnail = await resizeDataUrl(mockupImage, {
-          maxDimension: 480,
-          quality: 0.68,
+          maxDimension: 320,
+          quality: 0.6,
           outputMimeType: 'image/jpeg',
         });
 
