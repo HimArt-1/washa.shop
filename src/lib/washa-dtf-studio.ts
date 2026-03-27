@@ -57,6 +57,18 @@ export function getWashaDtfErrorDetails(error: unknown): {
         };
     }
 
+    if (
+        providerCode === 429 ||
+        providerStatus === "RESOURCE_EXHAUSTED" ||
+        /quota/i.test(providerMessage) ||
+        /rate.?limit/i.test(providerMessage)
+    ) {
+        return {
+            message: "تجاوزت الحصة اليومية لـ Gemini AI. يرجى المحاولة بعد قليل أو التواصل مع الدعم.",
+            status: 429,
+        };
+    }
+
     return {
         message: providerMessage,
         status: typeof providerCode === "number" && providerCode >= 400 && providerCode < 600
