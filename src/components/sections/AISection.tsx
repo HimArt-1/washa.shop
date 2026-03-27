@@ -104,31 +104,36 @@ export function AISection({ config }: AISectionProps) {
   }, []);
 
   return (
-    <section className="py-16 sm:py-24 relative overflow-hidden" id="ai-design-section">
+    <section className="py-16 sm:py-28 relative overflow-hidden" id="ai-design-section">
       {/* Section Divider */}
-      <div className="section-divider mb-16 sm:mb-24" />
+      <div className="gold-separator mb-16 sm:mb-28 mx-8 sm:mx-auto sm:max-w-2xl" />
 
-      {/* Subtle Background Gradient */}
+      {/* Background */}
       <div className="absolute inset-0 bg-theme-gradient" />
+      <div className="absolute inset-0 cyber-grid opacity-30" />
 
       {/* Gold Particles */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         {particles.map((particle) => (
           <motion.div
             key={particle.id}
-            className="absolute w-0.5 h-0.5 bg-gold/40 rounded-full"
+            className="absolute rounded-full bg-gold"
             style={{
               top: `${particle.top}%`,
               left: `${particle.left}%`,
+              width: particle.id % 3 === 0 ? "3px" : particle.id % 3 === 1 ? "2px" : "1px",
+              height: particle.id % 3 === 0 ? "3px" : particle.id % 3 === 1 ? "2px" : "1px",
             }}
             animate={{
-              opacity: [0.2, 0.8, 0.2],
-              scale: [1, 1.5, 1],
+              opacity: [0.1, 0.6, 0.1],
+              y: [0, -20, 0],
+              scale: [1, 1.8, 1],
             }}
             transition={{
               duration: particle.duration,
               repeat: Infinity,
               delay: particle.delay,
+              ease: "easeInOut",
             }}
           />
         ))}
@@ -143,17 +148,22 @@ export function AISection({ config }: AISectionProps) {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Sparkles className="w-4 h-4 text-gold" />
-            <span className="text-sm font-medium text-gold/60 tracking-[0.3em] uppercase">
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <div className="h-px w-8 bg-gradient-to-r from-transparent to-gold/50" />
+            <Sparkles className="w-3.5 h-3.5 text-gold/70" />
+            <span className="text-xs font-semibold text-gold/60 tracking-[0.35em] uppercase">
               صممها بنفسك
             </span>
+            <Sparkles className="w-3.5 h-3.5 text-gold/70" />
+            <div className="h-px w-8 bg-gradient-to-l from-transparent to-gold/50" />
           </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-            <span className="text-gradient">صمم قطعتك بالذكاء الاصطناعي</span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-5 leading-tight">
+            <span className="text-gradient font-display">صمّم قطعتك</span>
+            <br />
+            <span className="text-theme-strong text-3xl md:text-4xl lg:text-5xl font-bold">بالذكاء الاصطناعي</span>
           </h2>
-          <p className="text-theme-subtle max-w-2xl mx-auto">
-            رحلة تحويل أفكارك إلى قطع فنية ملموسة في 3 خطوات بسيطة
+          <p className="text-theme-subtle max-w-xl mx-auto text-base sm:text-lg leading-relaxed">
+            من الخيال إلى قطعة ترتديها — رحلة إبداعية في ثلاث خطوات
           </p>
         </motion.div>
 
@@ -170,19 +180,30 @@ export function AISection({ config }: AISectionProps) {
                 <button
                   key={step.id}
                   onClick={() => setActiveStep(step.id)}
-                  className={`flex items-start text-right gap-4 p-4 rounded-2xl transition-all duration-300 border ${
-                    isActive 
-                      ? "bg-gold/10 border-gold/30 shadow-[0_0_20px_rgba(202,160,82,0.15)]" 
-                      : "glass-card border-transparent hover:border-theme-soft opacity-60 hover:opacity-100"
+                  className={`relative flex items-start text-right gap-4 p-4 rounded-2xl transition-all duration-500 border ${
+                    isActive
+                      ? "border-gold/30 shadow-[0_0_30px_rgba(202,160,82,0.12)]"
+                      : "glass-card border-transparent hover:border-theme-soft opacity-55 hover:opacity-90"
                   }`}
+                  style={isActive ? {
+                    background: "linear-gradient(135deg, color-mix(in srgb, var(--wusha-gold) 10%, transparent), color-mix(in srgb, var(--wusha-gold) 5%, transparent))",
+                  } : {}}
                 >
-                  <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isActive ? "bg-gold text-[#111]" : "bg-theme-subtle text-theme-subtle"}`}>
+                  {isActive && (
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-gradient-to-b from-transparent via-gold to-transparent" />
+                  )}
+                  <div className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${isActive ? "bg-gold text-[#111] shadow-[0_4px_16px_rgba(202,160,82,0.4)]" : "bg-theme-subtle text-theme-subtle"}`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <div>
-                    <h3 className={`font-bold mb-1 transition-colors ${isActive ? "text-gold" : "text-theme-strong"}`}>
-                      {step.title}
-                    </h3>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold tracking-widest ${isActive ? "text-gold/60" : "text-theme-faint"}`}>
+                        {String(step.id).padStart(2, "0")}
+                      </span>
+                      <h3 className={`font-bold transition-colors ${isActive ? "text-gold" : "text-theme-strong"}`}>
+                        {step.title}
+                      </h3>
+                    </div>
                     <p className="text-xs sm:text-sm text-theme-subtle leading-relaxed">
                       {step.desc}
                     </p>
@@ -194,11 +215,7 @@ export function AISection({ config }: AISectionProps) {
             <div className="hidden lg:block mt-6">
               <Link
                 href="/design"
-                className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all duration-500 group"
-                style={{
-                  background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
-                  color: "var(--wusha-bg)",
-                }}
+                className="btn-gold w-full flex items-center justify-center gap-2 py-4 rounded-xl group"
               >
                 <span>ابدأ رحلة التصميم الآن</span>
                 <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
@@ -207,7 +224,7 @@ export function AISection({ config }: AISectionProps) {
           </div>
 
           {/* Visual Simulation Stage */}
-          <div className="w-full lg:w-2/3 aspect-[4/3] sm:aspect-[16/10] glass-card rounded-[2rem] border-gold/20 overflow-hidden relative shadow-2xl flex items-center justify-center p-6 sm:p-12">
+          <div className="w-full lg:w-2/3 aspect-[4/3] sm:aspect-[16/10] premium-card rounded-[2rem] overflow-hidden relative flex items-center justify-center p-6 sm:p-12">
             <AnimatePresence mode="wait">
               {/* STEP 1: Garment Selection */}
               {activeStep === 1 && (
@@ -374,15 +391,18 @@ export function AISection({ config }: AISectionProps) {
           <div className="lg:hidden w-full mt-2">
             <Link
               href="/design"
-              className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all duration-500 group"
-              style={{
-                background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))",
-                color: "var(--wusha-bg)",
-              }}
+              className="btn-gold w-full flex items-center justify-center gap-2 py-4 rounded-xl group"
             >
               <span>ابدأ رحلة التصميم الآن</span>
               <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             </Link>
+          </div>
+
+          {/* Section Bottom Ornament */}
+          <div className="w-full mt-6 lg:mt-10 flex items-center justify-center gap-4 opacity-40">
+            <div className="h-px flex-1 max-w-xs bg-gradient-to-r from-transparent to-gold/30" />
+            <Sparkles className="w-3 h-3 text-gold/50" />
+            <div className="h-px flex-1 max-w-xs bg-gradient-to-l from-transparent to-gold/30" />
           </div>
         </div>
       </div>

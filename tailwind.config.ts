@@ -43,15 +43,20 @@ const config: Config = {
       },
       animation: {
         "float": "float 6s ease-in-out infinite",
+        "float-slow": "float 10s ease-in-out infinite",
         "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "spin-slow": "spin 20s linear infinite",
         "gradient": "gradient 8s ease infinite",
         "reveal": "reveal 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "slide-up": "slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "slide-in-right": "slideInRight 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "scale-in": "scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "fade-in": "fadeIn 0.6s ease-out forwards",
+        "fade-up": "fadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards",
         "shimmer": "shimmer 3s ease-in-out infinite",
         "glow-pulse": "glowPulse 2s ease-in-out infinite",
         "neon-pulse": "neonPulse 2.5s ease-in-out infinite",
+        "border-flow": "borderFlow 4s linear infinite",
       },
       keyframes: {
         float: {
@@ -85,6 +90,23 @@ const config: Config = {
         neonPulse: {
           "0%, 100%": { opacity: "1", boxShadow: "0 0 20px rgba(206, 174, 127, 0.3)" },
           "50%": { opacity: "0.95", boxShadow: "0 0 40px rgba(206, 174, 127, 0.5)" },
+        },
+        slideInRight: {
+          "0%": { transform: "translateX(40px)", opacity: "0" },
+          "100%": { transform: "translateX(0)", opacity: "1" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.92)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        fadeUp: {
+          "0%": { transform: "translateY(20px)", opacity: "0" },
+          "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        borderFlow: {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
         },
       },
       backgroundImage: {

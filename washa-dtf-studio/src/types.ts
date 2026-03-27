@@ -5,7 +5,7 @@ export type GarmentColor =
   | 'بنفسجي داكن' | 'وردي مغبر' | 'بني قهوة' | 'برتقالي محروق' 
   | 'فحم داكن' | 'أزرق سماوي';
 
-export type DesignMethod = 'text' | 'image';
+export type DesignMethod = 'text' | 'image' | 'calligraphy';
 
 export type ArtisticStyle = 
   | 'ملصق (Sticker)' 
@@ -44,6 +44,7 @@ export interface DesignState {
   garmentColor: GarmentColor;
   designMethod: DesignMethod;
   prompt: string;
+  calligraphyText: string;
   referenceImage: string | null;
   referenceImageMimeType: string | null;
   style: ArtisticStyle;

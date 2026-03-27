@@ -180,35 +180,25 @@ export function Hero({ showAuthButtons = true }: HeroProps) {
       {/* ═══ Video Overlay — Gradient ═══ */}
       <div className="video-overlay" />
 
-      {/* ═══ Subtle Gold Particles ═══ */}
+      {/* ═══ Gold Atmospheric Particles ═══ */}
       <div className="absolute inset-0 z-[2] overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-1 h-1 rounded-full bg-gold/40"
-          style={{ top: "20%", right: "15%" }}
-          animate={{
-            y: [0, -30, 0],
-            opacity: [0.4, 1, 0.4],
-          }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-1.5 h-1.5 rounded-full bg-gold/30"
-          style={{ top: "60%", right: "80%" }}
-          animate={{
-            y: [0, -20, 0],
-            opacity: [0.3, 0.8, 0.3],
-          }}
-          transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        />
-        <motion.div
-          className="absolute w-0.5 h-0.5 rounded-full bg-gold/50"
-          style={{ top: "40%", right: "50%" }}
-          animate={{
-            y: [0, -40, 0],
-            opacity: [0.2, 0.7, 0.2],
-          }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        />
+        {[
+          { size: "w-1 h-1",     top: "20%", right: "15%", dur: 4,   del: 0,   opa: [0.4, 1,   0.4], drift: -30 },
+          { size: "w-1.5 h-1.5", top: "60%", right: "80%", dur: 5.5, del: 1,   opa: [0.3, 0.8, 0.3], drift: -20 },
+          { size: "w-0.5 h-0.5", top: "40%", right: "50%", dur: 6,   del: 2,   opa: [0.2, 0.7, 0.2], drift: -40 },
+          { size: "w-1 h-1",     top: "75%", right: "25%", dur: 4.5, del: 0.5, opa: [0.3, 0.9, 0.3], drift: -25 },
+          { size: "w-2 h-2",     top: "30%", right: "65%", dur: 7,   del: 1.5, opa: [0.15,0.5, 0.15],drift: -18 },
+          { size: "w-0.5 h-0.5", top: "85%", right: "40%", dur: 5,   del: 3,   opa: [0.2, 0.6, 0.2], drift: -35 },
+          { size: "w-1 h-1",     top: "15%", right: "40%", dur: 6.5, del: 2.5, opa: [0.25,0.75,0.25],drift: -22 },
+        ].map((p, i) => (
+          <motion.div
+            key={i}
+            className={`absolute ${p.size} rounded-full bg-gold`}
+            style={{ top: p.top, right: p.right }}
+            animate={{ y: [0, p.drift, 0], opacity: p.opa }}
+            transition={{ duration: p.dur, repeat: Infinity, ease: "easeInOut", delay: p.del }}
+          />
+        ))}
       </div>
 
       {/* ═══ Main Content ═══ */}
@@ -238,14 +228,22 @@ export function Hero({ showAuthButtons = true }: HeroProps) {
         </motion.div>
 
         {/* Subtitle */}
-        <motion.p
-          className="text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto mb-10 sm:mb-14 font-light text-theme-soft"
+        <motion.div
+          className="mb-10 sm:mb-14 flex flex-col items-center gap-3"
           initial={{ opacity: 0, y: 30 }}
           animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.5 }}
+          transition={{ duration: 0.9, delay: 0.5 }}
         >
-          فنٌ يرتدى
-        </motion.p>
+          <p className="text-3xl sm:text-4xl md:text-5xl font-display italic text-glow-gold"
+            style={{ color: "color-mix(in srgb, var(--wusha-gold-light) 90%, transparent)", letterSpacing: "0.04em" }}>
+            فنٌ يرتدى
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="h-px w-16 bg-gradient-to-r from-transparent to-gold/40" />
+            <span className="text-xs tracking-[0.3em] text-theme-faint uppercase">art you wear</span>
+            <div className="h-px w-16 bg-gradient-to-l from-transparent to-gold/40" />
+          </div>
+        </motion.div>
 
         {/* CTA Buttons — تظهر فقط عند تفعيلها من الإعدادات */}
         {showAuthButtons && (
@@ -344,34 +342,77 @@ export function Hero({ showAuthButtons = true }: HeroProps) {
 
       {/* Scroll Indicator */}
       <motion.div
-        className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 hidden sm:block"
+        className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 hidden sm:flex flex-col items-center gap-3"
         initial={{ opacity: 0 }}
         animate={curtainLifted ? { opacity: 1 } : {}}
-        transition={{ delay: 1.5 }}
+        transition={{ delay: 1.8 }}
       >
+        <span className="text-[10px] tracking-[0.4em] uppercase"
+          style={{ color: "color-mix(in srgb, var(--wusha-text) 35%, transparent)" }}>
+          اكتشف
+        </span>
         <motion.div
-          className="flex flex-col items-center gap-2 text-theme-subtle"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          className="relative w-6 h-10 rounded-full border flex items-start justify-center pt-1.5"
+          style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)" }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2.5, repeat: Infinity }}
         >
-          <span className="text-xs tracking-widest">اكتشف المزيد</span>
-          <ArrowDown className="w-4 h-4" />
+          <motion.div
+            className="w-1 h-2 rounded-full bg-gold/60"
+            animate={{ y: [0, 14, 0], opacity: [1, 0, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
         </motion.div>
       </motion.div>
 
       {/* Decorative Gold Lines */}
       <motion.div
-        className="absolute top-1/4 right-10 w-px h-32 bg-gradient-to-b from-transparent via-gold/20 to-transparent hidden lg:block z-10"
-        initial={{ scaleY: 0 }}
+        className="absolute top-1/4 right-10 w-px h-44 hidden lg:block z-10"
+        style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wusha-gold) 30%, transparent) 40%, color-mix(in srgb, var(--wusha-gold) 15%, transparent) 70%, transparent)" }}
+        initial={{ scaleY: 0, originY: 0 }}
         animate={curtainLifted ? { scaleY: 1 } : {}}
-        transition={{ duration: 1.5, delay: 1.2 }}
+        transition={{ duration: 1.8, delay: 1.2, ease: [0.16, 1, 0.3, 1] }}
       />
       <motion.div
-        className="absolute top-1/3 left-10 w-px h-24 bg-gradient-to-b from-transparent via-gold/10 to-transparent hidden lg:block z-10"
-        initial={{ scaleY: 0 }}
+        className="absolute top-1/3 left-10 w-px h-32 hidden lg:block z-10"
+        style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wusha-gold) 15%, transparent) 50%, transparent)" }}
+        initial={{ scaleY: 0, originY: 0 }}
         animate={curtainLifted ? { scaleY: 1 } : {}}
-        transition={{ duration: 1.5, delay: 1.5 }}
+        transition={{ duration: 1.8, delay: 1.5, ease: [0.16, 1, 0.3, 1] }}
       />
+      {/* Corner ornaments */}
+      <motion.div
+        className="absolute top-8 right-8 hidden lg:block z-10"
+        initial={{ opacity: 0 }}
+        animate={curtainLifted ? { opacity: 1 } : {}}
+        transition={{ delay: 2 }}
+      >
+        <div className="w-6 h-6 border-t border-r" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+      </motion.div>
+      <motion.div
+        className="absolute top-8 left-8 hidden lg:block z-10"
+        initial={{ opacity: 0 }}
+        animate={curtainLifted ? { opacity: 1 } : {}}
+        transition={{ delay: 2.1 }}
+      >
+        <div className="w-6 h-6 border-t border-l" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+      </motion.div>
+      <motion.div
+        className="absolute bottom-16 right-8 hidden lg:block z-10"
+        initial={{ opacity: 0 }}
+        animate={curtainLifted ? { opacity: 1 } : {}}
+        transition={{ delay: 2.2 }}
+      >
+        <div className="w-6 h-6 border-b border-r" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+      </motion.div>
+      <motion.div
+        className="absolute bottom-16 left-8 hidden lg:block z-10"
+        initial={{ opacity: 0 }}
+        animate={curtainLifted ? { opacity: 1 } : {}}
+        transition={{ delay: 2.3 }}
+      >
+        <div className="w-6 h-6 border-b border-l" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+      </motion.div>
     </section>
   );
 }

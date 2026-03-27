@@ -58,6 +58,7 @@ const INITIAL_STATE: DesignState = {
   garmentColor: 'أسود',
   designMethod: 'text',
   prompt: '',
+  calligraphyText: '',
   referenceImage: null,
   referenceImageMimeType: null,
   style: 'ملصق (Sticker)',
@@ -131,7 +132,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleGenerate = async () => {
-    if (!state.prompt && !state.referenceImage) {
+    if (state.designMethod === 'calligraphy') {
+      if (!state.calligraphyText.trim()) {
+        setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
+        showToast('يرجى كتابة النص المراد تصميمه', 'error');
+        return;
+      }
+    } else if (!state.prompt && !state.referenceImage) {
       setError('يرجى إدخال وصف أو رفع صورة مرجعية');
       showToast('يرجى إدخال وصف أو رفع صورة مرجعية', 'error');
       return;
@@ -145,8 +152,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Determine the palette prompt: if 'Custom', use the user's input; otherwise use the preset
-      const palettePrompt = state.palette === 'تخصيص... (Custom)' 
-        ? (state.customPalette || 'custom colors') 
+      const palettePrompt = state.palette === 'تخصيص... (Custom)'
+        ? (state.customPalette || 'custom colors')
         : PALETTE_PROMPTS[state.palette];
 
       const mockup = await generateMockup(
@@ -157,7 +164,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         STYLE_PROMPTS[state.style],
         palettePrompt,
         state.referenceImage || undefined,
-        state.referenceImageMimeType || undefined
+        state.referenceImageMimeType || undefined,
+        state.designMethod === 'calligraphy' ? state.calligraphyText : undefined
       );
 
       if (mockup) {

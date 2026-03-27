@@ -28,9 +28,14 @@ export async function generateMockup(
   style: string,
   palette: string,
   referenceImageBase64?: string,
-  referenceImageMimeType?: string
+  referenceImageMimeType?: string,
+  calligraphyText?: string
 ): Promise<string | null> {
-  const prompt = `Professional 8k studio mockup of a ${color} ${garmentType} with a single, bold, centered DTF print of: ${userDescription}. Style: ${style}, Technique: ${technique}, Palette: ${palette}. IMPORTANT: No text, no duplication, no double layers, sharp details on fabric.`;
+  const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
+
+  const prompt = isCalligraphy
+    ? `Professional 8K studio mockup of a ${color} ${garmentType} featuring a single, centered masterful calligraphy print. Render the following text as stunning artistic calligraphy lettering: "${calligraphyText}". Calligraphy style: ${style}. Technique: ${technique}. Palette: ${palette}. The letters must be graceful, artistically stylized, with elegant curves and deliberate strokes. IMPORTANT: Render ONLY the provided phrase as calligraphy — no extra words, no duplications, no double layers, sharp crisp lettering on fabric.`
+    : `Professional 8K studio mockup of a ${color} ${garmentType} with a single, bold, centered DTF graphic print. Visual concept: ${userDescription}. CRITICAL: Generate a purely VISUAL graphic artwork — absolutely NO text, NO letters, NO written words, NO typography anywhere in the design. Pure illustration only. Style: ${style}. Technique: ${technique}. Palette: ${palette}. IMPORTANT: No text of any kind. No duplication, no double layers, sharp details on fabric.`;
 
   try {
     const body: any = { prompt };
@@ -57,7 +62,7 @@ export async function generateMockup(
 }
 
 export async function extractDesign(mockupImageBase64: string, mimeType: string): Promise<string | null> {
-  const prompt = `Isolate and extract the single 2D graphic design from the garment onto a flat 2D view. Background must be pure solid white (#FFFFFF). STRICT: No garment traces, no fabric texture, no shadows, and absolutely NO duplication or double-drawn layers. Single-layer high-definition graphic only.`;
+  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: pure solid white background (#FFFFFF), no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean layer, print-ready quality.`;
 
   try {
     const response = await fetch(`${API_BASE_URL}/extract-design`, {
