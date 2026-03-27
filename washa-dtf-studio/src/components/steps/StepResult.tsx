@@ -8,6 +8,33 @@ import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 
+// ── Garment color hex map (matches API + StepGarment) ──────────
+const GARMENT_COLOR_HEX: Record<string, string> = {
+  'أسود':           '#0D0D0D',
+  'أبيض':           '#F2F2F2',
+  'رمادي':          '#808080',
+  'كحلي':           '#1A2744',
+  'بيج':            '#D9C5A0',
+  'زيتي':           '#4A5340',
+  'أحمر عنابي':     '#6B1B1B',
+  'أخضر غابة':      '#1C4A2A',
+  'أزرق ملكي':      '#1B3A8C',
+  'خردلي':          '#B08A20',
+  'بنفسجي داكن':    '#3C1F5A',
+  'وردي مغبر':      '#C4899A',
+  'بني قهوة':       '#5A3320',
+  'برتقالي محروق':  '#A84515',
+  'فحم داكن':       '#2A2A2A',
+  'أزرق سماوي':     '#5EB5E8',
+};
+
+function hexToRgb(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
+
 // ── Terms & Conditions Modal ──────────────────────────────────
 function TermsModal({
   onAccept,
@@ -207,9 +234,16 @@ export default function StepResult() {
     isSubmittingOrder,
     orderResult,
     submitOrder,
+    state,
   } = useDesign();
 
   const [showTerms, setShowTerms] = useState(false);
+
+  // Derived garment color values for ambient preview
+  const garmentHex   = GARMENT_COLOR_HEX[state.garmentColor] ?? '#111111';
+  const garmentRgb   = hexToRgb(garmentHex);
+  // Light colors need a darker text overlay; dark colors are fine with default
+  const isLightColor = ['أبيض', 'بيج', 'خردلي', 'وردي مغبر', 'أزرق سماوي'].includes(state.garmentColor);
 
   const handleConfirmOrder = () => setShowTerms(true);
   const handleAcceptTerms = async () => {
@@ -309,20 +343,34 @@ export default function StepResult() {
         {/* ===== RESULT STATE ===== */}
         {mockupImage && !isGenerating && !orderResult && (
           <>
-            {/* Step Badge */}
-            <div className="flex items-center justify-between">
+            {/* Step Badge + Garment Info */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="step-badge">
                 <Sparkles className="w-3 h-3 text-washa-gold" />
                 النتيجة النهائية
               </div>
+              {/* Garment color + type indicator */}
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-washa-surface/50 border border-washa-border/25 text-xs text-washa-text-sec">
+                <span
+                  className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-sm"
+                  style={{ backgroundColor: garmentHex }}
+                />
+                <span className="font-medium text-washa-text">{state.garmentType}</span>
+                <span className="text-washa-text-faint/40">·</span>
+                <span>{state.garmentColor}</span>
+              </div>
             </div>
 
-            {/* ── Card 1: Mockup ── */}
+            {/* ── Card 1: Mockup — ambient garment color tint ── */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
               className="glass-card-strong overflow-hidden relative group"
+              style={{
+                background: `linear-gradient(160deg, rgba(${garmentRgb}, ${isLightColor ? 0.12 : 0.18}) 0%, rgba(13,13,13,0.95) 52%)`,
+                boxShadow: `0 0 90px rgba(${garmentRgb}, 0.1), 0 40px 100px rgba(0,0,0,0.55), 0 12px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)`,
+              }}
             >
               <div className="aspect-square sm:aspect-[4/3] w-full relative">
                 <img

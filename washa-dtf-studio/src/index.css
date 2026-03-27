@@ -20,6 +20,12 @@
 }
 
 /* ————— Base ————— */
+html {
+  /* Prevent iOS auto-zoom on inputs */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background-color: var(--color-washa-bg);
   color: var(--color-washa-text);
@@ -27,6 +33,26 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  /* Prevent elastic bounce scrolling on iOS that disrupts fixed overlays */
+  overscroll-behavior-y: none;
+}
+
+/* Remove default iOS tap highlight (we add our own) */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Targeted tap feedback for interactive elements */
+button,
+[role="button"],
+label[for] {
+  touch-action: manipulation; /* Removes 300ms tap delay */
+  -webkit-tap-highlight-color: rgba(201, 168, 106, 0.06);
+  cursor: pointer;
+}
+
+a {
+  touch-action: manipulation;
 }
 
 /* ————— Custom Scrollbar ————— */
@@ -230,6 +256,20 @@ body {
   transform: translateY(-2px) scale(1.01);
 }
 
+/* Touch devices: replace hover lift with press feedback to avoid sticky-hover bug */
+@media (hover: none) and (pointer: coarse) {
+  .card-interactive:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .card-interactive:active {
+    transform: scale(0.965);
+    opacity: 0.88;
+    transition-duration: 0.08s;
+  }
+}
+
 /* ————— Glassmorphism Card ————— */
 .glass-card {
   background: linear-gradient(145deg, rgba(23, 23, 23, 0.78) 0%, rgba(14, 14, 14, 0.72) 100%);
@@ -351,12 +391,35 @@ body {
 
 /* ————— Wizard Transition Container ————— */
 .wizard-step-container {
-  min-height: calc(100vh - 5rem);
+  /* Use dynamic viewport height so iOS browser chrome is excluded */
+  min-height: calc(100dvh - 5rem);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  /* Bottom padding respects iOS home indicator */
+  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem));
   position: relative;
+}
+
+/* Fallback for browsers that don't support dvh */
+@supports not (min-height: 100dvh) {
+  .wizard-step-container {
+    min-height: calc(100vh - 5rem);
+  }
+}
+
+/* On short viewports, align to top so content is scrollable */
+@media (max-height: 680px) {
+  .wizard-step-container {
+    align-items: flex-start;
+    padding-top: 1.5rem;
+  }
+}
+
+/* iOS safe area top padding for the sticky header */
+header {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* ————— Selection Ring ————— */
@@ -435,4 +498,56 @@ body {
 
 .shadow-depth-lg {
   box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.35);
+}
+
+/* ————— Mobile Minimum Touch Target ————— */
+/* Ensure all tappable elements meet Apple HIG 44×44pt minimum */
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  input[type="checkbox"] + div,
+  input[type="radio"] + div {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Color swatches get larger hit area on mobile */
+  .color-swatch-btn {
+    min-width: 52px;
+    min-height: 52px;
+  }
+}
+
+/* ————— Smooth Momentum Scroll ————— */
+.overflow-y-auto,
+.overflow-auto,
+.scrollbar-thin {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* ————— Mobile Input Font Fix (prevents iOS zoom on focus) ————— */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* ————— Prevent Text Selection on Tap-Held Interactions ————— */
+.card-interactive,
+.step-badge,
+.orbit-particle {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ————— Safe Area Padding Utilities ————— */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }
