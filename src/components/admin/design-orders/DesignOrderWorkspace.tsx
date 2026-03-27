@@ -11,10 +11,12 @@ import {
     CheckCircle2,
     Clock,
     Copy,
+    Download,
     FileText,
     Image as ImageIcon,
     Loader2,
     Palette,
+    Printer,
     Ruler,
     Save,
     Send,
@@ -766,6 +768,102 @@ export function DesignOrderWorkspace({
                     animate={{ opacity: 1, y: 0 }}
                     className="theme-surface-panel space-y-6 rounded-[28px] p-5 sm:p-6"
                 >
+                    {/* ── DTF Studio Preview (shown when order came from DTF Studio) ── */}
+                    {currentOrder.dtf_mockup_url && (
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Printer className="h-4 w-4 text-gold" />
+                                <p className="text-sm font-bold text-theme">معاينة DTF Studio</p>
+                                <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 uppercase tracking-wider">
+                                    AI Generated
+                                </span>
+                            </div>
+
+                            {/* Style badges */}
+                            {(currentOrder.dtf_style_label || currentOrder.dtf_technique_label || currentOrder.dtf_palette_label) && (
+                                <div className="flex flex-wrap gap-2">
+                                    {currentOrder.dtf_style_label && (
+                                        <span className="rounded-full border border-gold/20 bg-gold/8 px-2.5 py-1 text-[11px] text-gold">
+                                            {currentOrder.dtf_style_label}
+                                        </span>
+                                    )}
+                                    {currentOrder.dtf_technique_label && (
+                                        <span className="rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] text-theme-subtle">
+                                            {currentOrder.dtf_technique_label}
+                                        </span>
+                                    )}
+                                    {currentOrder.dtf_palette_label && (
+                                        <span className="rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] text-theme-subtle">
+                                            {currentOrder.dtf_palette_label}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Mockup preview */}
+                            <div className="relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint">
+                                <img
+                                    src={currentOrder.dtf_mockup_url}
+                                    alt="AI Mockup"
+                                    className="h-72 w-full object-contain p-3"
+                                />
+                                <a
+                                    href={currentOrder.dtf_mockup_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-medium text-gold hover:bg-gold/20 transition-colors"
+                                >
+                                    <Download className="h-3 w-3" />
+                                    تحميل الموكب
+                                </a>
+                            </div>
+
+                            {/* Extracted DTF print template */}
+                            {currentOrder.dtf_extracted_url ? (
+                                <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-[color:var(--surface-elevated)]">
+                                    <div className="flex items-center justify-between px-4 py-3 border-b border-gold/15">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+                                            <span className="text-xs font-bold text-gold uppercase tracking-wider">نموذج الطباعة DTF</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-theme-faint">2K Print Ready</span>
+                                            <a
+                                                href={currentOrder.dtf_extracted_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                download
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-gold/30 bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold hover:bg-gold/25 transition-colors"
+                                            >
+                                                <Download className="h-3 w-3" />
+                                                تحميل ملف DTF
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {/* Checkerboard bg for transparent PNG */}
+                                    <div
+                                        className="flex items-center justify-center p-4 min-h-[200px]"
+                                        style={{
+                                            backgroundImage: "repeating-conic-gradient(#3a3a3a 0% 25%, #2a2a2a 0% 50%)",
+                                            backgroundSize: "20px 20px",
+                                        }}
+                                    >
+                                        <img
+                                            src={currentOrder.dtf_extracted_url}
+                                            alt="DTF Print Template"
+                                            className="max-h-56 max-w-full object-contain drop-shadow-xl"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint p-4 text-center">
+                                    <Printer className="h-6 w-6 text-theme-faint mx-auto mb-2" />
+                                    <p className="text-xs text-theme-faint">لم يتم استخراج ملف DTF بعد من قِبَل العميل</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {!currentOrder.skip_results && currentOrder.status !== "cancelled" ? (
                         <div className="space-y-3">
                             <div>

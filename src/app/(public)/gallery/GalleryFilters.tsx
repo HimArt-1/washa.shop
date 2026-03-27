@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { Search, X, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
 interface GalleryFiltersProps {
@@ -21,72 +21,86 @@ export function GalleryFilters({ categories, currentCategory, currentSearch }: G
         router.push(`/gallery?${params.toString()}`);
     };
 
-    return (
-        <div className="mb-8 space-y-4">
-            {/* Search */}
-            <div className="theme-surface-panel rounded-[1.75rem] p-4 sm:p-5">
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">GALLERY FILTERS</p>
-                        <h2 className="mt-1 text-base font-bold text-theme sm:text-lg">استكشف الأعمال بسرعة أكبر</h2>
-                    </div>
-                    <div className="text-xs text-theme-faint">
-                        ابحث أو انتقل مباشرة بين التصنيفات
-                    </div>
-                </div>
+    const allCategories = [{ slug: "all", name_ar: "الكل" }, ...categories];
 
-                <div className="flex flex-col gap-3 sm:flex-row">
+    return (
+        <div className="mb-10 space-y-4">
+            {/* Search bar */}
+            <div className="relative overflow-hidden rounded-[1.75rem] premium-card p-4 sm:p-5">
+                <div className="absolute top-0 right-0 w-40 h-20 rounded-full bg-[var(--wusha-gold)]/5 blur-2xl pointer-events-none" />
+                <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div className="relative flex-1">
-                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint" />
+                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'color-mix(in srgb, var(--wusha-gold) 60%, transparent)' }} />
                         <input
                             type="text"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && navigate(currentCategory, search)}
-                            placeholder="ابحث في المعرض..."
-                            className="input-dark h-12 w-full rounded-2xl pr-11 pl-12 text-sm"
+                            placeholder="ابحث عن لوحة، فنان، أسلوب..."
+                            className="input-dark h-12 w-full rounded-2xl pr-11 pl-12 text-sm transition-all duration-300 focus:shadow-[0_0_0_2px_rgba(201,168,106,0.2)]"
                         />
                         {search && (
                             <button
                                 onClick={() => { setSearch(""); navigate(currentCategory, ""); }}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-theme-faint hover:text-theme-subtle"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center transition-all hover:bg-[var(--wusha-gold)]/10"
+                                style={{ color: 'color-mix(in srgb, var(--wusha-text) 50%, transparent)' }}
                             >
-                                <X className="w-4 h-4" />
+                                <X className="w-3.5 h-3.5" />
                             </button>
                         )}
                     </div>
                     <button
                         onClick={() => navigate(currentCategory, search)}
-                        className="btn-gold h-12 rounded-2xl px-5 text-sm font-bold"
+                        className="btn-gold h-12 rounded-2xl px-6 text-sm font-bold shrink-0 flex items-center gap-2"
                     >
-                        تطبيق البحث
+                        <Search className="w-4 h-4" />
+                        بحث
                     </button>
                 </div>
             </div>
 
-            {/* Category Pills */}
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible">
-                <button
-                    onClick={() => navigate("all", search)}
-                    className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-medium transition-all ${currentCategory === "all"
-                            ? "border border-gold/30 bg-gold/10 text-gold"
-                            : "border border-transparent text-theme-faint hover:bg-theme-subtle"
-                        }`}
-                >
-                    الكل
-                </button>
-                {categories.map((cat) => (
-                    <button
-                        key={cat.slug}
-                        onClick={() => navigate(cat.slug, search)}
-                        className={`shrink-0 rounded-2xl px-4 py-2.5 text-xs font-medium transition-all ${currentCategory === cat.slug
-                                ? "border border-gold/30 bg-gold/10 text-gold"
-                                : "border border-transparent text-theme-faint hover:bg-theme-subtle"
-                            }`}
-                    >
-                        {cat.name_ar}
-                    </button>
-                ))}
+            {/* Category pills */}
+            <div className="flex items-center gap-2">
+                <div className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-1" style={{ color: 'color-mix(in srgb, var(--wusha-text) 40%, transparent)' }}>
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">تصفية</span>
+                </div>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible" style={{ scrollbarWidth: 'none' }}>
+                    {allCategories.map((cat) => {
+                        const isActive = currentCategory === cat.slug;
+                        return (
+                            <button
+                                key={cat.slug}
+                                onClick={() => navigate(cat.slug, search)}
+                                className="shrink-0 relative rounded-2xl px-4 py-2 text-xs font-medium transition-all duration-300 border"
+                                style={isActive ? {
+                                    background: 'linear-gradient(135deg, rgba(201,168,106,0.12) 0%, rgba(201,168,106,0.06) 100%)',
+                                    borderColor: 'rgba(201,168,106,0.35)',
+                                    color: 'var(--wusha-gold)',
+                                    boxShadow: '0 0 12px rgba(201,168,106,0.08)',
+                                } : {
+                                    background: 'transparent',
+                                    borderColor: 'transparent',
+                                    color: 'color-mix(in srgb, var(--wusha-text) 50%, transparent)',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isActive) {
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(201,168,106,0.2)';
+                                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--wusha-text)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isActive) {
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'transparent';
+                                        (e.currentTarget as HTMLButtonElement).style.color = 'color-mix(in srgb, var(--wusha-text) 50%, transparent)';
+                                    }
+                                }}
+                            >
+                                {cat.name_ar}
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );

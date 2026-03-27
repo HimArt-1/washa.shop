@@ -963,6 +963,13 @@ export type CustomDesignOrder = {
     print_size: string | null;
     pricing_snapshot: DesignPricingSnapshot | null;
 
+    // DTF Studio Submission
+    dtf_mockup_url: string | null;
+    dtf_extracted_url: string | null;
+    dtf_style_label: string | null;
+    dtf_technique_label: string | null;
+    dtf_palette_label: string | null;
+
     // Timestamps
     created_at: string;
     updated_at: string;

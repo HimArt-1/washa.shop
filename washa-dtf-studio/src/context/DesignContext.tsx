@@ -14,6 +14,11 @@ import {
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
+export interface OrderResult {
+  orderId: string;
+  orderNumber: number;
+}
+
 interface DesignContextType {
   // Wizard state
   step: number;
@@ -31,6 +36,11 @@ interface DesignContextType {
   mockupImage: string | null;
   extractedImage: string | null;
   error: string | null;
+
+  // Order submission
+  isSubmittingOrder: boolean;
+  orderResult: OrderResult | null;
+  submitOrder: () => Promise<void>;
 
   // Actions
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -87,6 +97,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [extractedImage, setExtractedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -223,12 +235,54 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     showToast('جاري تحميل الملف...', 'success');
   };
 
+  const submitOrder = async () => {
+    if (!mockupImage) return;
+
+    setIsSubmittingOrder(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/washa-dtf-studio/submit-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          garmentType: state.garmentType,
+          garmentColor: state.garmentColor,
+          designMethod: state.designMethod,
+          prompt: state.prompt,
+          calligraphyText: state.calligraphyText || undefined,
+          style: state.style,
+          technique: state.technique,
+          palette: state.palette,
+          mockupDataUrl: mockupImage,
+          extractedDataUrl: extractedImage || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'فشل إرسال الطلب');
+      }
+
+      setOrderResult({ orderId: data.orderId, orderNumber: data.orderNumber });
+      showToast(`تم إرسال طلبك بنجاح! رقم الطلب: #${data.orderNumber}`, 'success');
+    } catch (err) {
+      const msg = getReadableErrorMessage(err, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
+      setError(msg);
+      showToast(msg, 'error');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
   const resetDesign = () => {
     setStep(1);
     setState(INITIAL_STATE);
     setMockupImage(null);
     setExtractedImage(null);
     setError(null);
+    setOrderResult(null);
   };
 
   return (
@@ -245,6 +299,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         mockupImage,
         extractedImage,
         error,
+        isSubmittingOrder,
+        orderResult,
+        submitOrder,
         handleImageUpload,
         handleGenerate,
         handleExtract,
