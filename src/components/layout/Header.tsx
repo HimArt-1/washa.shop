@@ -28,7 +28,18 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
   const lastScrollY = useRef(0);
   const [hasMounted, setHasMounted] = useState(false);
 
-  useEffect(() => { setHasMounted(true); }, []);
+  useEffect(() => {
+    setHasMounted(true);
+    // Auto-open cart if DTF Studio pushed an order to it
+    if (typeof window !== 'undefined') {
+      const flag = localStorage.getItem('wusha-open-cart');
+      if (flag === '1') {
+        localStorage.removeItem('wusha-open-cart');
+        toggleCart(true);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter Nav Items according to visibility settings
   const filteredNavItems = navItems.filter((item) => {

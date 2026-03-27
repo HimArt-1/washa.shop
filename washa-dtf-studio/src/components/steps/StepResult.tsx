@@ -177,9 +177,17 @@ function OrderSuccessCard({ orderNumber, onReset }: { orderNumber: number; onRes
         ))}
       </div>
 
-      <Button variant="outline" onClick={onReset} className="gap-2 rounded-xl mt-2">
-        <RotateCcw className="w-4 h-4" /> إنشاء تصميم جديد
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <a
+          href="/store"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-washa-gold text-washa-bg font-bold text-base shadow-[0_0_24px_rgba(201,168,106,0.3)] hover:shadow-[0_0_36px_rgba(201,168,106,0.45)] transition-shadow"
+        >
+          <ShoppingBag className="w-5 h-5" /> عرض السلة
+        </a>
+        <Button variant="outline" onClick={onReset} className="gap-2 rounded-xl">
+          <RotateCcw className="w-4 h-4" /> إنشاء تصميم جديد
+        </Button>
+      </div>
     </motion.div>
   );
 }

@@ -1,12 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import {
   DesignState,
-  GarmentType,
-  GarmentColor,
-  DesignMethod,
-  ArtisticStyle,
-  Technique,
-  ColorPalette,
   STYLE_PROMPTS,
   TECHNIQUE_PROMPTS,
   PALETTE_PROMPTS,
@@ -265,7 +259,44 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'فشل إرسال الطلب');
       }
 
-      setOrderResult({ orderId: data.orderId, orderNumber: data.orderNumber });
+      const result: OrderResult = { orderId: data.orderId, orderNumber: data.orderNumber };
+      setOrderResult(result);
+
+      // ── Push to cart (shared localStorage with Next.js app) ──
+      try {
+        const cartKey = 'wusha-cart-storage';
+        const raw = localStorage.getItem(cartKey);
+        const cartState = raw ? JSON.parse(raw) : { state: { items: [], coupon: null } };
+        if (!cartState.state) cartState.state = { items: [], coupon: null };
+        if (!Array.isArray(cartState.state.items)) cartState.state.items = [];
+
+        const cartItem = {
+          id: `dtf-order-${data.orderNumber}`,
+          title: `تصميم DTF مخصص — ${state.garmentType} ${state.garmentColor}`,
+          price: 0,
+          image_url: mockupImage || '',
+          artist_name: 'وشّى DTF Studio',
+          quantity: 1,
+          size: null,
+          type: 'custom_design' as const,
+          maxQuantity: 1,
+          customDesignUrl: mockupImage || '',
+          customGarment: state.garmentType,
+          customPosition: 'chest',
+        };
+
+        // Remove duplicate if same order number exists
+        cartState.state.items = cartState.state.items.filter(
+          (item: { id: string }) => item.id !== cartItem.id
+        );
+        cartState.state.items.push(cartItem);
+
+        localStorage.setItem(cartKey, JSON.stringify(cartState));
+        localStorage.setItem('wusha-open-cart', '1');
+      } catch {
+        // Non-fatal — order was still saved
+      }
+
       showToast(`تم إرسال طلبك بنجاح! رقم الطلب: #${data.orderNumber}`, 'success');
     } catch (err) {
       const msg = getReadableErrorMessage(err, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
