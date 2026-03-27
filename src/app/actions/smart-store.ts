@@ -11,6 +11,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminNotification } from "./notifications";
 import { createUserNotification } from "./user-notifications";
 import type {
+    CreativeCatalogScope,
     CustomDesignArtStyle,
     CustomDesignColor,
     CustomDesignColorPackage,
@@ -25,6 +26,11 @@ import type {
     Database,
     GarmentStudioMockup,
 } from "@/types/database";
+import {
+    DTF_STUDIO_PALETTE_CATALOG,
+    DTF_STUDIO_STYLE_CATALOG,
+    DTF_STUDIO_TECHNIQUE_CATALOG,
+} from "@/lib/dtf-studio-catalog";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { getDesignOrderAccess } from "@/lib/design-order-access";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
@@ -194,6 +200,7 @@ export async function getDesignStyles(): Promise<CustomDesignStyle[]> {
     const { data } = await sb
         .from("custom_design_styles")
         .select("*")
+        .in("catalog_scope", ["design_piece", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignStyle[]) ?? []).map(normalizeStyleRow);
@@ -204,6 +211,7 @@ export async function getArtStyles(): Promise<CustomDesignArtStyle[]> {
     const { data } = await sb
         .from("custom_design_art_styles")
         .select("*")
+        .in("catalog_scope", ["design_piece", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignArtStyle[]) ?? []).map(normalizeArtStyleRow);
@@ -214,6 +222,7 @@ export async function getColorPackages(): Promise<CustomDesignColorPackage[]> {
     const { data } = await sb
         .from("custom_design_color_packages")
         .select("*")
+        .in("catalog_scope", ["design_piece", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignColorPackage[]) ?? []).map(normalizeColorPackageRow);
@@ -458,6 +467,7 @@ export async function upsertStyle(formData: FormData) {
         name: formData.get("name"),
         description: formData.get("description"),
         image_url: formData.get("image_url"),
+        catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
         ...getSmartStoreMetadataFormValues(formData),
@@ -472,6 +482,7 @@ export async function upsertStyle(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
         is_active: data.is_active,
@@ -494,6 +505,7 @@ export async function upsertArtStyle(formData: FormData) {
         name: formData.get("name"),
         description: formData.get("description"),
         image_url: formData.get("image_url"),
+        catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
         ...getSmartStoreMetadataFormValues(formData),
@@ -508,6 +520,7 @@ export async function upsertArtStyle(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
         is_active: data.is_active,
@@ -530,6 +543,7 @@ export async function upsertColorPackage(formData: FormData) {
         name: formData.get("name"),
         colors: formData.get("colors"),
         image_url: formData.get("image_url"),
+        catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
         ...getSmartStoreMetadataFormValues(formData),
@@ -544,6 +558,7 @@ export async function upsertColorPackage(formData: FormData) {
         name: data.name,
         colors: data.colors,
         image_url: data.image_url ?? null,
+        catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
         is_active: data.is_active,
@@ -557,6 +572,102 @@ export async function upsertColorPackage(formData: FormData) {
         if (error) return { error: error.message };
     }
     return { success: true };
+}
+
+type CreativeCatalogRestoreSummary = {
+    styles: number;
+    artStyles: number;
+    colorPackages: number;
+};
+
+async function syncDtfCreativeEntries<TEntry extends { name: string; sort_order: number; metadata: Record<string, unknown> }>(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    table: "custom_design_styles" | "custom_design_art_styles" | "custom_design_color_packages",
+    entries: TEntry[],
+    buildPayload: (entry: TEntry) => Record<string, unknown>
+) {
+    const { data, error } = await sb.from(table).select("id, name, catalog_scope");
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    const rows = ((data as Array<{ id: string; name: string; catalog_scope: CreativeCatalogScope }>) ?? []);
+    const canonicalNames = new Set(entries.map((entry) => entry.name));
+
+    for (const entry of entries) {
+        const existing = rows.find((row) => row.name === entry.name) ?? null;
+        const payload = {
+            ...buildPayload(entry),
+            catalog_scope: "dtf_studio" as const,
+            sort_order: entry.sort_order,
+            is_active: true,
+        };
+
+        if (existing) {
+            const { error: updateError } = await sb.from(table).update(payload as any).eq("id", existing.id);
+            if (updateError) {
+                throw new Error(updateError.message);
+            }
+        } else {
+            const { error: insertError } = await sb.from(table).insert(payload as any);
+            if (insertError) {
+                throw new Error(insertError.message);
+            }
+        }
+    }
+
+    const dtfOnlyIdsToDisable = rows
+        .filter((row) => row.catalog_scope === "dtf_studio" && !canonicalNames.has(row.name))
+        .map((row) => row.id);
+
+    if (dtfOnlyIdsToDisable.length > 0) {
+        const { error: cleanupError } = await sb
+            .from(table)
+            .update({ is_active: false })
+            .in("id", dtfOnlyIdsToDisable);
+        if (cleanupError) {
+            throw new Error(cleanupError.message);
+        }
+    }
+}
+
+export async function restoreDtfStudioCreativeCatalog() {
+    const { sb } = await requireSmartStoreAdmin();
+
+    try {
+        await syncDtfCreativeEntries(sb, "custom_design_styles", DTF_STUDIO_STYLE_CATALOG, (entry) => ({
+            name: entry.name,
+            description: entry.description,
+            metadata: entry.metadata,
+        }));
+
+        await syncDtfCreativeEntries(sb, "custom_design_art_styles", DTF_STUDIO_TECHNIQUE_CATALOG, (entry) => ({
+            name: entry.name,
+            description: entry.description,
+            metadata: entry.metadata,
+        }));
+
+        await syncDtfCreativeEntries(sb, "custom_design_color_packages", DTF_STUDIO_PALETTE_CATALOG, (entry) => ({
+            name: entry.name,
+            colors: entry.colors,
+            metadata: entry.metadata,
+        }));
+
+        revalidatePath("/dashboard/smart-store");
+        revalidatePath("/design/dtf-studio");
+        revalidatePath("/design/dtf-studio/app");
+        revalidatePath("/api/washa-dtf-studio/config");
+
+        const summary: CreativeCatalogRestoreSummary = {
+            styles: DTF_STUDIO_STYLE_CATALOG.length,
+            artStyles: DTF_STUDIO_TECHNIQUE_CATALOG.length,
+            colorPackages: DTF_STUDIO_PALETTE_CATALOG.length,
+        };
+
+        return { success: true, summary };
+    } catch (error) {
+        return { error: error instanceof Error ? error.message : "تعذر استعادة كتالوج DTF الآن." };
+    }
 }
 
 export async function upsertStudioItem(formData: FormData) {

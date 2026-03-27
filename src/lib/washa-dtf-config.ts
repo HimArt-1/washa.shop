@@ -1,5 +1,10 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import {
+    DTF_PALETTE_PROMPT_OVERRIDES,
+    DTF_STYLE_PROMPT_OVERRIDES,
+    DTF_TECHNIQUE_PROMPT_OVERRIDES,
+} from "@/lib/dtf-studio-catalog";
+import {
     normalizeArtStyleRow,
     normalizeColorPackageRow,
     normalizeStyleRow,
@@ -122,13 +127,20 @@ function buildCreativePrompt(input: {
 }
 
 function mapCreativeOption(row: CustomDesignStyle | CustomDesignArtStyle): WashaDtfStudioCreativeOption {
+    const overridePrompt =
+        row.name in DTF_STYLE_PROMPT_OVERRIDES
+            ? DTF_STYLE_PROMPT_OVERRIDES[row.name]
+            : row.name in DTF_TECHNIQUE_PROMPT_OVERRIDES
+                ? DTF_TECHNIQUE_PROMPT_OVERRIDES[row.name]
+                : null;
+
     return {
         id: row.id,
         name: row.name,
         description: row.description,
         imageUrl: row.image_url,
         sortOrder: row.sort_order,
-        prompt: buildCreativePrompt({
+        prompt: overridePrompt || buildCreativePrompt({
             name: row.name,
             description: row.description,
             metadata: row.metadata,
@@ -153,7 +165,7 @@ function mapPaletteOption(row: CustomDesignColorPackage): WashaDtfStudioPaletteO
         description: null,
         imageUrl: row.image_url,
         sortOrder: row.sort_order,
-        prompt: buildCreativePrompt({
+        prompt: DTF_PALETTE_PROMPT_OVERRIDES[row.name] || buildCreativePrompt({
             name: row.name,
             metadata: row.metadata,
             extra: colorSummary ? `Palette colors: ${colorSummary}` : null,
@@ -170,9 +182,9 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
         sb.from("custom_design_garments").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_colors").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_sizes").select("*").eq("is_active", true).order("name"),
-        sb.from("custom_design_styles").select("*").eq("is_active", true).order("sort_order"),
-        sb.from("custom_design_art_styles").select("*").eq("is_active", true).order("sort_order"),
-        sb.from("custom_design_color_packages").select("*").eq("is_active", true).order("sort_order"),
+        sb.from("custom_design_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
+        sb.from("custom_design_art_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
+        sb.from("custom_design_color_packages").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
     ]);
 
     assertQuerySucceeded("custom_design_garments", garmentsRes.error);

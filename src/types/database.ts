@@ -23,6 +23,7 @@ export type ApplicationStatus = "pending" | "reviewing" | "accepted" | "rejected
 export type ApparelSize = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 export type PushSubscriptionScope = "user" | "admin";
 export type StoredPushSubscriptionScope = PushSubscriptionScope | "both";
+export type CreativeCatalogScope = "design_piece" | "dtf_studio" | "shared";
 
 // ─── Base Types ──────────────────────────────────────────
 
@@ -349,6 +350,7 @@ export type CustomDesignStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
@@ -361,6 +363,7 @@ export type CustomDesignArtStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;
@@ -373,6 +376,7 @@ export type CustomDesignColorPackage = {
     name: string;
     colors: DesignColorToken[];
     image_url: string | null;
+    catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
     is_active: boolean;

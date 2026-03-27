@@ -9,6 +9,7 @@ const DESIGN_METHODS = ["from_text", "from_image", "studio"] as const;
 const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 const COMPLEXITY_LEVELS = ["minimal", "balanced", "bold"] as const;
 const LUXURY_TIERS = ["core", "signature", "editorial"] as const;
+const CATALOG_SCOPES = ["design_piece", "dtf_studio", "shared"] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 function trimToUndefined(value: unknown) {
@@ -363,6 +364,7 @@ export const smartStoreUpsertStyleSchema = z.object({
     name: requiredText("اسم النمط", 120),
     description: optionalText("وصف النمط", 2000),
     image_url: optionalSafeUrl("صورة النمط"),
+    catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق النمط غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب النمط", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
 }).extend(metadataFieldsSchema.shape);
@@ -372,6 +374,7 @@ export const smartStoreUpsertArtStyleSchema = z.object({
     name: requiredText("اسم الأسلوب", 120),
     description: optionalText("وصف الأسلوب", 2000),
     image_url: optionalSafeUrl("صورة الأسلوب"),
+    catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق الأسلوب غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب الأسلوب", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
 }).extend(metadataFieldsSchema.shape);
@@ -381,6 +384,7 @@ export const smartStoreUpsertColorPackageSchema = z.object({
     name: requiredText("اسم باقة الألوان", 120),
     colors: colorPackageTokensSchema,
     image_url: optionalSafeUrl("صورة باقة الألوان"),
+    catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق الباقة غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب الباقة", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
 }).extend(metadataFieldsSchema.shape);

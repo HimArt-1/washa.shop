@@ -45,8 +45,10 @@ import {
     upsertGarmentStudioMockup,
     deleteGarmentStudioMockup,
     uploadSmartStoreImage,
+    restoreDtfStudioCreativeCatalog,
 } from "@/app/actions/smart-store";
 import type {
+    CreativeCatalogScope,
     CustomDesignGarment,
     CustomDesignColor,
     CustomDesignSize,
@@ -69,6 +71,7 @@ import {
     type PrintSize,
     type RankedDesignCandidate,
 } from "@/lib/design-intelligence";
+import { DTF_STUDIO_CATALOG_COUNTS } from "@/lib/dtf-studio-catalog";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -122,6 +125,8 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
     const [workspace, setWorkspace] = useState<WorkspaceId>("designPieceLab");
     const [designPieceTab, setDesignPieceTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.designPieceLab);
     const [dtfStudioTab, setDtfStudioTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.dtfStudio);
+    const [restoreLoading, setRestoreLoading] = useState(false);
+    const [restoreError, setRestoreError] = useState<string | null>(null);
     const router = useRouter();
     const [garmentsState, setGarmentsState] = useState(garments);
     const [colorsState, setColorsState] = useState(colors);
@@ -136,6 +141,12 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
     const activeTab = workspace === "designPieceLab" ? designPieceTab : dtfStudioTab;
     const activeTabs = workspace === "designPieceLab" ? DESIGN_PIECE_TABS : DTF_STUDIO_TABS;
+    const designPieceStyles = useMemo(() => styles.filter((item) => matchesCatalogScope(item.catalog_scope, "designPieceLab")), [styles]);
+    const dtfStyles = useMemo(() => styles.filter((item) => matchesCatalogScope(item.catalog_scope, "dtfStudio")), [styles]);
+    const designPieceArtStyles = useMemo(() => artStyles.filter((item) => matchesCatalogScope(item.catalog_scope, "designPieceLab")), [artStyles]);
+    const dtfArtStyles = useMemo(() => artStyles.filter((item) => matchesCatalogScope(item.catalog_scope, "dtfStudio")), [artStyles]);
+    const designPieceColorPackages = useMemo(() => colorPackages.filter((item) => matchesCatalogScope(item.catalog_scope, "designPieceLab")), [colorPackages]);
+    const dtfColorPackages = useMemo(() => colorPackages.filter((item) => matchesCatalogScope(item.catalog_scope, "dtfStudio")), [colorPackages]);
 
     const setActiveTab = useCallback((tab: TabId) => {
         if (workspace === "designPieceLab") {
@@ -156,13 +167,16 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
             return <SizesTab items={sizes} garments={garmentsState} colors={colorsState} onRefresh={() => router.refresh()} />;
         }
         if (tab === "styles") {
-            return <StylesTab items={styles} onRefresh={() => router.refresh()} />;
+            const scopedItems = workspace === "designPieceLab" ? designPieceStyles : dtfStyles;
+            return <StylesTab items={scopedItems} onRefresh={() => router.refresh()} catalogScope={getCatalogScopeValue(workspace)} />;
         }
         if (tab === "artStyles") {
-            return <ArtStylesTab items={artStyles} onRefresh={() => router.refresh()} />;
+            const scopedItems = workspace === "designPieceLab" ? designPieceArtStyles : dtfArtStyles;
+            return <ArtStylesTab items={scopedItems} onRefresh={() => router.refresh()} catalogScope={getCatalogScopeValue(workspace)} />;
         }
         if (tab === "colorPackages") {
-            return <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />;
+            const scopedItems = workspace === "designPieceLab" ? designPieceColorPackages : dtfColorPackages;
+            return <ColorPackagesTab items={scopedItems} onRefresh={() => router.refresh()} catalogScope={getCatalogScopeValue(workspace)} />;
         }
         if (tab === "studioItems") {
             return <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />;
@@ -171,21 +185,39 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
             return <MockupsTab items={garmentStudioMockups} garments={garmentsState} studioItems={studioItems} onRefresh={() => router.refresh()} />;
         }
         if (tab === "presets") {
-            return <PresetsTab items={presets} garments={garmentsState} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />;
+            return <PresetsTab items={presets} garments={garmentsState} styles={designPieceStyles} artStyles={designPieceArtStyles} colorPackages={designPieceColorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />;
         }
         return (
             <IntelligenceTab
                 compatibilities={compatibilities}
                 garments={garmentsState}
-                styles={styles}
-                artStyles={artStyles}
-                colorPackages={colorPackages}
+                styles={designPieceStyles}
+                artStyles={designPieceArtStyles}
+                colorPackages={designPieceColorPackages}
                 studioItems={studioItems}
                 presets={presets}
                 onRefresh={() => router.refresh()}
             />
         );
-    }, [artStyles, colorPackages, colorsState, compatibilities, garmentStudioMockups, garmentsState, presets, router, sizes, studioItems, styles]);
+    }, [compatibilities, designPieceArtStyles, designPieceColorPackages, designPieceStyles, dtfArtStyles, dtfColorPackages, dtfStyles, colorsState, garmentStudioMockups, garmentsState, presets, router, sizes, studioItems, workspace]);
+
+    const handleRestoreDtfCatalog = useCallback(async () => {
+        setRestoreLoading(true);
+        setRestoreError(null);
+        try {
+            const result = await restoreDtfStudioCreativeCatalog();
+            const actionError = getActionError(result);
+            if (actionError) {
+                setRestoreError(actionError);
+                return;
+            }
+            router.refresh();
+        } catch (error) {
+            setRestoreError(error instanceof Error ? error.message : "تعذر استعادة مكتبة DTF الآن.");
+        } finally {
+            setRestoreLoading(false);
+        }
+    }, [router]);
 
     return (
         <div className="space-y-6">
@@ -221,14 +253,25 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                 garments={garmentsState}
                 colors={colorsState}
                 sizes={sizes}
-                styles={styles}
-                artStyles={artStyles}
-                colorPackages={colorPackages}
+                styles={workspace === "designPieceLab" ? designPieceStyles : dtfStyles}
+                artStyles={workspace === "designPieceLab" ? designPieceArtStyles : dtfArtStyles}
+                colorPackages={workspace === "designPieceLab" ? designPieceColorPackages : dtfColorPackages}
                 studioItems={studioItems}
                 garmentStudioMockups={garmentStudioMockups}
                 presets={presets}
                 compatibilities={compatibilities}
             />
+
+            {workspace === "dtfStudio" ? (
+                <DtfCatalogToolbar
+                    loading={restoreLoading}
+                    error={restoreError}
+                    styleCount={dtfStyles.length}
+                    techniqueCount={dtfArtStyles.length}
+                    paletteCount={dtfColorPackages.length}
+                    onRestore={handleRestoreDtfCatalog}
+                />
+            ) : null}
 
             <div className="flex gap-2 overflow-x-auto pb-1">
                 {activeTabs.map((tab) => {
@@ -352,6 +395,57 @@ function WorkspaceOverview({
     );
 }
 
+function DtfCatalogToolbar({
+    loading,
+    error,
+    styleCount,
+    techniqueCount,
+    paletteCount,
+    onRestore,
+}: {
+    loading: boolean;
+    error: string | null;
+    styleCount: number;
+    techniqueCount: number;
+    paletteCount: number;
+    onRestore: () => void;
+}) {
+    const coverage = [
+        { label: "الستايلات", current: styleCount, target: DTF_STUDIO_CATALOG_COUNTS.styles },
+        { label: "الأساليب", current: techniqueCount, target: DTF_STUDIO_CATALOG_COUNTS.techniques },
+        { label: "الباليت", current: paletteCount, target: DTF_STUDIO_CATALOG_COUNTS.palettes },
+    ];
+
+    return (
+        <div className="theme-surface-panel rounded-3xl p-5 sm:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-theme">ضبط مكتبة استوديو DTF</h3>
+                    <p className="max-w-3xl text-sm leading-6 text-theme-subtle">
+                        هذه الأداة تعيد كتالوج DTF الأصلي: الأنماط السابقة، أساليب التنفيذ، وباقات الألوان، مع ترتيبها وتفعيلها وعزلها عن نموذج صمم قطعتك التجريبي.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                        {coverage.map((item) => (
+                            <span key={item.label} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-soft">
+                                {item.label}: {item.current}/{item.target}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+                <button
+                    onClick={onRestore}
+                    disabled={loading}
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl bg-gold px-5 py-3 text-sm font-bold text-[var(--wusha-bg)] transition-all hover:shadow-lg hover:shadow-gold/20 disabled:opacity-50"
+                >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {loading ? "جاري الاستعادة..." : "استعادة كتالوج DTF القياسي"}
+                </button>
+            </div>
+            {error ? <div className="mt-4"><InlineError message={error} /></div> : null}
+        </div>
+    );
+}
+
 // ═══════════════════════════════════════════════════════════
 //  Shared UI Helpers
 // ═══════════════════════════════════════════════════════════
@@ -459,6 +553,22 @@ function getActionError(result: any) {
     if (typeof result.error === "string" && result.error.trim()) return result.error;
     if (result.success === false && typeof result.message === "string" && result.message.trim()) return result.message;
     return null;
+}
+
+function matchesCatalogScope(scope: CreativeCatalogScope, currentWorkspace: WorkspaceId) {
+    if (scope === "shared") return true;
+    if (currentWorkspace === "dtfStudio") return scope === "dtf_studio";
+    return scope === "design_piece";
+}
+
+function getCatalogScopeValue(workspace: WorkspaceId): CreativeCatalogScope {
+    return workspace === "dtfStudio" ? "dtf_studio" : "design_piece";
+}
+
+function getCatalogScopeLabel(scope: CreativeCatalogScope) {
+    if (scope === "dtf_studio") return "DTF Studio";
+    if (scope === "design_piece") return "صمم قطعتك";
+    return "مشترك";
 }
 
 function MetadataFields({
@@ -1045,10 +1155,10 @@ function ColorsTab({
 //  Generic Items Tab (Styles, Art Styles)
 // ═══════════════════════════════════════════════════════════
 
-function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; sort_order?: number; is_active: boolean; metadata?: unknown }>({
-    items, title, onUpsert, onDelete, onRefresh, folder,
+function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; sort_order?: number; is_active: boolean; metadata?: unknown; catalog_scope: CreativeCatalogScope }>({
+    items, title, onUpsert, onDelete, onRefresh, folder, catalogScope,
 }: {
-    items: T[]; title: string; onUpsert: (fd: FormData) => Promise<any>; onDelete: (id: string) => Promise<any>; onRefresh: () => void; folder: string;
+    items: T[]; title: string; onUpsert: (fd: FormData) => Promise<any>; onDelete: (id: string) => Promise<any>; onRefresh: () => void; folder: string; catalogScope: CreativeCatalogScope;
 }) {
     const [editing, setEditing] = useState<T | null>(null);
     const [isAdding, setIsAdding] = useState(false);
@@ -1062,6 +1172,7 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     const openEdit = (item: T) => { setEditing(item); setImageUrl(item.image_url ?? ""); setError(null); };
     const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
     const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
+    const effectiveCatalogScope = editing?.catalog_scope ?? catalogScope;
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -1110,6 +1221,10 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
             <InlineError message={error} />
+            <input type="hidden" name="catalog_scope" value={effectiveCatalogScope} />
+            <div className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs text-theme-subtle">
+                سيتم حفظ هذا العنصر داخل مكتبة: <span className="font-bold text-theme">{getCatalogScopeLabel(effectiveCatalogScope)}</span>
+            </div>
             <FormField label="الاسم">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} />
             </FormField>
@@ -1154,9 +1269,14 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                                 <p className="mt-2 text-[10px] font-bold text-gold/90">{normalizeDesignMetadata(item.metadata).creative_direction}</p>
                             )}
                             <div className="flex items-center justify-between mt-3">
-                                <span className={`text-xs px-2 py-1 rounded-full ${item.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                                    {item.is_active ? "نشط" : "معطل"}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs px-2 py-1 rounded-full ${item.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                        {item.is_active ? "نشط" : "معطل"}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-1 rounded-full border border-theme-subtle text-theme-faint">
+                                        {getCatalogScopeLabel(item.catalog_scope)}
+                                    </span>
+                                </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(item)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
                                     <button onClick={() => setPendingDeleteId(item.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
@@ -1180,12 +1300,12 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
     );
 }
 
-function StylesTab({ items, onRefresh }: { items: CustomDesignStyle[]; onRefresh: () => void }) {
-    return <GenericItemsTab items={items} title="أنماط التصميم" onUpsert={upsertStyle} onDelete={deleteStyle} onRefresh={onRefresh} folder="styles" />;
+function StylesTab({ items, onRefresh, catalogScope }: { items: CustomDesignStyle[]; onRefresh: () => void; catalogScope: CreativeCatalogScope }) {
+    return <GenericItemsTab items={items} title="أنماط التصميم" onUpsert={upsertStyle} onDelete={deleteStyle} onRefresh={onRefresh} folder="styles" catalogScope={catalogScope} />;
 }
 
-function ArtStylesTab({ items, onRefresh }: { items: CustomDesignArtStyle[]; onRefresh: () => void }) {
-    return <GenericItemsTab items={items} title="أساليب الرسم" onUpsert={upsertArtStyle} onDelete={deleteArtStyle} onRefresh={onRefresh} folder="art-styles" />;
+function ArtStylesTab({ items, onRefresh, catalogScope }: { items: CustomDesignArtStyle[]; onRefresh: () => void; catalogScope: CreativeCatalogScope }) {
+    return <GenericItemsTab items={items} title="أساليب الرسم" onUpsert={upsertArtStyle} onDelete={deleteArtStyle} onRefresh={onRefresh} folder="art-styles" catalogScope={catalogScope} />;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1340,7 +1460,7 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
 //  Color Packages Tab
 // ═══════════════════════════════════════════════════════════
 
-function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackage[]; onRefresh: () => void }) {
+function ColorPackagesTab({ items, onRefresh, catalogScope }: { items: CustomDesignColorPackage[]; onRefresh: () => void; catalogScope: CreativeCatalogScope }) {
     const [editing, setEditing] = useState<CustomDesignColorPackage | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -1350,6 +1470,7 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
     const [error, setError] = useState<string | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
     const metadataDefaults = editing ? normalizeDesignMetadata(editing.metadata) : undefined;
+    const effectiveCatalogScope = editing?.catalog_scope ?? catalogScope;
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -1418,6 +1539,10 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
             <InlineError message={error} />
+            <input type="hidden" name="catalog_scope" value={effectiveCatalogScope} />
+            <div className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs text-theme-subtle">
+                سيتم حفظ هذه الباقة داخل مكتبة: <span className="font-bold text-theme">{getCatalogScopeLabel(effectiveCatalogScope)}</span>
+            </div>
             <FormField label="اسم الباقة">
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: باقة ذهبية" />
             </FormField>
@@ -1471,9 +1596,14 @@ function ColorPackagesTab({ items, onRefresh }: { items: CustomDesignColorPackag
                                 ))}
                             </div>
                             <div className="flex items-center justify-between">
-                                <span className={`text-xs px-2 py-1 rounded-full ${pkg.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                                    {pkg.is_active ? "نشط" : "معطل"}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-xs px-2 py-1 rounded-full ${pkg.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                        {pkg.is_active ? "نشط" : "معطل"}
+                                    </span>
+                                    <span className="text-[10px] px-2 py-1 rounded-full border border-theme-subtle text-theme-faint">
+                                        {getCatalogScopeLabel(pkg.catalog_scope)}
+                                    </span>
+                                </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button onClick={() => openEdit(pkg)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
                                     <button onClick={() => setPendingDeleteId(pkg.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
