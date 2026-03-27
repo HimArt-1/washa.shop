@@ -28,7 +28,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
           </div>
           <div className="hidden sm:block">
             <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>
-            <p className="text-[10px] text-washa-text-faint tracking-[0.2em] uppercase leading-none mt-0.5">DTF Studio</p>
+            <p className="text-[10px] text-washa-text-faint tracking-[0.2em] uppercase leading-none mt-0.5">WASHA AI</p>
           </div>
         </div>
 

@@ -35,7 +35,7 @@ export default async function SmartStorePage() {
         <div>
             <div className="mb-8">
                 <h1 className="text-2xl sm:text-3xl font-bold text-theme">المتجر الذكي</h1>
-                <p className="text-theme-subtle mt-1">إدارة قطع ومراحل &quot;صمم قطعتك بنفسك&quot;</p>
+                <p className="text-theme-subtle mt-1">إدارة نافذتي WASHA STUDIO و WASHA AI من لوحة واحدة</p>
             </div>
             <SmartStoreClient
                 garments={garments}

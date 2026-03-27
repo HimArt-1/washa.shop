@@ -768,12 +768,12 @@ export function DesignOrderWorkspace({
                     animate={{ opacity: 1, y: 0 }}
                     className="theme-surface-panel space-y-6 rounded-[28px] p-5 sm:p-6"
                 >
-                    {/* ── DTF Studio Preview (shown when order came from DTF Studio) ── */}
+                    {/* ── WASHA AI Preview (shown when order came from WASHA AI) ── */}
                     {currentOrder.dtf_mockup_url && (
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
                                 <Printer className="h-4 w-4 text-gold" />
-                                <p className="text-sm font-bold text-theme">معاينة DTF Studio</p>
+                                <p className="text-sm font-bold text-theme">معاينة WASHA AI</p>
                                 <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 uppercase tracking-wider">
                                     AI Generated
                                 </span>

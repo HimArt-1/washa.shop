@@ -6,10 +6,15 @@ import type {
     Announcement,
     AnnouncementEngagementItem,
     AnnouncementEngagementSnapshot,
+    AnnouncementMediaUploadPurpose,
     AnnouncementPathPerformance,
     AnnouncementTrigger,
 } from "@/lib/announcement-types";
-import { DEFAULT_TRIGGER, PAGE_OPTIONS } from "@/lib/announcement-types";
+import {
+    DEFAULT_TRIGGER,
+    PAGE_OPTIONS,
+    validateAnnouncementMediaFile,
+} from "@/lib/announcement-types";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database } from "@/types/database";
 
@@ -31,9 +36,6 @@ async function requireAdmin() {
 }
 
 const VALID_ANNOUNCEMENT_PAGES = new Set<string>(PAGE_OPTIONS.map((page) => page.value));
-const ANNOUNCEMENT_MEDIA_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const ANNOUNCEMENT_MEDIA_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
-const ANNOUNCEMENT_MEDIA_MAX_SIZE = 25 * 1024 * 1024;
 
 function normalizeAnnouncementTrigger(trigger?: AnnouncementTrigger): AnnouncementTrigger {
     const next = { ...DEFAULT_TRIGGER, ...(trigger || {}) };
@@ -65,15 +67,33 @@ function normalizeAnnouncementTrigger(trigger?: AnnouncementTrigger): Announceme
     return next;
 }
 
-function getAnnouncementMediaKind(file: File): Announcement["mediaType"] | null {
-    if (ANNOUNCEMENT_MEDIA_IMAGE_TYPES.includes(file.type)) return "image";
-    if (ANNOUNCEMENT_MEDIA_VIDEO_TYPES.includes(file.type)) return "video";
-    return null;
+function buildAnnouncementMediaPath(fileName: string, fileType: string) {
+    const ext = fileName.split(".").pop()?.trim().toLowerCase() || (fileType.startsWith("video/") ? "mp4" : "png");
+    return `announcements/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 }
 
-function buildAnnouncementMediaPath(file: File) {
-    const ext = file.name.split(".").pop()?.trim().toLowerCase() || (file.type.startsWith("video/") ? "mp4" : "png");
-    return `announcements/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+function prepareAnnouncementMediaUpload(input: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    purpose?: AnnouncementMediaUploadPurpose;
+}) {
+    const purpose = input.purpose === "poster" ? "poster" : "media";
+    const validation = validateAnnouncementMediaFile({ size: input.fileSize, type: input.fileType }, purpose);
+
+    if (validation.error || !validation.mediaType) {
+        return { error: validation.error || "الملف غير صالح" } as const;
+    }
+
+    const basePath = buildAnnouncementMediaPath(input.fileName, input.fileType);
+    const path = purpose === "poster"
+        ? basePath.replace("announcements/", "announcements/posters/")
+        : basePath;
+
+    return {
+        path,
+        mediaType: validation.mediaType,
+    } as const;
 }
 
 function normalizeAnnouncementPayload(data: Omit<Announcement, "id" | "createdAt">) {
@@ -277,50 +297,34 @@ export async function toggleAnnouncementActive(id: string) {
     return updateAnnouncement(id, { isActive: !announcement.isActive });
 }
 
-export async function uploadAnnouncementMedia(formData: FormData) {
+export async function createAnnouncementMediaUploadUrl(input: {
+    fileName: string;
+    fileType: string;
+    fileSize: number;
+    purpose?: AnnouncementMediaUploadPurpose;
+}) {
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const file = formData.get("file");
-    const purpose = String(formData.get("purpose") || "media");
-    if (!(file instanceof File)) {
-        return { success: false, error: "لم يتم اختيار ملف" } as const;
+    const prepared = prepareAnnouncementMediaUpload(input);
+    if ("error" in prepared) {
+        return { success: false, error: prepared.error } as const;
     }
 
-    const mediaType = getAnnouncementMediaKind(file);
-    if (!mediaType) {
-        return { success: false, error: "الملف غير مدعوم. استخدم JPG/PNG/WebP/GIF أو MP4/WebM/MOV" } as const;
+    const { data, error } = await supabase.storage.from("smart-store").createSignedUploadUrl(prepared.path);
+
+    if (error || !data?.token) {
+        console.error("[createAnnouncementMediaUploadUrl]", error);
+        return { success: false, error: error?.message || "فشل تجهيز رفع الوسيط" } as const;
     }
 
-    if (purpose === "poster" && mediaType !== "image") {
-        return { success: false, error: "صورة الغلاف يجب أن تكون ملف صورة فقط" } as const;
-    }
-
-    if (file.size > ANNOUNCEMENT_MEDIA_MAX_SIZE) {
-        return { success: false, error: "حجم الملف كبير جدًا. الحد الأقصى 25MB" } as const;
-    }
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const path = purpose === "poster"
-        ? buildAnnouncementMediaPath(file).replace("announcements/", "announcements/posters/")
-        : buildAnnouncementMediaPath(file);
-    const { data, error } = await supabase.storage.from("smart-store").upload(path, buffer, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: file.type,
-    });
-
-    if (error || !data?.path) {
-        console.error("[uploadAnnouncementMedia]", error);
-        return { success: false, error: error?.message || "فشل رفع الوسيط" } as const;
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("smart-store").getPublicUrl(data.path);
+    const { data: publicUrlData } = supabase.storage.from("smart-store").getPublicUrl(prepared.path);
     return {
         success: true,
+        path: prepared.path,
+        token: data.token,
         url: publicUrlData.publicUrl,
-        mediaType,
-        fileName: file.name,
+        mediaType: prepared.mediaType,
     } as const;
 }
 

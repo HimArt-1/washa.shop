@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
-        return NextResponse.json({ error: "غير مصرح لك باستخدام استوديو DTF" }, { status: 403 });
+        return NextResponse.json({ error: "غير مصرح لك باستخدام WASHA AI" }, { status: 403 });
     }
 
     try {

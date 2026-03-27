@@ -2,16 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shirt, Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
-import { GarmentColor } from '../types';
-
-const GARMENT_COLORS: { label: GarmentColor; hex: string }[] = [
-  { label: 'أسود', hex: '#111111' },
-  { label: 'أبيض', hex: '#F5F5F5' },
-  { label: 'رمادي', hex: '#808080' },
-  { label: 'كحلي', hex: '#000080' },
-  { label: 'بيج', hex: '#F5F5DC' },
-  { label: 'زيتي', hex: '#556B2F' },
-];
+import { LIGHT_GARMENT_COLORS } from '../types';
 
 export default function PreviewPanel() {
   const { step, state, isGenerating, mockupImage, error } = useDesign();
@@ -33,15 +24,14 @@ export default function PreviewPanel() {
             <div
               className="w-56 h-56 rounded-full border border-washa-border/30 flex items-center justify-center shadow-[0_0_50px_rgba(201,168,106,0.05)] transition-all duration-700 relative"
               style={{
-                backgroundColor:
-                  GARMENT_COLORS.find(c => c.label === state.garmentColor)?.hex || 'transparent',
+                backgroundColor: state.garmentColorHex || 'transparent',
               }}
             >
               <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-black/20 to-transparent pointer-events-none" />
               <Shirt
                 className={cn(
                   'w-24 h-24 relative z-10 transition-colors duration-700',
-                  state.garmentColor === 'أبيض' || state.garmentColor === 'بيج'
+                  LIGHT_GARMENT_COLORS.includes(state.garmentColor)
                     ? 'text-black/80'
                     : 'text-white/80'
                 )}
@@ -56,6 +46,11 @@ export default function PreviewPanel() {
                 <span className="px-3 py-1 rounded-full border border-washa-border/30 bg-washa-bg/50 backdrop-blur-sm">
                   {state.garmentColor}
                 </span>
+                {state.garmentSize ? (
+                  <span className="px-3 py-1 rounded-full border border-washa-border/30 bg-washa-bg/50 backdrop-blur-sm">
+                    {state.garmentSize}
+                  </span>
+                ) : null}
                 <span className="px-3 py-1 rounded-full border border-washa-border/30 bg-washa-bg/50 backdrop-blur-sm">
                   {state.style}
                 </span>

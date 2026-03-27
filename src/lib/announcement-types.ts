@@ -57,6 +57,8 @@ export interface Announcement {
     createdAt: string;
 }
 
+export type AnnouncementMediaUploadPurpose = "media" | "poster";
+
 export interface AnnouncementEngagementItem {
     id: string;
     title: string;
@@ -118,6 +120,43 @@ export const DEFAULT_TRIGGER: AnnouncementTrigger = {
     frequency: "session",
     dismissible: true,
 };
+
+export const ANNOUNCEMENT_MEDIA_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
+export const ANNOUNCEMENT_MEDIA_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"] as const;
+export const ANNOUNCEMENT_MEDIA_ACCEPT = [...ANNOUNCEMENT_MEDIA_IMAGE_TYPES, ...ANNOUNCEMENT_MEDIA_VIDEO_TYPES].join(",");
+export const ANNOUNCEMENT_POSTER_ACCEPT = ANNOUNCEMENT_MEDIA_IMAGE_TYPES.join(",");
+export const ANNOUNCEMENT_MEDIA_MAX_SIZE = 25 * 1024 * 1024;
+
+export function getAnnouncementMediaKind(fileType?: string | null): Announcement["mediaType"] | null {
+    if (!fileType) return null;
+    if (ANNOUNCEMENT_MEDIA_IMAGE_TYPES.includes(fileType as (typeof ANNOUNCEMENT_MEDIA_IMAGE_TYPES)[number])) return "image";
+    if (ANNOUNCEMENT_MEDIA_VIDEO_TYPES.includes(fileType as (typeof ANNOUNCEMENT_MEDIA_VIDEO_TYPES)[number])) return "video";
+    return null;
+}
+
+export function validateAnnouncementMediaFile(
+    file: Pick<File, "size" | "type"> | { size: number; type?: string | null },
+    purpose: AnnouncementMediaUploadPurpose = "media"
+) {
+    if (!Number.isFinite(file.size) || file.size <= 0) {
+        return { error: "الملف فارغ" as const, mediaType: null };
+    }
+
+    const mediaType = getAnnouncementMediaKind(file.type);
+    if (!mediaType) {
+        return { error: "الملف غير مدعوم. استخدم JPG/PNG/WebP/GIF أو MP4/WebM/MOV" as const, mediaType: null };
+    }
+
+    if (purpose === "poster" && mediaType !== "image") {
+        return { error: "صورة الغلاف يجب أن تكون ملف صورة فقط" as const, mediaType: null };
+    }
+
+    if (file.size > ANNOUNCEMENT_MEDIA_MAX_SIZE) {
+        return { error: "حجم الملف كبير جدًا. الحد الأقصى 25MB" as const, mediaType };
+    }
+
+    return { error: null, mediaType };
+}
 
 export function getAnnouncementDismissLabel(
     announcement: Pick<Announcement, "dismissText" | "template" | "title" | "body" | "linkText" | "type">

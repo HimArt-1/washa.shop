@@ -8,8 +8,8 @@ import { DesignPieceWizard } from "@/components/studio/design-piece/DesignPieceW
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
 
 export const metadata: Metadata = {
-    title: "النموذج الجديد للتصميم | وشّى",
-    description: "انتقل إلى تجربة التصميم الجديدة بالذكاء الاصطناعي داخل وشّى وأنشئ تصورك مباشرة على القطعة.",
+    title: "WASHA STUDIO | وشّى",
+    description: "انتقل إلى تجربة WASHA STUDIO للتصميم الذكي داخل وشّى وأنشئ تصورك مباشرة على القطعة.",
 };
 
 export default async function DesignAiPage() {
@@ -33,11 +33,11 @@ export default async function DesignAiPage() {
                     <div>
                         <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200">
                             <Sparkles className="h-3.5 w-3.5" />
-                            النموذج الجديد
+                            WASHA STUDIO
                         </div>
-                        <h1 className="mt-4 text-3xl font-bold text-theme sm:text-4xl">تصميم ذكي مباشر على القطعة</h1>
+                        <h1 className="mt-4 text-3xl font-bold text-theme sm:text-4xl">WASHA STUDIO</h1>
                         <p className="mt-2 max-w-2xl text-sm text-theme-subtle sm:text-base">
-                            ارفع صورة أو اكتب الفكرة، ثم دع المحرك الجديد يولّد لك تصورًا جاهزًا للمعاينة والطباعة.
+                            ارفع صورة أو اكتب الفكرة، ثم دع WASHA STUDIO يولّد لك تصورًا جاهزًا للمعاينة والطباعة.
                         </p>
                     </div>
 
@@ -54,7 +54,7 @@ export default async function DesignAiPage() {
                             className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-sm font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
                         >
                             <Wand2 className="h-4 w-4" />
-                            فتح استوديو DTF المطور
+                            فتح WASHA AI
                         </Link>
                     ) : null}
                 </div>

@@ -10,12 +10,23 @@ import {
     MousePointerClick, ArrowDown, Globe2, ImagePlus, Clapperboard,
 } from "lucide-react";
 import {
-    createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementActive, uploadAnnouncementMedia,
+    createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementActive, createAnnouncementMediaUploadUrl,
 } from "@/app/actions/announcements";
 import {
-    type Announcement, type AnnouncementEngagementSnapshot, type AnnouncementTrigger, type TriggerType,
-    PAGE_OPTIONS, DEFAULT_TRIGGER, getAnnouncementDismissLabel,
+    ANNOUNCEMENT_MEDIA_ACCEPT,
+    ANNOUNCEMENT_MEDIA_MAX_SIZE,
+    ANNOUNCEMENT_POSTER_ACCEPT,
+    DEFAULT_TRIGGER,
+    PAGE_OPTIONS,
+    getAnnouncementDismissLabel,
+    type Announcement,
+    type AnnouncementEngagementSnapshot,
+    type AnnouncementMediaUploadPurpose,
+    type AnnouncementTrigger,
+    type TriggerType,
+    validateAnnouncementMediaFile,
 } from "@/lib/announcement-types";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 // ─── Template Definitions ───────────────────────────────
 
@@ -248,6 +259,8 @@ const layoutModeLabels: Record<NonNullable<Announcement["layoutMode"]>, { label:
     split: { label: "Split", desc: "تقسيم واضح بين الوسيط والمحتوى للحملات المركزة." },
     compact: { label: "Compact", desc: "صيغة خفيفة للرسائل السريعة والتنبيهات المختصرة." },
 };
+
+const ANNOUNCEMENT_MEDIA_MAX_SIZE_MB = ANNOUNCEMENT_MEDIA_MAX_SIZE / (1024 * 1024);
 
 function buildDefaultAnnouncementForm() {
     return {
@@ -554,6 +567,7 @@ export function AnnouncementsClient({
     engagement: AnnouncementEngagementSnapshot;
 }) {
     const router = useRouter();
+    const supabase = useMemo(() => getSupabaseBrowserClient(), []);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -644,14 +658,49 @@ export function AnnouncementsClient({
         }
     };
 
+    const uploadAnnouncementFile = async (file: File, purpose: AnnouncementMediaUploadPurpose) => {
+        const validation = validateAnnouncementMediaFile(file, purpose);
+        if (validation.error) {
+            return { success: false as const, error: validation.error };
+        }
+
+        const signedUpload = await createAnnouncementMediaUploadUrl({
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            purpose,
+        });
+        if (!signedUpload.success) {
+            return signedUpload;
+        }
+
+        const { error } = await supabase.storage.from("smart-store").uploadToSignedUrl(
+            signedUpload.path,
+            signedUpload.token,
+            file,
+            {
+                cacheControl: "3600",
+                contentType: file.type,
+            }
+        );
+
+        if (error) {
+            console.error("[uploadAnnouncementFile]", error);
+            return { success: false as const, error: error.message || "فشل رفع الملف" };
+        }
+
+        return {
+            success: true as const,
+            url: signedUpload.url,
+            mediaType: signedUpload.mediaType,
+        };
+    };
+
     const handleMediaSelected = async (file: File | null) => {
         if (!file) return;
         setUploadingMedia(true);
         try {
-            const formData = new FormData();
-            formData.set("file", file);
-            formData.set("purpose", "media");
-            const result = await uploadAnnouncementMedia(formData);
+            const result = await uploadAnnouncementFile(file, "media");
             if (!result.success) {
                 showToast("خطأ: " + result.error);
                 return;
@@ -664,7 +713,8 @@ export function AnnouncementsClient({
                 mediaAlt: current.mediaAlt || current.title || file.name.replace(/\.[^.]+$/, ""),
             }));
             showToast(result.mediaType === "video" ? "تم رفع الفيديو ✓" : "تم رفع الوسيط ✓");
-        } catch {
+        } catch (error) {
+            console.error("[handleMediaSelected]", error);
             showToast("خطأ: تعذر رفع الوسيط");
         } finally {
             setUploadingMedia(false);
@@ -675,17 +725,15 @@ export function AnnouncementsClient({
         if (!file || form.mediaType !== "video") return;
         setUploadingPoster(true);
         try {
-            const formData = new FormData();
-            formData.set("file", file);
-            formData.set("purpose", "poster");
-            const result = await uploadAnnouncementMedia(formData);
+            const result = await uploadAnnouncementFile(file, "poster");
             if (!result.success) {
                 showToast("خطأ: " + result.error);
                 return;
             }
             setForm((current) => ({ ...current, mediaPosterUrl: result.url }));
             showToast("تم رفع صورة الغلاف ✓");
-        } catch {
+        } catch (error) {
+            console.error("[handlePosterSelected]", error);
             showToast("خطأ: تعذر رفع صورة الغلاف");
         } finally {
             setUploadingPoster(false);
@@ -1362,7 +1410,7 @@ export function AnnouncementsClient({
                                         {uploadingMedia ? "جاري الرفع..." : form.mediaUrl ? "استبدال الوسيط" : "رفع وسائط"}
                                         <input
                                             type="file"
-                                            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                                            accept={ANNOUNCEMENT_MEDIA_ACCEPT}
                                             className="hidden"
                                             onChange={(event) => {
                                                 const file = event.target.files?.[0] || null;
@@ -1406,7 +1454,7 @@ export function AnnouncementsClient({
                                         <div className="rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] px-4 py-3 text-xs text-theme-subtle">
                                             <p className="font-semibold text-theme">الأنواع المدعومة</p>
                                             <p className="mt-1 leading-6">JPG / PNG / WebP / GIF / MP4 / WebM / MOV</p>
-                                            <p className="mt-1 leading-6">الحد الأقصى: 25MB</p>
+                                            <p className="mt-1 leading-6">الحد الأقصى: {ANNOUNCEMENT_MEDIA_MAX_SIZE_MB}MB</p>
                                         </div>
 
                                         {form.mediaType === "video" && (
@@ -1423,7 +1471,7 @@ export function AnnouncementsClient({
                                                         {uploadingPoster ? "جاري الرفع..." : form.mediaPosterUrl ? "استبدال الغلاف" : "رفع غلاف"}
                                                         <input
                                                             type="file"
-                                                            accept="image/jpeg,image/png,image/webp,image/gif"
+                                                            accept={ANNOUNCEMENT_POSTER_ACCEPT}
                                                             className="hidden"
                                                             onChange={(event) => {
                                                                 const file = event.target.files?.[0] || null;

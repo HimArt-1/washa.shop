@@ -7,26 +7,7 @@ import {
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
-
-// ── Garment color hex map (matches API + StepGarment) ──────────
-const GARMENT_COLOR_HEX: Record<string, string> = {
-  'أسود':           '#0D0D0D',
-  'أبيض':           '#F2F2F2',
-  'رمادي':          '#808080',
-  'كحلي':           '#1A2744',
-  'بيج':            '#D9C5A0',
-  'زيتي':           '#4A5340',
-  'أحمر عنابي':     '#6B1B1B',
-  'أخضر غابة':      '#1C4A2A',
-  'أزرق ملكي':      '#1B3A8C',
-  'خردلي':          '#B08A20',
-  'بنفسجي داكن':    '#3C1F5A',
-  'وردي مغبر':      '#C4899A',
-  'بني قهوة':       '#5A3320',
-  'برتقالي محروق':  '#A84515',
-  'فحم داكن':       '#2A2A2A',
-  'أزرق سماوي':     '#5EB5E8',
-};
+import { LIGHT_GARMENT_COLORS } from '../../types';
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -237,9 +218,9 @@ export default function StepResult() {
   const [showTerms, setShowTerms] = useState(false);
 
   // Derived garment color for ambient preview
-  const garmentHex   = GARMENT_COLOR_HEX[state.garmentColor] ?? '#111111';
+  const garmentHex   = state.garmentColorHex || '#111111';
   const garmentRgb   = hexToRgb(garmentHex);
-  const isLightColor = ['أبيض', 'بيج', 'خردلي', 'وردي مغبر', 'أزرق سماوي'].includes(state.garmentColor);
+  const isLightColor = LIGHT_GARMENT_COLORS.includes(state.garmentColor);
 
   const handleConfirmOrder = () => setShowTerms(true);
   const handleAcceptTerms = async () => {
@@ -353,6 +334,12 @@ export default function StepResult() {
                 <span className="font-medium text-washa-text">{state.garmentType}</span>
                 <span className="text-washa-text-faint/40">·</span>
                 <span>{state.garmentColor}</span>
+                {state.garmentSize ? (
+                  <>
+                    <span className="text-washa-text-faint/40">·</span>
+                    <span>{state.garmentSize}</span>
+                  </>
+                ) : null}
               </div>
             </div>
 
@@ -388,7 +375,7 @@ export default function StepResult() {
               {/* Persistent action bar — always visible, essential for mobile */}
               <div className="border-t border-washa-border/20 px-5 py-4 flex items-center justify-between gap-3">
                 <div className="text-xs text-washa-text-faint">
-                  {state.style} · {state.technique}
+                  {state.style} · {state.technique} · {state.palette}
                 </div>
                 <Button
                   variant="outline"

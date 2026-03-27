@@ -1,11 +1,22 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  DesignState,
-  STYLE_PROMPTS,
-  TECHNIQUE_PROMPTS,
-  PALETTE_PROMPTS,
+  CUSTOM_PALETTE_ID,
+  CUSTOM_PALETTE_LABEL,
+  CUSTOM_PALETTE_PROMPT,
+  FALLBACK_DTF_CONFIG,
+  FALLBACK_PALETTE_PROMPTS,
+  FALLBACK_STYLE_PROMPTS,
+  FALLBACK_TECHNIQUE_PROMPTS,
+  type DesignState,
+  type DtfStudioColorOption,
+  type DtfStudioConfig,
+  type DtfStudioCreativeOption,
+  type DtfStudioGarmentOption,
+  type DtfStudioPaletteOption,
+  type DtfStudioSizeOption,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
+import { fetchDtfStudioConfig } from '../services/configService';
 import { resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
 export interface OrderResult {
@@ -14,39 +25,43 @@ export interface OrderResult {
 }
 
 interface DesignContextType {
-  // Wizard state
   step: number;
   setStep: (step: number) => void;
   nextStep: () => void;
   prevStep: () => void;
-
-  // Design state
   state: DesignState;
   updateState: (updates: Partial<DesignState>) => void;
-
-  // Generation
   isGenerating: boolean;
   isExtracting: boolean;
   mockupImage: string | null;
   extractedImage: string | null;
   error: string | null;
-
-  // Order submission
   isSubmittingOrder: boolean;
   orderResult: OrderResult | null;
   submitOrder: () => Promise<boolean>;
-
-  // Actions
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleGenerate: () => Promise<void>;
   handleExtract: () => Promise<void>;
   handleDownload: (imageUrl: string, filename: string) => void;
   resetDesign: () => void;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
-
-  // Toast
   toast: ToastState | null;
   clearToast: () => void;
+  config: DtfStudioConfig | null;
+  configLoading: boolean;
+  configError: string | null;
+  garmentOptions: DtfStudioGarmentOption[];
+  colorOptions: DtfStudioColorOption[];
+  sizeOptions: DtfStudioSizeOption[];
+  styleOptions: DtfStudioCreativeOption[];
+  techniqueOptions: DtfStudioCreativeOption[];
+  paletteOptions: DtfStudioPaletteOption[];
+  selectedGarment: DtfStudioGarmentOption | null;
+  selectedColor: DtfStudioColorOption | null;
+  selectedSize: DtfStudioSizeOption | null;
+  selectedStyle: DtfStudioCreativeOption | null;
+  selectedTechnique: DtfStudioCreativeOption | null;
+  selectedPalette: DtfStudioPaletteOption | null;
 }
 
 export interface ToastState {
@@ -57,17 +72,26 @@ export interface ToastState {
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 
-const INITIAL_STATE: DesignState = {
-  garmentType: 'تيشيرت',
-  garmentColor: 'أسود',
+const EMPTY_STATE: DesignState = {
+  garmentId: null,
+  garmentType: '',
+  garmentColorId: null,
+  garmentColor: '',
+  garmentColorHex: '#111111',
+  garmentSizeId: null,
+  garmentSize: '',
   designMethod: 'text',
   prompt: '',
   calligraphyText: '',
   referenceImage: null,
   referenceImageMimeType: null,
-  style: 'ملصق (Sticker)',
-  technique: 'رسم رقمي (Digital)',
-  palette: 'نيون ساطع (Neon)',
+  styleId: null,
+  style: '',
+  techniqueId: null,
+  technique: '',
+  paletteId: null,
+  palette: '',
+  customPalette: '',
 };
 
 function getReadableErrorMessage(error: unknown, fallback: string) {
@@ -81,9 +105,43 @@ function getReadableErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function resolveDefaultSize(garment: DtfStudioGarmentOption | null, colorId?: string | null) {
+  if (!garment) return null;
+  return garment.sizes.find((size) => size.colorId === colorId) || garment.sizes.find((size) => size.colorId === null) || garment.sizes[0] || null;
+}
+
+function buildInitialState(config: DtfStudioConfig): DesignState {
+  const garment = config.garments[0] || null;
+  const color = garment?.colors[0] || null;
+  const size = resolveDefaultSize(garment, color?.id || null);
+  const style = config.styles[0] || null;
+  const technique = config.techniques[0] || null;
+  const palette = config.palettes[0] || null;
+
+  return {
+    ...EMPTY_STATE,
+    garmentId: garment?.id || null,
+    garmentType: garment?.name || '',
+    garmentColorId: color?.id || null,
+    garmentColor: color?.name || '',
+    garmentColorHex: color?.hexCode || '#111111',
+    garmentSizeId: size?.id || null,
+    garmentSize: size?.name || '',
+    styleId: style?.id || null,
+    style: style?.name || '',
+    techniqueId: technique?.id || null,
+    technique: technique?.name || '',
+    paletteId: palette?.id || null,
+    palette: palette?.name || '',
+  };
+}
+
 export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [step, setStep] = useState(1);
-  const [state, setState] = useState<DesignState>(INITIAL_STATE);
+  const [state, setState] = useState<DesignState>(EMPTY_STATE);
+  const [config, setConfig] = useState<DtfStudioConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -102,12 +160,137 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setToast(null);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadConfig() {
+      setConfigLoading(true);
+      setConfigError(null);
+
+      try {
+        const loadedConfig = await fetchDtfStudioConfig();
+        if (cancelled) return;
+        setConfig(loadedConfig);
+        setState((current) => {
+          if (current.garmentId || current.styleId || current.techniqueId || current.paletteId) {
+            return current;
+          }
+          return buildInitialState(loadedConfig);
+        });
+      } catch (loadError) {
+        if (cancelled) return;
+        const message = getReadableErrorMessage(loadError, 'تعذر تحميل إعدادات WASHA AI. تم تشغيل الوضع الاحتياطي.');
+        setConfig(FALLBACK_DTF_CONFIG);
+        setConfigError(message);
+        setState((current) => {
+          if (current.garmentId || current.styleId || current.techniqueId || current.paletteId) {
+            return current;
+          }
+          return buildInitialState(FALLBACK_DTF_CONFIG);
+        });
+      } finally {
+        if (!cancelled) {
+          setConfigLoading(false);
+        }
+      }
+    }
+
+    void loadConfig();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const garmentOptions = useMemo(() => config?.garments ?? [], [config]);
+  const styleOptions = useMemo(() => config?.styles ?? [], [config]);
+  const techniqueOptions = useMemo(() => config?.techniques ?? [], [config]);
+  const paletteOptions = useMemo(() => config?.palettes ?? [], [config]);
+
+  const selectedGarment = useMemo(
+    () => garmentOptions.find((item) => item.id === state.garmentId) || garmentOptions[0] || null,
+    [garmentOptions, state.garmentId]
+  );
+
+  const colorOptions = useMemo(
+    () => selectedGarment?.colors ?? [],
+    [selectedGarment]
+  );
+
+  const selectedColor = useMemo(
+    () => colorOptions.find((item) => item.id === state.garmentColorId) || colorOptions[0] || null,
+    [colorOptions, state.garmentColorId]
+  );
+
+  const sizeOptions = useMemo(() => {
+    if (!selectedGarment) return [];
+    const filtered = selectedGarment.sizes.filter((item) => item.colorId === null || item.colorId === selectedColor?.id);
+    return filtered.length > 0 ? filtered : selectedGarment.sizes;
+  }, [selectedColor?.id, selectedGarment]);
+
+  const selectedSize = useMemo(
+    () => sizeOptions.find((item) => item.id === state.garmentSizeId) || sizeOptions[0] || null,
+    [sizeOptions, state.garmentSizeId]
+  );
+
+  const selectedStyle = useMemo(
+    () => styleOptions.find((item) => item.id === state.styleId) || styleOptions[0] || null,
+    [styleOptions, state.styleId]
+  );
+
+  const selectedTechnique = useMemo(
+    () => techniqueOptions.find((item) => item.id === state.techniqueId) || techniqueOptions[0] || null,
+    [techniqueOptions, state.techniqueId]
+  );
+
+  const selectedPalette = useMemo(
+    () => paletteOptions.find((item) => item.id === state.paletteId) || paletteOptions[0] || null,
+    [paletteOptions, state.paletteId]
+  );
+
+  useEffect(() => {
+    if (!selectedGarment) return;
+    setState((current) => {
+      const nextColor = colorOptions.find((item) => item.id === current.garmentColorId) || colorOptions[0] || null;
+      const nextSize = sizeOptions.find((item) => item.id === current.garmentSizeId) || resolveDefaultSize(selectedGarment, nextColor?.id || null);
+
+      return {
+        ...current,
+        garmentId: selectedGarment.id,
+        garmentType: selectedGarment.name,
+        garmentColorId: nextColor?.id || null,
+        garmentColor: nextColor?.name || '',
+        garmentColorHex: nextColor?.hexCode || '#111111',
+        garmentSizeId: nextSize?.id || null,
+        garmentSize: nextSize?.name || '',
+      };
+    });
+  }, [colorOptions, selectedGarment, sizeOptions]);
+
+  useEffect(() => {
+    if (!selectedStyle) return;
+    setState((current) => ({ ...current, styleId: selectedStyle.id, style: selectedStyle.name }));
+  }, [selectedStyle]);
+
+  useEffect(() => {
+    if (!selectedTechnique) return;
+    setState((current) => ({ ...current, techniqueId: selectedTechnique.id, technique: selectedTechnique.name }));
+  }, [selectedTechnique]);
+
+  useEffect(() => {
+    if (!selectedPalette) return;
+    setState((current) => {
+      if (current.paletteId === CUSTOM_PALETTE_ID) return current;
+      return { ...current, paletteId: selectedPalette.id, palette: selectedPalette.name };
+    });
+  }, [selectedPalette]);
+
   const updateState = (updates: Partial<DesignState>) => {
-    setState(prev => ({ ...prev, ...updates }));
+    setState((prev) => ({ ...prev, ...updates }));
   };
 
-  const nextStep = () => setStep(s => Math.min(4, s + 1));
-  const prevStep = () => setStep(s => Math.max(1, s - 1));
+  const nextStep = () => setStep((value) => Math.min(4, value + 1));
+  const prevStep = () => setStep((value) => Math.max(1, value - 1));
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -150,6 +333,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (!state.garmentType || !state.garmentColor || !state.style || !state.technique) {
+      setError('إعدادات القطعة أو النمط غير مكتملة.');
+      showToast('اختر القطعة واللون والأسلوب قبل التوليد', 'error');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setMockupImage(null);
@@ -157,17 +346,16 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setStep(4);
 
     try {
-      // Determine the palette prompt: if 'Custom', use the user's input; otherwise use the preset
-      const palettePrompt = state.palette === 'تخصيص... (Custom)'
-        ? (state.customPalette || 'custom colors')
-        : PALETTE_PROMPTS[state.palette];
+      const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
+        ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
+        : selectedPalette?.prompt || FALLBACK_PALETTE_PROMPTS[state.palette] || state.palette;
 
       const mockup = await generateMockup(
         state.garmentType,
         state.garmentColor,
         state.prompt,
-        TECHNIQUE_PROMPTS[state.technique],
-        STYLE_PROMPTS[state.style],
+        selectedTechnique?.prompt || FALLBACK_TECHNIQUE_PROMPTS[state.technique] || state.technique,
+        selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style,
         palettePrompt,
         state.referenceImage || undefined,
         state.referenceImageMimeType || undefined,
@@ -181,8 +369,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setError('فشل في توليد الصورة. يرجى المحاولة مرة أخرى.');
         showToast('فشل في توليد الصورة', 'error');
       }
-    } catch (error) {
-      const message = getReadableErrorMessage(error, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
+    } catch (generationError) {
+      const message = getReadableErrorMessage(generationError, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
       setError(message);
       showToast(message, 'error');
     } finally {
@@ -210,8 +398,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setError('فشل في استخراج التصميم.');
         showToast('فشل في استخراج التصميم', 'error');
       }
-    } catch (error) {
-      const message = getReadableErrorMessage(error, 'حدث خطأ أثناء الاستخراج.');
+    } catch (extractError) {
+      const message = getReadableErrorMessage(extractError, 'حدث خطأ أثناء الاستخراج.');
       setError(message);
       showToast(message, 'error');
     } finally {
@@ -240,14 +428,23 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          garmentId: state.garmentId,
           garmentType: state.garmentType,
+          colorId: state.garmentColorId,
           garmentColor: state.garmentColor,
+          colorHex: state.garmentColorHex,
+          sizeId: state.garmentSizeId,
+          garmentSize: state.garmentSize,
           designMethod: state.designMethod,
           prompt: state.prompt,
           calligraphyText: state.calligraphyText || undefined,
+          styleId: state.styleId,
           style: state.style,
+          techniqueId: state.techniqueId,
           technique: state.technique,
+          paletteId: state.paletteId,
           palette: state.palette,
+          customPalette: state.paletteId === CUSTOM_PALETTE_ID ? state.customPalette || null : null,
           mockupDataUrl: mockupImage,
           extractedDataUrl: extractedImage || null,
         }),
@@ -262,7 +459,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       const result: OrderResult = { orderId: data.orderId, orderNumber: data.orderNumber };
       setOrderResult(result);
 
-      // ── Push to cart (shared localStorage with Next.js app) ──
       try {
         const cartKey = 'wusha-cart-storage';
         const raw = localStorage.getItem(cartKey);
@@ -270,17 +466,16 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         if (!cartState.state) cartState.state = { items: [], coupon: null };
         if (!Array.isArray(cartState.state.items)) cartState.state.items = [];
 
-        // Use the Supabase URL returned from the API (not the raw base64)
         const imageUrl = data.mockupUrl || '';
 
         const cartItem = {
           id: `dtf-order-${data.orderNumber}`,
-          title: `تصميم DTF مخصص — ${state.garmentType} ${state.garmentColor}`,
+          title: `تصميم WASHA AI مخصص — ${state.garmentType} ${state.garmentColor}`,
           price: 0,
           image_url: imageUrl,
-          artist_name: 'وشّى DTF Studio',
+          artist_name: 'WASHA AI',
           quantity: 1,
-          size: null,
+          size: state.garmentSize || null,
           type: 'custom_design' as const,
           maxQuantity: 1,
           customDesignUrl: imageUrl,
@@ -288,7 +483,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           customPosition: 'chest',
         };
 
-        // Remove duplicate if same order number exists
         cartState.state.items = cartState.state.items.filter(
           (item: { id: string }) => item.id !== cartItem.id
         );
@@ -302,8 +496,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
       showToast(`تم إرسال طلبك بنجاح! رقم الطلب: #${data.orderNumber}`, 'success');
       return true;
-    } catch (err) {
-      const msg = getReadableErrorMessage(err, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
+    } catch (submitError) {
+      const msg = getReadableErrorMessage(submitError, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
       setError(msg);
       showToast(msg, 'error');
       return false;
@@ -314,7 +508,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
   const resetDesign = () => {
     setStep(1);
-    setState(INITIAL_STATE);
+    setState(config ? buildInitialState(config) : EMPTY_STATE);
     setMockupImage(null);
     setExtractedImage(null);
     setError(null);
@@ -346,6 +540,21 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         showToast,
         toast,
         clearToast,
+        config,
+        configLoading,
+        configError,
+        garmentOptions,
+        colorOptions,
+        sizeOptions,
+        styleOptions,
+        techniqueOptions,
+        paletteOptions,
+        selectedGarment,
+        selectedColor,
+        selectedSize,
+        selectedStyle,
+        selectedTechnique,
+        selectedPalette,
       }}
     >
       {children}

@@ -489,12 +489,12 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         onChange={(v) => setVisibility({ ...visibility, design_piece: v })}
                     />
                     <Toggle
-                        label="اختصار النموذج الجديد داخل صمم قطعتك"
+                        label="اختصار WASHA STUDIO داخل صمم قطعتك"
                         checked={visibility.design_piece_ai_switch ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece_ai_switch: v })}
                     />
                     <Toggle
-                        label="اختصار استوديو DTF المطور داخل صمم قطعتك"
+                        label="اختصار WASHA AI داخل صمم قطعتك"
                         checked={visibility.design_piece_dtf_studio_switch ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece_dtf_studio_switch: v })}
                     />

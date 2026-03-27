@@ -73,6 +73,7 @@ import {
 // ─── Types ──────────────────────────────────────────────
 
 type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems" | "mockups" | "presets" | "intelligence";
+type WorkspaceId = "designPieceLab" | "dtfStudio";
 
 interface Props {
     garments: CustomDesignGarment[];
@@ -87,23 +88,40 @@ interface Props {
     compatibilities: CustomDesignOptionCompatibility[];
 }
 
-const TABS: { id: TabId; label: string; icon: any }[] = [
+const DESIGN_PIECE_TABS: { id: TabId; label: string; icon: any }[] = [
+    { id: "studioItems", label: "المنتجات المرجعية", icon: Camera },
+    { id: "presets", label: "الـ Presets", icon: Layers },
+    { id: "intelligence", label: "خريطة الذكاء", icon: Sparkles },
     { id: "garments", label: "القطع", icon: Shirt },
     { id: "colors", label: "الألوان", icon: Palette },
     { id: "sizes", label: "المقاسات", icon: Ruler },
     { id: "styles", label: "الأنماط", icon: Sparkles },
     { id: "artStyles", label: "الأساليب", icon: Paintbrush },
     { id: "colorPackages", label: "باقات الألوان", icon: SwatchBook },
-    { id: "studioItems", label: "ستيديو وشّى", icon: Camera },
     { id: "mockups", label: "موكبات التصاميم", icon: ImagePlus },
-    { id: "presets", label: "الـ Presets", icon: Layers },
-    { id: "intelligence", label: "خريطة الذكاء", icon: Sparkles },
 ];
+
+const DTF_STUDIO_TABS: { id: TabId; label: string; icon: any }[] = [
+    { id: "garments", label: "مخزون القطع", icon: Shirt },
+    { id: "colors", label: "ألوان القطع", icon: Palette },
+    { id: "sizes", label: "المقاسات", icon: Ruler },
+    { id: "styles", label: "ستايلات التصميم", icon: Sparkles },
+    { id: "artStyles", label: "تقنيات الإخراج", icon: Paintbrush },
+    { id: "colorPackages", label: "لوحات الألوان", icon: SwatchBook },
+    { id: "mockups", label: "موكبات المقاسات", icon: ImagePlus },
+];
+
+const DEFAULT_TAB_BY_WORKSPACE: Record<WorkspaceId, TabId> = {
+    designPieceLab: "studioItems",
+    dtfStudio: "garments",
+};
 
 // ─── Component ──────────────────────────────────────────
 
 export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
-    const [activeTab, setActiveTab] = useState<TabId>("garments");
+    const [workspace, setWorkspace] = useState<WorkspaceId>("designPieceLab");
+    const [designPieceTab, setDesignPieceTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.designPieceLab);
+    const [dtfStudioTab, setDtfStudioTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.dtfStudio);
     const router = useRouter();
     const [garmentsState, setGarmentsState] = useState(garments);
     const [colorsState, setColorsState] = useState(colors);
@@ -116,15 +134,109 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
         setColorsState(colors);
     }, [colors]);
 
+    const activeTab = workspace === "designPieceLab" ? designPieceTab : dtfStudioTab;
+    const activeTabs = workspace === "designPieceLab" ? DESIGN_PIECE_TABS : DTF_STUDIO_TABS;
+
+    const setActiveTab = useCallback((tab: TabId) => {
+        if (workspace === "designPieceLab") {
+            setDesignPieceTab(tab);
+            return;
+        }
+        setDtfStudioTab(tab);
+    }, [workspace]);
+
+    const renderTab = useCallback((tab: TabId) => {
+        if (tab === "garments") {
+            return <GarmentsTab items={garmentsState} setItems={setGarmentsState} onFallbackRefresh={() => router.refresh()} />;
+        }
+        if (tab === "colors") {
+            return <ColorsTab items={colorsState} garments={garmentsState} setItems={setColorsState} onFallbackRefresh={() => router.refresh()} />;
+        }
+        if (tab === "sizes") {
+            return <SizesTab items={sizes} garments={garmentsState} colors={colorsState} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "styles") {
+            return <StylesTab items={styles} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "artStyles") {
+            return <ArtStylesTab items={artStyles} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "colorPackages") {
+            return <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "studioItems") {
+            return <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "mockups") {
+            return <MockupsTab items={garmentStudioMockups} garments={garmentsState} studioItems={studioItems} onRefresh={() => router.refresh()} />;
+        }
+        if (tab === "presets") {
+            return <PresetsTab items={presets} garments={garmentsState} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />;
+        }
+        return (
+            <IntelligenceTab
+                compatibilities={compatibilities}
+                garments={garmentsState}
+                styles={styles}
+                artStyles={artStyles}
+                colorPackages={colorPackages}
+                studioItems={studioItems}
+                presets={presets}
+                onRefresh={() => router.refresh()}
+            />
+        );
+    }, [artStyles, colorPackages, colorsState, compatibilities, garmentStudioMockups, garmentsState, presets, router, sizes, studioItems, styles]);
+
     return (
         <div className="space-y-6">
+            <div className="grid gap-4 lg:grid-cols-2">
+                <WorkspaceCard
+                    active={workspace === "designPieceLab"}
+                    icon={Sparkles}
+                    title="WASHA STUDIO"
+                    description="واجهة الطلبات التجريبية التي ترسل التصميم للدعم الفني مع presets وخريطة ذكاء ومرجعيات المنتجات."
+                    stats={[
+                        `${studioItems.length} منتجات مرجعية`,
+                        `${presets.length} presets`,
+                        `${compatibilities.length} قواعد ذكاء`,
+                    ]}
+                    onClick={() => setWorkspace("designPieceLab")}
+                />
+                <WorkspaceCard
+                    active={workspace === "dtfStudio"}
+                    icon={Camera}
+                    title="WASHA AI"
+                    description="لوحة التحكم الفعلية التي تغذي /design/dtf-studio من حيث القطع والألوان والمقاسات والستايلات والتقنيات والباليت والموكبات."
+                    stats={[
+                        `${garmentsState.length} قطع نشطة`,
+                        `${colorsState.length} ألوان`,
+                        `${sizes.length} مقاسات`,
+                    ]}
+                    onClick={() => setWorkspace("dtfStudio")}
+                />
+            </div>
+
+            <WorkspaceOverview
+                workspace={workspace}
+                garments={garmentsState}
+                colors={colorsState}
+                sizes={sizes}
+                styles={styles}
+                artStyles={artStyles}
+                colorPackages={colorPackages}
+                studioItems={studioItems}
+                garmentStudioMockups={garmentStudioMockups}
+                presets={presets}
+                compatibilities={compatibilities}
+            />
+
             <div className="flex gap-2 overflow-x-auto pb-1">
-                {TABS.map((tab) => {
+                {activeTabs.map((tab) => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
                     return (
                         <button
-                            key={tab.id}
+                            key={`${workspace}-${tab.id}`}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex min-h-[42px] shrink-0 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${isActive ? "theme-surface-panel text-gold border-gold/30" : "bg-theme-faint text-theme-subtle border border-theme-subtle hover:text-theme-strong hover:bg-theme-subtle"}`}
                         >
@@ -135,30 +247,107 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                 })}
             </div>
             <AnimatePresence mode="wait">
-                <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                    {activeTab === "garments" && <GarmentsTab items={garmentsState} setItems={setGarmentsState} onFallbackRefresh={() => router.refresh()} />}
-                    {activeTab === "colors" && <ColorsTab items={colorsState} garments={garmentsState} setItems={setColorsState} onFallbackRefresh={() => router.refresh()} />}
-                    {activeTab === "sizes" && <SizesTab items={sizes} garments={garmentsState} colors={colorsState} onRefresh={() => router.refresh()} />}
-                    {activeTab === "styles" && <StylesTab items={styles} onRefresh={() => router.refresh()} />}
-                    {activeTab === "artStyles" && <ArtStylesTab items={artStyles} onRefresh={() => router.refresh()} />}
-                    {activeTab === "colorPackages" && <ColorPackagesTab items={colorPackages} onRefresh={() => router.refresh()} />}
-                    {activeTab === "studioItems" && <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />}
-                    {activeTab === "mockups" && <MockupsTab items={garmentStudioMockups} garments={garmentsState} studioItems={studioItems} onRefresh={() => router.refresh()} />}
-                    {activeTab === "presets" && <PresetsTab items={presets} garments={garmentsState} styles={styles} artStyles={artStyles} colorPackages={colorPackages} studioItems={studioItems} onRefresh={() => router.refresh()} />}
-                    {activeTab === "intelligence" && (
-                        <IntelligenceTab
-                            compatibilities={compatibilities}
-                            garments={garmentsState}
-                            styles={styles}
-                            artStyles={artStyles}
-                            colorPackages={colorPackages}
-                            studioItems={studioItems}
-                            presets={presets}
-                            onRefresh={() => router.refresh()}
-                        />
-                    )}
+                <motion.div key={`${workspace}-${activeTab}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    {renderTab(activeTab)}
                 </motion.div>
             </AnimatePresence>
+        </div>
+    );
+}
+
+function WorkspaceCard({
+    active,
+    icon: Icon,
+    title,
+    description,
+    stats,
+    onClick,
+}: {
+    active: boolean;
+    icon: any;
+    title: string;
+    description: string;
+    stats: string[];
+    onClick: () => void;
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={`rounded-3xl border p-5 text-right transition-all duration-300 ${active ? "theme-surface-panel border-gold/30 shadow-[0_0_35px_rgba(201,168,106,0.08)]" : "bg-theme-faint border-theme-subtle hover:bg-theme-subtle"}`}
+        >
+            <div className="flex items-start justify-between gap-4">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${active ? "bg-gold/10 text-gold" : "bg-theme-subtle text-theme-subtle"}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+                {active ? (
+                    <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-semibold text-gold">
+                        النافذة النشطة
+                    </span>
+                ) : null}
+            </div>
+            <div className="mt-5 space-y-2">
+                <h2 className="text-lg font-bold text-theme">{title}</h2>
+                <p className="text-sm leading-6 text-theme-subtle">{description}</p>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+                {stats.map((stat) => (
+                    <span key={stat} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] text-theme-soft">
+                        {stat}
+                    </span>
+                ))}
+            </div>
+        </button>
+    );
+}
+
+function WorkspaceOverview({
+    workspace,
+    garments,
+    colors,
+    sizes,
+    styles,
+    artStyles,
+    colorPackages,
+    studioItems,
+    garmentStudioMockups,
+    presets,
+    compatibilities,
+}: {
+    workspace: WorkspaceId;
+    garments: CustomDesignGarment[];
+    colors: CustomDesignColor[];
+    sizes: CustomDesignSize[];
+    styles: CustomDesignStyle[];
+    artStyles: CustomDesignArtStyle[];
+    colorPackages: CustomDesignColorPackage[];
+    studioItems: CustomDesignStudioItem[];
+    garmentStudioMockups: GarmentStudioMockup[];
+    presets: CustomDesignPreset[];
+    compatibilities: CustomDesignOptionCompatibility[];
+}) {
+    const items = workspace === "designPieceLab"
+        ? [
+            { label: "منتجات مرجعية", value: studioItems.length, note: "لعرض المنتجات المستهدفة داخل النموذج التجريبي" },
+            { label: "Presets ذكية", value: presets.length, note: "لتسريع اقتراحات النموذج وربطها بالهوية" },
+            { label: "قواعد التوافق", value: compatibilities.length, note: "لتوجيه التوصيات ومنطق المطابقة داخل النموذج" },
+            { label: "كتالوج مشترك", value: garments.length + colors.length + sizes.length, note: "قطع وألوان ومقاسات يتشاركها المساران" },
+        ]
+        : [
+            { label: "القطع النشطة", value: garments.length, note: "تظهر مباشرة في واجهة /design/dtf-studio" },
+            { label: "ألوان ومقاسات", value: colors.length + sizes.length, note: "تحدد ما يراه العميل فعليًا أثناء التصميم" },
+            { label: "خيارات الإبداع", value: styles.length + artStyles.length + colorPackages.length, note: "ستايلات وتقنيات وباليت للتوليد" },
+            { label: "موكبات التشغيل", value: garmentStudioMockups.length, note: "مرجع العرض البصري للمقاسات والمنتجات" },
+        ];
+
+    return (
+        <div className="grid gap-4 xl:grid-cols-4">
+            {items.map((item) => (
+                <div key={`${workspace}-${item.label}`} className="theme-surface-panel rounded-2xl p-5">
+                    <p className="text-xs font-medium text-theme-subtle">{item.label}</p>
+                    <p className="mt-2 text-3xl font-black text-theme">{item.value}</p>
+                    <p className="mt-2 text-xs leading-5 text-theme-faint">{item.note}</p>
+                </div>
+            ))}
         </div>
     );
 }

@@ -118,12 +118,12 @@ export async function requireWashaDtfHistoryAccess(): Promise<
 > {
     const user = await currentUser();
     if (!user) {
-        return { ok: false, status: 401, error: "يجب تسجيل الدخول لاستخدام استوديو DTF" };
+        return { ok: false, status: 401, error: "يجب تسجيل الدخول لاستخدام WASHA AI" };
     }
 
     const profile = await ensureProfile();
     if (!profile) {
-        return { ok: false, status: 403, error: "غير مصرح لك باستخدام استوديو DTF" };
+        return { ok: false, status: 403, error: "غير مصرح لك باستخدام WASHA AI" };
     }
 
     let supabase: SupabaseClient<Database>;

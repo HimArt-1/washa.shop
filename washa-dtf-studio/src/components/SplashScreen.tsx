@@ -297,7 +297,7 @@ export default function SplashScreen() {
                   fontWeight: 300,
                 }}
               >
-                DTF Studio
+                WASHA AI
               </motion.p>
 
               {/* Divider line — draws from center out */}
