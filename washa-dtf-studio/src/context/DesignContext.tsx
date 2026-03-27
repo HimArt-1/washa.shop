@@ -179,7 +179,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (loadError) {
         if (cancelled) return;
-        const message = getReadableErrorMessage(loadError, 'تعذر تحميل إعدادات WASHA AI. تم تشغيل الوضع الاحتياطي.');
+        const message = getReadableErrorMessage(loadError, 'تعذر تحميل إعدادات استوديو DTF. تم تشغيل الوضع الاحتياطي.');
         setConfig(FALLBACK_DTF_CONFIG);
         setConfigError(message);
         setState((current) => {
@@ -333,9 +333,15 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!state.garmentType || !state.garmentColor || !state.style || !state.technique) {
+    if (!state.garmentType || !state.garmentColor || !state.garmentSize || !state.style || !state.technique || !state.paletteId) {
       setError('إعدادات القطعة أو النمط غير مكتملة.');
-      showToast('اختر القطعة واللون والأسلوب قبل التوليد', 'error');
+      showToast('أكمل القطعة واللون والمقاس والأسلوب قبل التوليد', 'error');
+      return;
+    }
+
+    if (state.paletteId === CUSTOM_PALETTE_ID && !state.customPalette.trim()) {
+      setError('يرجى كتابة وصف لوحة الألوان المخصصة.');
+      showToast('اكتب وصف لوحة الألوان المخصصة قبل التوليد', 'error');
       return;
     }
 
@@ -470,10 +476,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
         const cartItem = {
           id: `dtf-order-${data.orderNumber}`,
-          title: `تصميم WASHA AI مخصص — ${state.garmentType} ${state.garmentColor}`,
+          title: `تصميم DTF مخصص — ${state.garmentType} ${state.garmentColor}`,
           price: 0,
           image_url: imageUrl,
-          artist_name: 'WASHA AI',
+          artist_name: 'وشّى DTF Studio',
           quantity: 1,
           size: state.garmentSize || null,
           type: 'custom_design' as const,

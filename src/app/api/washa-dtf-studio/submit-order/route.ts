@@ -109,7 +109,7 @@ async function uploadDataUrl(
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
-        return NextResponse.json({ error: "غير مصرح لك باستخدام WASHA AI" }, { status: 403 });
+        return NextResponse.json({ error: "غير مصرح لك باستخدام استوديو DTF" }, { status: 403 });
     }
 
     let body: SubmitOrderBody;
@@ -266,10 +266,10 @@ export async function POST(request: NextRequest) {
 
     const designDesc = calligraphyText
         ? `مخطوطة: "${calligraphyText}"`
-        : prompt || "تصميم من WASHA AI";
+        : prompt || "تصميم من استوديو DTF";
 
     const aiPrompt = [
-        "[طلب من WASHA AI]",
+        "[طلب من استوديو DTF]",
         `القطعة: ${resolvedGarmentName} — اللون: ${resolvedColorName} — المقاس: ${resolvedSizeName}`,
         `أسلوب التصميم: ${resolvedStyleName}`,
         `التقنية: ${resolvedTechniqueName}`,
@@ -335,7 +335,7 @@ export async function POST(request: NextRequest) {
         type: "order_alert",
         category: "design",
         severity: "info",
-        title: `طلب WASHA AI جديد 🎨 #${orderRow.order_number}`,
+        title: `طلب DTF Studio جديد 🎨 #${orderRow.order_number}`,
         message: `${resolvedGarmentName} · ${resolvedColorName} · ${resolvedStyleName}`,
         link: `/dashboard/design-orders/${orderRow.id}`,
     }).catch((error) => console.warn("[dtf-submit-order:notify]", error));

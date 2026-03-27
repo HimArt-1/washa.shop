@@ -5,8 +5,8 @@ import { canAccessDesignPiece } from "@/app/actions/design-piece";
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
 
 export const metadata: Metadata = {
-    title: "WASHA AI | وشّى",
-    description: "WASHA AI لتوليد موكب الملابس واستخراج ملف DTF عالي الجودة داخل تجربة واحدة.",
+    title: "DTF Studio | وشّى",
+    description: "استوديو DTF المطور لتوليد موكب الملابس واستخراج ملف DTF عالي الجودة داخل تجربة واحدة.",
 };
 
 export default async function DesignDtfStudioEntryPage() {

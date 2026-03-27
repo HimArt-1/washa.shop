@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import {
     normalizeArtStyleRow,
     normalizeColorPackageRow,
@@ -68,6 +68,11 @@ export type WashaDtfStudioCreativeOption = {
 export type WashaDtfStudioPaletteOption = WashaDtfStudioCreativeOption & {
     colors: DesignColorToken[];
 };
+
+function assertQuerySucceeded(label: string, error: { message: string } | null) {
+    if (!error) return;
+    throw new Error(`${label}: ${error.message}`);
+}
 
 function compactText(parts: Array<string | null | undefined>) {
     return parts
@@ -159,7 +164,7 @@ function mapPaletteOption(row: CustomDesignColorPackage): WashaDtfStudioPaletteO
 }
 
 export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
-    const sb = getSupabaseServerClient();
+    const sb = getSupabaseAdminClient();
 
     const [garmentsRes, colorsRes, sizesRes, stylesRes, artStylesRes, colorPackagesRes] = await Promise.all([
         sb.from("custom_design_garments").select("*").eq("is_active", true).order("sort_order"),
@@ -169,6 +174,13 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
         sb.from("custom_design_art_styles").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_color_packages").select("*").eq("is_active", true).order("sort_order"),
     ]);
+
+    assertQuerySucceeded("custom_design_garments", garmentsRes.error);
+    assertQuerySucceeded("custom_design_colors", colorsRes.error);
+    assertQuerySucceeded("custom_design_sizes", sizesRes.error);
+    assertQuerySucceeded("custom_design_styles", stylesRes.error);
+    assertQuerySucceeded("custom_design_art_styles", artStylesRes.error);
+    assertQuerySucceeded("custom_design_color_packages", colorPackagesRes.error);
 
     const garments = (garmentsRes.data as CustomDesignGarment[] | null) ?? [];
     const colors = (colorsRes.data as CustomDesignColor[] | null) ?? [];
