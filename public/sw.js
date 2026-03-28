@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const CACHE_NAME = "wusha-v4";
+const CACHE_NAME = "wusha-v5";
 const OFFLINE_URL = "/offline.html";
 
 // Static assets to pre-cache
@@ -12,6 +12,14 @@ const PRECACHE_ASSETS = [
     "/icon-192.png",
     "/icon-512.png",
 ];
+
+function createServiceUnavailableResponse() {
+    return new Response("Service Unavailable", {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+}
 
 // ─── Install: Pre-cache offline page & critical assets ───
 self.addEventListener("install", (event) => {
@@ -88,7 +96,7 @@ self.addEventListener("fetch", (event) => {
     if (isRSC || isDashboard || isApi) {
         event.respondWith(
             fetch(request).catch(() =>
-                new Response(null, { status: 503, statusText: "Service Unavailable" })
+                createServiceUnavailableResponse()
             )
         );
         return;
@@ -97,7 +105,9 @@ self.addEventListener("fetch", (event) => {
     // Navigation requests → network-first with offline fallback
     if (request.mode === "navigate") {
         event.respondWith(
-            fetch(request).catch(() => caches.match(OFFLINE_URL))
+            fetch(request).catch(async () =>
+                (await caches.match(OFFLINE_URL)) || createServiceUnavailableResponse()
+            )
         );
         return;
     }
@@ -117,7 +127,7 @@ self.addEventListener("fetch", (event) => {
                         }
                         return response;
                     })
-                    .catch(() => cached);
+                    .catch(() => cached || createServiceUnavailableResponse());
                 return cached || fetchPromise;
             })
         );
@@ -128,8 +138,8 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
         fetch(request).catch(() =>
             request.mode === "navigate"
-                ? caches.match(OFFLINE_URL).then((cached) => cached || new Response(null, { status: 503, statusText: "Service Unavailable" }))
-                : new Response(null, { status: 503, statusText: "Service Unavailable" })
+                ? caches.match(OFFLINE_URL).then((cached) => cached || createServiceUnavailableResponse())
+                : createServiceUnavailableResponse()
         )
     );
 });

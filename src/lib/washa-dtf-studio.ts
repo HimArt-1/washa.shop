@@ -69,6 +69,19 @@ export function getWashaDtfErrorDetails(error: unknown): {
         };
     }
 
+    if (
+        providerCode === 503 ||
+        providerStatus === "UNAVAILABLE" ||
+        /high demand/i.test(providerMessage) ||
+        /try again later/i.test(providerMessage) ||
+        /temporar(?:y|ily)/i.test(providerMessage)
+    ) {
+        return {
+            message: "خدمة توليد الصور من Gemini تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
+            status: 503,
+        };
+    }
+
     return {
         message: providerMessage,
         status: typeof providerCode === "number" && providerCode >= 400 && providerCode < 600
