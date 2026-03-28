@@ -105,6 +105,17 @@ function getReadableErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+async function parseApiPayload(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  const text = await response.text();
+  return { error: text || `HTTP ${response.status}` };
+}
+
 function resolveDefaultSize(garment: DtfStudioGarmentOption | null, colorId?: string | null) {
   if (!garment) return null;
   return garment.sizes.find((size) => size.colorId === colorId) || garment.sizes.find((size) => size.colorId === null) || garment.sizes[0] || null;
@@ -456,7 +467,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         }),
       });
 
-      const data = await res.json();
+      const data = await parseApiPayload(res);
 
       if (!res.ok || data.error) {
         throw new Error(data.error || 'فشل إرسال الطلب');
