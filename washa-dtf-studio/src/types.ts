@@ -89,6 +89,8 @@ export interface DesignState {
   paletteId: string | null;
   palette: ColorPalette;
   customPalette?: string;
+  removeBackground: boolean;
+  avoidHardEdges: boolean;
 }
 
 export const CUSTOM_PALETTE_ID = '__custom_palette__';

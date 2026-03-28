@@ -92,6 +92,8 @@ const EMPTY_STATE: DesignState = {
   paletteId: null,
   palette: '',
   customPalette: '',
+  removeBackground: true,
+  avoidHardEdges: true,
 };
 
 function getReadableErrorMessage(error: unknown, fallback: string) {
@@ -376,7 +378,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         palettePrompt,
         state.referenceImage || undefined,
         state.referenceImageMimeType || undefined,
-        state.designMethod === 'calligraphy' ? state.calligraphyText : undefined
+        state.designMethod === 'calligraphy' ? state.calligraphyText : undefined,
+        {
+          removeBackground: state.removeBackground,
+          avoidHardEdges: state.avoidHardEdges,
+        }
       );
 
       if (mockup) {

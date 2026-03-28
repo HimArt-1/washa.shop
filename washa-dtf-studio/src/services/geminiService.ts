@@ -1,6 +1,11 @@
 // Use the integrated Next.js API instead of a separate local proxy server.
 const API_BASE_URL = '/api/washa-dtf-studio';
 
+interface GenerationPreferences {
+  removeBackground?: boolean;
+  avoidHardEdges?: boolean;
+}
+
 async function parseApiResponse(response: Response) {
   const contentType = response.headers.get('content-type') || '';
 
@@ -29,13 +34,28 @@ export async function generateMockup(
   palette: string,
   referenceImageBase64?: string,
   referenceImageMimeType?: string,
-  calligraphyText?: string
+  calligraphyText?: string,
+  preferences: GenerationPreferences = {}
 ): Promise<string | null> {
   const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
+  const printDirectives = [
+    'The printed artwork must feel like a premium DTF composition made directly for the garment, not like a pasted photo or poster.',
+    preferences.removeBackground
+      ? 'No background block, no colored backdrop, no boxed panel, and no square image field behind the artwork.'
+      : null,
+    preferences.avoidHardEdges
+      ? 'No forced frame, no photo border, no crop edge, no enclosing rectangle, and no mandatory outer edge treatment unless the concept truly requires it.'
+      : null,
+    referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
+      ? 'If a reference image is used, reinterpret only the subject for print and do not preserve the original image background, frame, crop, or edges.'
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const prompt = isCalligraphy
-    ? `Professional 8K studio mockup of a ${color} ${garmentType} featuring a single, centered masterful calligraphy print. Render the following text as stunning artistic calligraphy lettering: "${calligraphyText}". Calligraphy style: ${style}. Technique: ${technique}. Palette: ${palette}. The letters must be graceful, artistically stylized, with elegant curves and deliberate strokes. IMPORTANT: Render ONLY the provided phrase as calligraphy — no extra words, no duplications, no double layers, sharp crisp lettering on fabric.`
-    : `Professional 8K studio mockup of a ${color} ${garmentType} with a single, bold, centered DTF graphic print. Visual concept: ${userDescription}. CRITICAL: Generate a purely VISUAL graphic artwork — absolutely NO text, NO letters, NO written words, NO typography anywhere in the design. Pure illustration only. Style: ${style}. Technique: ${technique}. Palette: ${palette}. IMPORTANT: No text of any kind. No duplication, no double layers, sharp details on fabric.`;
+    ? `Professional 8K studio mockup of a ${color} ${garmentType} featuring a single, centered masterful calligraphy print. Render the following text as stunning artistic calligraphy lettering: "${calligraphyText}". Calligraphy style: ${style}. Technique: ${technique}. Palette: ${palette}. The letters must be graceful, artistically stylized, with elegant curves and deliberate strokes. IMPORTANT: Render ONLY the provided phrase as calligraphy — no extra words, no duplications, no double layers, sharp crisp lettering on fabric. ${printDirectives}`
+    : `Professional 8K studio mockup of a ${color} ${garmentType} with a single, bold, centered DTF graphic print. Visual concept: ${userDescription}. CRITICAL: Generate a purely VISUAL graphic artwork — absolutely NO text, NO letters, NO written words, NO typography anywhere in the design. Pure illustration only. Style: ${style}. Technique: ${technique}. Palette: ${palette}. IMPORTANT: No text of any kind. No duplication, no double layers, sharp details on fabric. ${printDirectives}`;
 
   try {
     const body: any = { prompt };

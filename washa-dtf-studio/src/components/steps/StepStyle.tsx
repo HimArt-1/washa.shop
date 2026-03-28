@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import {
   BrushCleaning,
+  Check,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -278,6 +279,94 @@ export default function StepStyle() {
                 />
               </div>
             ) : null}
+          </section>
+
+          <section className="space-y-5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-washa-gold/60">مفعّلة افتراضيًا لنتيجة أنظف</span>
+              <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
+                <Wand2 className="h-5 w-5 text-washa-gold" />
+                تفضيلات الإخراج
+              </label>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28, duration: 0.35 }}
+                onClick={() => updateState({ removeBackground: !state.removeBackground })}
+                className={cn(
+                  'rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
+                  state.removeBackground
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Sparkles className="h-6 w-6" />
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold',
+                      state.removeBackground
+                        ? 'border border-washa-gold/30 bg-washa-gold/10 text-washa-gold'
+                        : 'border border-white/10 bg-white/[0.03] text-washa-text-faint'
+                    )}
+                  >
+                    {state.removeBackground ? <Check className="h-3 w-3" /> : null}
+                    {state.removeBackground ? 'مفعّل' : 'غير مفعّل'}
+                  </span>
+                </div>
+                <div className="mt-5 space-y-1.5">
+                  <p className="text-base font-bold">بدون خلفية</p>
+                  <p className="text-xs leading-6 text-washa-text-faint">
+                    يمنع أي مربع لوني أو مساحة مصمتة خلف العنصر حتى يظهر التصميم كطباعة مباشرة ونظيفة على القطعة.
+                  </p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.32, duration: 0.35 }}
+                onClick={() => updateState({ avoidHardEdges: !state.avoidHardEdges })}
+                className={cn(
+                  'rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
+                  state.avoidHardEdges
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Wand2 className="h-6 w-6" />
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold',
+                      state.avoidHardEdges
+                        ? 'border border-washa-gold/30 bg-washa-gold/10 text-washa-gold'
+                        : 'border border-white/10 bg-white/[0.03] text-washa-text-faint'
+                    )}
+                  >
+                    {state.avoidHardEdges ? <Check className="h-3 w-3" /> : null}
+                    {state.avoidHardEdges ? 'مفعّل' : 'غير مفعّل'}
+                  </span>
+                </div>
+                <div className="mt-5 space-y-1.5">
+                  <p className="text-base font-bold">بدون حواف إلزامية</p>
+                  <p className="text-xs leading-6 text-washa-text-faint">
+                    يمنع الإطار أو القصّة المربعة أو حدود الصورة القسرية ما لم تكن جزءًا مقصودًا من الفكرة نفسها.
+                  </p>
+                </div>
+              </motion.button>
+            </div>
+
+            <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs leading-6 text-washa-text-faint">
+              هذه التفضيلات تُضمَّن تلقائيًا داخل وصف التوليد قبل إرسال الطلب إلى النموذج.
+            </div>
           </section>
         </div>
       )}
