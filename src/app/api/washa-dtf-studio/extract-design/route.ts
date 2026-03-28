@@ -5,6 +5,7 @@ import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
 import { AiStudioService } from "../services/ai-studio.service";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
