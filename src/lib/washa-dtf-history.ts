@@ -12,6 +12,13 @@ const MAX_FIELD_LENGTH = 120;
 const MAX_PROMPT_LENGTH = 280;
 const ALLOWED_THUMBNAIL_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+export class DtfHistoryValidationError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "DtfHistoryValidationError";
+    }
+}
+
 type DtfHistoryTable = Database["public"]["Tables"]["dtf_design_history"];
 type DtfHistoryRow = DtfHistoryTable["Row"];
 type DtfHistoryProjection = Pick<
@@ -56,10 +63,10 @@ type CreateInput = {
 function sanitizeShortText(value: unknown, fieldName: string) {
     const text = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
     if (!text) {
-        throw new Error(`${fieldName} مطلوب`);
+        throw new DtfHistoryValidationError(`${fieldName} مطلوب`);
     }
     if (text.length > MAX_FIELD_LENGTH) {
-        throw new Error(`${fieldName} أطول من المسموح`);
+        throw new DtfHistoryValidationError(`${fieldName} أطول من المسموح`);
     }
     return text;
 }
@@ -76,19 +83,19 @@ function parseThumbnailDataUrl(dataUrl: string | null) {
 
     const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
     if (!match) {
-        throw new Error("صيغة صورة المعاينة غير صالحة");
+        throw new DtfHistoryValidationError("صيغة صورة المعاينة غير صالحة");
     }
 
     const mimeType = match[1].toLowerCase();
     if (!ALLOWED_THUMBNAIL_MIME_TYPES.has(mimeType)) {
-        throw new Error("نوع صورة المعاينة غير مدعوم");
+        throw new DtfHistoryValidationError("نوع صورة المعاينة غير مدعوم");
     }
 
     const base64Payload = match[2];
     const padding = base64Payload.endsWith("==") ? 2 : base64Payload.endsWith("=") ? 1 : 0;
     const byteLength = Math.floor((base64Payload.length * 3) / 4) - padding;
     if (byteLength <= 0 || byteLength > MAX_THUMBNAIL_BYTES) {
-        throw new Error("حجم صورة المعاينة كبير جدًا");
+        throw new DtfHistoryValidationError("حجم صورة المعاينة كبير جدًا");
     }
 
     return {
@@ -276,9 +283,9 @@ export async function listDtfHistory(
 export async function createDtfHistoryItem(
     supabase: SupabaseClient<Database>,
     profileId: string,
-    rawPayload: RawCreateInput
+    rawPayload: unknown
 ) {
-    const payload = sanitizeDtfHistoryCreateInput(rawPayload);
+    const payload = sanitizeDtfHistoryCreateInput((rawPayload ?? {}) as RawCreateInput);
     const existing = await findDtfHistoryItem(supabase, profileId, payload.id);
     if (existing) {
         return existing;

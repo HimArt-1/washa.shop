@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
-import { extractGeneratedImageDataUrl, getWashaDtfErrorDetails, getWashaDtfGenAiClient, WASHA_DTF_MODEL } from "@/lib/washa-dtf-studio";
+import { extractDesignSchema } from "../validators/ai-studio.schema";
+import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
+import { AiStudioService } from "../services/ai-studio.service";
 
 export const runtime = "nodejs";
 
@@ -11,39 +13,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { prompt, mockupImage, mimeType } = await request.json();
-        if (!prompt || typeof prompt !== "string" || !mockupImage || typeof mockupImage !== "string" || !mimeType || typeof mimeType !== "string") {
-            return NextResponse.json({ error: "بيانات الاستخراج غير مكتملة" }, { status: 400 });
+        const rawBody = await request.json();
+        const parsed = extractDesignSchema.safeParse(rawBody);
+
+        if (!parsed.success) {
+            const errorMsg = parsed.error.issues[0]?.message || "بيانات الاستخراج غير مكتملة";
+            return NextResponse.json({ error: errorMsg }, { status: 400 });
         }
 
-        const client = getWashaDtfGenAiClient();
-        const response = await client.models.generateContent({
-            model: WASHA_DTF_MODEL,
-            contents: {
-                role: "user",
-                parts: [
-                    {
-                        inlineData: {
-                            data: mockupImage,
-                            mimeType,
-                        },
-                    },
-                    { text: prompt },
-                ],
-            },
-            // @ts-ignore Gemini image config is not fully exposed in current typings.
-            config: {
-                imageConfig: {
-                    aspectRatio: "1:1",
-                    imageSize: "2K",
-                },
-            },
-        });
+        const { prompt, mockupImage, mimeType } = parsed.data;
 
-        const imageUrl = extractGeneratedImageDataUrl(response);
-        if (!imageUrl) {
-            return NextResponse.json({ error: "لم يتم استخراج التصميم من Gemini" }, { status: 500 });
-        }
+        const imageUrl = await AiStudioService.extractDesign(prompt, mockupImage, mimeType);
 
         return NextResponse.json({ imageUrl });
     } catch (error) {

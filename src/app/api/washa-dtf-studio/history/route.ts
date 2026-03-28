@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearDtfHistory, createDtfHistoryItem, listDtfHistory, requireWashaDtfHistoryAccess } from "@/lib/washa-dtf-history";
+import {
+    clearDtfHistory,
+    createDtfHistoryItem,
+    DtfHistoryValidationError,
+    listDtfHistory,
+    requireWashaDtfHistoryAccess,
+} from "@/lib/washa-dtf-history";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,15 +31,23 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    let payload: unknown;
     try {
-        const payload = await request.json();
+        payload = await request.json();
+    } catch (error) {
+        console.error("[washa-dtf-studio.history.parse]", error);
+        return NextResponse.json({ error: "طلب غير صالح (JSON غير مقروء)" }, { status: 400 });
+    }
+
+    try {
         const item = await createDtfHistoryItem(access.supabase, access.profileId, payload);
         return NextResponse.json({ item }, { status: 201 });
     } catch (error) {
         console.error("[washa-dtf-studio.history.create]", error);
+        const status = error instanceof DtfHistoryValidationError ? 400 : 500;
         return NextResponse.json(
             { error: error instanceof Error ? error.message : "تعذر حفظ التصميم في السجل" },
-            { status: 400 }
+            { status }
         );
     }
 }
