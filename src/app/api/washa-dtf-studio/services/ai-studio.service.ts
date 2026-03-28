@@ -23,7 +23,6 @@ export class AiStudioService {
         const config = {
             imageConfig: {
                 aspectRatio: "1:1",
-                imageSize: "2K",
             },
         } as any;
 
@@ -50,7 +49,6 @@ export class AiStudioService {
         const config = {
             imageConfig: {
                 aspectRatio: "1:1",
-                imageSize: "2K",
             },
         } as any;
 

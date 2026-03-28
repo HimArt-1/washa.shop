@@ -81,6 +81,10 @@ function parseThumbnailDataUrl(dataUrl: string | null) {
         return null;
     }
 
+    if (dataUrl.startsWith("http://") || dataUrl.startsWith("https://")) {
+        return null;
+    }
+
     const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/);
     if (!match) {
         throw new DtfHistoryValidationError("صيغة صورة المعاينة غير صالحة");

@@ -447,6 +447,30 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
+      let submitMockupBg = mockupImage;
+      let submitExtractedBg = extractedImage;
+
+      try {
+        // Compress the images to WebP before sending to prevent 413 Content Too Large from Serverless Functions
+        const compressedMockup = await resizeDataUrl(mockupImage, {
+          maxDimension: 2048,
+          quality: 0.8,
+          outputMimeType: 'image/webp'
+        });
+        submitMockupBg = compressedMockup.dataUrl;
+
+        if (extractedImage) {
+          const compressedExtracted = await resizeDataUrl(extractedImage, {
+            maxDimension: 2048,
+            quality: 0.8,
+            outputMimeType: 'image/webp'
+          });
+          submitExtractedBg = compressedExtracted.dataUrl;
+        }
+      } catch (err) {
+        console.warn('Could not compress images, sending original...', err);
+      }
+
       const res = await fetch('/api/washa-dtf-studio/submit-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -468,8 +492,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           paletteId: state.paletteId,
           palette: state.palette,
           customPalette: state.paletteId === CUSTOM_PALETTE_ID ? state.customPalette || null : null,
-          mockupDataUrl: mockupImage,
-          extractedDataUrl: extractedImage || null,
+          mockupDataUrl: submitMockupBg,
+          extractedDataUrl: submitExtractedBg || null,
         }),
       });
 
