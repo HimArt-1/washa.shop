@@ -4,6 +4,7 @@ import { DesignOperationsCenter } from "@/components/admin/design-orders/DesignO
 import type { CustomDesignOrderStatus } from "@/types/database";
 import Link from "next/link";
 import { ActivityIcon } from "lucide-react";
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,15 @@ export default async function DesignOrdersPage({ searchParams }: PageProps) {
     const page = Number(params.page) || 1;
     const status = (params.status || "all") as CustomDesignOrderStatus | "all";
 
-    const [ordersResult, promptTemplate, adminList, snapshot] = await Promise.all([
+    const [ordersResult, promptTemplate, adminList, snapshot, user] = await Promise.all([
         getDesignOrders(page, status),
         getDesignPromptTemplate(),
         getAdminList(),
         getDesignOperationsSnapshot(),
+        getCurrentUserOrDevAdmin(),
     ]);
+
+    const { profile } = user ? await resolveAdminAccess(user) : { profile: null };
 
     return (
         <div className="space-y-6">
@@ -30,14 +34,16 @@ export default async function DesignOrdersPage({ searchParams }: PageProps) {
                     title="مركز عمليات التصميم"
                     subtitle="غرفة تشغيل لإدارة الوارد، التنفيذ، المراجعة، التعيين، والتسليم داخل مسار التصميم المخصص."
                 />
-                <Link
-                    href="/dashboard/design-orders/dtf-monitor"
-                    className="flex flex-shrink-0 items-center gap-2 px-4 py-2 bg-surface hover:bg-gold/10 border border-gold/20 rounded-xl shadow-lg text-gold/80 hover:text-gold transition-all text-sm font-medium cyber-border-gold relative overflow-hidden group"
-                >
-                    <div className="absolute inset-0 bg-gold/5 blur-xl group-hover:bg-gold/20 transition-all opacity-0 group-hover:opacity-100" />
-                    <ActivityIcon className="w-4 h-4 animate-pulse" />
-                    رادار استوديو DTF
-                </Link>
+                {profile?.role === "admin" && (
+                    <Link
+                        href="/dashboard/design-orders/dtf-monitor"
+                        className="flex flex-shrink-0 items-center gap-2 px-4 py-2 bg-surface hover:bg-gold/10 border border-gold/20 rounded-xl shadow-lg text-gold/80 hover:text-gold transition-all text-sm font-medium cyber-border-gold relative overflow-hidden group"
+                    >
+                        <div className="absolute inset-0 bg-gold/5 blur-xl group-hover:bg-gold/20 transition-all opacity-0 group-hover:opacity-100" />
+                        <ActivityIcon className="w-4 h-4 animate-pulse" />
+                        رادار استوديو DTF
+                    </Link>
+                )}
             </div>
             <DesignOperationsCenter
                 snapshot={snapshot}
