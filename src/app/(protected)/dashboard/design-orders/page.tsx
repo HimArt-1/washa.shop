@@ -2,6 +2,8 @@ import { getAdminList, getDesignOperationsSnapshot, getDesignOrders, getDesignPr
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { DesignOperationsCenter } from "@/components/admin/design-orders/DesignOperationsCenter";
 import type { CustomDesignOrderStatus } from "@/types/database";
+import Link from "next/link";
+import { ActivityIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +25,20 @@ export default async function DesignOrdersPage({ searchParams }: PageProps) {
 
     return (
         <div className="space-y-6">
-            <AdminHeader
-                title="مركز عمليات التصميم"
-                subtitle="غرفة تشغيل لإدارة الوارد، التنفيذ، المراجعة، التعيين، والتسليم داخل مسار التصميم المخصص."
-            />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <AdminHeader
+                    title="مركز عمليات التصميم"
+                    subtitle="غرفة تشغيل لإدارة الوارد، التنفيذ، المراجعة، التعيين، والتسليم داخل مسار التصميم المخصص."
+                />
+                <Link
+                    href="/dashboard/design-orders/dtf-monitor"
+                    className="flex flex-shrink-0 items-center gap-2 px-4 py-2 bg-surface hover:bg-gold/10 border border-gold/20 rounded-xl shadow-lg text-gold/80 hover:text-gold transition-all text-sm font-medium cyber-border-gold relative overflow-hidden group"
+                >
+                    <div className="absolute inset-0 bg-gold/5 blur-xl group-hover:bg-gold/20 transition-all opacity-0 group-hover:opacity-100" />
+                    <ActivityIcon className="w-4 h-4 animate-pulse" />
+                    رادار استوديو DTF
+                </Link>
+            </div>
             <DesignOperationsCenter
                 snapshot={snapshot}
                 clientProps={{

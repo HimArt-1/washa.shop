@@ -427,6 +427,20 @@ export type DtfDesignHistory = {
     created_at: string;
 }
 
+export type DtfStudioActivityLog = {
+    id: string;
+    profile_id: string | null;
+    clerk_id: string | null;
+    action: string;
+    status: string;
+    prompt: string | null;
+    reference_image_url: string | null;
+    result_image_url: string | null;
+    error_message: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+}
+
 // ─── ERP (Inventory, SKUs, Sales) ────────────────────────
 
 export type ProductSKU = Timestamps & {
@@ -725,6 +739,20 @@ export type Database = {
                 Relationships: [
                     {
                         foreignKeyName: "dtf_design_history_profile_id_fkey";
+                        columns: ["profile_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    }
+                ];
+            };
+            dtf_studio_activity_logs: {
+                Row: DtfStudioActivityLog;
+                Insert: Omit<DtfStudioActivityLog, "id" | "created_at"> & { id?: string; created_at?: string };
+                Update: Partial<Omit<DtfStudioActivityLog, "id" | "created_at">>;
+                Relationships: [
+                    {
+                        foreignKeyName: "dtf_studio_activity_logs_profile_id_fkey";
                         columns: ["profile_id"];
                         isOneToOne: false;
                         referencedRelation: "profiles";

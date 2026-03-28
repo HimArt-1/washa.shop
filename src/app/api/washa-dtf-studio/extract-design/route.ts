@@ -4,6 +4,7 @@ import { extractDesignSchema } from "../validators/ai-studio.schema";
 import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
 import { AiStudioService } from "../services/ai-studio.service";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,7 +18,8 @@ export async function POST(request: NextRequest) {
     // Rate Limiting: 6 requests per 60 seconds (1 minute) per user or IP
     const identifier = access.profileId || request.ip || "anonymous";
     const limits = checkRateLimit(`ext-${identifier}`, 6, 60_000);
-    if (!limits.success) {
+    // Admins bypass rate limiter
+    if (!limits.success && access.role !== "admin" && access.role !== "wushsha" && access.role !== "dev") {
         return NextResponse.json(
             { error: "تم تجاوز الحد المسموح للاستخراج. يرجى الانتظار دقيقة والمحاولة مجدداً." },
             { status: 429, headers: { "X-RateLimit-Reset": new Date(limits.resetAt).toISOString() } }
@@ -37,10 +39,31 @@ export async function POST(request: NextRequest) {
 
         const imageUrl = await AiStudioService.extractDesign(prompt, mockupImage, mimeType);
 
+        // Async logging without blocking response
+        DtfTelemetryService.logActivity({
+            profileId: access.profileId,
+            clerkId: access.clerkId,
+            action: "extract-design",
+            status: "success",
+            prompt,
+            referenceImageUrl: "base64_hidden",
+            resultImageUrl: imageUrl || undefined,
+        });
+
         return NextResponse.json({ imageUrl });
     } catch (error) {
         console.error("[washa-dtf-studio.extract-design]", error);
         const handled = getWashaDtfErrorDetails(error);
+
+        // Log the failure
+        DtfTelemetryService.logActivity({
+            profileId: access.profileId,
+            clerkId: access.clerkId,
+            action: "extract-design",
+            status: handled.status === 504 ? "timeout" : "error",
+            errorMessage: handled.message,
+        });
+
         return NextResponse.json(
             { error: handled.message },
             { status: handled.status }
