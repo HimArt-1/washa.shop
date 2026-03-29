@@ -1,13 +1,34 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { applicationSchema, newsletterSchema } from "@/lib/validations";
 import { createAdminNotification } from "@/app/actions/notifications";
 import { sendAdminApplicationNotificationEmail } from "@/lib/email";
 import { sendPushToAdmins } from "@/lib/push";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { Application } from "@/types/database";
+
+// Rate limiting لنماذج الانضمام:
+// - 5 طلبات كحد أقصى كل 10 دقائق لكل IP
+// - تمنع بوتات الـ spam والإرسال المتكرر
+const APPLICATION_RATE_LIMIT = 5;
+const APPLICATION_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 دقائق
+
+function getRequestIp(): string {
+    try {
+        const headersList = headers();
+        return (
+            headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            headersList.get("x-real-ip") ||
+            "unknown"
+        );
+    } catch {
+        return "unknown";
+    }
+}
 
 export type ActionResponse = {
     success: boolean;
@@ -74,6 +95,18 @@ async function getCurrentMatchingProfileId(email: string) {
 }
 
 async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<ActionResponse> {
+    // ── Rate Limiting بالـ IP ─────────────────────────────
+    const ip = getRequestIp();
+    const rateKey = `application:${ip}`;
+    const rateCheck = checkRateLimit(rateKey, APPLICATION_RATE_LIMIT, APPLICATION_RATE_WINDOW_MS);
+    if (!rateCheck.success) {
+        return {
+            success: false,
+            message: "تم تجاوز الحد المسموح به من الطلبات. الرجاء الانتظار قليلاً ثم المحاولة مجدداً.",
+        };
+    }
+    // ─────────────────────────────────────────────────────
+
     const supabase = getSupabaseAdminClient();
     const normalizedEmail = data.email.trim().toLowerCase();
 

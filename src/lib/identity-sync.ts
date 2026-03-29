@@ -47,6 +47,19 @@ function buildProfileDefaults(seed: IdentityUserSeed) {
     };
 }
 
+/**
+ * البحث عن ملف شخصي مرتبط بهوية Clerk.
+ *
+ * ترتيب البحث:
+ *   1. clerk_id مطابق تماماً
+ *   2. clerk_id مؤقت (tempClerkId) — يُستخدم عند الترحيل
+ *   3. البريد الإلكتروني (email) — يُتيح ربط حسابات موجودة بـ Clerk تلقائياً
+ *
+ * ⚠️  ملاحظة أمنية — الربط بالبريد:
+ *   الخطوة الثالثة تثق بأن Clerk قد تحقق من البريد قبل تمريره هنا.
+ *   إذا استُدعي هذا من webhook آمن (user.created / user.updated) فالبريد
+ *   يكون محققاً بالفعل. لا تمرر بريداً من مصدر غير موثوق دون التحقق منه.
+ */
 export async function findProfileForIdentity(
     supabase: SupabaseClient<Database>,
     params: {

@@ -11,7 +11,7 @@ import { compressImage } from "@/lib/image-compress";
 
 interface ProfileFormProps {
     initialData?: Partial<ProfileFormData>;
-    userRole?: "admin" | "wushsha" | "subscriber";
+    userRole?: "admin" | "wushsha" | "subscriber" | "dev";
 }
 
 export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFormProps) {

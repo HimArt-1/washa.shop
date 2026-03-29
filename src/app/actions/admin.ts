@@ -787,12 +787,20 @@ export async function getAdminUsers(
 }
 
 export async function updateUserRole(userId: string, newRole: string) {
-    const { supabase } = await requireAdmin();
+    const { supabase, profile: adminProfile } = await requireAdmin();
 
     const role = (newRole || "").trim();
-    if (!role || role.length > 50) {
-        return { success: false, error: "الدور يجب أن يكون بين 1 و 50 حرفاً" };
+    const VALID_ROLES: UserRole[] = ["admin", "wushsha", "subscriber", "dev"];
+    if (!role || !VALID_ROLES.includes(role as UserRole)) {
+        return { success: false, error: `الدور غير صالح. الأدوار المسموح بها: ${VALID_ROLES.join(", ")}` };
     }
+
+    // جلب الدور الحالي قبل التغيير (للتدقيق)
+    const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
 
     const { error } = await supabase
         .from("profiles")
@@ -820,6 +828,28 @@ export async function updateUserRole(userId: string, newRole: string) {
         });
         return { success: false, error: error.message };
     }
+
+    // تحديث سجل التدقيق بالمعلومات الصحيحة (المسؤول + السياق)
+    // الـ Trigger يُنشئ السجل تلقائياً، هنا نحدّث changed_by_id و context
+    supabase
+        .from("role_change_audit_log")
+        .update({
+            changed_by_id: adminProfile.id,
+            context: "admin_action",
+            metadata: {
+                old_role: currentProfile?.role ?? null,
+                new_role: role,
+                changed_via: "dashboard",
+            },
+        })
+        .eq("profile_id", userId)
+        .eq("new_role", role)
+        .eq("context", "system")
+        .order("changed_at", { ascending: false })
+        .limit(1)
+        .then(({ error: auditErr }) => {
+            if (auditErr) console.warn("[audit] role_change update:", auditErr.message);
+        });
 
     revalidatePath("/dashboard/users");
     return { success: true };

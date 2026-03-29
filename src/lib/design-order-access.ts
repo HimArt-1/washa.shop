@@ -29,6 +29,13 @@ export async function getDesignOrderAccess(
     }
 
     if (trackerToken && designOrder.tracker_token === trackerToken) {
+        // التحقق من انتهاء صلاحية الرابط
+        const expiresAt = designOrder.tracker_token_expires_at
+            ? new Date(designOrder.tracker_token_expires_at)
+            : null;
+        if (expiresAt && expiresAt < new Date()) {
+            return { sb, order: null, access: "none", profileId: null };
+        }
         return { sb, order: designOrder, access: "token", profileId: null };
     }
 
