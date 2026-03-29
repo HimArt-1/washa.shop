@@ -15,6 +15,11 @@ const isPublicRoute = createRouteMatcher([
     '/api/webhooks(.*)',
 ]);
 
+// Routes that need auth state available but shouldn't redirect unauthenticated users
+const isAuthAwareApiRoute = createRouteMatcher([
+    '/api/washa-dtf-studio(.*)',
+]);
+
 export default clerkMiddleware(async (auth, req) => {
     if (isPublicRoute(req)) return;
     if (isProtectedRoute(req)) {
@@ -31,6 +36,12 @@ export default clerkMiddleware(async (auth, req) => {
             );
             return NextResponse.redirect(signInUrl);
         }
+    } else if (isAuthAwareApiRoute(req)) {
+        // Hydrate auth state so currentUser() works in these route handlers.
+        // Clerk v6 uses lazy evaluation — auth() must be called in the middleware
+        // for the session to be available downstream. No redirect on unauthenticated;
+        // each route handler handles 401/403 itself.
+        await auth();
     }
 });
 
