@@ -2057,3 +2057,20 @@ export async function getAdminList() {
         .order("display_name");
     return (data as { id: string; display_name: string; avatar_url: string | null }[]) ?? [];
 }
+
+
+// ─── Renew Tracker Token ─────────────────────────────────
+
+export async function renewTrackerToken(orderId: string): Promise<{ newExpiry: string } | { error: string }> {
+    const { sb } = await requireSmartStoreAdmin();
+
+    const { data, error } = await sb.rpc("renew_tracker_token", { p_order_id: orderId });
+
+    if (error) {
+        console.error("[renewTrackerToken]", error);
+        return { error: error.message };
+    }
+
+    revalidatePath(`/dashboard/design-orders/${orderId}`);
+    return { newExpiry: data as string };
+}

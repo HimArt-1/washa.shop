@@ -9,7 +9,7 @@ import {
     ShoppingCart, FileText, Image as ImageIcon, ChevronRight, Shield, Sparkles,
     Menu, X, Tag, Package, Mail, Settings, Palette, Wand2, Brush, QrCode,
     Bell, Activity, ClipboardList, Ticket, CreditCard, Store,
-    HeadphonesIcon, UserCog, History, Megaphone, Home,
+    HeadphonesIcon, UserCog, History, Megaphone, Home, ShieldCheck,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -82,9 +82,9 @@ export function AdminSidebar({
             title: "العملاء والمستخدمون",
             items: [
                 { icon: UserCheck, label: "مزامنة الهوية", href: "/dashboard/users-clerk" },
-
                 { icon: Users, label: "الملفات الشخصية", href: "/dashboard/users" },
                 { icon: UserCog, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
+                { icon: ShieldCheck, label: "سجل تغييرات الأدوار", href: "/dashboard/users/audit-log" },
             ],
         },
         {

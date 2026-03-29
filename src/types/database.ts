@@ -947,6 +947,10 @@ export type Database = {
                 Args: Record<string, never>;
                 Returns: string;
             };
+            renew_tracker_token: {
+                Args: { p_order_id: string };
+                Returns: string; // new tracker_token_expires_at (TIMESTAMPTZ as ISO string)
+            };
         };
         Enums: {
             [_ in never]: never;

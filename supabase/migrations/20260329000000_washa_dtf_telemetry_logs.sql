@@ -24,6 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_dtf_logs_action ON public.dtf_studio_activity_log
 -- RLS: Only admins can view, inserting is handled securely via the Service Role inside the API route.
 ALTER TABLE public.dtf_studio_activity_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can view all telemetry logs" ON public.dtf_studio_activity_logs;
 CREATE POLICY "Admins can view all telemetry logs"
     ON public.dtf_studio_activity_logs
     FOR SELECT
@@ -36,6 +37,7 @@ CREATE POLICY "Admins can view all telemetry logs"
     );
 
 -- Users can view their own telemetry logs
+DROP POLICY IF EXISTS "Users can view their own telemetry logs" ON public.dtf_studio_activity_logs;
 CREATE POLICY "Users can view their own telemetry logs"
     ON public.dtf_studio_activity_logs
     FOR SELECT
@@ -44,6 +46,7 @@ CREATE POLICY "Users can view their own telemetry logs"
     );
 
 -- Allow service role to insert logs
+DROP POLICY IF EXISTS "Service role can orchestrate logs" ON public.dtf_studio_activity_logs;
 CREATE POLICY "Service role can orchestrate logs"
     ON public.dtf_studio_activity_logs
     FOR ALL

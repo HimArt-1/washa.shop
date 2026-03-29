@@ -12,11 +12,13 @@ import {
     Clock,
     Copy,
     Download,
+    ExternalLink,
     FileText,
     Image as ImageIcon,
     Loader2,
     Palette,
     Printer,
+    RefreshCw,
     Ruler,
     Save,
     Send,
@@ -33,6 +35,7 @@ import {
 import {
     assignDesignOrder,
     rejectDesignOrder,
+    renewTrackerToken,
     sendDesignOrderToCustomer,
     skipDesignResults,
     updateDesignOrderNotes,
@@ -193,6 +196,9 @@ export function DesignOrderWorkspace({
     const [rejectReason, setRejectReason] = useState("");
     const [showSendConfirm, setShowSendConfirm] = useState(false);
     const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+    const [tokenExpiry, setTokenExpiry] = useState(order.tracker_token_expires_at);
+    const [renewingToken, setRenewingToken] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
     const status = statusMeta[currentOrder.status];
     const next = nextStatuses[currentOrder.status] || [];
@@ -359,6 +365,36 @@ export function DesignOrderWorkspace({
             setError(error instanceof Error ? error.message : "تعذر رفض الطلب.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const trackerLink = typeof window !== "undefined"
+        ? `${window.location.origin}/track/${currentOrder.id}?token=${currentOrder.tracker_token}`
+        : `/track/${currentOrder.id}?token=${currentOrder.tracker_token}`;
+
+    const isTokenExpired = tokenExpiry ? new Date(tokenExpiry) < new Date() : false;
+
+    const handleRenewToken = async () => {
+        setRenewingToken(true);
+        setError(null);
+        try {
+            const res = await renewTrackerToken(currentOrder.id);
+            if ("error" in res) { setError(res.error); return; }
+            setTokenExpiry(res.newExpiry);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "تعذر تجديد الرابط.");
+        } finally {
+            setRenewingToken(false);
+        }
+    };
+
+    const handleCopyTrackerLink = async () => {
+        try {
+            await navigator.clipboard.writeText(trackerLink);
+            setCopiedLink(true);
+            setTimeout(() => setCopiedLink(false), 2000);
+        } catch {
+            setError("تعذر نسخ الرابط.");
         }
     };
 
@@ -614,6 +650,55 @@ export function DesignOrderWorkspace({
                                 ) : null}
                             </div>
                         ) : null}
+
+                        {/* ── Tracker Link ── */}
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs text-theme-faint uppercase tracking-wider">رابط متابعة العميل</p>
+                                {isTokenExpired && (
+                                    <span className="text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full">
+                                        منتهي الصلاحية
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[11px] text-theme-faint truncate font-mono">
+                                {trackerLink}
+                            </p>
+                            {tokenExpiry && (
+                                <p className="text-[11px] text-theme-faint">
+                                    ينتهي: {new Date(tokenExpiry).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+                                </p>
+                            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleCopyTrackerLink}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-theme-subtle bg-theme-faint px-3 py-2 text-xs font-medium text-theme-subtle hover:text-theme transition-colors"
+                                >
+                                    {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                                    {copiedLink ? "تم النسخ" : "نسخ الرابط"}
+                                </button>
+                                <button
+                                    onClick={handleRenewToken}
+                                    disabled={renewingToken}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl border border-gold/20 bg-gold/10 px-3 py-2 text-xs font-medium text-gold hover:bg-gold/20 transition-colors disabled:opacity-50"
+                                >
+                                    {renewingToken
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <RefreshCw className="h-3.5 w-3.5" />
+                                    }
+                                    {renewingToken ? "جاري..." : "تجديد 90 يوم"}
+                                </button>
+                                <a
+                                    href={trackerLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center justify-center rounded-xl border border-theme-subtle bg-theme-faint px-3 py-2 text-xs text-theme-subtle hover:text-theme transition-colors"
+                                    title="فتح رابط التتبع"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                            </div>
+                        </div>
 
                         {!currentOrder.skip_results && currentOrder.status !== "completed" && currentOrder.status !== "cancelled" ? (
                             <div className="space-y-3">

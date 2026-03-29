@@ -2951,3 +2951,90 @@ export async function deleteArtworkAdmin(id: string, imageUrl?: string | null): 
     revalidatePath("/");
     return { success: true };
 }
+
+// ─── Role Change Audit Log ───────────────────────────────────
+
+export type AuditLogEntry = {
+    id: string;
+    changed_at: string;
+    old_role: string | null;
+    new_role: string;
+    context: string;
+    metadata: Record<string, unknown> | null;
+    target: {
+        id: string;
+        display_name: string;
+        username: string;
+        email: string | null;
+    } | null;
+    changed_by: {
+        id: string;
+        display_name: string;
+        username: string;
+    } | null;
+};
+
+export async function getAuditLog(params: {
+    page?: number;
+    context?: string;
+    search?: string;
+} = {}): Promise<{ entries: AuditLogEntry[]; total: number; totalPages: number }> {
+    noStore();
+    const { supabase } = await requireAdmin();
+
+    const PAGE_SIZE = 30;
+    const page = Math.max(1, params.page ?? 1);
+    const from = (page - 1) * PAGE_SIZE;
+
+    let query = supabase
+        .from("role_change_audit_log")
+        .select(
+            `id, changed_at, old_role, new_role, context, metadata,
+            target:profiles!role_change_audit_log_profile_id_fkey(id, display_name, username, email),
+            changed_by:profiles!role_change_audit_log_changed_by_id_fkey(id, display_name, username)`,
+            { count: "exact" }
+        )
+        .order("changed_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+    if (params.context && params.context !== "all") {
+        query = query.eq("context", params.context as import("@/types/database").RoleAuditContext);
+    }
+
+    const { data, count, error } = await query;
+
+    if (error) {
+        console.error("[getAuditLog]", error);
+        return { entries: [], total: 0, totalPages: 0 };
+    }
+
+    const entries: AuditLogEntry[] = (data ?? []).map((row: any) => ({
+        id: row.id,
+        changed_at: row.changed_at,
+        old_role: row.old_role,
+        new_role: row.new_role,
+        context: row.context,
+        metadata: row.metadata ?? null,
+        target: Array.isArray(row.target) ? (row.target[0] ?? null) : (row.target ?? null),
+        changed_by: Array.isArray(row.changed_by) ? (row.changed_by[0] ?? null) : (row.changed_by ?? null),
+    }));
+
+    const filtered = params.search?.trim()
+        ? entries.filter((e) => {
+              const q = params.search!.toLowerCase();
+              return (
+                  e.target?.display_name?.toLowerCase().includes(q) ||
+                  e.target?.username?.toLowerCase().includes(q) ||
+                  e.target?.email?.toLowerCase().includes(q) ||
+                  e.changed_by?.display_name?.toLowerCase().includes(q) ||
+                  e.new_role.includes(q) ||
+                  (e.old_role ?? "").includes(q)
+              );
+          })
+        : entries;
+
+    const total = params.search?.trim() ? filtered.length : (count ?? 0);
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+    return { entries: filtered, total, totalPages };
+}

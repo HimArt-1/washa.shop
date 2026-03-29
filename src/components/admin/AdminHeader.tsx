@@ -11,6 +11,7 @@ const ROUTES: Record<string, { label: string; parent?: string }> = {
     "/dashboard/products-inventory": { label: "التنفيذ والمخزون", parent: "/dashboard" },
     "/dashboard/users-clerk": { label: "مزامنة الهوية", parent: "/dashboard" },
     "/dashboard/users": { label: "المستخدمون", parent: "/dashboard" },
+    "/dashboard/users/audit-log": { label: "سجل تغييرات الأدوار", parent: "/dashboard/users" },
     "/dashboard/orders": { label: "الطلبات", parent: "/dashboard" },
     "/dashboard/applications": { label: "طلبات الانضمام", parent: "/dashboard" },
     "/dashboard/artworks": { label: "الأعمال الفنية", parent: "/dashboard" },
