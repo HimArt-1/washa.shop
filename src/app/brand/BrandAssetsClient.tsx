@@ -12,8 +12,7 @@ import {
   ShieldAlert,
   Shirt,
   Download,
-  Instagram,
-  Link as LinkIcon
+  Instagram
 } from "lucide-react";
 import { toPng } from "html-to-image";
 import { Logo } from "@/components/ui/Logo";
@@ -136,36 +135,32 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="business-card-back"
-                  className="w-full h-full rounded-xl border overflow-hidden relative"
-                  style={{
-                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
-                    borderColor: "var(--card-border)",
-                    boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
-                  }}
+                  className="w-full h-full rounded-2xl border overflow-hidden relative shadow-2xl glass-premium hover-glow transition-all duration-700"
                 >
-                  {/* Gold Edge shine */}
-                  <div className="absolute inset-0 border border-gold/10 rounded-xl" />
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gold/5 blur-3xl z-0" />
+                  {/* Subtle Top Glow */}
+                  <div className="absolute top-0 right-0 w-40 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
+                  {/* Grainy Texture */}
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
                   
                   <div className="h-full flex flex-col justify-between p-6 sm:px-8 sm:py-6 relative z-10">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h2 className="text-2xl font-bold mb-1" style={{ color: "var(--card-text)" }}>{config.business_card_name}</h2>
+                        <h2 className="text-2xl font-bold mb-1 text-theme-strong">{config.business_card_name}</h2>
                         <p className="text-gold text-sm font-medium tracking-wide">{config.business_card_title}</p>
                       </div>
                       <Logo size="sm" />
                     </div>
                     
                     <div className="space-y-1 sm:space-y-1.5 mt-2 mb-1 w-full">
-                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full text-theme-subtle">
                         <Phone className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="tracking-wider px-1 pb-1 inline-block truncate min-w-0">{config.business_card_phone}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full text-theme-subtle">
                         <Mail className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="px-1 pb-1 inline-block truncate min-w-0">{config.business_card_email}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full" style={{ color: "var(--card-text-muted)" }}>
+                      <div className="flex items-center gap-3 text-xs sm:text-sm w-full text-theme-subtle">
                         <Globe className="w-4 h-4 text-gold flex-shrink-0" />
                         <span dir="ltr" className="px-1 pb-1.5 inline-block truncate min-w-0 text-left leading-relaxed">{config.business_card_website}</span>
                       </div>
@@ -185,15 +180,13 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="business-card-front"
-                  className="w-full h-full rounded-xl border overflow-hidden flex items-center justify-center relative"
-                  style={{
-                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
-                    borderColor: "var(--card-border)",
-                    boxShadow: "0 30px 60px -12px var(--card-shadow)"
-                  }}
+                  className="w-full h-full rounded-2xl border overflow-hidden flex items-center justify-center relative shadow-2xl glass-premium hover-glow transition-all duration-700"
                 >
-                  {/* Spot UV logic (hidden visually unless hovered) */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-700" />
+                  {/* Subtle Center Glow */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gold/15 dark:bg-gold/10 blur-[60px] z-0 rounded-full" />
+                  {/* Grainy Texture */}
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  {/* Spot UV shine sweep on hover */}
                   <div className="absolute -inset-1/2 bg-gradient-to-r from-transparent via-gold/10 to-transparent -rotate-45 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
                   
                   <Logo size="lg" className="scale-125 relative z-10" />
@@ -262,27 +255,29 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="thank-you-card"
-                  className="w-full h-full rounded-sm p-8 shadow-2xl border flex flex-col items-center text-center overflow-hidden relative"
-                  style={{
-                    background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
-                    borderColor: "var(--card-border)",
-                    boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
-                  }}
+                  className="w-full h-full rounded-2xl p-8 shadow-2xl border flex flex-col items-center text-center overflow-hidden relative glass-premium hover-glow transition-all duration-700"
                 >
-                  {/* Paper Texture Overlay */}
-                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none mix-blend-overlay" />
+                  {/* Subtle Top Glow */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
+                  {/* Grainy Texture */}
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
                   
                   <Logo size="sm" className="mb-8 relative z-10" />
                   
                   <div className="flex-1 flex flex-col justify-center relative z-10 w-full text-center">
-                    <h3 className="text-2xl font-serif mb-6" style={{ color: "var(--card-text)" }}>{config.thank_you_title}</h3>
-                    <div className="text-sm leading-8 mb-8 whitespace-pre-line px-2" style={{ color: "var(--card-text-muted)" }}>
+                    <h3 className="text-2xl font-serif mb-6 text-theme-strong">{config.thank_you_title}</h3>
+                    <div className="text-sm leading-8 mb-8 whitespace-pre-line px-2 text-theme-subtle">
                       {config.thank_you_message}
                     </div>
                   </div>
 
-                  <div className="w-full flex items-center justify-center mt-auto pt-6 border-t border-white/10 relative z-10">
-                    <span dir="ltr" className="text-gold font-bold tracking-widest text-sm uppercase px-1 inline-block">washa.shop</span>
+                  <div className="w-full flex items-center justify-center mt-auto pt-6 border-t border-theme-subtle/60 relative z-10">
+                    <span
+                      dir="ltr"
+                      className="inline-flex items-center justify-center rounded-full border border-theme-subtle/70 bg-theme-faint px-4 py-2 text-[11px] tracking-[0.18em] text-theme-subtle uppercase"
+                    >
+                      washa.shop
+                    </span>
                   </div>
                 </div>
               </motion.div>
@@ -304,19 +299,19 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                >
                  <div
                    id="care-card"
-                   className="w-full h-full border rounded-2xl p-8 sm:p-10 shadow-2xl overflow-hidden relative"
-                   style={{
-                     background: "linear-gradient(135deg, var(--card-bg-from) 0%, var(--card-bg-to) 100%)",
-                     borderColor: "var(--card-border)",
-                     boxShadow: "0 25px 50px -12px var(--card-shadow), 0 0 40px rgba(202, 160, 82, 0.05) inset"
-                   }}
+                   className="w-full h-full border rounded-2xl p-8 sm:p-10 shadow-2xl overflow-hidden relative glass-premium hover-glow transition-all duration-700"
                  >
-                   <div className="text-center mb-10 border-b border-white/10 pb-6 relative z-10">
-                     <h3 className="text-2xl font-bold tracking-wide text-white mb-2">تعليمات الغسيل والكي</h3>
-                     <p className="text-white/70 text-sm">للحفاظ على جودة القطعة والطباعة لأطول فترة ممكنة</p>
+                   {/* Subtle Top Glow */}
+                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
+                   {/* Grainy Texture */}
+                   <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+
+                   <div className="text-center mb-10 border-b border-theme-subtle/60 pb-6 relative z-10">
+                     <h3 className="text-2xl font-bold tracking-wide text-theme-strong mb-2">تعليمات الغسيل والكي</h3>
+                     <p className="text-theme-subtle text-sm">للحفاظ على جودة القطعة والطباعة لأطول فترة ممكنة</p>
                    </div>
 
-                   <div className="space-y-6 relative z-10">
+                   <div className="space-y-4 relative z-10">
                      <CareItem 
                        icon={Droplets}
                        title="الغسيل بالماء البارد"
@@ -491,13 +486,13 @@ function SectionTitle({ title, subtitle, number, align = "left" }: { title: stri
 
 function CareItem({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
   return (
-    <div className="flex items-start gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors border border-transparent hover:border-white/10">
-      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5" style={{ color: "var(--card-text)" }} />
+    <div className="flex items-start gap-4 px-4 py-3 rounded-2xl border border-theme-subtle bg-theme-faint transition-all duration-300">
+      <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
+        <Icon className="w-5 h-5 text-gold" />
       </div>
       <div>
-        <h4 className="font-bold text-sm sm:text-base mb-1" style={{ color: "var(--card-text)" }}>{title}</h4>
-        <p className="text-xs sm:text-sm" style={{ color: "var(--card-text-muted)" }}>{desc}</p>
+        <h4 className="font-bold text-sm sm:text-base mb-1 text-theme-strong">{title}</h4>
+        <p className="text-xs sm:text-sm text-theme-subtle">{desc}</p>
       </div>
     </div>
   );
