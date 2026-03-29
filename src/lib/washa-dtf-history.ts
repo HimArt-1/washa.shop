@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { getSupabaseAdminClient } from "@/lib/supabase";
@@ -127,14 +127,9 @@ export async function requireWashaDtfHistoryAccess(): Promise<
     | { ok: true; supabase: SupabaseClient<Database>; profileId: string; clerkId: string }
     | { ok: false; status: number; error: string }
 > {
-    const user = await currentUser();
-    if (!user) {
+    const { userId } = await auth();
+    if (!userId) {
         return { ok: false, status: 401, error: "يجب تسجيل الدخول لاستخدام WASHA AI" };
-    }
-
-    const profile = await ensureProfile();
-    if (!profile) {
-        return { ok: false, status: 403, error: "غير مصرح لك باستخدام WASHA AI" };
     }
 
     let supabase: SupabaseClient<Database>;
@@ -144,12 +139,24 @@ export async function requireWashaDtfHistoryAccess(): Promise<
         return { ok: false, status: 503, error: "إعدادات التخزين السحابي غير مكتملة" };
     }
 
-    return {
-        ok: true,
-        supabase,
-        profileId: profile.id,
-        clerkId: user.id,
-    };
+    // Fast path: look up profile directly in Supabase by clerk_id (no Clerk API network call).
+    const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", userId)
+        .maybeSingle();
+
+    if (existingProfile) {
+        return { ok: true, supabase, profileId: existingProfile.id, clerkId: userId };
+    }
+
+    // Slow path: first-time user — auto-create profile via ensureProfile().
+    const created = await ensureProfile();
+    if (!created) {
+        return { ok: false, status: 403, error: "غير مصرح لك باستخدام WASHA AI" };
+    }
+
+    return { ok: true, supabase, profileId: created.id, clerkId: userId };
 }
 
 export function mapDtfHistoryRow(row: DtfHistoryProjection): DtfHistoryItem {
