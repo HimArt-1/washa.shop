@@ -65,16 +65,45 @@ export default function BrandAssetsClient({ config }: { config: any }) {
   const handleDownload = async (elementId: string, filename: string) => {
     const element = document.getElementById(elementId);
     if (!element) return;
+
+    // Detect dark mode
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const solidBg = isDark
+      ? "linear-gradient(135deg, #322014 0%, #1A110A 100%)"
+      : "linear-gradient(135deg, #fffefb 0%, #f5f2eb 100%)";
+
+    // Save originals
+    const origBg = element.style.background;
+    const origBackdrop = element.style.backdropFilter;
+    const origWebkitBackdrop = element.style.getPropertyValue("-webkit-backdrop-filter");
+
+    // Find and temporarily hide all external texture overlays & blur glows inside this element
+    const textureOverlays = element.querySelectorAll<HTMLElement>(
+      "[class*='bg-\\[url']"
+    );
+    const blurGlows = element.querySelectorAll<HTMLElement>(
+      "[class*='blur-']"
+    );
+
+    // Apply solid background for capture (backdrop-filter not supported by html-to-image)
+    element.style.background = solidBg;
+    element.style.backdropFilter = "none";
+    element.style.setProperty("-webkit-backdrop-filter", "none");
+
+    // Hide texture overlays (CORS issue with external URLs)
+    textureOverlays.forEach((el) => (el.style.display = "none"));
+    // Hide blur glow divs (they render as ugly boxes)
+    blurGlows.forEach((el) => (el.style.display = "none"));
+
     try {
-      // Use toPng from html-to-image which renders DOM properly including SVGs and Arabic Fonts
-      const dataUrl = await toPng(element, { 
+      const dataUrl = await toPng(element, {
         cacheBust: true,
-        pixelRatio: 4, // High Quality
+        pixelRatio: 4, // Ultra high quality for print
         style: {
-          transform: 'none', // Force flat rendering (Remove 3D tilt)
-          transition: 'none', // Disable animations during capture
-          boxShadow: 'none', // Remove external floating shadow for a clean export
-        }
+          transform: "none",
+          transition: "none",
+          boxShadow: "none",
+        },
       });
       const link = document.createElement("a");
       link.download = `${filename}.png`;
@@ -82,11 +111,18 @@ export default function BrandAssetsClient({ config }: { config: any }) {
       link.click();
     } catch (err) {
       console.error("Failed to capture image:", err);
+    } finally {
+      // Restore everything
+      element.style.background = origBg;
+      element.style.backdropFilter = origBackdrop;
+      element.style.setProperty("-webkit-backdrop-filter", origWebkitBackdrop);
+      textureOverlays.forEach((el) => (el.style.display = ""));
+      blurGlows.forEach((el) => (el.style.display = ""));
     }
   };
 
   return (
-    <div className="min-h-screen bg-theme-bg pt-24 pb-32 overflow-hidden selection:bg-gold/30 selection:text-gold">
+    <div className="min-h-screen bg-bg pt-24 pb-32 overflow-hidden selection:bg-gold/30 selection:text-gold">
       
       {/* Background Ambience */}
       <div className="fixed inset-0 pointer-events-none">
