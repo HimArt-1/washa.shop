@@ -13,9 +13,6 @@ import {
   Shirt,
   Download,
   Instagram,
-  Twitter,
-  Ghost,
-  MessageCircle,
   Link as LinkIcon
 } from "lucide-react";
 import { toPng } from "html-to-image";
@@ -27,9 +24,32 @@ function TikTokIcon({ className }: { className?: string }) {
       className={className}
       viewBox="0 0 24 24"
       fill="currentColor"
-      aria-hidden="true"
     >
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.98a8.18 8.18 0 0 0 4.76 1.52V7.05a4.84 4.84 0 0 1-1-.36z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  );
+}
+
+function SnapchatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 28.28 28.28" fill="currentColor">
+      <path d="M14.05 1.54c-2.84 0-4.75.76-5.86 2.33-.97 1.37-.88 3.2-.82 4.86.03.85.07 1.72-.15 2.44-.17.56-.44.86-.73 1.07-.4.29-.92.43-1.55.46h-.01c-.15 0-.74.05-1.41.53-.41.3-.7.74-.8 1.29-.1.55.06 1.17.46 1.74.44.63 1.15.9 1.72 1l.28.03c.61.08 1.12.27 1.55.53.52.32.97.77 1.36 1.33.63.93 1.31 1.35 2.12 1.45.12.01.22.01.31.01.58 0 1.12-.15 1.63-.45v.01c.24-.15.5-.31.74-.46.34-.22.66-.44.99-.63.44-.23.9-.36 1.38-.36s.94.13 1.38.36c.34.19.66.41.99.63.24.15.5.31.74.46.52.31 1.08.48 1.68.48.09 0 .19 0 .28-.01.81-.12 1.5-.53 2.12-1.45.38-.56.84-1 1.36-1.33.44-.27.95-.45 1.55-.53l.28-.03c.56-.09 1.28-.37 1.72-1 .41-.57.57-1.2.46-1.74-.1-.55-.39-.99-.8-1.29-.67-.49-1.26-.53-1.41-.53h-.01c-.64-.03-1.15-.17-1.55-.46-.29-.21-.56-.51-.73-1.07-.22-.72-.18-1.59-.15-2.44.06-1.66.15-3.49-.82-4.86-1.11-1.57-3.02-2.33-5.86-2.33zm-4.28 19.23c-.52 0-1.03-.15-1.52-.44-.25-.15-.51-.32-.76-.48l-.03-.02c-.6-.38-1.09-.6-1.48-.6h-.03v-.01c-.8.05-1.43.55-1.44.56l-.06.05c-.19.14-.39.29-.65.48-.41.29-.73.34-.82.35-.09.01-.29.05-.49-.23-.2-.28-.06-.48.01-.56l.05-.06c1.24-1 3.11-1.25 4.07-1.38.19-.02.37-.03.59-.03 1.26 0 2.57.49 3.35 1.64.32.49.68.85 1.11 1.11.39.26.81.41 1.22.41s.82-.15 1.22-.41c.43-.26.79-.63 1.11-1.11.78-1.15 2.09-1.64 3.35-1.64.21 0 .41.01.59.03.96.12 2.83.37 4.07 1.38l.05.06c.07.09.21.28.01.56-.2.28-.39.24-.49.23-.09-.01-.42-.06-.82-.35l-.07-.05c-.01 0-.63-.49-1.44-.56v.01c-.49 0-1.05.28-1.67.66-.25.15-.51.32-.76.48-.49.29-1 .44-1.52.44-.28 0-.57-.05-.85-.15-.5-.2-1-.49-1.4-.89a7.65 7.65 0 0 1-1.04-1.12 7.66 7.66 0 0 1-1.04 1.12c-.43.41-.9.7-1.4.89-.28.1-.57.15-.85.15z"/>
+    </svg>
+  );
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.06-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
     </svg>
   );
 }
@@ -392,72 +412,59 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   
                   <div className="relative z-10 flex w-full flex-1 flex-col items-center pt-2 min-h-0">
                     <Logo size="md" className="mb-4 drop-shadow-xl" />
-                    <h2 className="text-xl font-bold text-theme-strong mb-1 tracking-wide">وشّى منصة الفن</h2>
-                    <p className="text-gold text-xs tracking-widest uppercase mb-6">@washha.sa</p>
+                    <h2 className="text-xl font-bold text-theme-strong mb-1 tracking-wide">{config.linktree_title || "وشّى منصة الفن"}</h2>
+                    <p className="text-gold text-xs tracking-widest uppercase mb-6">{config.linktree_subtitle || "@washha.sa"}</p>
 
                     {/* Social Buttons List */}
                     <div className="w-full flex flex-col gap-2.5">
-                      {config.social_instagram && (
+                      {config.social_instagram && config.show_instagram !== false && (
                         <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Instagram className="w-4 h-4 text-gold" />
-                          </div>
+                          <Instagram className="w-5 h-5 text-gold shrink-0" />
                           <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_instagram}</span>
-                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
-                      {config.social_twitter && (
+                      {config.social_twitter && config.show_twitter !== false && (
                         <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Twitter className="w-4 h-4 text-gold" />
-                          </div>
+                          <XIcon className="w-5 h-5 text-gold shrink-0" />
                           <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_twitter}</span>
-                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
-                      {config.social_tiktok && (
+                      {config.social_tiktok && config.show_tiktok !== false && (
                         <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <TikTokIcon className="w-4 h-4 text-gold" />
-                          </div>
+                          <TikTokIcon className="w-5 h-5 text-gold shrink-0" />
                           <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_tiktok}</span>
-                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                       
-                      {config.social_snapchat && (
+                      {config.social_snapchat && config.show_snapchat !== false && (
                         <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300">
-                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <Ghost className="w-4 h-4 text-gold" />
-                          </div>
+                          <SnapchatIcon className="w-5 h-5 text-gold shrink-0" />
                           <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_snapchat}</span>
-                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
 
-                      {config.social_whatsapp && (
+                      {config.social_whatsapp && config.show_whatsapp !== false && (
                         <div className="w-full px-4 py-2.5 rounded-2xl border border-theme-subtle bg-theme-faint flex items-center gap-3 relative overflow-hidden group transition-all duration-300 mt-0.5">
-                          <div className="w-8.5 h-8.5 rounded-full bg-theme-soft flex items-center justify-center shrink-0">
-                            <MessageCircle className="w-4 h-4 text-green-500" />
-                          </div>
+                          <WhatsAppIcon className="w-5 h-5 text-green-500 shrink-0" />
                           <span className="text-theme-strong text-[13px] font-medium tracking-wide flex-1 min-w-0 truncate text-left" dir="ltr">{config.social_whatsapp}</span>
-                          <LinkIcon className="w-3.5 h-3.5 text-theme-subtle" />
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Web URL Footer Wrapper */}
-                  <div className="relative z-10 mt-5 w-full border-t border-theme-subtle/60 pt-4 pb-1 text-center">
-                    <span
-                      dir="ltr"
-                      className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-theme-subtle/70 bg-theme-faint px-4 py-2 text-[11px] tracking-[0.18em] text-theme-subtle uppercase truncate"
-                    >
-                      {socialCardWebsite}
-                    </span>
-                  </div>
+                  {config.show_website !== false && (
+                      <div className="relative z-10 mt-5 w-full border-t border-theme-subtle/60 pt-4 pb-1 text-center">
+                        <span
+                          dir="ltr"
+                          className="mx-auto inline-flex max-w-full items-center justify-center rounded-full border border-theme-subtle/70 bg-theme-faint px-4 py-2 text-[11px] tracking-[0.18em] text-theme-subtle uppercase truncate"
+                        >
+                          {socialCardWebsite}
+                        </span>
+                      </div>
+                  )}
                 </div>
               </motion.div>
             </div>
