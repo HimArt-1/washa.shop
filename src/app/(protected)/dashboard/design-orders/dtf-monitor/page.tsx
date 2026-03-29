@@ -1,6 +1,7 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { getDtfTelemetryLogs } from "@/app/actions/dtf-telemetry";
+import { getDtfTelemetryLogs, getDtfTelemetryStats } from "@/app/actions/dtf-telemetry";
 import { DtfMonitorClient } from "./DtfMonitorClient";
+import { DtfStatsOverview } from "./DtfStatsOverview";
 import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
 
@@ -14,7 +15,13 @@ export default async function DtfMonitorPage({ searchParams }: PageProps) {
     const params = (await searchParams) ?? {} as Record<string, string | undefined>;
     const page = Number(params.page) || 1;
 
-    const { data: logs, count, error } = await getDtfTelemetryLogs(page, 50);
+    const [logsResult, statsResult] = await Promise.all([
+        getDtfTelemetryLogs(page, 50),
+        getDtfTelemetryStats(7)
+    ]);
+
+    const { data: logs, count, error } = logsResult;
+    const { data: stats } = statsResult;
 
     return (
         <div className="space-y-6">
@@ -36,7 +43,10 @@ export default async function DtfMonitorPage({ searchParams }: PageProps) {
                     حدث خطأ أثناء جلب السجلات: {error}
                 </div>
             ) : (
-                <DtfMonitorClient initialLogs={logs} totalCount={count} currentPage={page} />
+                <>
+                    {stats && <DtfStatsOverview stats={stats} />}
+                    <DtfMonitorClient initialLogs={logs} totalCount={count} currentPage={page} />
+                </>
             )}
         </div>
     );
