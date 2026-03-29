@@ -86,7 +86,7 @@ export default function LinkClient({ config }: { config: any }) {
           <div className="absolute top-0 right-0 w-32 h-32 bg-mist/20 blur-[50px] z-0 rounded-full pointer-events-none" />
           
           {/* Grainy Texture for Premium Feel */}
-          <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+          <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
           
           <div className="relative z-10 w-full flex flex-col items-center pt-2">
             <motion.div

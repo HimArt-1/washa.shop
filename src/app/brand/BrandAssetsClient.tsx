@@ -176,7 +176,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   {/* Subtle Top Glow */}
                   <div className="absolute top-0 right-0 w-40 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
                   {/* Grainy Texture */}
-                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
                   
                   <div className="h-full flex flex-col justify-between p-6 sm:px-8 sm:py-6 relative z-10">
                     <div className="flex justify-between items-start">
@@ -221,7 +221,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   {/* Subtle Center Glow */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gold/15 dark:bg-gold/10 blur-[60px] z-0 rounded-full" />
                   {/* Grainy Texture */}
-                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
                   {/* Spot UV shine sweep on hover */}
                   <div className="absolute -inset-1/2 bg-gradient-to-r from-transparent via-gold/10 to-transparent -rotate-45 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000 ease-in-out" />
                   
@@ -296,7 +296,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   {/* Subtle Top Glow */}
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
                   {/* Grainy Texture */}
-                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
                   
                   <Logo size="sm" className="mb-8 relative z-10" />
                   
@@ -340,7 +340,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                    {/* Subtle Top Glow */}
                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
                    {/* Grainy Texture */}
-                   <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                   <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
 
                    <div className="text-center mb-10 border-b border-theme-subtle/60 pb-6 relative z-10">
                      <h3 className="text-2xl font-bold tracking-wide text-theme-strong mb-2">تعليمات الغسيل والكي</h3>
@@ -439,7 +439,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 bg-gold/20 dark:bg-gold/15 blur-[50px] z-0 rounded-full" />
                   
                   {/* Grainy Texture */}
-                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] pointer-events-none mix-blend-overlay z-0" />
+                  <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] bg-[url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)] pointer-events-none mix-blend-overlay z-0" />
                   
                   <div className="relative z-10 flex w-full flex-1 flex-col items-center pt-2 min-h-0">
                     <Logo size="md" className="mb-4 drop-shadow-xl" />

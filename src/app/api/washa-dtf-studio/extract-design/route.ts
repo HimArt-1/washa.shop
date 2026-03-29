@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
