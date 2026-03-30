@@ -27,26 +27,63 @@ export type EnsuredProfile = {
     is_verified: boolean;
 };
 
+export type EnsureProfileResult =
+    | { status: "ok"; profile: EnsuredProfile }
+    | { status: "not_signed_in" }
+    | { status: "supabase_error" }
+    | { status: "identity_conflict" };
+
+function mapEnsuredProfile(profile: {
+    id: string;
+    clerk_id: string;
+    display_name: string;
+    username: string;
+    role: string;
+    avatar_url: string | null;
+    bio: string | null;
+    wushsha_level?: number | null;
+    is_verified: boolean;
+}) {
+    return {
+        id: profile.id,
+        clerk_id: profile.clerk_id,
+        display_name: profile.display_name,
+        username: profile.username,
+        role: profile.role,
+        avatar_url: profile.avatar_url,
+        bio: profile.bio,
+        wushsha_level: profile.wushsha_level ?? null,
+        is_verified: profile.is_verified,
+    } satisfies EnsuredProfile;
+}
+
 /**
  * يتأكد من وجود ملف شخصي في Supabase للمستخدم الحالي.
  * إذا لم يكن موجوداً، يُنشئ واحداً بدور subscriber تلقائياً.
  * يُرجع الملف الشخصي أو null إذا لم يكن المستخدم مسجّل دخول.
  */
-export async function ensureProfile(): Promise<EnsuredProfile | null> {
+export async function ensureProfileWithStatus(): Promise<EnsureProfileResult> {
     try {
         const user = await currentUser();
-        if (!user) return null;
+        if (!user) return { status: "not_signed_in" };
 
         const supabase = getAdminSupabase();
-        if (!supabase) return null;
+        if (!supabase) return { status: "supabase_error" };
 
-        const { data: existing } = await supabase
+        const { data: existing, error: existingError } = await supabase
             .from("profiles")
             .select("id, clerk_id, display_name, username, role, avatar_url, bio, wushsha_level, is_verified")
             .eq("clerk_id", user.id)
             .maybeSingle();
 
-        if (existing) return existing as EnsuredProfile;
+        if (existingError) {
+            console.error("[ensureProfile] Read existing profile:", existingError);
+            return { status: "supabase_error" };
+        }
+
+        if (existing) {
+            return { status: "ok", profile: mapEnsuredProfile(existing as EnsuredProfile) };
+        }
 
         const primaryEmail =
             user.emailAddresses.find((entry) => entry.id === user.primaryEmailAddressId)?.emailAddress ||
@@ -74,22 +111,17 @@ export async function ensureProfile(): Promise<EnsuredProfile | null> {
 
         if (ensured.action === "conflict") {
             console.error("[ensureProfile] Identity conflict for clerk user:", user.id);
-            return null;
+            return { status: "identity_conflict" };
         }
 
-        return {
-            id: ensured.profile.id,
-            clerk_id: ensured.profile.clerk_id,
-            display_name: ensured.profile.display_name,
-            username: ensured.profile.username,
-            role: ensured.profile.role,
-            avatar_url: ensured.profile.avatar_url,
-            bio: ensured.profile.bio,
-            wushsha_level: ensured.profile.wushsha_level ?? null,
-            is_verified: ensured.profile.is_verified,
-        } satisfies EnsuredProfile;
+        return { status: "ok", profile: mapEnsuredProfile(ensured.profile) };
     } catch (err) {
         console.error("[ensureProfile]", err);
-        return null;
+        return { status: "supabase_error" };
     }
+}
+
+export async function ensureProfile(): Promise<EnsuredProfile | null> {
+    const result = await ensureProfileWithStatus();
+    return result.status === "ok" ? result.profile : null;
 }

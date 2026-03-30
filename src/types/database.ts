@@ -951,6 +951,18 @@ export type Database = {
                 Args: { p_order_id: string };
                 Returns: string; // new tracker_token_expires_at (TIMESTAMPTZ as ISO string)
             };
+            reserve_dtf_daily_quota: {
+                Args: { p_profile_id: string; p_daily_limit?: number };
+                Returns: Record<string, unknown>;
+            };
+            release_dtf_daily_quota: {
+                Args: { p_profile_id: string; p_daily_limit?: number };
+                Returns: Record<string, unknown>;
+            };
+            consume_rate_limit: {
+                Args: { p_identifier: string; p_limit: number; p_window_seconds: number };
+                Returns: Record<string, unknown>;
+            };
         };
         Enums: {
             [_ in never]: never;

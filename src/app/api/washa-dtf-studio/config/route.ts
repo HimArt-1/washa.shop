@@ -7,6 +7,12 @@ export const runtime = "nodejs";
 export async function GET() {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
+        if (access.reason === "supabase_error") {
+            return NextResponse.json({ error: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً." }, { status: 503 });
+        }
+        if (access.reason === "identity_conflict") {
+            return NextResponse.json({ error: "تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم." }, { status: 409 });
+        }
         return NextResponse.json({ error: "غير مصرح لك باستخدام استوديو DTF" }, { status: 403 });
     }
 

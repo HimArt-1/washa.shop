@@ -2,9 +2,61 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Sparkles, ArrowLeft, Lock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock, Sparkles } from "lucide-react";
 
-export function DesignPieceAccessDenied({ redirectUrl = "/design" }: { redirectUrl?: string }) {
+type DesignPieceAccessDeniedProps = {
+    redirectUrl?: string;
+    variant?: "auth" | "service_unavailable" | "identity_conflict";
+};
+
+const variantContent = {
+    auth: {
+        title: "سجّل دخولك لتصمّم قطعتك",
+        description: "سجّل حسابك مجاناً وابدأ بتصميم تيشيرت أو هودي بالذكاء الاصطناعي فوراً.",
+        primaryHref: (redirectUrl: string) => `/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`,
+        primaryLabel: "إنشاء حساب مجاني",
+        primaryIcon: Sparkles,
+        secondaryHref: (redirectUrl: string) => `/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`,
+        secondaryLabel: "تسجيل الدخول",
+        secondaryIcon: ArrowLeft,
+        cardClassName: "bg-gold/10 border-gold/20",
+        iconClassName: "text-gold",
+    },
+    service_unavailable: {
+        title: "خدمة التحقق غير متاحة مؤقتاً",
+        description: "تعذر التحقق من صلاحية الوصول الآن بسبب مشكلة مؤقتة. حاول مجدداً بعد قليل.",
+        primaryHref: (redirectUrl: string) => redirectUrl,
+        primaryLabel: "إعادة المحاولة",
+        primaryIcon: ArrowLeft,
+        secondaryHref: () => "/design",
+        secondaryLabel: "العودة",
+        secondaryIcon: Sparkles,
+        cardClassName: "bg-orange-500/10 border-orange-400/20",
+        iconClassName: "text-orange-300",
+    },
+    identity_conflict: {
+        title: "تعذر ربط حسابك تلقائياً",
+        description: "هناك تعارض في ربط الهوية بالحساب الحالي. تواصل مع الدعم ليتم تصحيح الربط.",
+        primaryHref: () => "/support",
+        primaryLabel: "تواصل مع الدعم",
+        primaryIcon: Sparkles,
+        secondaryHref: () => "/design",
+        secondaryLabel: "العودة",
+        secondaryIcon: ArrowLeft,
+        cardClassName: "bg-sky-500/10 border-sky-400/20",
+        iconClassName: "text-sky-200",
+    },
+} as const;
+
+export function DesignPieceAccessDenied({
+    redirectUrl = "/design",
+    variant = "auth",
+}: DesignPieceAccessDeniedProps) {
+    const content = variantContent[variant];
+    const PrimaryIcon = content.primaryIcon;
+    const SecondaryIcon = content.secondaryIcon;
+    const Icon = variant === "auth" ? Lock : AlertTriangle;
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -18,32 +70,32 @@ export function DesignPieceAccessDenied({ redirectUrl = "/design" }: { redirectU
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                    className="w-24 h-24 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-8"
+                    className={`w-24 h-24 rounded-2xl border flex items-center justify-center mx-auto mb-8 ${content.cardClassName}`}
                 >
-                    <Lock className="w-12 h-12 text-gold" />
+                    <Icon className={`w-12 h-12 ${content.iconClassName}`} />
                 </motion.div>
 
                 <h1 className="text-2xl sm:text-3xl font-bold text-theme mb-3">
-                    سجّل دخولك لتصمّم قطعتك
+                    {content.title}
                 </h1>
                 <p className="text-theme-soft text-base leading-relaxed mb-8">
-                    سجّل حسابك مجاناً وابدأ بتصميم تيشيرت أو هودي بالذكاء الاصطناعي فوراً.
+                    {content.description}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <Link
-                        href={`/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`}
+                        href={content.primaryHref(redirectUrl)}
                         className="btn-gold inline-flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
-                        <Sparkles className="w-5 h-5" />
-                        إنشاء حساب مجاني
+                        <PrimaryIcon className="w-5 h-5" />
+                        {content.primaryLabel}
                     </Link>
                     <Link
-                        href={`/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`}
+                        href={content.secondaryHref(redirectUrl)}
                         className="btn-secondary inline-flex items-center gap-2 w-full sm:w-auto justify-center"
                     >
-                        <ArrowLeft className="w-5 h-5" />
-                        تسجيل الدخول
+                        <SecondaryIcon className="w-5 h-5" />
+                        {content.secondaryLabel}
                     </Link>
                 </div>
             </div>

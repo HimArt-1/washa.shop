@@ -10,6 +10,12 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
+        if (access.reason === "supabase_error") {
+            return respondWithError("خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً.", 503);
+        }
+        if (access.reason === "identity_conflict") {
+            return respondWithError("تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم.", 409);
+        }
         return respondWithError("غير مصرح لك باستخدام استوديو DTF", 403);
     }
 

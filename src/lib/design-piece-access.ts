@@ -1,18 +1,27 @@
 import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { ensureProfile } from "@/lib/ensure-profile";
+import { ensureProfileWithStatus } from "@/lib/ensure-profile";
 
 // Leave empty to allow ALL authenticated users.
 // Populate to restrict by role: ["admin", "wushsha", "subscriber"]
 const ALLOWED_ROLES: string[] = [];
 
-export async function resolveDesignPieceAccess(): Promise<{
+export type DesignPieceAccessReason =
+    | "not_signed_in"
+    | "guest_needs_approval"
+    | "approved"
+    | "supabase_error"
+    | "identity_conflict";
+
+export type DesignPieceAccessResult = {
     allowed: boolean;
     profileId?: string;
     clerkId?: string;
     role?: string;
-    reason?: "not_signed_in" | "guest_needs_approval" | "approved";
-}> {
+    reason?: DesignPieceAccessReason;
+};
+
+export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResult> {
     // Use auth() — reads JWT directly from request headers (no extra Clerk API network call).
     // This is the recommended pattern for Route Handlers in Clerk v6.
     const { userId } = await auth();
@@ -24,11 +33,16 @@ export async function resolveDesignPieceAccess(): Promise<{
     // Avoids the extra currentUser() network call to Clerk's API for existing users.
     try {
         const supabase = getSupabaseAdminClient();
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
             .from("profiles")
             .select("id, role")
             .eq("clerk_id", userId)
             .maybeSingle();
+
+        if (error) {
+            console.error("[design-piece-access] Supabase profile lookup failed:", error);
+            return { allowed: false, reason: "supabase_error" };
+        }
 
         if (profile) {
             if (ALLOWED_ROLES.length === 0 || ALLOWED_ROLES.includes(profile.role as string)) {
@@ -42,16 +56,24 @@ export async function resolveDesignPieceAccess(): Promise<{
             }
             return { allowed: false, reason: "guest_needs_approval" };
         }
-    } catch {
-        // Supabase unavailable — fall through to ensureProfile
+    } catch (err) {
+        console.error("[design-piece-access] Supabase profile lookup failed:", err);
+        return { allowed: false, reason: "supabase_error" };
     }
 
     // Slow path: profile not found — try to auto-create it for first-time users.
     // ensureProfile() uses currentUser() to fetch full user data needed for creation.
-    const created = await ensureProfile();
-    if (!created) {
+    const ensured = await ensureProfileWithStatus();
+    if (ensured.status !== "ok") {
+        if (ensured.status === "supabase_error") {
+            return { allowed: false, reason: "supabase_error" };
+        }
+        if (ensured.status === "identity_conflict") {
+            return { allowed: false, reason: "identity_conflict" };
+        }
         return { allowed: false, reason: "guest_needs_approval" };
     }
+    const created = ensured.profile;
 
     if (ALLOWED_ROLES.length === 0 || ALLOWED_ROLES.includes(created.role as string)) {
         return {

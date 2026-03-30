@@ -98,7 +98,7 @@ async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<
     // ── Rate Limiting بالـ IP ─────────────────────────────
     const ip = getRequestIp();
     const rateKey = `application:${ip}`;
-    const rateCheck = checkRateLimit(rateKey, APPLICATION_RATE_LIMIT, APPLICATION_RATE_WINDOW_MS);
+    const rateCheck = await checkRateLimit(rateKey, APPLICATION_RATE_LIMIT, APPLICATION_RATE_WINDOW_MS);
     if (!rateCheck.success) {
         return {
             success: false,

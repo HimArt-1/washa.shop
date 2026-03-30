@@ -16,15 +16,22 @@ export default async function DesignDtfStudioEntryPage() {
         redirect("/design");
     }
 
-    const { allowed } = await canAccessDesignPiece();
+    const access = await canAccessDesignPiece();
 
-    if (allowed) {
+    if (access.allowed) {
         redirect("/design/dtf-studio/app");
     }
 
+    const variant =
+        access.reason === "supabase_error"
+            ? "service_unavailable"
+            : access.reason === "identity_conflict"
+              ? "identity_conflict"
+              : "auth";
+
     return (
         <div className="min-h-[100dvh] bg-[#050505] px-4 py-10 text-theme sm:px-6">
-            <DesignPieceAccessDenied redirectUrl="/design/dtf-studio" />
+            <DesignPieceAccessDenied redirectUrl="/design/dtf-studio" variant={variant} />
         </div>
     );
 }

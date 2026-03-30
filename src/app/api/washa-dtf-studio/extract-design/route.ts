@@ -12,18 +12,25 @@ export const maxDuration = 120;
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
+        if (access.reason === "supabase_error") {
+            return NextResponse.json({ error: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً." }, { status: 503 });
+        }
+        if (access.reason === "identity_conflict") {
+            return NextResponse.json({ error: "تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم." }, { status: 409 });
+        }
         return NextResponse.json({ error: "غير مصرح لك باستخدام استوديو DTF" }, { status: 403 });
     }
 
     // Rate Limiting: 6 requests per 60 seconds (1 minute) per user or IP
-    const identifier = access.profileId || request.ip || "anonymous";
-    const limits = checkRateLimit(`ext-${identifier}`, 6, 60_000);
-    // Admins bypass rate limiter
-    if (!limits.success && access.role !== "admin" && access.role !== "wushsha" && access.role !== "dev") {
-        return NextResponse.json(
-            { error: "تم تجاوز الحد المسموح للاستخراج. يرجى الانتظار دقيقة والمحاولة مجدداً." },
-            { status: 429, headers: { "X-RateLimit-Reset": new Date(limits.resetAt).toISOString() } }
-        );
+    if (access.role !== "admin" && access.role !== "wushsha" && access.role !== "dev") {
+        const identifier = access.profileId || request.ip || "anonymous";
+        const limits = await checkRateLimit(`ext-${identifier}`, 6, 60_000);
+        if (!limits.success) {
+            return NextResponse.json(
+                { error: "تم تجاوز الحد المسموح للاستخراج. يرجى الانتظار دقيقة والمحاولة مجدداً." },
+                { status: 429, headers: { "X-RateLimit-Reset": new Date(limits.resetAt).toISOString() } }
+            );
+        }
     }
 
     try {
@@ -39,8 +46,7 @@ export async function POST(request: NextRequest) {
 
         const imageUrl = await AiStudioService.extractDesign(prompt, mockupImage, mimeType);
 
-        // Async logging without blocking response
-        DtfTelemetryService.logActivity({
+        await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "extract-design",
@@ -55,8 +61,7 @@ export async function POST(request: NextRequest) {
         console.error("[washa-dtf-studio.extract-design]", error);
         const handled = getWashaDtfErrorDetails(error);
 
-        // Log the failure
-        DtfTelemetryService.logActivity({
+        await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "extract-design",

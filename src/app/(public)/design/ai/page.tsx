@@ -19,7 +19,13 @@ export default async function DesignAiPage() {
         redirect("/design");
     }
 
-    const { allowed } = await canAccessDesignPiece();
+    const access = await canAccessDesignPiece();
+    const deniedVariant =
+        access.reason === "supabase_error"
+            ? "service_unavailable"
+            : access.reason === "identity_conflict"
+              ? "identity_conflict"
+              : "auth";
 
     return (
         <div className="min-h-screen relative overflow-hidden">
@@ -59,7 +65,7 @@ export default async function DesignAiPage() {
                     ) : null}
                 </div>
 
-                {allowed ? <DesignPieceWizard /> : <DesignPieceAccessDenied redirectUrl="/design/ai" />}
+                {access.allowed ? <DesignPieceWizard /> : <DesignPieceAccessDenied redirectUrl="/design/ai" variant={deniedVariant} />}
             </div>
         </div>
     );

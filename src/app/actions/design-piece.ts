@@ -7,6 +7,7 @@
 "use server";
 
 import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
+import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
 
 /**
  * صلاحية التصميم:
@@ -14,9 +15,6 @@ import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
  * - غير مسجّل الدخول: يُحوّل لتسجيل الدخول
  * - بدون ملف شخصي: يُطلب منه التسجيل
  */
-export async function canAccessDesignPiece(): Promise<{
-    allowed: boolean;
-    reason?: "not_signed_in" | "guest_needs_approval" | "approved";
-}> {
+export async function canAccessDesignPiece(): Promise<DesignPieceAccessResult> {
     return resolveDesignPieceAccess();
 }

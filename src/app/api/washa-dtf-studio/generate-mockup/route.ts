@@ -12,23 +12,56 @@ export const maxDuration = 120;
 export async function POST(request: NextRequest) {
     const access = await resolveDesignPieceAccess();
     if (!access.allowed) {
+        if (access.reason === "supabase_error") {
+            return NextResponse.json({ error: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً." }, { status: 503 });
+        }
+        if (access.reason === "identity_conflict") {
+            return NextResponse.json({ error: "تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم." }, { status: 409 });
+        }
         return NextResponse.json({ error: "غير مصرح لك باستخدام استوديو DTF" }, { status: 403 });
     }
 
     // Rate Limiting: 6 requests per 60 seconds (1 minute) per user or IP for ALL users
-    const identifier = access.profileId || request.ip || "anonymous";
-    const limits = checkRateLimit(`gen-${identifier}`, 6, 60_000);
-    // Admins bypass rate limiter
-    if (!limits.success && access.role !== "admin" && access.role !== "wushsha" && access.role !== "dev") {
-        return NextResponse.json(
-            { error: "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً." },
-            { status: 429, headers: { "X-RateLimit-Reset": new Date(limits.resetAt).toISOString() } }
-        );
+    if (access.role !== "admin" && access.role !== "wushsha" && access.role !== "dev") {
+        const identifier = access.profileId || request.ip || "anonymous";
+        const limits = await checkRateLimit(`gen-${identifier}`, 6, 60_000);
+        if (!limits.success) {
+            return NextResponse.json(
+                { error: "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً." },
+                { status: 429, headers: { "X-RateLimit-Reset": new Date(limits.resetAt).toISOString() } }
+            );
+        }
     }
 
-    // Daily Quota Check
-    const quota = await DtfTelemetryService.checkDailyQuota(access.profileId, access.role);
+    let rawBody: unknown;
+    try {
+        rawBody = await request.json();
+    } catch {
+        return NextResponse.json({ error: "طلب غير صالح (JSON غير مقروء)" }, { status: 400 });
+    }
+
+    const parsed = generateMockupSchema.safeParse(rawBody);
+    if (!parsed.success) {
+        const errorMsg = parsed.error.issues[0]?.message || "بيانات الطلب غير صالحة";
+        return NextResponse.json({ error: errorMsg }, { status: 400 });
+    }
+
+    const { prompt, referenceImage } = parsed.data;
+
+    const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role);
     if (!quota.allowed) {
+        await DtfTelemetryService.logActivity({
+            profileId: access.profileId,
+            clerkId: access.clerkId,
+            action: "generate-mockup",
+            status: "quota_exceeded",
+            metadata: {
+                remainingPoints: quota.remaining,
+                usedPoints: quota.used,
+                quotaDate: quota.quotaDate,
+            },
+        });
+
         return NextResponse.json(
             { error: "انتهت نقاطك للتصميم اليوم. شكراً لإبداعك ونتمنى رؤيتك غداً!" },
             { status: 403 }
@@ -36,20 +69,9 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const rawBody = await request.json();
-        const parsed = generateMockupSchema.safeParse(rawBody);
-
-        if (!parsed.success) {
-            const errorMsg = parsed.error.issues[0]?.message || "بيانات الطلب غير صالحة";
-            return NextResponse.json({ error: errorMsg }, { status: 400 });
-        }
-
-        const { prompt, referenceImage } = parsed.data;
-
         const imageUrl = await AiStudioService.generateMockup(prompt, referenceImage);
 
-        // Async logging without blocking response
-        DtfTelemetryService.logActivity({
+        await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "generate-mockup",
@@ -57,20 +79,32 @@ export async function POST(request: NextRequest) {
             prompt,
             referenceImageUrl: referenceImage?.base64 ? "base64_hidden" : undefined,
             resultImageUrl: imageUrl || undefined,
+            metadata: {
+                remainingPointsAfterReservation: quota.remaining,
+                usedPoints: quota.used,
+                quotaDate: quota.quotaDate,
+            },
         });
 
-        return NextResponse.json({ imageUrl, remainingPoints: quota.remaining - 1 });
+        return NextResponse.json({ imageUrl, remainingPoints: quota.remaining });
     } catch (error) {
         console.error("[washa-dtf-studio.generate-mockup]", error);
         const handled = getWashaDtfErrorDetails(error);
-        
-        // Log the failure
-        DtfTelemetryService.logActivity({
+
+        if (quota.tracked) {
+            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role);
+        }
+
+        await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "generate-mockup",
             status: handled.status === 504 ? "timeout" : "error",
             errorMessage: handled.message,
+            metadata: {
+                quotaReleased: quota.tracked,
+                quotaDate: quota.quotaDate,
+            },
         });
 
         return NextResponse.json(

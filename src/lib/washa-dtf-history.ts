@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ensureProfile } from "@/lib/ensure-profile";
+import { ensureProfileWithStatus } from "@/lib/ensure-profile";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { Database } from "@/types/database";
 
@@ -140,21 +140,33 @@ export async function requireWashaDtfHistoryAccess(): Promise<
     }
 
     // Fast path: look up profile directly in Supabase by clerk_id (no Clerk API network call).
-    const { data: existingProfile } = await supabase
+    const { data: existingProfile, error: existingProfileError } = await supabase
         .from("profiles")
         .select("id")
         .eq("clerk_id", userId)
         .maybeSingle();
+
+    if (existingProfileError) {
+        console.error("[washa-dtf-history.access] Read profile:", existingProfileError);
+        return { ok: false, status: 503, error: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً." };
+    }
 
     if (existingProfile) {
         return { ok: true, supabase, profileId: existingProfile.id, clerkId: userId };
     }
 
     // Slow path: first-time user — auto-create profile via ensureProfile().
-    const created = await ensureProfile();
-    if (!created) {
+    const ensured = await ensureProfileWithStatus();
+    if (ensured.status !== "ok") {
+        if (ensured.status === "supabase_error") {
+            return { ok: false, status: 503, error: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً." };
+        }
+        if (ensured.status === "identity_conflict") {
+            return { ok: false, status: 409, error: "تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم." };
+        }
         return { ok: false, status: 403, error: "غير مصرح لك باستخدام WASHA AI" };
     }
+    const created = ensured.profile;
 
     return { ok: true, supabase, profileId: created.id, clerkId: userId };
 }

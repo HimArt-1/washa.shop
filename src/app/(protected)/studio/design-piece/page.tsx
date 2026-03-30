@@ -10,9 +10,16 @@ export const metadata: Metadata = {
 };
 
 export default async function DesignPiecePage() {
-    const { allowed } = await canAccessDesignPiece();
+    const access = await canAccessDesignPiece();
 
-    if (!allowed) {
+    if (!access.allowed) {
+        const deniedVariant =
+            access.reason === "supabase_error"
+                ? "service_unavailable"
+                : access.reason === "identity_conflict"
+                  ? "identity_conflict"
+                  : "auth";
+
         return (
             <div className="h-full">
                 <div className="mb-6">
@@ -21,7 +28,7 @@ export default async function DesignPiecePage() {
                         أداة التصميم بالذكاء الاصطناعي وملفات PDF للطباعة
                     </p>
                 </div>
-                <DesignPieceAccessDenied />
+                <DesignPieceAccessDenied variant={deniedVariant} />
             </div>
         );
     }
