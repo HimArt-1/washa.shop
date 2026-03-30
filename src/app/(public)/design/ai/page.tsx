@@ -2,10 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { Sparkles, ArrowRight, Wand2 } from "lucide-react";
-import { getPublicVisibility } from "@/app/actions/settings";
-import { canAccessDesignPiece } from "@/app/actions/design-piece";
 import { DesignPieceWizard } from "@/components/studio/design-piece/DesignPieceWizard";
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
+import { getDesignPieceDeniedVariant } from "@/lib/design-piece-access";
+import { resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
 
 export const metadata: Metadata = {
     title: "WASHA STUDIO | وشّى",
@@ -13,19 +13,11 @@ export const metadata: Metadata = {
 };
 
 export default async function DesignAiPage() {
-    const visibility = await getPublicVisibility();
+    const { visibility, access, showWizard } = await resolveDesignPiecePageState();
 
     if (!visibility.design_piece || visibility.design_piece_ai_switch === false) {
         redirect("/design");
     }
-
-    const access = await canAccessDesignPiece();
-    const deniedVariant =
-        access.reason === "supabase_error"
-            ? "service_unavailable"
-            : access.reason === "identity_conflict"
-              ? "identity_conflict"
-              : "auth";
 
     return (
         <div className="min-h-screen relative overflow-hidden">
@@ -65,7 +57,14 @@ export default async function DesignAiPage() {
                     ) : null}
                 </div>
 
-                {access.allowed ? <DesignPieceWizard /> : <DesignPieceAccessDenied redirectUrl="/design/ai" variant={deniedVariant} />}
+                {showWizard ? (
+                    <DesignPieceWizard />
+                ) : (
+                    <DesignPieceAccessDenied
+                        redirectUrl="/design/ai"
+                        variant={getDesignPieceDeniedVariant(access.reason)}
+                    />
+                )}
             </div>
         </div>
     );

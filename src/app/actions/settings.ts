@@ -51,6 +51,7 @@ export type SiteSettingsType = {
         design_piece?: boolean;
         design_piece_ai_switch?: boolean;
         design_piece_dtf_studio_switch?: boolean;
+        design_piece_generation_public?: boolean;
     };
     site_info: Record<string, string>;
     shipping: Record<string, number>;
@@ -103,6 +104,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         design_piece: true,
         design_piece_ai_switch: true,
         design_piece_dtf_studio_switch: true,
+        design_piece_generation_public: false,
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
@@ -286,6 +288,7 @@ export async function getSiteSettings() {
                 design_piece: v.design_piece ?? DEFAULT_SITE_SETTINGS.visibility.design_piece,
                 design_piece_ai_switch: v.design_piece_ai_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_ai_switch,
                 design_piece_dtf_studio_switch: v.design_piece_dtf_studio_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_dtf_studio_switch,
+                design_piece_generation_public: v.design_piece_generation_public ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_generation_public,
             },
             site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
             shipping: settings.shipping || DEFAULT_SITE_SETTINGS.shipping,
@@ -679,6 +682,7 @@ export async function getPublicVisibility() {
             design_piece: true,
             design_piece_ai_switch: true,
             design_piece_dtf_studio_switch: true,
+            design_piece_generation_public: false,
         };
     }
     
@@ -702,6 +706,7 @@ export async function getPublicVisibility() {
             design_piece: visibility?.design_piece ?? true,
             design_piece_ai_switch: visibility?.design_piece_ai_switch ?? true,
             design_piece_dtf_studio_switch: visibility?.design_piece_dtf_studio_switch ?? true,
+            design_piece_generation_public: visibility?.design_piece_generation_public ?? false,
         };
     } catch (error) {
         // Return defaults if Supabase is not configured
@@ -716,6 +721,7 @@ export async function getPublicVisibility() {
             design_piece: true,
             design_piece_ai_switch: true,
             design_piece_dtf_studio_switch: true,
+            design_piece_generation_public: false,
         };
     }
 }

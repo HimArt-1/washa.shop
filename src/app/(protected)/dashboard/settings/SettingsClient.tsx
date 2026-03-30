@@ -280,6 +280,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
+        design_piece_generation_public: settings.visibility.design_piece_generation_public ?? false,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -497,6 +498,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         label="اختصار WASHA AI داخل صمم قطعتك"
                         checked={visibility.design_piece_dtf_studio_switch ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece_dtf_studio_switch: v })}
+                    />
+                    <Toggle
+                        label="فتح التوليد للعامة والضيوف"
+                        checked={visibility.design_piece_generation_public ?? false}
+                        onChange={(v) => setVisibility({ ...visibility, design_piece_generation_public: v })}
                     />
                 </div>
                 <button

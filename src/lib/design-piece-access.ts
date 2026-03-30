@@ -10,8 +10,11 @@ export type DesignPieceAccessReason =
     | "not_signed_in"
     | "guest_needs_approval"
     | "approved"
+    | "public_access"
     | "supabase_error"
     | "identity_conflict";
+
+export type DesignPieceDeniedVariant = "auth" | "service_unavailable" | "identity_conflict";
 
 export type DesignPieceAccessResult = {
     allowed: boolean;
@@ -21,11 +24,58 @@ export type DesignPieceAccessResult = {
     reason?: DesignPieceAccessReason;
 };
 
-export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResult> {
+type ResolveDesignPieceAccessOptions = {
+    allowPublicAccess?: boolean;
+};
+
+export function getDesignPieceDeniedVariant(reason: DesignPieceAccessReason | undefined): DesignPieceDeniedVariant {
+    if (reason === "supabase_error") {
+        return "service_unavailable";
+    }
+
+    if (reason === "identity_conflict") {
+        return "identity_conflict";
+    }
+
+    return "auth";
+}
+
+export function getDesignPieceAccessFailure(reason: DesignPieceAccessReason | undefined): {
+    message: string;
+    status: number;
+} {
+    if (reason === "supabase_error") {
+        return {
+            message: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً.",
+            status: 503,
+        };
+    }
+
+    if (reason === "identity_conflict") {
+        return {
+            message: "تعذر ربط حسابك تلقائياً. يرجى التواصل مع الدعم.",
+            status: 409,
+        };
+    }
+
+    return {
+        message: "غير مصرح لك باستخدام استوديو DTF",
+        status: 403,
+    };
+}
+
+export async function resolveDesignPieceAccess(
+    options: ResolveDesignPieceAccessOptions = {}
+): Promise<DesignPieceAccessResult> {
+    const allowPublicAccess = options.allowPublicAccess === true;
+
     // Use auth() — reads JWT directly from request headers (no extra Clerk API network call).
     // This is the recommended pattern for Route Handlers in Clerk v6.
     const { userId } = await auth();
     if (!userId) {
+        if (allowPublicAccess) {
+            return { allowed: true, reason: "public_access", role: "guest" };
+        }
         return { allowed: false, reason: "not_signed_in" };
     }
 
@@ -41,6 +91,14 @@ export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResul
 
         if (error) {
             console.error("[design-piece-access] Supabase profile lookup failed:", error);
+            if (allowPublicAccess) {
+                return {
+                    allowed: true,
+                    reason: "public_access",
+                    clerkId: userId,
+                    role: "guest",
+                };
+            }
             return { allowed: false, reason: "supabase_error" };
         }
 
@@ -54,10 +112,29 @@ export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResul
                     role: profile.role as string,
                 };
             }
+
+            if (allowPublicAccess) {
+                return {
+                    allowed: true,
+                    reason: "public_access",
+                    profileId: profile.id,
+                    clerkId: userId,
+                    role: profile.role as string,
+                };
+            }
+
             return { allowed: false, reason: "guest_needs_approval" };
         }
     } catch (err) {
         console.error("[design-piece-access] Supabase profile lookup failed:", err);
+        if (allowPublicAccess) {
+            return {
+                allowed: true,
+                reason: "public_access",
+                clerkId: userId,
+                role: "guest",
+            };
+        }
         return { allowed: false, reason: "supabase_error" };
     }
 
@@ -65,6 +142,14 @@ export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResul
     // ensureProfile() uses currentUser() to fetch full user data needed for creation.
     const ensured = await ensureProfileWithStatus();
     if (ensured.status !== "ok") {
+        if (allowPublicAccess) {
+            return {
+                allowed: true,
+                reason: "public_access",
+                clerkId: userId,
+                role: "guest",
+            };
+        }
         if (ensured.status === "supabase_error") {
             return { allowed: false, reason: "supabase_error" };
         }
@@ -79,6 +164,16 @@ export async function resolveDesignPieceAccess(): Promise<DesignPieceAccessResul
         return {
             allowed: true,
             reason: "approved",
+            profileId: created.id,
+            clerkId: userId,
+            role: created.role as string,
+        };
+    }
+
+    if (allowPublicAccess) {
+        return {
+            allowed: true,
+            reason: "public_access",
             profileId: created.id,
             clerkId: userId,
             role: created.role as string,

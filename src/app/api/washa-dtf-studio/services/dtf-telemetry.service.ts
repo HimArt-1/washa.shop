@@ -54,6 +54,9 @@ export class DtfTelemetryService {
         userRole: string | null | undefined
     ): Promise<DailyQuotaReservation> {
         if (!profileId) {
+            if (userRole === "guest") {
+                return { allowed: true, remaining: 0, used: 0, tracked: false };
+            }
             return { allowed: false, remaining: 0, used: 0, tracked: false };
         }
 

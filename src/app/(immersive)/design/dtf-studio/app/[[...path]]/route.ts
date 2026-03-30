@@ -1,8 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicVisibility } from "@/app/actions/settings";
-import { resolveDesignPieceAccess } from "@/lib/design-piece-access";
+import { resolveDesignPieceApiState } from "@/lib/design-piece-runtime";
 
 export const runtime = "nodejs";
 
@@ -25,13 +24,11 @@ function isHtmlShellRequest(relativePath: string, segments: string[]) {
 }
 
 async function ensureDtfStudioAccess(request: NextRequest) {
-    const visibility = await getPublicVisibility();
+    const { visibility, access } = await resolveDesignPieceApiState();
 
     if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
         return NextResponse.redirect(new URL("/design", request.url));
     }
-
-    const access = await resolveDesignPieceAccess();
 
     if (!access.allowed) {
         return NextResponse.redirect(new URL("/design/dtf-studio", request.url));

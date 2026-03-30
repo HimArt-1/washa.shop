@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getPublicVisibility } from "@/app/actions/settings";
-import { canAccessDesignPiece } from "@/app/actions/design-piece";
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
+import { getDesignPieceDeniedVariant } from "@/lib/design-piece-access";
+import { resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
 
 export const metadata: Metadata = {
     title: "DTF Studio | وشّى",
@@ -10,28 +10,22 @@ export const metadata: Metadata = {
 };
 
 export default async function DesignDtfStudioEntryPage() {
-    const visibility = await getPublicVisibility();
+    const { visibility, access, showWizard } = await resolveDesignPiecePageState();
 
     if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
         redirect("/design");
     }
 
-    const access = await canAccessDesignPiece();
-
-    if (access.allowed) {
+    if (showWizard) {
         redirect("/design/dtf-studio/app");
     }
 
-    const variant =
-        access.reason === "supabase_error"
-            ? "service_unavailable"
-            : access.reason === "identity_conflict"
-              ? "identity_conflict"
-              : "auth";
-
     return (
         <div className="min-h-[100dvh] bg-[#050505] px-4 py-10 text-theme sm:px-6">
-            <DesignPieceAccessDenied redirectUrl="/design/dtf-studio" variant={variant} />
+            <DesignPieceAccessDenied
+                redirectUrl="/design/dtf-studio"
+                variant={getDesignPieceDeniedVariant(access.reason)}
+            />
         </div>
     );
 }
