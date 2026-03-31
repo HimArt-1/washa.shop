@@ -85,6 +85,31 @@ export class DtfOrderService {
         return [{ name: "custom-palette", prompt: customPalette }];
     }
 
+    private static buildDtfAiPrompt(params: {
+        garmentName: string;
+        colorName: string;
+        styleName: string;
+        techniqueName: string;
+        paletteLabel: string;
+        prompt: string | null;
+        calligraphyText: string | null;
+    }) {
+        const basePrompt = params.calligraphyText?.trim()
+            ? `مخطوطة مطلوبة: "${params.calligraphyText.trim()}"`
+            : (params.prompt?.trim() || "تصميم DTF من الاستوديو");
+
+        return [
+            `DTF Studio Request`,
+            `Garment: ${params.garmentName}`,
+            `Color: ${params.colorName}`,
+            `Style: ${params.styleName}`,
+            `Technique: ${params.techniqueName}`,
+            `Palette: ${params.paletteLabel}`,
+            `Prompt: ${basePrompt}`,
+            `Output: print-ready high-quality design asset`,
+        ].join("\n");
+    }
+
     private static buildCartItem(params: {
         id: string;
         garmentName: string;
@@ -288,22 +313,6 @@ export class DtfOrderService {
                 }
             }
 
-            if (userProfile) {
-                const profileLookupStartedAt = Date.now();
-                try {
-                    await sb
-                        .from("profiles")
-                        .select("id")
-                        .eq("clerk_id", userProfile.id)
-                        .single();
-                } catch (err) {
-                    logDiagnosticWarning("fetch-user-profile", err);
-                }
-                logDtfTrace("dtf.submit-order.service", traceId, "profile_lookup_completed", {
-                    duration_ms: Date.now() - profileLookupStartedAt,
-                });
-            }
-
             const pricingStartedAt = Date.now();
             const pricing = DtfOrderService.getGarmentPricing(garmentRow);
             const designPrice = calculatePlacementPrice(
@@ -332,13 +341,108 @@ export class DtfOrderService {
                 final_price: finalPrice,
             });
 
+            let userId: string | null = null;
+            if (userProfile) {
+                const profileLookupStartedAt = Date.now();
+                try {
+                    const { data: profile } = await sb
+                        .from("profiles")
+                        .select("id")
+                        .eq("clerk_id", userProfile.id)
+                        .maybeSingle();
+                    userId = profile?.id ?? null;
+                } catch (err) {
+                    logDiagnosticWarning("fetch-user-profile", err);
+                }
+                logDtfTrace("dtf.submit-order.service", traceId, "profile_lookup_completed", {
+                    duration_ms: Date.now() - profileLookupStartedAt,
+                });
+            }
+
+            const customerName = userProfile
+                ? ([userProfile.firstName, userProfile.lastName].filter(Boolean).join(" ").trim() || "عميل DTF")
+                : "عميل DTF";
+            const customerEmail = userProfile?.emailAddresses?.[0]?.emailAddress ?? null;
+            const customerPhone = userProfile?.phoneNumbers?.[0]?.phoneNumber ?? null;
+
+            const aiPrompt = DtfOrderService.buildDtfAiPrompt({
+                garmentName: resolvedGarmentName,
+                colorName: resolvedColorName,
+                styleName: resolvedStyleName,
+                techniqueName: resolvedTechniqueName,
+                paletteLabel: resolvedPaletteLabel,
+                prompt: prompt ?? null,
+                calligraphyText: calligraphyText ?? null,
+            });
+
+            const orderInsertStartedAt = Date.now();
+            const { data: insertedOrder, error: insertOrderError } = await sb
+                .from("custom_design_orders")
+                .insert({
+                    user_id: userId,
+                    garment_id: garmentRow?.id ?? null,
+                    garment_name: resolvedGarmentName,
+                    garment_image_url: garmentRow?.image_url ?? null,
+                    color_id: colorRow?.id ?? null,
+                    color_name: resolvedColorName,
+                    color_hex: resolvedColorHex,
+                    color_image_url: colorRow?.image_url ?? null,
+                    size_id: sizeRow?.id ?? null,
+                    size_name: resolvedSizeName,
+                    design_method: "studio",
+                    text_prompt: calligraphyText?.trim() ? `مخطوطة: ${calligraphyText.trim()}` : (prompt || "تصميم DTF من الاستوديو"),
+                    reference_image_url: extractedUrl ?? mockupResult.url,
+                    style_id: styleRow?.id ?? null,
+                    style_name: resolvedStyleName,
+                    style_image_url: styleRow?.image_url ?? null,
+                    art_style_id: artStyleRow?.id ?? null,
+                    art_style_name: resolvedTechniqueName,
+                    art_style_image_url: artStyleRow?.image_url ?? null,
+                    color_package_id: colorPackageRow?.id ?? (paletteId ?? null),
+                    color_package_name: resolvedPaletteLabel,
+                    custom_colors: DtfOrderService.buildCustomColorsPayload(customPalette),
+                    ai_prompt: aiPrompt,
+                    customer_name: customerName,
+                    customer_email: customerEmail,
+                    customer_phone: customerPhone,
+                    print_position: DEFAULT_DTF_PRINT_POSITION,
+                    print_size: DEFAULT_DTF_PRINT_SIZE,
+                    pricing_snapshot: {
+                        base_price: pricing.base_price,
+                        design_price: designPrice,
+                        final_price: finalPrice,
+                        dtf: true,
+                    },
+                    dtf_mockup_url: mockupResult.url,
+                    dtf_extracted_url: extractedUrl,
+                    dtf_style_label: resolvedStyleName,
+                    dtf_technique_label: resolvedTechniqueName,
+                    dtf_palette_label: resolvedPaletteLabel,
+                })
+                .select("id, order_number, tracker_token")
+                .single();
+
+            logDtfTrace("dtf.submit-order.service", traceId, "design_order_insert_completed", {
+                duration_ms: Date.now() - orderInsertStartedAt,
+                success: !insertOrderError,
+            });
+
+            if (insertOrderError) {
+                logDiagnosticWarning("dtf-design-order-insert", insertOrderError);
+                return DtfOrderService.resolveServerErrorMessage(insertOrderError);
+            }
+
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_succeeded", {
                 total_duration_ms: Date.now() - serviceStartedAt,
+                order_id: insertedOrder?.id ?? null,
             });
             return {
                 status: 200,
                 data: {
                     cartItem,
+                    orderId: insertedOrder?.id ?? null,
+                    orderNumber: insertedOrder?.order_number ?? null,
+                    trackerToken: insertedOrder?.tracker_token ?? null,
                     mockupUrl: mockupResult.url,
                     extractedUrl,
                     pricing: {

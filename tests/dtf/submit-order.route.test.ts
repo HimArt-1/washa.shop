@@ -140,7 +140,7 @@ describe("submit-order route", () => {
 
         expect(response.status).toBe(200);
         expect(response.headers.get("X-Trace-Id")).toBeTruthy();
-        await expect(response.json()).resolves.toEqual({
+        await expect(response.json()).resolves.toMatchObject({
             cartItem: {
                 id: "dtf-1",
                 title: "تصميم DTF مخصص — تيشيرت أسود",
