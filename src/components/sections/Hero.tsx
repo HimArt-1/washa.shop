@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { ArrowDown, LogIn, UserPlus } from "lucide-react";
+import { ArrowDown, LogIn, UserPlus, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,9 +11,10 @@ import { SignedIn, SignedOut } from "@clerk/nextjs";
 
 interface HeroProps {
   showAuthButtons?: boolean;
+  showWashaAiButton?: boolean;
 }
 
-export function Hero({ showAuthButtons = true }: HeroProps) {
+export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -254,29 +255,60 @@ export function Hero({ showAuthButtons = true }: HeroProps) {
             transition={{ duration: 0.8, delay: 0.8 }}
           >
             <SignedIn>
-              <motion.button
-                type="button"
-                className="group relative px-8 py-4 font-bold rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
-                style={{
-                  background: "linear-gradient(to right, var(--wusha-earth), var(--wusha-gold), var(--wusha-earth))",
-                  color: "var(--wusha-bg)",
-                  boxShadow: "0 4px 24px var(--neon-gold)",
-                }}
-                whileHover={{ boxShadow: "0 8px 40px color-mix(in srgb, var(--wusha-gold) 40%, transparent)" }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => router.push("/store")}
-                suppressHydrationWarning
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  المتجر
-                  <motion.span
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <motion.button
+                  type="button"
+                  className="group relative px-8 py-4 font-bold rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                  style={{
+                    background: "linear-gradient(to right, var(--wusha-earth), var(--wusha-gold), var(--wusha-earth))",
+                    color: "var(--wusha-bg)",
+                    boxShadow: "0 4px 24px var(--neon-gold)",
+                  }}
+                  whileHover={{ boxShadow: "0 8px 40px color-mix(in srgb, var(--wusha-gold) 40%, transparent)" }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => router.push("/store")}
+                  suppressHydrationWarning
+                >
+                  <span className="relative z-10 flex items-center gap-2">
+                    المتجر
+                    <motion.span
+                      animate={{ x: [0, 5, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      ←
+                    </motion.span>
+                  </span>
+                </motion.button>
+                {showWashaAiButton ? (
+                  <motion.button
+                    type="button"
+                    className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                    style={{
+                      borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)",
+                      background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 20%, transparent), color-mix(in srgb, #06b6d4 18%, transparent), color-mix(in srgb, #22c55e 16%, transparent))",
+                      color: "var(--wusha-text)",
+                    }}
+                    whileHover={{
+                      boxShadow: "0 8px 32px color-mix(in srgb, #22c55e 20%, transparent)",
+                      borderColor: "color-mix(in srgb, #22c55e 35%, transparent)",
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => router.push("/design/ai")}
+                    suppressHydrationWarning
                   >
-                    ←
-                  </motion.span>
-                </span>
-              </motion.button>
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      WASHA AI
+                      <motion.span
+                        animate={{ x: [0, 5, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        ←
+                      </motion.span>
+                    </span>
+                  </motion.button>
+                ) : null}
+              </div>
             </SignedIn>
             <SignedOut>
               <div className="flex flex-col items-center gap-4">

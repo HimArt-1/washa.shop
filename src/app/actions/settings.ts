@@ -48,6 +48,7 @@ export type SiteSettingsType = {
         join_artist?: boolean;
         ai_section?: boolean;
         hero_auth_buttons?: boolean;
+        hero_washa_ai_button?: boolean;
         design_piece?: boolean;
         design_piece_ai_switch?: boolean;
         design_piece_dtf_studio_switch?: boolean;
@@ -104,6 +105,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         join_artist: true,
         ai_section: true,
         hero_auth_buttons: true,
+        hero_washa_ai_button: true,
         design_piece: true,
         design_piece_ai_switch: true,
         design_piece_dtf_studio_switch: true,
@@ -252,6 +254,7 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         join_artist: coerceBooleanSetting(visibility.join_artist, fallback.join_artist ?? true),
         ai_section: coerceBooleanSetting(visibility.ai_section, fallback.ai_section ?? true),
         hero_auth_buttons: coerceBooleanSetting(visibility.hero_auth_buttons, fallback.hero_auth_buttons ?? true),
+        hero_washa_ai_button: coerceBooleanSetting(visibility.hero_washa_ai_button, fallback.hero_washa_ai_button ?? true),
         design_piece: coerceBooleanSetting(visibility.design_piece, fallback.design_piece ?? true),
         design_piece_ai_switch: coerceBooleanSetting(visibility.design_piece_ai_switch, fallback.design_piece_ai_switch ?? true),
         design_piece_dtf_studio_switch: coerceBooleanSetting(visibility.design_piece_dtf_studio_switch, fallback.design_piece_dtf_studio_switch ?? true),

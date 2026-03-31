@@ -488,6 +488,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         onChange={(v) => setVisibility({ ...visibility, hero_auth_buttons: v })}
                     />
                     <Toggle
+                        label="زر WASHA AI في هيرو الصفحة الرئيسية"
+                        checked={visibility.hero_washa_ai_button ?? true}
+                        onChange={(v) => setVisibility({ ...visibility, hero_washa_ai_button: v })}
+                    />
+                    <Toggle
                         label="صمم قطعتك (Design Your Piece)"
                         checked={visibility.design_piece ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece: v })}
