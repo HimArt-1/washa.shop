@@ -20,8 +20,8 @@ import { fetchDtfStudioConfig } from '../services/configService';
 import { resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
 export interface OrderResult {
-  orderId: string;
-  orderNumber: number;
+  itemTitle: string;
+  price: number;
 }
 
 interface DesignContextType {
@@ -503,7 +503,15 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'فشل إرسال الطلب');
       }
 
-      const result: OrderResult = { orderId: data.orderId, orderNumber: data.orderNumber };
+      const cartItem = data.cartItem;
+      if (!cartItem || typeof cartItem !== 'object') {
+        throw new Error('تعذر تجهيز التصميم للسلة');
+      }
+
+      const result: OrderResult = {
+        itemTitle: cartItem.title || 'تصميم DTF مخصص',
+        price: Number(cartItem.price || 0),
+      };
       setOrderResult(result);
 
       try {
@@ -513,23 +521,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         if (!cartState.state) cartState.state = { items: [], coupon: null };
         if (!Array.isArray(cartState.state.items)) cartState.state.items = [];
 
-        const imageUrl = data.mockupUrl || '';
-
-        const cartItem = {
-          id: `dtf-order-${data.orderNumber}`,
-          title: `تصميم DTF مخصص — ${state.garmentType} ${state.garmentColor}`,
-          price: 0,
-          image_url: imageUrl,
-          artist_name: 'وشّى DTF Studio',
-          quantity: 1,
-          size: state.garmentSize || null,
-          type: 'custom_design' as const,
-          maxQuantity: 1,
-          customDesignUrl: imageUrl,
-          customGarment: state.garmentType,
-          customPosition: 'chest',
-        };
-
         cartState.state.items = cartState.state.items.filter(
           (item: { id: string }) => item.id !== cartItem.id
         );
@@ -538,10 +529,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem(cartKey, JSON.stringify(cartState));
         localStorage.setItem('wusha-open-cart', '1');
       } catch {
-        // Non-fatal — order was still saved
+        // Non-fatal — the user can still retry and the design itself is preserved locally.
       }
 
-      showToast(`تم إرسال طلبك بنجاح! رقم الطلب: #${data.orderNumber}`, 'success');
+      showToast('تمت إضافة التصميم إلى السلة بنجاح', 'success');
       return true;
     } catch (submitError) {
       const msg = getReadableErrorMessage(submitError, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');

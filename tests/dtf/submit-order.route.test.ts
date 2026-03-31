@@ -6,13 +6,13 @@ const {
     mockRequireDtfRouteAccess,
     mockParseAndValidateDtfJson,
     mockCurrentUser,
-    mockCreateOrder,
+    mockPrepareCartItem,
     mockLogDiagnosticWarning,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockParseAndValidateDtfJson: vi.fn(),
     mockCurrentUser: vi.fn(),
-    mockCreateOrder: vi.fn(),
+    mockPrepareCartItem: vi.fn(),
     mockLogDiagnosticWarning: vi.fn(),
 }));
 
@@ -27,7 +27,7 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("@/app/api/washa-dtf-studio/services/dtf-order.service", () => ({
     DtfOrderService: {
-        createOrder: mockCreateOrder,
+        prepareCartItem: mockPrepareCartItem,
     },
 }));
 
@@ -49,7 +49,7 @@ describe("submit-order route", () => {
         mockRequireDtfRouteAccess.mockReset();
         mockParseAndValidateDtfJson.mockReset();
         mockCurrentUser.mockReset();
-        mockCreateOrder.mockReset();
+        mockPrepareCartItem.mockReset();
         mockLogDiagnosticWarning.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
@@ -76,10 +76,13 @@ describe("submit-order route", () => {
             lastName: "User",
             emailAddresses: [{ emailAddress: "test@example.com" }],
         });
-        mockCreateOrder.mockResolvedValue({
+        mockPrepareCartItem.mockResolvedValue({
             data: {
-                orderId: "order_1",
-                orderNumber: "DTF-1001",
+                cartItem: {
+                    id: "dtf-1",
+                    title: "تصميم DTF مخصص — تيشيرت أسود",
+                    price: 139,
+                },
             },
         });
     });
@@ -114,11 +117,11 @@ describe("submit-order route", () => {
         await expect(response.json()).resolves.toEqual({
             error: "بيانات الطلب غير صالحة",
         });
-        expect(mockCreateOrder).not.toHaveBeenCalled();
+        expect(mockPrepareCartItem).not.toHaveBeenCalled();
     });
 
     it("preserves service error responses", async () => {
-        mockCreateOrder.mockResolvedValue({
+        mockPrepareCartItem.mockResolvedValue({
             error: "فشل إنشاء الطلب",
             status: 500,
         });
@@ -126,6 +129,7 @@ describe("submit-order route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
 
         expect(response.status).toBe(500);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             error: "فشل إنشاء الطلب",
         });
@@ -135,9 +139,13 @@ describe("submit-order route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
 
         expect(response.status).toBe(200);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
-            orderId: "order_1",
-            orderNumber: "DTF-1001",
+            cartItem: {
+                id: "dtf-1",
+                title: "تصميم DTF مخصص — تيشيرت أسود",
+                price: 139,
+            },
         });
     });
 
@@ -150,11 +158,14 @@ describe("submit-order route", () => {
             "fetch-user-profile-clerk",
             expect.any(Error)
         );
-        expect(mockCreateOrder).toHaveBeenCalledWith(
+        expect(mockPrepareCartItem).toHaveBeenCalledWith(
             expect.objectContaining({
                 garmentType: "تيشيرت",
             }),
-            null
+            null,
+            expect.objectContaining({
+                traceId: expect.any(String),
+            })
         );
     });
 });

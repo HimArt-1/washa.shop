@@ -75,7 +75,7 @@ function TermsModal({
             },
             {
               title: 'التنفيذ والتسليم',
-              body: 'سيتولى فريق وشّى مراجعة الطلب والتواصل معك لتأكيد التفاصيل قبل البدء بالطباعة. مدة التنفيذ 3–7 أيام عمل من تاريخ التأكيد.',
+              body: 'بعد إضافة التصميم إلى السلة وإتمام الطلب، يتولى فريق وشّى تنفيذ الطباعة والتجهيز. مدة التنفيذ المعتادة 3–7 أيام عمل حسب الضغط ونوع القطعة.',
             },
             {
               title: 'حقوق التصميم',
@@ -83,7 +83,7 @@ function TermsModal({
             },
             {
               title: 'الدفع والإلغاء',
-              body: 'لا يُشترط الدفع عند الإرسال. سيُرسل إليك عرض السعر النهائي قبل تأكيد الطباعة. يمكن إلغاء الطلب بالتواصل مع الدعم خلال 24 ساعة من الإرسال.',
+              body: 'سيُضاف التصميم إلى السلة بسعره المحتسب من إعدادات القطعة والطباعة المعتمدة، ويمكنك مراجعة الطلب في صفحة الدفع قبل الإتمام. لأي تعديل لاحق يُرجى التواصل مع الدعم.',
             },
           ].map((item, i) => (
             <div key={i} className="rounded-xl p-4 bg-washa-bg/40 border border-washa-border/20 space-y-1.5">
@@ -132,9 +132,9 @@ function TermsModal({
             className="flex-1 gap-2 rounded-xl btn-shimmer-effect h-12 font-bold"
           >
             {isSubmitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> جاري الإرسال...</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> جاري الإضافة...</>
             ) : (
-              <><ShoppingBag className="w-4 h-4" /> تأكيد وإرسال الطلب</>
+              <><ShoppingBag className="w-4 h-4" /> تأكيد وإضافة للسلة</>
             )}
           </Button>
         </div>
@@ -144,7 +144,15 @@ function TermsModal({
 }
 
 // ── Order Success State ───────────────────────────────────────
-function OrderSuccessCard({ orderNumber, onReset }: { orderNumber: number; onReset: () => void }) {
+function OrderSuccessCard({
+  itemTitle,
+  price,
+  onReset,
+}: {
+  itemTitle: string;
+  price: number;
+  onReset: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -161,21 +169,22 @@ function OrderSuccessCard({ orderNumber, onReset }: { orderNumber: number; onRes
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-2xl font-bold text-washa-gold">تم إرسال طلبك بنجاح!</h3>
+        <h3 className="text-2xl font-bold text-washa-gold">تمت إضافة التصميم إلى السلة!</h3>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-washa-gold/10 border border-washa-gold/20">
-          <span className="text-xs text-washa-text-faint">رقم الطلب</span>
-          <span className="text-lg font-black text-washa-gold">#{orderNumber}</span>
+          <span className="text-xs text-washa-text-faint">السعر</span>
+          <span className="text-lg font-black text-washa-gold">{price.toFixed(2)} ر.س</span>
         </div>
         <p className="text-sm text-washa-text-sec max-w-sm leading-relaxed">
-          سيراجع فريق وشّى طلبك ويتواصل معك لتأكيد التفاصيل والسعر قبل البدء بالطباعة.
+          أصبح تصميمك الآن عنصرًا مخصصًا داخل السلة. يمكنك متابعة الدفع الآن أو العودة لتصميم قطعة جديدة.
         </p>
+        <p className="text-xs text-washa-text-faint max-w-sm mx-auto">{itemTitle}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-sm text-center">
         {[
-          { icon: '📋', label: 'مراجعة الطلب', time: '24 ساعة' },
-          { icon: '🎨', label: 'الطباعة والتنفيذ', time: '3–5 أيام' },
-          { icon: '📦', label: 'التسليم', time: 'حسب الموقع' },
+          { icon: '🛒', label: 'في السلة الآن', time: 'جاهز للمراجعة' },
+          { icon: '💳', label: 'إتمام الطلب', time: 'من صفحة الدفع' },
+          { icon: '🎨', label: 'التنفيذ والطباعة', time: 'بعد الإتمام' },
         ].map((step, i) => (
           <div key={i} className="rounded-xl p-3 bg-washa-bg/40 border border-washa-border/20 space-y-1">
             <span className="text-xl">{step.icon}</span>
@@ -187,10 +196,10 @@ function OrderSuccessCard({ orderNumber, onReset }: { orderNumber: number; onRes
 
       <div className="flex flex-col sm:flex-row gap-3">
         <a
-          href="/store"
+          href="/checkout"
           className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-washa-gold text-washa-bg font-bold text-base shadow-[0_0_24px_rgba(201,168,106,0.3)] hover:shadow-[0_0_36px_rgba(201,168,106,0.45)] transition-shadow"
         >
-          <ShoppingBag className="w-5 h-5" /> عرض السلة
+          <ShoppingBag className="w-5 h-5" /> إتمام الطلب
         </a>
         <Button variant="outline" onClick={onReset} className="gap-2 rounded-xl">
           <RotateCcw className="w-4 h-4" /> إنشاء تصميم جديد
@@ -314,7 +323,11 @@ export default function StepResult() {
 
         {/* ===== ORDER SUCCESS STATE ===== */}
         {orderResult && !isGenerating && (
-          <OrderSuccessCard orderNumber={orderResult.orderNumber} onReset={resetDesign} />
+          <OrderSuccessCard
+            itemTitle={orderResult.itemTitle}
+            price={orderResult.price}
+            onReset={resetDesign}
+          />
         )}
 
         {/* ===== RESULT STATE ===== */}
@@ -402,7 +415,7 @@ export default function StepResult() {
                     هل أعجبك التصميم؟
                   </h3>
                   <p className="text-sm text-washa-text-sec leading-relaxed">
-                    أرسل طلبك الآن وسيتولى فريق وشّى تنفيذه وطباعته على قطعتك بجودة احترافية
+                    أضف التصميم إلى السلة الآن ليُحتسب بسعر القطعة والطباعة المعتمدين ثم أكمل الطلب من صفحة الدفع
                   </p>
                 </div>
                 <Button
@@ -411,7 +424,7 @@ export default function StepResult() {
                   onClick={handleConfirmOrder}
                   className="gap-2 btn-shimmer-effect h-14 px-10 text-base rounded-xl font-bold shadow-[0_0_30px_rgba(201,168,106,0.25)] shrink-0 w-full sm:w-auto"
                 >
-                  <ShoppingBag className="w-5 h-5" /> تأكيد الطلب
+                  <ShoppingBag className="w-5 h-5" /> إضافة إلى السلة
                 </Button>
               </div>
             </motion.div>

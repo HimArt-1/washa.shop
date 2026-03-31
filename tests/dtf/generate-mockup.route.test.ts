@@ -172,10 +172,19 @@ describe("generate-mockup route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
         expect(response.status).toBe(200);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             imageUrl: "data:image/png;base64,MOCKUP",
             remainingPoints: 4,
         });
+        expect(mockGenerateMockup).toHaveBeenCalledWith(
+            "تصميم عربي حديث",
+            null,
+            expect.objectContaining({
+                traceId: expect.any(String),
+                timeoutMs: 45_000,
+            })
+        );
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",
@@ -194,6 +203,7 @@ describe("generate-mockup route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
         expect(response.status).toBe(504);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             error: "انتهت مهلة التوليد من المزود الخارجي.",
         });

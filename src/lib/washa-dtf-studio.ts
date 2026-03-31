@@ -46,13 +46,24 @@ export function getWashaDtfErrorDetails(error: unknown): {
     const providerMessage = parsed?.error?.message || fallbackMessage;
     const providerStatus = parsed?.error?.status || "";
     const providerCode = parsed?.error?.code;
+    const normalizedProviderMessage = providerMessage.toLowerCase();
+
+    if (/gemini_api_key is not configured/i.test(providerMessage)) {
+        return {
+            message: "إعدادات Gemini غير مكتملة على الخادم. أضف مفتاح Gemini الصحيح ثم أعد المحاولة.",
+            status: 503,
+        };
+    }
 
     if (
         /reported as leaked/i.test(providerMessage) ||
-        providerStatus === "PERMISSION_DENIED"
+        providerStatus === "PERMISSION_DENIED" ||
+        normalizedProviderMessage.includes("api key expired") ||
+        normalizedProviderMessage.includes("api key invalid") ||
+        normalizedProviderMessage.includes("api_key_invalid")
     ) {
         return {
-            message: "مفتاح Gemini الحالي مرفوض من Google. أنشئ مفتاحًا جديدًا وحدّثه في متغيرات البيئة على الخادم.",
+            message: "مفتاح Gemini الحالي غير صالح أو منتهي. حدّثه في متغيرات البيئة على الخادم ثم أعد المحاولة.",
             status: 503,
         };
     }
@@ -66,6 +77,18 @@ export function getWashaDtfErrorDetails(error: unknown): {
         return {
             message: "تجاوزت الحصة اليومية لـ Gemini AI. يرجى المحاولة بعد قليل أو التواصل مع الدعم.",
             status: 429,
+        };
+    }
+
+    if (
+        providerCode === 504 ||
+        providerStatus === "DEADLINE_EXCEEDED" ||
+        /deadline exceeded/i.test(providerMessage) ||
+        /timed out/i.test(providerMessage)
+    ) {
+        return {
+            message: "انتهت مهلة توليد التصميم قبل أن يستجيب مزود الصور. حاول مرة أخرى بصورة أخف أو وصف أقصر.",
+            status: 504,
         };
     }
 
