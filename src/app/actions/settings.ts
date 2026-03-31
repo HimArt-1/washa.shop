@@ -217,6 +217,51 @@ function coerceDtfDailyQuotaLimit(value: unknown, fallback = 5) {
     return Math.max(1, Math.round(parsed));
 }
 
+function coerceBooleanSetting(value: unknown, fallback: boolean) {
+    if (typeof value === "boolean") {
+        return value;
+    }
+
+    if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (["true", "1", "yes", "on"].includes(normalized)) {
+            return true;
+        }
+        if (["false", "0", "no", "off"].includes(normalized)) {
+            return false;
+        }
+    }
+
+    if (typeof value === "number") {
+        if (value === 1) return true;
+        if (value === 0) return false;
+    }
+
+    return fallback;
+}
+
+function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibility"] {
+    const visibility = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+    const fallback = DEFAULT_SITE_SETTINGS.visibility;
+
+    return {
+        gallery: coerceBooleanSetting(visibility.gallery, fallback.gallery ?? false),
+        store: coerceBooleanSetting(visibility.store, fallback.store ?? false),
+        signup: coerceBooleanSetting(visibility.signup, fallback.signup ?? false),
+        join: coerceBooleanSetting(visibility.join, fallback.join ?? true),
+        join_artist: coerceBooleanSetting(visibility.join_artist, fallback.join_artist ?? true),
+        ai_section: coerceBooleanSetting(visibility.ai_section, fallback.ai_section ?? true),
+        hero_auth_buttons: coerceBooleanSetting(visibility.hero_auth_buttons, fallback.hero_auth_buttons ?? true),
+        design_piece: coerceBooleanSetting(visibility.design_piece, fallback.design_piece ?? true),
+        design_piece_ai_switch: coerceBooleanSetting(visibility.design_piece_ai_switch, fallback.design_piece_ai_switch ?? true),
+        design_piece_dtf_studio_switch: coerceBooleanSetting(visibility.design_piece_dtf_studio_switch, fallback.design_piece_dtf_studio_switch ?? true),
+        design_piece_generation_public: coerceBooleanSetting(
+            visibility.design_piece_generation_public,
+            fallback.design_piece_generation_public ?? false
+        ),
+    };
+}
+
 function determineSignalState(options: {
     current: number;
     warningMin?: number | null;
@@ -283,26 +328,14 @@ export async function getSiteSettings() {
         settings[row.key] = row.value;
         }
 
-        const v = settings.visibility || {};
+        const visibility = normalizeVisibilitySettings(settings.visibility);
         const washaAi = settings.washa_ai || {};
         const cp = settings.creation_prices || {};
         const pi = settings.product_identifiers || {};
         const aiSim = settings.ai_simulation || {};
 
         return {
-            visibility: {
-                gallery: v.gallery ?? DEFAULT_SITE_SETTINGS.visibility.gallery,
-                store: v.store ?? DEFAULT_SITE_SETTINGS.visibility.store,
-                signup: v.signup ?? DEFAULT_SITE_SETTINGS.visibility.signup,
-                join: v.join ?? DEFAULT_SITE_SETTINGS.visibility.join,
-                join_artist: v.join_artist ?? DEFAULT_SITE_SETTINGS.visibility.join_artist,
-                ai_section: v.ai_section ?? DEFAULT_SITE_SETTINGS.visibility.ai_section,
-                hero_auth_buttons: v.hero_auth_buttons ?? DEFAULT_SITE_SETTINGS.visibility.hero_auth_buttons,
-                design_piece: v.design_piece ?? DEFAULT_SITE_SETTINGS.visibility.design_piece,
-                design_piece_ai_switch: v.design_piece_ai_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_ai_switch,
-                design_piece_dtf_studio_switch: v.design_piece_dtf_studio_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_dtf_studio_switch,
-                design_piece_generation_public: v.design_piece_generation_public ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_generation_public,
-            },
+            visibility,
             washa_ai: {
                 dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
                     washaAi.dtf_daily_quota_limit,
@@ -720,19 +753,7 @@ export async function getWashaAiSettings() {
 export async function getPublicVisibility() {
     // Check if Supabase is configured before attempting to use it
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return {
-            gallery: false,
-            store: false,
-            signup: false,
-            join: true,
-            join_artist: true,
-            ai_section: true,
-            hero_auth_buttons: true,
-            design_piece: true,
-            design_piece_ai_switch: true,
-            design_piece_dtf_studio_switch: true,
-            design_piece_generation_public: false,
-        };
+        return normalizeVisibilitySettings(null);
     }
     
     try {
@@ -743,35 +764,11 @@ export async function getPublicVisibility() {
             .eq("key", "visibility")
             .maybeSingle();
 
-        const visibility = (data as { value?: Record<string, boolean> } | null)?.value;
-        return {
-            gallery: visibility?.gallery ?? false,
-            store: visibility?.store ?? false,
-            signup: visibility?.signup ?? false,
-            join: visibility?.join ?? true,
-            join_artist: visibility?.join_artist ?? true,
-            ai_section: visibility?.ai_section ?? true,
-            hero_auth_buttons: visibility?.hero_auth_buttons ?? true,
-            design_piece: visibility?.design_piece ?? true,
-            design_piece_ai_switch: visibility?.design_piece_ai_switch ?? true,
-            design_piece_dtf_studio_switch: visibility?.design_piece_dtf_studio_switch ?? true,
-            design_piece_generation_public: visibility?.design_piece_generation_public ?? false,
-        };
+        const visibility = (data as { value?: Record<string, unknown> } | null)?.value;
+        return normalizeVisibilitySettings(visibility);
     } catch (error) {
         // Return defaults if Supabase is not configured
-        return {
-            gallery: false,
-            store: false,
-            signup: false,
-            join: true,
-            join_artist: true,
-            ai_section: true,
-            hero_auth_buttons: true,
-            design_piece: true,
-            design_piece_ai_switch: true,
-            design_piece_dtf_studio_switch: true,
-            design_piece_generation_public: false,
-        };
+        return normalizeVisibilitySettings(null);
     }
 }
 
