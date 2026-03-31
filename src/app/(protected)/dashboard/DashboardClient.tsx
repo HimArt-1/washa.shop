@@ -27,7 +27,7 @@ type DashboardProps = {
     stats: {
         totalUsers: number;
         totalArtists: number;
-        totalBuyers: number;
+        totalPlatformSubscribers: number;
         totalOrders: number;
         totalRevenue: number;
         thisMonthRevenue: number;
@@ -35,7 +35,7 @@ type DashboardProps = {
         totalArtworks: number;
         totalProducts: number;
         pendingApplications: number;
-        totalSubscribers: number;
+        totalNewsletterSubscribers: number;
         averageOrderValue: number;
     };
     recentOrders: Array<{
@@ -97,6 +97,10 @@ type DashboardProps = {
     topProductsList: TopProduct[];
     monthlyRevenue: Array<{ date: string; revenue: number; orders: number }>;
     lowStockList: LowStockItem[];
+    dataQuality: {
+        degraded: boolean;
+        issues: string[];
+    };
 };
 
 const panelClass =
@@ -331,7 +335,7 @@ function RevenueRunway({
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-xs text-theme-faint">الإيراد السنوي</p>
                             <p className="mt-2 text-lg font-bold text-theme">{formatCompactNumber(totalRevenue)}</p>
-                            <p className="mt-1 text-sm text-emerald-300">{totalOrders} طلبات مكتملة</p>
+                            <p className="mt-1 text-sm text-emerald-300">{totalOrders} طلبات مدفوعة</p>
                         </div>
                     </div>
                 </div>
@@ -503,6 +507,7 @@ export function DashboardClient({
     topProductsList,
     monthlyRevenue,
     lowStockList,
+    dataQuality,
 }: DashboardProps) {
     const lowStockCount = lowStockList.length;
     const healthScore = calculateHealthScore(controlTower.ops, lowStockCount);
@@ -518,7 +523,7 @@ export function DashboardClient({
         controlTower.ops.supportOpen +
         controlTower.ops.designNew +
         controlTower.ops.designAwaitingReview;
-    const managedCommunity = stats.totalArtists + stats.totalSubscribers;
+    const managedCommunity = stats.totalArtists + stats.totalPlatformSubscribers;
 
     return (
         <div className="space-y-6">
@@ -563,9 +568,23 @@ export function DashboardClient({
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-xs text-theme-faint">المجتمع المُدار من الداشبورد</p>
                                 <p className="mt-2 text-3xl font-black text-theme">{managedCommunity}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">وشّايون ومشتركون ونبض متجدد حول المنصة.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">وشّايون ومشتركون داخل المنصة، دون احتساب مشتركي النشرة البريدية.</p>
                             </div>
                         </div>
+
+                        {dataQuality.degraded ? (
+                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                                    <div>
+                                        <p className="text-sm font-bold text-amber-200">بعض بيانات الداشبورد عادت بوضع احتياطي</p>
+                                        <p className="mt-1 text-xs leading-6 text-amber-100/85">
+                                            {dataQuality.issues.join(" ")}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
 
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                             {[
@@ -661,7 +680,7 @@ export function DashboardClient({
                 <KpiCard
                     title="إيراد هذا الشهر"
                     value={formatCurrency(stats.thisMonthRevenue)}
-                    subtitle={`${formatCompactNumber(stats.totalOrders)} طلبات عبر المنصة`}
+                    subtitle={`${formatCompactNumber(stats.totalOrders)} طلبات مدفوعة`}
                     icon={TrendingUp}
                     accent="#22c55e"
                     href="/dashboard/analytics"
@@ -844,7 +863,7 @@ export function DashboardClient({
                     items={controlTower.designQueue.map((order) => (
                         <Link
                             key={order.id}
-                            href="/dashboard/design-orders"
+                            href={`/dashboard/design-orders/${order.id}`}
                             className="block rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-theme-soft hover:bg-theme-subtle"
                         >
                             <div className="flex items-start justify-between gap-3">
@@ -869,7 +888,7 @@ export function DashboardClient({
                     items={pendingApplications.map((application) => (
                         <Link
                             key={application.id}
-                            href="/dashboard/applications"
+                            href={`/dashboard/applications/${application.id}`}
                             className="block rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-theme-soft hover:bg-theme-subtle"
                         >
                             <div className="flex items-start justify-between gap-3">
@@ -987,8 +1006,8 @@ export function DashboardClient({
                         <Mail className="h-5 w-5 text-theme-faint" />
                         <span className="text-xs text-theme-faint">النشرة البريدية</span>
                     </div>
-                    <p className="mt-4 text-2xl font-black text-theme">{stats.totalSubscribers}</p>
-                    <p className="mt-2 text-sm text-theme-subtle">مشتركون ينتظرون حملات أدق ومحتوى أفضل.</p>
+                    <p className="mt-4 text-2xl font-black text-theme">{stats.totalNewsletterSubscribers}</p>
+                    <p className="mt-2 text-sm text-theme-subtle">مشتركو النشرة البريدية الذين ينتظرون حملات أدق ومحتوى أفضل.</p>
                 </Link>
                 <Link href="/dashboard/artworks" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
                     <div className="flex items-center justify-between">

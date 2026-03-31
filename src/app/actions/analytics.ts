@@ -5,33 +5,15 @@
 
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
-import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 
-// نحتاج حساب المسؤول فقط للاطلاع على هذه البيانات
-function getAdminSb() {
-    return createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-}
-
-// دالة مساعدة للتحقق من صلاحية الإدارة
-async function verifyAdmin() {
-    const user = await getCurrentUserOrDevAdmin();
-    if (!user) return false;
-
-    const supabase = getAdminSb();
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("clerk_id", user.id)
-        .single();
-
-    return profile?.role === "admin";
-}
+type AnalyticsSupabase = ReturnType<typeof getSupabaseAdminClient>;
+type AnalyticsOrderRow = {
+    total: number | string | null;
+    created_at: string;
+    payment_status?: string | null;
+};
 
 export interface TopProduct {
     id: string;
@@ -56,6 +38,188 @@ export interface LowStockItem {
     };
 }
 
+async function resolveAnalyticsAdminSupabase(): Promise<AnalyticsSupabase | null> {
+    const user = await getCurrentUserOrDevAdmin();
+    if (!user) return null;
+
+    const access = await resolveAdminAccess(user);
+    if (!access.isAdmin) return null;
+
+    return access.supabase;
+}
+
+function buildZeroDashboardMetrics(error?: string) {
+    return {
+        totalRevenue: 0,
+        totalOrders: 0,
+        totalUsers: 0,
+        averageOrderValue: 0,
+        thisMonthRevenue: 0,
+        revenueGrowth: 0,
+        error,
+    };
+}
+
+function buildMonthlyRevenueSeries(
+    orders: AnalyticsOrderRow[],
+    year: number
+): Array<{ date: string; revenue: number; orders: number }> {
+    const arabicMonths = [
+        "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+        "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر",
+    ];
+
+    const monthlyData = arabicMonths.map((month) => ({ date: month, revenue: 0, orders: 0 }));
+
+    orders
+        .filter((order) => {
+            const createdAt = new Date(order.created_at);
+            return createdAt.getFullYear() === year && order.payment_status === "paid";
+        })
+        .forEach((order) => {
+            const monthIndex = new Date(order.created_at).getMonth();
+            monthlyData[monthIndex].revenue += Number(order.total) || 0;
+            monthlyData[monthIndex].orders += 1;
+        });
+
+    return monthlyData;
+}
+
+function buildDashboardMetricsFromOrders(
+    orders: AnalyticsOrderRow[],
+    usersCount: number
+): {
+    totalRevenue: number;
+    totalOrders: number;
+    totalUsers: number;
+    averageOrderValue: number;
+    thisMonthRevenue: number;
+    revenueGrowth: number;
+    error?: string;
+} {
+    const paidOrders = orders.filter((order) => order.payment_status === "paid");
+    const totalOrders = paidOrders.length;
+    const totalRevenue = paidOrders.reduce((sum, order) => sum + Number(order.total), 0);
+    const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const thisMonthOrders = paidOrders.filter((order) => new Date(order.created_at) >= thisMonthStart);
+    const lastMonthOrders = paidOrders.filter((order) => {
+        const createdAt = new Date(order.created_at);
+        return createdAt >= lastMonthStart && createdAt < thisMonthStart;
+    });
+
+    const thisMonthRevenue = thisMonthOrders.reduce((sum, order) => sum + Number(order.total), 0);
+    const lastMonthRevenue = lastMonthOrders.reduce((sum, order) => sum + Number(order.total), 0);
+
+    return {
+        totalRevenue,
+        totalOrders,
+        totalUsers: usersCount || 0,
+        averageOrderValue,
+        thisMonthRevenue,
+        revenueGrowth: lastMonthRevenue > 0
+            ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
+            : thisMonthRevenue > 0 ? 100 : 0,
+    };
+}
+
+async function fetchDashboardOrders(supabase: AnalyticsSupabase) {
+    return supabase
+        .from("orders")
+        .select("total, created_at, payment_status")
+        .not("status", "eq", "cancelled")
+        .not("status", "eq", "refunded");
+}
+
+async function fetchUsersCount(supabase: AnalyticsSupabase) {
+    return supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+}
+
+async function fetchTopSellingProductsWithClient(supabase: AnalyticsSupabase, limit: number) {
+    const { data: orderItems, error } = await supabase
+        .from("order_items")
+        .select(`
+            quantity,
+            total_price,
+            product_id,
+            orders!inner ( status, payment_status ),
+            products ( id, title, image_url )
+        `)
+        .not("orders.status", "eq", "cancelled")
+        .not("orders.status", "eq", "refunded")
+        .eq("orders.payment_status", "paid")
+        .not("product_id", "is", null);
+
+    if (error) throw error;
+
+    const productMap = new Map<string, TopProduct>();
+
+    (orderItems || []).forEach((item: any) => {
+        if (!item.products) return;
+
+        const pid = item.product_id;
+        if (!productMap.has(pid)) {
+            productMap.set(pid, {
+                id: item.products.id,
+                title: item.products.title,
+                image_url: item.products.image_url,
+                total_sold: 0,
+                revenue: 0,
+            });
+        }
+
+        const product = productMap.get(pid)!;
+        product.total_sold += Number(item.quantity) || 0;
+        product.revenue += Number(item.total_price) || 0;
+    });
+
+    return Array.from(productMap.values())
+        .sort((a, b) => b.total_sold - a.total_sold)
+        .slice(0, limit);
+}
+
+async function fetchLowStockAlertsWithClient(supabase: AnalyticsSupabase, threshold: number) {
+    const { data, error } = await supabase
+        .from("inventory_levels")
+        .select(`
+            id,
+            quantity,
+            warehouse:warehouses(name),
+            sku:product_skus!inner (
+                id,
+                sku,
+                size,
+                product:products ( id, title, image_url )
+            )
+        `)
+        .lte("quantity", threshold)
+        .order("quantity", { ascending: true })
+        .limit(10);
+
+    if (error) throw error;
+
+    return (data || []).map((inv: any) => ({
+        id: inv.sku.id,
+        sku: inv.sku.sku,
+        size: inv.sku.size,
+        quantity: inv.quantity,
+        product: {
+            id: inv.sku.product.id,
+            title: inv.sku.product.title,
+            image_url: inv.sku.product.image_url,
+        },
+        warehouse: {
+            name: inv.warehouse?.name || "مستودع غير معروف",
+        },
+    }));
+}
+
 export async function getDashboardMetrics(): Promise<{
     totalRevenue: number;
     totalOrders: number;
@@ -65,104 +229,54 @@ export async function getDashboardMetrics(): Promise<{
     revenueGrowth: number;
     error?: string;
 }> {
-    const isAdmin = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح لك بعرض هذه البيانات", totalRevenue: 0, totalOrders: 0, totalUsers: 0, averageOrderValue: 0, thisMonthRevenue: 0, revenueGrowth: 0 };
+    const supabase = await resolveAnalyticsAdminSupabase();
+    if (!supabase) {
+        return buildZeroDashboardMetrics("غير مصرح لك بعرض هذه البيانات");
+    }
 
     try {
-        const supabase = getAdminSb();
-
-        // 1. Fetch valid orders
-        const { data: orders, error: ordersError } = await supabase
-            .from("orders")
-            .select("total, created_at")
-            .not("status", "eq", "cancelled")
-            .not("status", "eq", "refunded");
+        const [{ data: orders, error: ordersError }, { count: usersCount, error: usersError }] = await Promise.all([
+            fetchDashboardOrders(supabase),
+            fetchUsersCount(supabase),
+        ]);
 
         if (ordersError) throw ordersError;
+        if (usersError) throw usersError;
 
-        // 2. Fetch users count
-        const { count: usersCount } = await supabase
-            .from("profiles")
-            .select("*", { count: 'exact', head: true });
-
-        const validOrders = orders || [];
-        const totalOrders = validOrders.length;
-        const totalRevenue = validOrders.reduce((sum, order) => sum + Number(order.total), 0);
-        const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-        // Real month-over-month growth calculation
-        const now = new Date();
-        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-        const thisMonthOrders = validOrders.filter(o => new Date(o.created_at) >= thisMonthStart);
-        const lastMonthOrders = validOrders.filter(o => {
-            const d = new Date(o.created_at);
-            return d >= lastMonthStart && d < thisMonthStart;
-        });
-
-        const thisMonthRevenue = thisMonthOrders.reduce((sum, o) => sum + Number(o.total), 0);
-        const lastMonthRevenue = lastMonthOrders.reduce((sum, o) => sum + Number(o.total), 0);
-
-        const revenueGrowth = lastMonthRevenue > 0
-            ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
-            : thisMonthRevenue > 0 ? 100 : 0;
-
-        return {
-            totalRevenue,
-            totalOrders,
-            totalUsers: usersCount || 0,
-            averageOrderValue,
-            thisMonthRevenue,
-            revenueGrowth
-        };
+        return buildDashboardMetricsFromOrders(orders || [], usersCount || 0);
     } catch (err: unknown) {
         console.error("[getDashboardMetrics]", err);
-        return { error: "فشل في جلب بيانات الإحصائيات", totalRevenue: 0, totalOrders: 0, totalUsers: 0, averageOrderValue: 0, thisMonthRevenue: 0, revenueGrowth: 0 };
+        return buildZeroDashboardMetrics("فشل في جلب بيانات الإحصائيات");
     }
 }
 
 /**
  * Fetches revenue grouped by month for the given year
  */
-export async function getRevenueByMonth(year: number) {
-    const isAdmin = await verifyAdmin();
-    if (!isAdmin) return [];
+export async function getRevenueByMonth(year: number): Promise<{
+    data: Array<{ date: string; revenue: number; orders: number }>;
+    error?: string;
+}> {
+    const supabase = await resolveAnalyticsAdminSupabase();
+    if (!supabase) {
+        return {
+            data: [],
+            error: "غير مصرح لك بعرض منحنى الإيراد الشهري",
+        };
+    }
 
     try {
-        const arabicMonths = [
-            "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-            "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
-        ];
-        
-        const monthlyData = arabicMonths.map(m => ({ date: m, revenue: 0, orders: 0 }));
-
-        const startDate = new Date(year, 0, 1).toISOString();
-        const endDate = new Date(year, 11, 31, 23, 59, 59).toISOString();
-
-        const supabase = getAdminSb();
-        const { data: orders, error } = await supabase
-            .from("orders")
-            .select("total, created_at")
-            .not("status", "eq", "cancelled")
-            .not("status", "eq", "refunded")
-            .gte("created_at", startDate)
-            .lte("created_at", endDate);
+        const { data: orders, error } = await fetchDashboardOrders(supabase);
 
         if (error) throw error;
 
-        orders.forEach(order => {
-            const date = new Date(order.created_at);
-            const monthIndex = date.getMonth(); 
-            
-            monthlyData[monthIndex].revenue += Number(order.total) || 0;
-            monthlyData[monthIndex].orders += 1;
-        });
-
-        return monthlyData;
+        return { data: buildMonthlyRevenueSeries(orders || [], year) };
     } catch (error) {
         console.error("Error fetching monthly revenue:", error);
-        return [];
+        return {
+            data: [],
+            error: "تعذر تحميل منحنى الإيراد الشهري.",
+        };
     }
 }
 
@@ -170,59 +284,14 @@ export async function getRevenueByMonth(year: number) {
  * Fetches top selling products by aggregating order_items
  */
 export async function getTopSellingProducts(limit: number = 5) {
-    const isAdmin = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح لك بعرض هذه البيانات" };
+    const supabase = await resolveAnalyticsAdminSupabase();
+    if (!supabase) return { data: [], error: "غير مصرح لك بعرض هذه البيانات" };
 
     try {
-        const supabase = getAdminSb();
-
-        // Fetch order items to aggregate top sellers
-        const { data: orderItems, error } = await supabase
-            .from("order_items")
-            .select(`
-                quantity,
-                total_price,
-                product_id,
-                orders!inner ( status ),
-                products ( id, title, image_url )
-            `)
-            .not("orders.status", "eq", "cancelled")
-            .not("orders.status", "eq", "refunded")
-            .not("product_id", "is", null);
-
-        if (error) throw error;
-
-        // Aggregate by product_id
-        const productMap = new Map<string, any>();
-
-        (orderItems || []).forEach((item: any) => {
-            if (!item.products) return;
-
-            const pid = item.product_id;
-            if (!productMap.has(pid)) {
-                productMap.set(pid, {
-                    id: item.products.id,
-                    title: item.products.title,
-                    image_url: item.products.image_url,
-                    total_sold: 0,
-                    revenue: 0
-                });
-            }
-
-            const p = productMap.get(pid)!;
-            p.total_sold += Number(item.quantity) || 0;
-            p.revenue += Number(item.total_price) || 0;
-        });
-
-        // Convert to array, sort by total_sold descending
-        const sortedArray = Array.from(productMap.values())
-            .sort((a, b) => b.total_sold - a.total_sold)
-            .slice(0, limit);
-
-        return { data: sortedArray };
+        return { data: await fetchTopSellingProductsWithClient(supabase, limit) };
     } catch (error) {
         console.error("Error fetching top selling products:", error);
-        return { error: "فشل في جلب قائمة المنتجات الأكثر مبيعاً" };
+        return { data: [], error: "فشل في جلب قائمة المنتجات الأكثر مبيعاً" };
     }
 }
 
@@ -230,49 +299,89 @@ export async function getTopSellingProducts(limit: number = 5) {
  * Fetches items that are critically low on stock
  */
 export async function getLowStockAlerts(threshold: number = 5) {
-    const isAdmin = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح لك بعرض هذه البيانات" };
+    const supabase = await resolveAnalyticsAdminSupabase();
+    if (!supabase) return { data: [], error: "غير مصرح لك بعرض هذه البيانات" };
 
     try {
-        const supabase = getAdminSb();
-
-        const { data, error } = await supabase
-            .from("inventory_levels")
-            .select(`
-                id,
-                quantity,
-                warehouse:warehouses(name),
-                sku:product_skus!inner (
-                    id,
-                    sku,
-                    size,
-                    product:products ( id, title, image_url )
-                )
-            `)
-            .lte("quantity", threshold)
-            .order("quantity", { ascending: true })
-            .limit(10);
-
-        if (error) throw error;
-
-        const alerts = (data || []).map((inv: any) => ({
-            id: inv.sku.id,
-            sku: inv.sku.sku,
-            size: inv.sku.size,
-            quantity: inv.quantity,
-            product: {
-                id: inv.sku.product.id,
-                title: inv.sku.product.title,
-                image_url: inv.sku.product.image_url
-            },
-            warehouse: {
-                name: inv.warehouse?.name || 'مستودع غير معروف'
-            }
-        }));
-
-        return { data: alerts };
+        return { data: await fetchLowStockAlertsWithClient(supabase, threshold) };
     } catch (error) {
         console.error("Error fetching low stock alerts:", error);
-        return { error: "فشل في جلب السلع منخفضة المخزون" };
+        return { data: [], error: "فشل في جلب السلع منخفضة المخزون" };
     }
+}
+
+export async function getDashboardAnalyticsBundle(
+    year: number,
+    options: { topProductsLimit?: number; lowStockThreshold?: number } = {}
+) {
+    const supabase = await resolveAnalyticsAdminSupabase();
+    if (!supabase) {
+        return {
+            metrics: buildZeroDashboardMetrics("غير مصرح لك بعرض بيانات الداشبورد التحليلية"),
+            monthlyRevenue: {
+                data: [],
+                error: "غير مصرح لك بعرض منحنى الإيراد الشهري",
+            },
+            topProducts: {
+                data: [],
+                error: "غير مصرح لك بعرض المنتجات الأكثر مبيعاً",
+            },
+            lowStock: {
+                data: [],
+                error: "غير مصرح لك بعرض تنبيهات المخزون",
+            },
+        };
+    }
+
+    const topProductsLimit = options.topProductsLimit ?? 5;
+    const lowStockThreshold = options.lowStockThreshold ?? 5;
+
+    const [ordersResult, usersResult, topProductsResult, lowStockResult] = await Promise.allSettled([
+        fetchDashboardOrders(supabase),
+        fetchUsersCount(supabase),
+        fetchTopSellingProductsWithClient(supabase, topProductsLimit),
+        fetchLowStockAlertsWithClient(supabase, lowStockThreshold),
+    ]);
+
+    const metrics =
+        ordersResult.status === "fulfilled" && !ordersResult.value.error &&
+        usersResult.status === "fulfilled" && !usersResult.value.error
+            ? buildDashboardMetricsFromOrders(
+                ordersResult.value.data || [],
+                usersResult.value.count || 0
+            )
+            : buildZeroDashboardMetrics("تعذر تحميل مقاييس الداشبورد التحليلية.");
+
+    const monthlyRevenue =
+        ordersResult.status === "fulfilled" && !ordersResult.value.error
+            ? {
+                data: buildMonthlyRevenueSeries(ordersResult.value.data || [], year),
+            }
+            : {
+                data: [],
+                error: "تعذر تحميل منحنى الإيراد الشهري.",
+            };
+
+    const topProducts =
+        topProductsResult.status === "fulfilled"
+            ? { data: topProductsResult.value }
+            : {
+                data: [],
+                error: "فشل في جلب قائمة المنتجات الأكثر مبيعاً",
+            };
+
+    const lowStock =
+        lowStockResult.status === "fulfilled"
+            ? { data: lowStockResult.value }
+            : {
+                data: [],
+                error: "فشل في جلب السلع منخفضة المخزون",
+            };
+
+    return {
+        metrics,
+        monthlyRevenue,
+        topProducts,
+        lowStock,
+    };
 }

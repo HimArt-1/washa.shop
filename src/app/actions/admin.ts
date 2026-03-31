@@ -83,6 +83,7 @@ export async function getAdminOverview() {
 
     try {
         const { supabase } = await requireAdmin();
+        const issues: string[] = [];
 
         // Run all queries with error handling (allSettled)
         const results = await Promise.allSettled([
@@ -128,8 +129,14 @@ export async function getAdminOverview() {
         results.forEach((res, idx) => {
             if (res.status === "rejected") {
                 console.error(`Query index ${idx} failed:`, res.reason);
+                if (!issues.includes("بعض بيانات النظرة العامة غير مكتملة الآن.")) {
+                    issues.push("بعض بيانات النظرة العامة غير مكتملة الآن.");
+                }
             } else if (res.value.error) {
                 console.error(`Query index ${idx} returned DB error:`, res.value.error);
+                if (!issues.includes("بعض بيانات النظرة العامة غير مكتملة الآن.")) {
+                    issues.push("بعض بيانات النظرة العامة غير مكتملة الآن.");
+                }
             }
         });
 
@@ -158,13 +165,14 @@ export async function getAdminOverview() {
                 : thisMonthRevenue > 0 ? "100" : "0";
         } catch (e) {
             console.error("Revenue calculation error:", e);
+            issues.push("تعذر احتساب نمو الإيراد الشهري بدقة في هذه اللحظة.");
         }
 
         return {
             stats: {
                 totalUsers: getCount(results[0]),
                 totalArtists: getCount(results[1]),
-                totalBuyers: getCount(results[2]),
+                totalPlatformSubscribers: getCount(results[2]),
                 totalOrders: getCount(results[3]),
                 totalRevenue,
                 thisMonthRevenue,
@@ -172,10 +180,11 @@ export async function getAdminOverview() {
                 totalArtworks: getCount(results[5]),
                 totalProducts: getCount(results[6]),
                 pendingApplications: getCount(results[7]),
-                totalSubscribers: getCount(results[8]),
+                totalNewsletterSubscribers: getCount(results[8]),
             },
             recentOrders: getData(results[9]),
             pendingApplications: getData(results[10]),
+            error: issues.length > 0 ? issues.join(" ") : undefined,
         };
 
     } catch (err) {
@@ -183,12 +192,13 @@ export async function getAdminOverview() {
         // Return explicit empty/zero state instead of throwing 500
         return {
             stats: {
-                totalUsers: 0, totalArtists: 0, totalBuyers: 0, totalOrders: 0,
+                totalUsers: 0, totalArtists: 0, totalPlatformSubscribers: 0, totalOrders: 0,
                 totalRevenue: 0, thisMonthRevenue: 0, revenueGrowth: 0,
-                totalArtworks: 0, totalProducts: 0, pendingApplications: 0, totalSubscribers: 0,
+                totalArtworks: 0, totalProducts: 0, pendingApplications: 0, totalNewsletterSubscribers: 0,
             },
             recentOrders: [],
             pendingApplications: [],
+            error: "تعذر تحميل النظرة العامة للداشبورد في هذه اللحظة.",
         };
     }
 }
@@ -198,6 +208,7 @@ export async function getAdminCommandCenterData() {
 
     try {
         const { supabase } = await requireAdmin();
+        const issues: string[] = [];
 
         const results = await Promise.allSettled([
             supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed"]),
@@ -234,11 +245,17 @@ export async function getAdminCommandCenterData() {
         results.forEach((res, idx) => {
             if (res.status === "rejected") {
                 console.error(`Command center query ${idx} failed:`, res.reason);
+                if (!issues.includes("بعض بيانات مركز القيادة غير مكتملة الآن.")) {
+                    issues.push("بعض بيانات مركز القيادة غير مكتملة الآن.");
+                }
                 return;
             }
 
             if (res.value?.error) {
                 console.error(`Command center query ${idx} returned DB error:`, res.value.error);
+                if (!issues.includes("بعض بيانات مركز القيادة غير مكتملة الآن.")) {
+                    issues.push("بعض بيانات مركز القيادة غير مكتملة الآن.");
+                }
             }
         });
 
@@ -257,6 +274,7 @@ export async function getAdminCommandCenterData() {
             recentAlerts: getData(results[9]),
             supportQueue: getData(results[10]),
             designQueue: getData(results[11]),
+            error: issues.length > 0 ? issues.join(" ") : undefined,
         };
     } catch (err) {
         console.error("FATAL: getAdminCommandCenterData crashed completely:", err);
@@ -275,6 +293,7 @@ export async function getAdminCommandCenterData() {
             recentAlerts: [],
             supportQueue: [],
             designQueue: [],
+            error: "تعذر تحميل مركز القيادة التشغيلي في هذه اللحظة.",
         };
     }
 }
