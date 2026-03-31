@@ -17,7 +17,7 @@ import {
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { fetchDtfStudioConfig } from '../services/configService';
-import { resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import { parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
 export interface OrderResult {
   itemTitle: string;
@@ -107,6 +107,16 @@ function getReadableErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function isLikelyGenerationTimeout(message: string) {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('انتهت مهلة') ||
+    lower.includes('deadline exceeded') ||
+    lower.includes('timed out') ||
+    lower.includes('504')
+  );
 }
 
 async function parseApiPayload(response: Response) {
@@ -366,25 +376,32 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setExtractedImage(null);
     setStep(4);
 
-    try {
-      const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
-        ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
-        : selectedPalette?.prompt || FALLBACK_PALETTE_PROMPTS[state.palette] || state.palette;
+    const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
+      ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
+      : selectedPalette?.prompt || FALLBACK_PALETTE_PROMPTS[state.palette] || state.palette;
+    const techniquePrompt = selectedTechnique?.prompt || FALLBACK_TECHNIQUE_PROMPTS[state.technique] || state.technique;
+    const stylePrompt = selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style;
 
-      const mockup = await generateMockup(
-        state.garmentType,
-        state.garmentColor,
-        state.prompt,
-        selectedTechnique?.prompt || FALLBACK_TECHNIQUE_PROMPTS[state.technique] || state.technique,
-        selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style,
-        palettePrompt,
+    const runGenerate = async (referenceImageBase64?: string, referenceImageMimeType?: string) => generateMockup(
+      state.garmentType,
+      state.garmentColor,
+      state.prompt,
+      techniquePrompt,
+      stylePrompt,
+      palettePrompt,
+      referenceImageBase64,
+      referenceImageMimeType,
+      state.designMethod === 'calligraphy' ? state.calligraphyText : undefined,
+      {
+        removeBackground: state.removeBackground,
+        avoidHardEdges: state.avoidHardEdges,
+      }
+    );
+
+    try {
+      const mockup = await runGenerate(
         state.referenceImage || undefined,
-        state.referenceImageMimeType || undefined,
-        state.designMethod === 'calligraphy' ? state.calligraphyText : undefined,
-        {
-          removeBackground: state.removeBackground,
-          avoidHardEdges: state.avoidHardEdges,
-        }
+        state.referenceImageMimeType || undefined
       );
 
       if (mockup) {
@@ -396,8 +413,41 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (generationError) {
       const message = getReadableErrorMessage(generationError, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
-      setError(message);
-      showToast(message, 'error');
+      const canRetryWithLighterReference = Boolean(
+        isLikelyGenerationTimeout(message) &&
+        state.referenceImage &&
+        state.referenceImageMimeType
+      );
+
+      if (canRetryWithLighterReference) {
+        try {
+          showToast('الخادم بطيء الآن؛ نجرب نسخة أخف من الصورة المرجعية...', 'info');
+          const compressedReference = await resizeDataUrl(
+            `data:${state.referenceImageMimeType};base64,${state.referenceImage}`,
+            {
+              maxDimension: 768,
+              quality: 0.62,
+              outputMimeType: 'image/webp',
+            }
+          );
+          const lighterRef = stripDataUrlPrefix(compressedReference.dataUrl);
+          const retryMockup = await runGenerate(lighterRef, compressedReference.mimeType);
+          if (retryMockup) {
+            setMockupImage(retryMockup);
+            showToast('تم التوليد بعد ضغط الصورة المرجعية ✅', 'success');
+            return;
+          }
+        } catch {
+          // fallback to original error message below
+        }
+      }
+
+      const timeoutHint = isLikelyGenerationTimeout(message)
+        ? ' جرّب وصفًا أقصر أو صورة مرجعية أصغر ثم أعد المحاولة.'
+        : '';
+      const finalMessage = `${message}${timeoutHint}`;
+      setError(finalMessage);
+      showToast(finalMessage, 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -410,11 +460,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      const [header, data] = mockupImage.split(',');
-      const mimeMatch = header.match(/:(.*?);/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
+      const parts = parseDataUrlParts(mockupImage);
+      if (!parts) {
+        setError('صورة الموكب غير صالحة. أعد التوليد ثم حاول الاستخراج.');
+        showToast('صورة الموكب غير صالحة', 'error');
+        return;
+      }
 
-      const extracted = await extractDesign(data, mimeType);
+      const extracted = await extractDesign(parts.base64, parts.mimeType);
 
       if (extracted) {
         setExtractedImage(extracted);

@@ -17,21 +17,33 @@ function compactPrompt(parts: Array<string | null | undefined>) {
 
 async function parseApiResponse(response: Response) {
   const contentType = response.headers.get('content-type') || '';
+  const traceId = response.headers.get('x-trace-id') || response.headers.get('X-Trace-Id');
+  const withTrace = (message: string) => (traceId ? `${message} (trace: ${traceId})` : message);
 
   if (contentType.includes('application/json')) {
-    return response.json();
+    const data = await response.json();
+    if (!response.ok) {
+      const msg =
+        (typeof data?.error === 'string' && data.error.trim())
+          ? data.error
+          : (typeof data?.message === 'string' && data.message.trim())
+            ? data.message
+            : `HTTP ${response.status}`;
+      throw new Error(withTrace(msg));
+    }
+    return data;
   }
 
   const text = await response.text();
   if (!response.ok) {
     if (response.status === 413) {
-      throw new Error('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.');
+      throw new Error(withTrace('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.'));
     }
 
-    throw new Error(text || 'فشل الاتصال بالخادم');
+    throw new Error(withTrace(text || 'فشل الاتصال بالخادم'));
   }
 
-  throw new Error(text || 'استجابة غير متوقعة من الخادم');
+  throw new Error(withTrace(text || 'استجابة غير متوقعة من الخادم'));
 }
 
 export async function generateMockup(
@@ -98,7 +110,7 @@ export async function generateMockup(
     });
 
     const data = await parseApiResponse(response);
-    if (data.error) throw new Error(data.error);
+    if (data?.error) throw new Error(data.error);
     return data.imageUrl || null;
   } catch (error) {
     console.error("Error generating mockup via proxy:", error);
@@ -121,7 +133,7 @@ export async function extractDesign(mockupImageBase64: string, mimeType: string)
     });
 
     const data = await parseApiResponse(response);
-    if (data.error) throw new Error(data.error);
+    if (data?.error) throw new Error(data.error);
     return data.imageUrl || null;
   } catch (error) {
     console.error("Error extracting design via proxy:", error);

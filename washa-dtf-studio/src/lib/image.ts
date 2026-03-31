@@ -60,3 +60,16 @@ export async function resizeDataUrl(dataUrl: string, options: ResizeOptions) {
 export function stripDataUrlPrefix(dataUrl: string) {
   return dataUrl.split(',')[1] || '';
 }
+
+/** First comma separates metadata from payload; do not use split(',') on the full string (payload edge cases). */
+export function parseDataUrlParts(dataUrl: string): { mimeType: string; base64: string } | null {
+  if (!dataUrl.startsWith('data:')) return null;
+  const comma = dataUrl.indexOf(',');
+  if (comma === -1) return null;
+  const header = dataUrl.slice(0, comma);
+  const base64 = dataUrl.slice(comma + 1);
+  if (!base64) return null;
+  const mimeMatch = header.match(/^data:([^;,]+)/);
+  const mimeType = mimeMatch ? mimeMatch[1].trim() : 'image/png';
+  return { mimeType, base64 };
+}

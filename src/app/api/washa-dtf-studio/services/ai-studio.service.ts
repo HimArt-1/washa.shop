@@ -5,6 +5,12 @@ import {
 } from "@/lib/washa-dtf-studio";
 import { logDtfTrace } from "../utils/trace";
 
+function resolveProviderTimeoutMs(fallbackMs: number) {
+    const parsed = Number.parseInt(process.env.WASHA_DTF_PROVIDER_TIMEOUT_MS || "", 10);
+    if (!Number.isFinite(parsed)) return fallbackMs;
+    return Math.min(Math.max(parsed, 15_000), 180_000);
+}
+
 function buildProviderTimeoutError(timeoutMs: number) {
     return new Error(JSON.stringify({
         error: {
@@ -52,7 +58,7 @@ export class AiStudioService {
         options?: { traceId?: string; timeoutMs?: number }
     ) {
         const traceId = options?.traceId ?? crypto.randomUUID();
-        const timeoutMs = options?.timeoutMs ?? 45_000;
+        const timeoutMs = resolveProviderTimeoutMs(options?.timeoutMs ?? 45_000);
         const providerStartedAt = Date.now();
         const client = getWashaDtfGenAiClient();
         const parts: any[] = [{ text: prompt }];
@@ -135,7 +141,7 @@ export class AiStudioService {
         options?: { traceId?: string; timeoutMs?: number }
     ) {
         const traceId = options?.traceId ?? crypto.randomUUID();
-        const timeoutMs = options?.timeoutMs ?? 45_000;
+        const timeoutMs = resolveProviderTimeoutMs(options?.timeoutMs ?? 45_000);
         const providerStartedAt = Date.now();
         const client = getWashaDtfGenAiClient();
         const config = {
