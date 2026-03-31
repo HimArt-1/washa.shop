@@ -16,18 +16,24 @@ function buildProviderTimeoutError(timeoutMs: number) {
 }
 
 async function withProviderTimeout<T>(
-    promise: Promise<T>,
+    operation: (signal: AbortSignal) => Promise<T>,
     timeoutMs: number
 ): Promise<T> {
+    const abortController = new AbortController();
     let timeoutHandle: NodeJS.Timeout | undefined;
 
     try {
-        return await Promise.race([
-            promise,
-            new Promise<T>((_, reject) => {
-                timeoutHandle = setTimeout(() => reject(buildProviderTimeoutError(timeoutMs)), timeoutMs);
-            }),
-        ]);
+        timeoutHandle = setTimeout(() => {
+            abortController.abort(buildProviderTimeoutError(timeoutMs));
+        }, timeoutMs);
+
+        return await operation(abortController.signal);
+    } catch (error) {
+        if (abortController.signal.aborted && abortController.signal.reason instanceof Error) {
+            throw abortController.signal.reason;
+        }
+
+        throw error;
     } finally {
         if (timeoutHandle) {
             clearTimeout(timeoutHandle);
@@ -65,6 +71,13 @@ export class AiStudioService {
         const config = {
             imageConfig: {
                 aspectRatio: "1:1",
+                imageSize: "1K",
+            },
+            httpOptions: {
+                timeout: timeoutMs,
+                retryOptions: {
+                    attempts: 1,
+                },
             },
         } as any;
 
@@ -77,10 +90,13 @@ export class AiStudioService {
         let response: unknown;
         try {
             response = await withProviderTimeout(
-                client.models.generateContent({
+                (abortSignal) => client.models.generateContent({
                     model: WASHA_DTF_MODEL,
                     contents: { role: "user", parts },
-                    config,
+                    config: {
+                        ...config,
+                        abortSignal,
+                    },
                 }),
                 timeoutMs
             );
@@ -125,6 +141,13 @@ export class AiStudioService {
         const config = {
             imageConfig: {
                 aspectRatio: "1:1",
+                imageSize: "1K",
+            },
+            httpOptions: {
+                timeout: timeoutMs,
+                retryOptions: {
+                    attempts: 1,
+                },
             },
         } as any;
 
@@ -138,7 +161,7 @@ export class AiStudioService {
         let response: unknown;
         try {
             response = await withProviderTimeout(
-                client.models.generateContent({
+                (abortSignal) => client.models.generateContent({
                     model: WASHA_DTF_MODEL,
                     contents: {
                         role: "user",
@@ -152,7 +175,10 @@ export class AiStudioService {
                             { text: prompt },
                         ],
                     },
-                    config,
+                    config: {
+                        ...config,
+                        abortSignal,
+                    },
                 }),
                 timeoutMs
             );
