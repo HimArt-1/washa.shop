@@ -16,6 +16,7 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+const GENERATE_MOCKUP_TIMEOUT_MS = 55_000;
 
 export async function POST(request: NextRequest) {
     const traceId = resolveDtfTraceId(request);
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
         const providerStartedAt = Date.now();
         const imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
             traceId,
-            timeoutMs: 45_000,
+            timeoutMs: GENERATE_MOCKUP_TIMEOUT_MS,
         });
         logDtfTrace("dtf.generate-mockup", traceId, "provider_completed", {
             duration_ms: Date.now() - providerStartedAt,

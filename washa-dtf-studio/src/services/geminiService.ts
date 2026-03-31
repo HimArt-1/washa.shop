@@ -6,6 +6,15 @@ interface GenerationPreferences {
   avoidHardEdges?: boolean;
 }
 
+function compactPrompt(parts: Array<string | null | undefined>) {
+  return parts
+    .map((part) => (typeof part === 'string' ? part.trim() : ''))
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function parseApiResponse(response: Response) {
   const contentType = response.headers.get('content-type') || '';
 
@@ -39,23 +48,39 @@ export async function generateMockup(
 ): Promise<string | null> {
   const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
   const printDirectives = [
-    'The printed artwork must feel like a premium DTF composition made directly for the garment, not like a pasted photo or poster.',
+    'Premium DTF print integrated directly into the garment.',
     preferences.removeBackground
-      ? 'No background block, no colored backdrop, no boxed panel, and no square image field behind the artwork.'
+      ? 'No backdrop block, colored panel, boxed field, or square image area behind the artwork.'
       : null,
     preferences.avoidHardEdges
-      ? 'No forced frame, no photo border, no crop edge, no enclosing rectangle, and no mandatory outer edge treatment unless the concept truly requires it.'
+      ? 'No forced frame, border, crop edge, enclosing rectangle, or hard outer edge unless the concept truly needs it.'
       : null,
     referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
-      ? 'If a reference image is used, reinterpret only the subject for print and do not preserve the original image background, frame, crop, or edges.'
+      ? 'If a reference image is used, reinterpret only its subject for print and do not preserve its background, frame, crop, or edges.'
       : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  ];
 
+  const sceneDirectives = `Studio mockup of a ${color} ${garmentType} with one centered DTF print.`;
   const prompt = isCalligraphy
-    ? `Professional 8K studio mockup of a ${color} ${garmentType} featuring a single, centered masterful calligraphy print. Render the following text as stunning artistic calligraphy lettering: "${calligraphyText}". Calligraphy style: ${style}. Technique: ${technique}. Palette: ${palette}. The letters must be graceful, artistically stylized, with elegant curves and deliberate strokes. IMPORTANT: Render ONLY the provided phrase as calligraphy — no extra words, no duplications, no double layers, sharp crisp lettering on fabric. ${printDirectives}`
-    : `Professional 8K studio mockup of a ${color} ${garmentType} with a single, bold, centered DTF graphic print. Visual concept: ${userDescription}. CRITICAL: Generate a purely VISUAL graphic artwork — absolutely NO text, NO letters, NO written words, NO typography anywhere in the design. Pure illustration only. Style: ${style}. Technique: ${technique}. Palette: ${palette}. IMPORTANT: No text of any kind. No duplication, no double layers, sharp details on fabric. ${printDirectives}`;
+    ? compactPrompt([
+        sceneDirectives,
+        `Render ONLY this phrase as artistic calligraphy: "${calligraphyText}".`,
+        `Calligraphy style: ${style}.`,
+        `Technique: ${technique}.`,
+        `Palette: ${palette}.`,
+        'Graceful curves, elegant strokes, sharp lettering on fabric, and no duplicated layers or extra words.',
+        ...printDirectives,
+      ])
+    : compactPrompt([
+        sceneDirectives,
+        `Visual concept: ${userDescription}.`,
+        'Pure illustration only. No text, letters, words, or typography.',
+        `Style: ${style}.`,
+        `Technique: ${technique}.`,
+        `Palette: ${palette}.`,
+        'Single clean design with sharp details on fabric and no duplicated layers.',
+        ...printDirectives,
+      ]);
 
   try {
     const body: any = { prompt };

@@ -97,6 +97,7 @@ type DashboardProps = {
     topProductsList: TopProduct[];
     monthlyRevenue: Array<{ date: string; revenue: number; orders: number }>;
     lowStockList: LowStockItem[];
+    lastUpdatedLabel: string;
     dataQuality: {
         degraded: boolean;
         issues: string[];
@@ -507,6 +508,7 @@ export function DashboardClient({
     topProductsList,
     monthlyRevenue,
     lowStockList,
+    lastUpdatedLabel,
     dataQuality,
 }: DashboardProps) {
     const lowStockCount = lowStockList.length;
@@ -541,6 +543,9 @@ export function DashboardClient({
                             </span>
                             <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
                                 مركز قيادة مباشر للمنصة
+                            </span>
+                            <span className="rounded-full border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_72%,transparent)] px-3 py-1 text-xs text-theme-subtle">
+                                آخر تحديث: {lastUpdatedLabel}
                             </span>
                         </div>
 

@@ -182,7 +182,7 @@ describe("generate-mockup route", () => {
             null,
             expect.objectContaining({
                 traceId: expect.any(String),
-                timeoutMs: 45_000,
+                timeoutMs: 55_000,
             })
         );
         expect(mockLogActivity).toHaveBeenCalledWith(

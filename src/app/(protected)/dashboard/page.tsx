@@ -8,6 +8,11 @@ import { DashboardClient } from "./DashboardClient";
 
 export default async function AdminDashboardPage() {
     const currentYear = new Date().getFullYear();
+    const lastUpdatedLabel = new Intl.DateTimeFormat("ar-SA", {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "Asia/Riyadh",
+    }).format(new Date());
     
     const [overview, controlTower, analytics] = await Promise.all([
         getAdminOverview(),
@@ -58,6 +63,7 @@ export default async function AdminDashboardPage() {
                 topProductsList={topProducts.data || []}
                 monthlyRevenue={monthlyRevenue.data}
                 lowStockList={lowStock.data || []}
+                lastUpdatedLabel={lastUpdatedLabel}
                 dataQuality={{
                     degraded: dataQualityIssues.length > 0,
                     issues: dataQualityIssues,

@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const CACHE_NAME = "wusha-v5";
+const CACHE_NAME = "wusha-v6";
 const OFFLINE_URL = "/offline.html";
 
 // Static assets to pre-cache
@@ -73,10 +73,15 @@ self.addEventListener("notificationclick", (event) => {
 self.addEventListener("fetch", (event) => {
     const { request } = event;
     const url = request.url;
-    const pathname = new URL(url).pathname;
+    const parsedUrl = new URL(url);
+    const pathname = parsedUrl.pathname;
 
     // Skip non-HTTP(S) requests (e.g. chrome-extension://) — Cache API rejects them
     if (!url.startsWith("http://") && !url.startsWith("https://")) return;
+
+    // Leave cross-origin requests to the browser.
+    // Intercepting them here adds no value and can interfere with third-party assets.
+    if (parsedUrl.origin !== self.location.origin) return;
 
     // Skip non-GET requests
     if (request.method !== "GET") return;

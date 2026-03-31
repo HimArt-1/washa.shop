@@ -71,6 +71,8 @@ export interface ToastState {
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
+const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
+const REFERENCE_IMAGE_QUALITY = 0.76;
 
 const EMPTY_STATE: DesignState = {
   garmentId: null,
@@ -313,8 +315,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         try {
           const base64String = reader.result as string;
           const resized = await resizeDataUrl(base64String, {
-            maxDimension: 1400,
-            quality: 0.8,
+            maxDimension: REFERENCE_IMAGE_MAX_DIMENSION,
+            quality: REFERENCE_IMAGE_QUALITY,
             outputMimeType: 'image/jpeg',
           });
 
