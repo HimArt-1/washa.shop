@@ -53,6 +53,9 @@ export type SiteSettingsType = {
         design_piece_dtf_studio_switch?: boolean;
         design_piece_generation_public?: boolean;
     };
+    washa_ai?: {
+        dtf_daily_quota_limit?: number;
+    };
     site_info: Record<string, string>;
     shipping: Record<string, number>;
     creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
@@ -105,6 +108,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         design_piece_ai_switch: true,
         design_piece_dtf_studio_switch: true,
         design_piece_generation_public: false,
+    },
+    washa_ai: {
+        dtf_daily_quota_limit: 5,
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
@@ -205,6 +211,12 @@ function formatThresholdNumber(value: number) {
     return new Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(Math.round(value));
 }
 
+function coerceDtfDailyQuotaLimit(value: unknown, fallback = 5) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(1, Math.round(parsed));
+}
+
 function determineSignalState(options: {
     current: number;
     warningMin?: number | null;
@@ -272,6 +284,7 @@ export async function getSiteSettings() {
         }
 
         const v = settings.visibility || {};
+        const washaAi = settings.washa_ai || {};
         const cp = settings.creation_prices || {};
         const pi = settings.product_identifiers || {};
         const aiSim = settings.ai_simulation || {};
@@ -289,6 +302,12 @@ export async function getSiteSettings() {
                 design_piece_ai_switch: v.design_piece_ai_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_ai_switch,
                 design_piece_dtf_studio_switch: v.design_piece_dtf_studio_switch ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_dtf_studio_switch,
                 design_piece_generation_public: v.design_piece_generation_public ?? DEFAULT_SITE_SETTINGS.visibility.design_piece_generation_public,
+            },
+            washa_ai: {
+                dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
+                    washaAi.dtf_daily_quota_limit,
+                    DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5
+                ),
             },
             site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
             shipping: settings.shipping || DEFAULT_SITE_SETTINGS.shipping,
@@ -663,6 +682,36 @@ export async function getCreationPrices() {
             hoodie: 149,
             pullover: 129,
         };
+    }
+}
+
+export async function getWashaAiSettings() {
+    const fallback = {
+        dtf_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5,
+    };
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return fallback;
+    }
+
+    try {
+        const supabase = getAdminSupabase();
+        const { data } = await supabase
+            .from("site_settings")
+            .select("value")
+            .eq("key", "washa_ai")
+            .maybeSingle();
+
+        const raw = (data as { value?: Record<string, unknown> } | null)?.value;
+
+        return {
+            dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
+                raw?.dtf_daily_quota_limit,
+                fallback.dtf_daily_quota_limit
+            ),
+        };
+    } catch {
+        return fallback;
     }
 }
 

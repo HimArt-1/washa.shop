@@ -85,7 +85,7 @@ describe("generate-mockup route", () => {
         mockLogActivity.mockResolvedValue(true);
         mockReleaseDailyQuota.mockResolvedValue(true);
         mockGetWashaDtfErrorDetails.mockReturnValue({
-            message: "خدمة توليد الصور من Gemini تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
+            message: "خدمة Washa AI تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
             status: 503,
         });
     });
@@ -158,7 +158,7 @@ describe("generate-mockup route", () => {
 
         expect(response.status).toBe(403);
         await expect(response.json()).resolves.toEqual({
-            error: "انتهت نقاطك للتصميم اليوم. شكراً لإبداعك ونتمنى رؤيتك غداً!",
+            error: "بلغت حصتك اليومية في Washa AI لهذا اليوم. ننتظرك مجددًا غدًا.",
         });
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({

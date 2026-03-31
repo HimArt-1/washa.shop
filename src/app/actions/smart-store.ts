@@ -103,6 +103,48 @@ function getFirstValidationError(error: { issues: Array<{ message: string }> }) 
     return error.issues[0]?.message || "البيانات المدخلة غير صحيحة.";
 }
 
+const DESIGN_ORDER_MISSING_COLUMN_REGEX =
+    /Could not find the '([^']+)' column of 'custom_design_orders' in the schema cache/i;
+
+type DesignOrderInsertRow = Database["public"]["Tables"]["custom_design_orders"]["Insert"];
+
+function getMissingDesignOrderColumn(errorMessage: string | null | undefined) {
+    if (!errorMessage) return null;
+    return errorMessage.match(DESIGN_ORDER_MISSING_COLUMN_REGEX)?.[1] ?? null;
+}
+
+async function insertDesignOrderWithSchemaFallback(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    payload: DesignOrderInsertRow
+) {
+    let insertPayload: DesignOrderInsertRow = { ...payload };
+    const removedColumns = new Set<string>();
+
+    while (true) {
+        const result = await sb
+            .from("custom_design_orders")
+            .insert(insertPayload)
+            .select("id, order_number, tracker_token")
+            .single();
+
+        if (!result.error || result.data) {
+            return result;
+        }
+
+        const missingColumn = getMissingDesignOrderColumn(result.error.message);
+        if (!missingColumn || !(missingColumn in insertPayload) || removedColumns.has(missingColumn)) {
+            return result;
+        }
+
+        removedColumns.add(missingColumn);
+        console.warn("[submitDesignOrder] Retrying without unsupported column:", missingColumn);
+
+        const nextPayload = { ...(insertPayload as Record<string, unknown>) };
+        delete nextPayload[missingColumn];
+        insertPayload = nextPayload as DesignOrderInsertRow;
+    }
+}
+
 async function requireSmartStoreAdmin() {
     const user = await getCurrentUserOrDevAdmin();
     if (!user) {
@@ -1178,11 +1220,7 @@ export async function submitDesignOrder(orderData: {
         pricing_snapshot: pricingSnapshot,
     };
 
-    const { data, error } = await sb
-        .from("custom_design_orders")
-        .insert(payload)
-        .select("id, order_number, tracker_token")
-        .single();
+    const { data, error } = await insertDesignOrderWithSchemaFallback(sb, payload);
 
     if (error || !data) return { error: error?.message || "فشل إنشاء الطلب" };
 

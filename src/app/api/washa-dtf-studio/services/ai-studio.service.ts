@@ -10,7 +10,7 @@ function buildProviderTimeoutError(timeoutMs: number) {
         error: {
             code: 504,
             status: "DEADLINE_EXCEEDED",
-            message: `Gemini generation exceeded internal deadline of ${timeoutMs}ms`,
+            message: `Washa AI generation exceeded internal deadline of ${timeoutMs}ms`,
         },
     }));
 }
@@ -60,7 +60,7 @@ export class AiStudioService {
             });
         }
 
-        // Properly cast config to avoid @ts-ignore debt, as the Gemini SDK types
+        // Properly cast config to avoid @ts-ignore debt, as the SDK types
         // might not fully map standard imageConfig structures seamlessly.
         const config = {
             imageConfig: {
@@ -97,7 +97,7 @@ export class AiStudioService {
             logDtfTrace("dtf.ai.generate-mockup", traceId, "provider_empty_image", {
                 duration_ms: Date.now() - providerStartedAt,
             });
-            throw new Error("لم يتم توليد صورة من Gemini");
+            throw new Error("لم يتم توليد صورة من Washa AI");
         }
 
         logDtfTrace("dtf.ai.generate-mockup", traceId, "provider_succeeded", {
@@ -112,7 +112,15 @@ export class AiStudioService {
      * Extracts the core DTF design cleanly from a given mockup reference.
      * Consolidates configuration properties internally for ease of testing.
      */
-    static async extractDesign(prompt: string, mockupImage: string, mimeType: string) {
+    static async extractDesign(
+        prompt: string,
+        mockupImage: string,
+        mimeType: string,
+        options?: { traceId?: string; timeoutMs?: number }
+    ) {
+        const traceId = options?.traceId ?? crypto.randomUUID();
+        const timeoutMs = options?.timeoutMs ?? 45_000;
+        const providerStartedAt = Date.now();
         const client = getWashaDtfGenAiClient();
         const config = {
             imageConfig: {
@@ -120,27 +128,54 @@ export class AiStudioService {
             },
         } as any;
 
-        const response = await client.models.generateContent({
-            model: WASHA_DTF_MODEL,
-            contents: {
-                role: "user",
-                parts: [
-                    {
-                        inlineData: {
-                            data: mockupImage,
-                            mimeType,
-                        },
-                    },
-                    { text: prompt },
-                ],
-            },
-            config,
+        logDtfTrace("dtf.ai.extract-design", traceId, "provider_started", {
+            prompt_length: prompt.length,
+            mime_type: mimeType,
+            mockup_image_length: mockupImage.length,
+            timeout_ms: timeoutMs,
         });
+
+        let response: unknown;
+        try {
+            response = await withProviderTimeout(
+                client.models.generateContent({
+                    model: WASHA_DTF_MODEL,
+                    contents: {
+                        role: "user",
+                        parts: [
+                            {
+                                inlineData: {
+                                    data: mockupImage,
+                                    mimeType,
+                                },
+                            },
+                            { text: prompt },
+                        ],
+                    },
+                    config,
+                }),
+                timeoutMs
+            );
+        } catch (error) {
+            logDtfTrace("dtf.ai.extract-design", traceId, "provider_failed", {
+                duration_ms: Date.now() - providerStartedAt,
+                error_message: error instanceof Error ? error.message : String(error ?? ""),
+            });
+            throw error;
+        }
 
         const imageUrl = extractGeneratedImageDataUrl(response);
         if (!imageUrl) {
-            throw new Error("لم يتم استخراج التصميم من Gemini");
+            logDtfTrace("dtf.ai.extract-design", traceId, "provider_empty_image", {
+                duration_ms: Date.now() - providerStartedAt,
+            });
+            throw new Error("لم يتم استخراج التصميم من Washa AI");
         }
+
+        logDtfTrace("dtf.ai.extract-design", traceId, "provider_succeeded", {
+            duration_ms: Date.now() - providerStartedAt,
+            image_url_length: imageUrl.length,
+        });
 
         return imageUrl;
     }

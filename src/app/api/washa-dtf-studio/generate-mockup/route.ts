@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
         });
 
         return attachDtfTraceId(NextResponse.json(
-            { error: "انتهت نقاطك للتصميم اليوم. شكراً لإبداعك ونتمنى رؤيتك غداً!" },
+            { error: "بلغت حصتك اليومية في Washa AI لهذا اليوم. ننتظرك مجددًا غدًا." },
             { status: 403 }
         ), traceId);
     }

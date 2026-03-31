@@ -70,7 +70,7 @@ describe("extract-design route", () => {
         mockExtractDesign.mockResolvedValue("data:image/png;base64,EXTRACTED");
         mockLogActivity.mockResolvedValue(true);
         mockGetWashaDtfErrorDetails.mockReturnValue({
-            message: "خدمة توليد الصور من Gemini تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
+            message: "خدمة Washa AI تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
             status: 503,
         });
     });
@@ -86,6 +86,7 @@ describe("extract-design route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
 
         expect(response.status).toBe(403);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             error: "غير مصرح لك باستخدام استوديو DTF",
         });
@@ -102,6 +103,7 @@ describe("extract-design route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
 
         expect(response.status).toBe(400);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             error: "الصورة مطلوبة",
         });
@@ -112,9 +114,19 @@ describe("extract-design route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
 
         expect(response.status).toBe(200);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             imageUrl: "data:image/png;base64,EXTRACTED",
         });
+        expect(mockExtractDesign).toHaveBeenCalledWith(
+            "استخرج التصميم فقط",
+            "BASE64_IMAGE",
+            "image/png",
+            expect.objectContaining({
+                traceId: expect.any(String),
+                timeoutMs: 45_000,
+            })
+        );
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "extract-design",
@@ -133,6 +145,7 @@ describe("extract-design route", () => {
         const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
 
         expect(response.status).toBe(504);
+        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
             error: "انتهت مهلة الاستخراج من المزود الخارجي.",
         });

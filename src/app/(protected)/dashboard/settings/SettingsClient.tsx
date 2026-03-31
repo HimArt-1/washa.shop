@@ -282,6 +282,9 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
         design_piece_generation_public: settings.visibility.design_piece_generation_public ?? false,
     });
+    const [washaAi, setWashaAi] = useState({
+        dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
+    });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
     const [creationPrices, setCreationPrices] = useState({
@@ -512,6 +515,32 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                 >
                     {saving === "visibility" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     حفظ إعدادات الأقسام
+                </button>
+            </SettingsCard>
+
+            <SettingsCard title="Washa AI — حدود التوليد" icon={Sparkles}>
+                <p className="text-theme-subtle text-sm mb-4">
+                    الحد اليومي لتوليد WASHA AI داخل DTF لكل مستخدم مشترك. لا ينطبق على أدوار الإدارة والتطوير.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field
+                        label="الحد اليومي للتوليد"
+                        value={String(washaAi.dtf_daily_quota_limit)}
+                        onChange={(v) => setWashaAi({
+                            ...washaAi,
+                            dtf_daily_quota_limit: Math.max(1, Number(v) || 1),
+                        })}
+                        type="number"
+                        dir="ltr"
+                    />
+                </div>
+                <button
+                    onClick={() => handleSave("washa_ai", washaAi)}
+                    disabled={saving === "washa_ai"}
+                    className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {saving === "washa_ai" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    حفظ إعدادات Washa AI
                 </button>
             </SettingsCard>
 

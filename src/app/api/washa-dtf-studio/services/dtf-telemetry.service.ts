@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { getWashaAiSettings } from "@/app/actions/settings";
 import { logDiagnosticWarning } from "../utils/api-error";
 
 export type TelemetryAction = "generate-mockup" | "extract-design" | "submit-order";
@@ -33,7 +34,7 @@ export interface DailyQuotaReservation {
 }
 
 export class DtfTelemetryService {
-    public static readonly DAILY_LIMIT = 5;
+    public static readonly DEFAULT_DAILY_LIMIT = 5;
     private static readonly INSERT_RETRY_COUNT = 2;
     private static readonly INSERT_RETRY_DELAY_MS = 150;
 
@@ -49,10 +50,26 @@ export class DtfTelemetryService {
         return data;
     }
 
+    private static async resolveDailyLimit() {
+        try {
+            const settings = await getWashaAiSettings();
+            const configuredLimit = Number(settings.dtf_daily_quota_limit);
+            if (!Number.isFinite(configuredLimit)) {
+                return DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+            }
+
+            return Math.max(1, Math.round(configuredLimit));
+        } catch {
+            return DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+        }
+    }
+
     static async reserveDailyQuota(
         profileId: string | null | undefined,
         userRole: string | null | undefined
     ): Promise<DailyQuotaReservation> {
+        const dailyLimit = await DtfTelemetryService.resolveDailyLimit();
+
         if (!profileId) {
             if (userRole === "guest") {
                 return { allowed: true, remaining: 0, used: 0, tracked: false };
@@ -69,18 +86,18 @@ export class DtfTelemetryService {
 
             const { data, error } = await sb.rpc("reserve_dtf_daily_quota", {
                 p_profile_id: profileId,
-                p_daily_limit: DtfTelemetryService.DAILY_LIMIT,
+                p_daily_limit: dailyLimit,
             });
 
             if (error) {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve", error);
-                return { allowed: true, remaining: DtfTelemetryService.DAILY_LIMIT, used: 0, tracked: false };
+                return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
             }
 
             const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
             if (!payload || typeof payload.granted !== "boolean") {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve-invalid", data);
-                return { allowed: true, remaining: DtfTelemetryService.DAILY_LIMIT, used: 0, tracked: false };
+                return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
             }
 
             return {
@@ -92,7 +109,7 @@ export class DtfTelemetryService {
             };
         } catch (err) {
             logDiagnosticWarning("dtf-telemetry-quota-reserve-fatal", err);
-            return { allowed: true, remaining: DtfTelemetryService.DAILY_LIMIT, used: 0, tracked: false };
+            return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
         }
     }
 
@@ -100,6 +117,8 @@ export class DtfTelemetryService {
         profileId: string | null | undefined,
         userRole: string | null | undefined
     ): Promise<boolean> {
+        const dailyLimit = await DtfTelemetryService.resolveDailyLimit();
+
         if (!profileId || DtfTelemetryService.isQuotaBypassedRole(userRole)) {
             return false;
         }
@@ -109,7 +128,7 @@ export class DtfTelemetryService {
 
             const { data, error } = await sb.rpc("release_dtf_daily_quota", {
                 p_profile_id: profileId,
-                p_daily_limit: DtfTelemetryService.DAILY_LIMIT,
+                p_daily_limit: dailyLimit,
             });
 
             if (error) {

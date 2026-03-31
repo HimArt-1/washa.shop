@@ -25,7 +25,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
     message: string;
     status: number;
 } {
-    const fallbackMessage = error instanceof Error ? error.message : "فشل تنفيذ طلب Gemini";
+    const fallbackMessage = error instanceof Error ? error.message : "فشل تنفيذ طلب Washa AI";
 
     let parsed: {
         error?: {
@@ -50,7 +50,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
 
     if (/gemini_api_key is not configured/i.test(providerMessage)) {
         return {
-            message: "إعدادات Gemini غير مكتملة على الخادم. أضف مفتاح Gemini الصحيح ثم أعد المحاولة.",
+            message: "إعدادات Washa AI غير مكتملة على الخادم. أضف المفتاح الصحيح ثم أعد المحاولة.",
             status: 503,
         };
     }
@@ -63,7 +63,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
         normalizedProviderMessage.includes("api_key_invalid")
     ) {
         return {
-            message: "مفتاح Gemini الحالي غير صالح أو منتهي. حدّثه في متغيرات البيئة على الخادم ثم أعد المحاولة.",
+            message: "مفتاح Washa AI الحالي غير صالح أو منتهي. حدّثه في متغيرات البيئة على الخادم ثم أعد المحاولة.",
             status: 503,
         };
     }
@@ -75,7 +75,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
         /rate.?limit/i.test(providerMessage)
     ) {
         return {
-            message: "تجاوزت الحصة اليومية لـ Gemini AI. يرجى المحاولة بعد قليل أو التواصل مع الدعم.",
+            message: "تم تجاوز حصة Washa AI الحالية. يرجى المحاولة بعد قليل أو التواصل مع الدعم.",
             status: 429,
         };
     }
@@ -87,7 +87,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
         /timed out/i.test(providerMessage)
     ) {
         return {
-            message: "انتهت مهلة توليد التصميم قبل أن يستجيب مزود الصور. حاول مرة أخرى بصورة أخف أو وصف أقصر.",
+            message: "انتهت مهلة توليد التصميم قبل أن يستجيب Washa AI. حاول مرة أخرى بصورة أخف أو وصف أقصر.",
             status: 504,
         };
     }
@@ -100,7 +100,7 @@ export function getWashaDtfErrorDetails(error: unknown): {
         /temporar(?:y|ily)/i.test(providerMessage)
     ) {
         return {
-            message: "خدمة توليد الصور من Gemini تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
+            message: "خدمة Washa AI تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
             status: 503,
         };
     }
