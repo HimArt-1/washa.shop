@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import Link from "next/link";
-import type { ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
     BadgeCheck,
     ClipboardCheck,
@@ -147,6 +147,7 @@ function QueueLane({
     items,
     tone,
     variant,
+    isHydrated,
 }: {
     title: string;
     subtitle: string;
@@ -154,6 +155,7 @@ function QueueLane({
     items: any[];
     tone: "critical" | "warning" | "calm";
     variant: "intake" | "identity" | "reviewed";
+    isHydrated: boolean;
 }) {
     const toneClass =
         tone === "critical"
@@ -229,11 +231,13 @@ function QueueLane({
                                     {(genderLabel || application.art_style || application.experience_years) ? (
                                         <span className="text-theme-faint">•</span>
                                     ) : null}
-                                    <span>
-                                        {formatDistanceToNow(new Date(application.updated_at || application.created_at), {
-                                            addSuffix: true,
-                                            locale: ar,
-                                        })}
+                                    <span suppressHydrationWarning>
+                                        {isHydrated
+                                            ? formatDistanceToNow(new Date(application.updated_at || application.created_at), {
+                                                addSuffix: true,
+                                                locale: ar,
+                                            })
+                                            : String(application.updated_at || application.created_at || "").split("T")[0] || "—"}
                                     </span>
                                 </div>
 
@@ -323,6 +327,12 @@ export function ApplicationsOperationsCenter({
     snapshot,
     clientProps,
 }: ApplicationsOperationsCenterProps) {
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
+
     const missionTone =
         snapshot.stats.acceptedWithoutProfile > 0 || snapshot.stats.acceptedWithoutClerk > 0
             ? "critical"
@@ -492,6 +502,7 @@ export function ApplicationsOperationsCenter({
                     items={snapshot.priorityQueue}
                     tone="critical"
                     variant="intake"
+                    isHydrated={isHydrated}
                 />
                 <QueueLane
                     title="الوارد النشط"
@@ -500,6 +511,7 @@ export function ApplicationsOperationsCenter({
                     items={snapshot.intakeQueue}
                     tone="warning"
                     variant="intake"
+                    isHydrated={isHydrated}
                 />
                 <QueueLane
                     title="Backlog الهوية"
@@ -508,6 +520,7 @@ export function ApplicationsOperationsCenter({
                     items={snapshot.identityBacklog}
                     tone="critical"
                     variant="identity"
+                    isHydrated={isHydrated}
                 />
                 <QueueLane
                     title="آخر القرارات"
@@ -516,6 +529,7 @@ export function ApplicationsOperationsCenter({
                     items={snapshot.recentlyReviewed}
                     tone="calm"
                     variant="reviewed"
+                    isHydrated={isHydrated}
                 />
             </div>
 

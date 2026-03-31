@@ -10,6 +10,7 @@ import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
 import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerRegister";
 import { CartSyncProvider } from "@/components/store/CartSyncProvider";
 import { ProfileBootstrapper } from "@/components/auth/ProfileBootstrapper";
+import { ReamazeLoader } from "@/components/support/ReamazeLoader";
 import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
@@ -187,43 +188,7 @@ export default function RootLayout({
           <FloatingChatButton />
 
           {/* Re:amaze — دعم فني */}
-          <Script id="reamaze-config" strategy="beforeInteractive">{`
-            var _support = _support || { 'ui': {}, 'user': {} };
-            _support['account'] = 'e0b4e5a7-7c09-4071-882e-2477bd1f3d20';
-            _support['ui']['contactMode'] = 'mixed';
-            _support['ui']['enableKb'] = 'true';
-            _support['ui']['mailbox'] = '77652573';
-            _support['ui']['styles'] = {
-              widgetColor: '#8c3a08',
-              gradient: 'true'
-            };
-            _support['ui']['shoutboxFacesMode'] = '';
-            _support['ui']['widget'] = {
-              allowBotProcessing: 'false',
-              slug: 'wshw-fnun-yrtd',
-              label: {
-                text: 'حياك الله في وشّى ..',
-                mode: 'notification',
-                delay: 3,
-                duration: 30,
-                primary: '',
-                secondary: '',
-                sound: 'true'
-              },
-              position: 'bottom-right'
-            };
-            _support['ui']['overrides'] = _support['ui']['overrides'] || {};
-            _support['ui']['overrides']['confirmationMessage'] = 'تم تلقي رسالتك .. موظفنا بس يخلص اللي في يده ويرد عليك .. معليش اذا تأخرنا عليك .. ';
-            _support['ui']['overrides']['uploadingAttachments'] = 'جاري رفع {{count}} مرفق...';
-            _support['apps'] = {
-              recentConversations: {},
-              faq: {"enabled":"true"}
-            };
-          `}</Script>
-          <Script
-            src="https://cdn.reamaze.com/assets/reamaze-loader.js"
-            strategy="afterInteractive"
-          />
+          <ReamazeLoader />
         </body>
       </html>
     </ClerkProvider>

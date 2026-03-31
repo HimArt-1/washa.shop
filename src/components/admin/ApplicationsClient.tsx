@@ -206,6 +206,11 @@ export function ApplicationsClient({
     const [feedback, setFeedback] = useState<FeedbackState | null>(null);
     const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
     const [confirmLoading, setConfirmLoading] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
+
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     useEffect(() => {
         setSelectedIds((prev) => prev.filter((id) => applications.some((app) => app.id === id)));
@@ -1112,8 +1117,14 @@ export function ApplicationsClient({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                <p className="text-theme-faint text-xs text-center">
-                                    {new Date(app.updated_at || app.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })}
+                                <p className="text-theme-faint text-xs text-center" suppressHydrationWarning>
+                                    {isHydrated
+                                        ? new Date(app.updated_at || app.created_at).toLocaleDateString("ar-SA", {
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                        })
+                                        : String(app.updated_at || app.created_at || "").split("T")[0] || "—"}
                                 </p>
                                 {app.status === "accepted" && (
                                     <div className="flex gap-2 justify-center">
