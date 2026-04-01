@@ -28,6 +28,10 @@ export function FloatingJoinButton() {
             {visible && (
                 <motion.div
                     className="fixed bottom-6 left-6 z-50"
+                    style={{
+                        bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+                        left: "calc(env(safe-area-inset-left, 0px) + 1rem)",
+                    }}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}

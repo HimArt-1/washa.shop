@@ -75,6 +75,21 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [isJoinModalOpen, setJoinModalOpen] = useState(false);
+  const footerTokens = {
+    bg: "var(--footer-bg)",
+    text: "var(--footer-text)",
+    border: "var(--footer-border)",
+    orbGold: "var(--footer-orb-gold)",
+    orbMist: "var(--footer-orb-mist)",
+    textMuted: "var(--footer-text-muted)",
+    textStrong: "var(--footer-text-strong)",
+    divider: "var(--footer-divider)",
+    cardBg: "var(--footer-card-bg)",
+    cardBorder: "var(--footer-card-border)",
+    successBg: "var(--footer-success-bg)",
+    successBorder: "var(--footer-success-border)",
+    bottomText: "var(--footer-bottom-text)",
+  };
 
   const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,22 +121,22 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
   }).filter(column => column.links.length > 0); // Remove columns with no links
 
   return (
-    <footer
+      <footer
       className="relative overflow-hidden pt-12 sm:pt-20 pb-6 sm:pb-8 border-t"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--wusha-bg) 96%, var(--wusha-surface))",
-        color: "color-mix(in srgb, var(--wusha-text) 80%, transparent)",
-        borderColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
+        backgroundColor: footerTokens.bg,
+        color: footerTokens.text,
+        borderColor: footerTokens.border,
       }}
     >
       <div
         className="pointer-events-none absolute -top-20 right-8 h-56 w-56 rounded-full blur-3xl"
-        style={{ backgroundColor: "color-mix(in srgb, var(--wusha-gold) 16%, transparent)" }}
+        style={{ backgroundColor: footerTokens.orbGold }}
         aria-hidden
       />
       <div
         className="pointer-events-none absolute bottom-8 left-6 h-48 w-48 rounded-full blur-3xl"
-        style={{ backgroundColor: "color-mix(in srgb, var(--wusha-mist) 14%, transparent)" }}
+        style={{ backgroundColor: footerTokens.orbMist }}
         aria-hidden
       />
 
@@ -159,7 +174,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
           {/* Brand Column */}
           <div className="col-span-2 sm:col-span-2 lg:col-span-2">
             <Logo size="md" className="mb-6" />
-            <p className="mb-6 max-w-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
+            <p className="mb-6 max-w-sm" style={{ color: footerTokens.textMuted }}>
               منصة فنية رقمية للأزياء ..
             </p>
 
@@ -168,7 +183,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
               <a
                 href="mailto:washaksa@hotmail.com"
                 className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
+                style={{ color: footerTokens.textMuted }}
               >
                 <Mail className="w-4 h-4" />
                 washaksa@hotmail.com
@@ -178,12 +193,12 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
+                style={{ color: footerTokens.textMuted }}
               >
                 <Phone className="w-4 h-4" />
                 +966 53 223 5005
               </a>
-              <div className="flex items-center gap-3 text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
+              <div className="flex items-center gap-3 text-sm" style={{ color: footerTokens.textMuted }}>
                 <MapPin className="w-4 h-4" />
                 المملكة العربية السعودية
               </div>
@@ -214,7 +229,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
           {/* Links Columns */}
           {filteredFooterLinks.map((column) => (
             <div key={column.title}>
-              <h4 className="font-bold mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>{column.title}</h4>
+              <h4 className="font-bold mb-6" style={{ color: footerTokens.textStrong }}>{column.title}</h4>
               <ul className="space-y-3">
                 {column.links.map((link: any) => (
                   <li key={link.label}>
@@ -222,7 +237,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                       <button
                         onClick={() => setJoinModalOpen(true)}
                         className="text-sm transition-colors text-right hover:text-[var(--wusha-gold)]"
-                        style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
+                        style={{ color: footerTokens.textMuted }}
                       >
                         {link.label}
                       </button>
@@ -230,7 +245,7 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                       <Link
                         href={link.href}
                         className="text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                        style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}
+                        style={{ color: footerTokens.textMuted }}
                       >
                         {link.label}
                       </Link>
@@ -243,13 +258,13 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
         </div>
 
         {/* Newsletter */}
-        <div className="pt-8 sm:pt-12 mb-8 sm:mb-12" style={{ borderTop: "1px solid color-mix(in srgb, var(--wusha-text) 5%, transparent)" }}>
+        <div className="pt-8 sm:pt-12 mb-8 sm:mb-12" style={{ borderTop: `1px solid ${footerTokens.divider}` }}>
           <div className="max-w-xl mx-auto text-center rounded-[1.5rem] border px-5 py-6 sm:px-6 sm:py-7" style={{
-            backgroundColor: "color-mix(in srgb, var(--wusha-text) 3%, transparent)",
-            borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+            backgroundColor: footerTokens.cardBg,
+            borderColor: footerTokens.cardBorder,
           }}>
-            <h4 className="text-xl font-bold mb-3" style={{ color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)" }}>ابقَ على اطلاع</h4>
-            <p className="text-sm mb-6" style={{ color: "color-mix(in srgb, var(--wusha-text) 40%, transparent)" }}>
+            <h4 className="text-xl font-bold mb-3" style={{ color: footerTokens.textStrong }}>ابقَ على اطلاع</h4>
+            <p className="text-sm mb-6" style={{ color: footerTokens.textMuted }}>
               اشترك في نشرتنا البريدية لتصلك آخر الأعمال والمعارض
             </p>
             {subscribed ? (
@@ -258,9 +273,9 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                 animate={{ opacity: 1, scale: 1 }}
                 className="p-4 rounded-lg flex items-center justify-center gap-2 border"
                 style={{
-                  backgroundColor: "color-mix(in srgb, var(--wusha-forest) 10%, transparent)",
+                  backgroundColor: footerTokens.successBg,
                   color: "var(--wusha-forest)",
-                  borderColor: "color-mix(in srgb, var(--wusha-forest) 20%, transparent)",
+                  borderColor: footerTokens.successBorder,
                 }}
               >
                 <Check className="w-5 h-5" />
@@ -291,11 +306,11 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4" style={{ borderTop: "1px solid color-mix(in srgb, var(--wusha-text) 5%, transparent)" }}>
-          <p className="text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 30%, transparent)" }}>
+        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4" style={{ borderTop: `1px solid ${footerTokens.divider}` }}>
+          <p className="text-sm" style={{ color: footerTokens.bottomText }}>
             © {new Date().getFullYear()} وشّى. جميع الحقوق محفوظة.
           </p>
-          <div className="flex items-center gap-2 text-sm" style={{ color: "color-mix(in srgb, var(--wusha-text) 30%, transparent)" }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: footerTokens.bottomText }}>
             <span>صُنع بـ</span>
             <motion.span
               animate={{ scale: [1, 1.2, 1] }}

@@ -23,6 +23,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+dev.log
+dev.pid
 
 # local env files
 .env*.local
@@ -54,3 +56,7 @@ HERO1.mp4
 # clerk configuration (can include secrets)
 /.clerk/
 washa-dtf-studio.zip
+
+# local scratch verification files
+test_*.ts
+test_*.js

@@ -67,10 +67,25 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
     return () => clearTimeout(timer);
   }, [videoReady]);
 
+  const heroTokens = {
+    subtitle: "var(--hero-subtitle)",
+    secondaryBorder: "var(--hero-secondary-border)",
+    secondaryBg: "var(--hero-secondary-bg)",
+    secondaryText: "var(--hero-secondary-text)",
+    secondaryBorderHover: "var(--hero-secondary-border-hover)",
+    secondaryBgHover: "var(--hero-secondary-bg-hover)",
+    linkMuted: "var(--hero-link-muted)",
+    scrollMuted: "var(--hero-scroll-muted)",
+    scrollBorder: "var(--hero-scroll-border)",
+    decorStrong: "var(--hero-decor-strong)",
+    decorSoft: "var(--hero-decor-soft)",
+    cornerBorder: "var(--hero-corner-border)",
+  };
+
   return (
     <section
       ref={containerRef}
-      className="relative min-h-screen min-h-[100dvh] flex items-center justify-center overflow-hidden px-2 sm:px-0"
+      className="relative flex min-h-[100svh] min-h-[100dvh] items-center justify-center overflow-hidden px-2 sm:px-0"
     >
       {/* ═══ Loading Curtain ═══ */}
       <AnimatePresence>
@@ -236,7 +251,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
           transition={{ duration: 0.9, delay: 0.5 }}
         >
           <p className="text-3xl sm:text-4xl md:text-5xl font-display italic text-glow-gold"
-            style={{ color: "color-mix(in srgb, var(--wusha-gold-light) 90%, transparent)", letterSpacing: "0.04em" }}>
+            style={{ color: heroTokens.subtitle, letterSpacing: "0.04em" }}>
             فنٌ يرتدى
           </p>
           <div className="flex items-center gap-3">
@@ -258,16 +273,16 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <motion.button
                   type="button"
-                  className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
-                  style={{
-                    borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)",
-                    background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 20%, transparent), color-mix(in srgb, var(--wusha-earth) 18%, transparent), color-mix(in srgb, var(--wusha-gold) 16%, transparent))",
-                    color: "var(--wusha-text)",
-                  }}
-                  whileHover={{
-                    boxShadow: "0 8px 32px color-mix(in srgb, var(--wusha-gold) 25%, transparent)",
-                    borderColor: "color-mix(in srgb, var(--wusha-gold) 50%, transparent)",
-                  }}
+                    className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                    style={{
+                      borderColor: "var(--hero-scroll-border)",
+                      background: "var(--ai-step-active-bg)",
+                      color: "var(--wusha-text)",
+                    }}
+                    whileHover={{
+                      boxShadow: "0 8px 32px var(--neon-gold)",
+                      borderColor: "var(--wusha-gold)",
+                    }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => router.push("/store")}
                   suppressHydrationWarning
@@ -288,13 +303,13 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                     type="button"
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                     style={{
-                      borderColor: "color-mix(in srgb, #a855f7 30%, transparent)",
-                      background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 18%, transparent), color-mix(in srgb, #a855f7 18%, transparent), color-mix(in srgb, #c084fc 16%, transparent))",
+                      borderColor: "rgba(168, 85, 247, 0.32)",
+                      background: "linear-gradient(120deg, rgba(154, 123, 61, 0.18), rgba(168, 85, 247, 0.18), rgba(192, 132, 252, 0.16))",
                       color: "var(--wusha-text)",
                     }}
                     whileHover={{
-                      boxShadow: "0 8px 32px color-mix(in srgb, #a855f7 22%, transparent)",
-                      borderColor: "color-mix(in srgb, #c084fc 40%, transparent)",
+                      boxShadow: "0 8px 32px rgba(168, 85, 247, 0.22)",
+                      borderColor: "rgba(192, 132, 252, 0.4)",
                     }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push("/design/washa-ai")}
@@ -333,17 +348,17 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                     href="/sign-in"
                     className="flex items-center justify-center gap-2.5 px-8 py-4 font-medium rounded-2xl border backdrop-blur-md transition-all duration-300 w-full sm:w-auto min-w-[160px]"
                     style={{
-                      borderColor: "color-mix(in srgb, var(--wusha-text) 30%, transparent)",
-                      backgroundColor: "color-mix(in srgb, var(--wusha-text) 5%, transparent)",
-                      color: "color-mix(in srgb, var(--wusha-text) 90%, transparent)",
+                      borderColor: heroTokens.secondaryBorder,
+                      backgroundColor: heroTokens.secondaryBg,
+                      color: heroTokens.secondaryText,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "color-mix(in srgb, var(--wusha-gold) 40%, transparent)";
-                      e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--wusha-text) 10%, transparent)";
+                      e.currentTarget.style.borderColor = heroTokens.secondaryBorderHover;
+                      e.currentTarget.style.backgroundColor = heroTokens.secondaryBgHover;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "color-mix(in srgb, var(--wusha-text) 30%, transparent)";
-                      e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--wusha-text) 5%, transparent)";
+                      e.currentTarget.style.borderColor = heroTokens.secondaryBorder;
+                      e.currentTarget.style.backgroundColor = heroTokens.secondaryBg;
                     }}
                   >
                     <LogIn className="w-4 h-4 opacity-70" />
@@ -355,13 +370,13 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                   onClick={() => setJoinOpen(true)}
                   className="text-sm font-medium transition-colors underline-offset-4 hover:underline"
                   style={{
-                    color: "color-mix(in srgb, var(--wusha-text) 50%, transparent)",
+                    color: heroTokens.linkMuted,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.color = "var(--wusha-gold)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color = "color-mix(in srgb, var(--wusha-text) 50%, transparent)";
+                    e.currentTarget.style.color = heroTokens.linkMuted;
                   }}
                   suppressHydrationWarning
                 >
@@ -384,12 +399,12 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
         transition={{ delay: 1.8 }}
       >
         <span className="text-[10px] tracking-[0.4em] uppercase"
-          style={{ color: "color-mix(in srgb, var(--wusha-text) 35%, transparent)" }}>
+          style={{ color: heroTokens.scrollMuted }}>
           اكتشف
         </span>
         <motion.div
           className="relative w-6 h-10 rounded-full border flex items-start justify-center pt-1.5"
-          style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)" }}
+          style={{ borderColor: heroTokens.scrollBorder }}
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2.5, repeat: Infinity }}
         >
@@ -404,14 +419,14 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
       {/* Decorative Gold Lines */}
       <motion.div
         className="absolute top-1/4 right-10 w-px h-44 hidden lg:block z-10"
-        style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wusha-gold) 30%, transparent) 40%, color-mix(in srgb, var(--wusha-gold) 15%, transparent) 70%, transparent)" }}
+        style={{ background: `linear-gradient(to bottom, transparent, ${heroTokens.decorStrong} 40%, ${heroTokens.decorSoft} 70%, transparent)` }}
         initial={{ scaleY: 0, originY: 0 }}
         animate={curtainLifted ? { scaleY: 1 } : {}}
         transition={{ duration: 1.8, delay: 1.2, ease: [0.16, 1, 0.3, 1] }}
       />
       <motion.div
         className="absolute top-1/3 left-10 w-px h-32 hidden lg:block z-10"
-        style={{ background: "linear-gradient(to bottom, transparent, color-mix(in srgb, var(--wusha-gold) 15%, transparent) 50%, transparent)" }}
+        style={{ background: `linear-gradient(to bottom, transparent, ${heroTokens.decorSoft} 50%, transparent)` }}
         initial={{ scaleY: 0, originY: 0 }}
         animate={curtainLifted ? { scaleY: 1 } : {}}
         transition={{ duration: 1.8, delay: 1.5, ease: [0.16, 1, 0.3, 1] }}
@@ -423,7 +438,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
         animate={curtainLifted ? { opacity: 1 } : {}}
         transition={{ delay: 2 }}
       >
-        <div className="w-6 h-6 border-t border-r" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+        <div className="w-6 h-6 border-t border-r" style={{ borderColor: heroTokens.cornerBorder }} />
       </motion.div>
       <motion.div
         className="absolute top-8 left-8 hidden lg:block z-10"
@@ -431,7 +446,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
         animate={curtainLifted ? { opacity: 1 } : {}}
         transition={{ delay: 2.1 }}
       >
-        <div className="w-6 h-6 border-t border-l" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+        <div className="w-6 h-6 border-t border-l" style={{ borderColor: heroTokens.cornerBorder }} />
       </motion.div>
       <motion.div
         className="absolute bottom-16 right-8 hidden lg:block z-10"
@@ -439,7 +454,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
         animate={curtainLifted ? { opacity: 1 } : {}}
         transition={{ delay: 2.2 }}
       >
-        <div className="w-6 h-6 border-b border-r" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+        <div className="w-6 h-6 border-b border-r" style={{ borderColor: heroTokens.cornerBorder }} />
       </motion.div>
       <motion.div
         className="absolute bottom-16 left-8 hidden lg:block z-10"
@@ -447,7 +462,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
         animate={curtainLifted ? { opacity: 1 } : {}}
         transition={{ delay: 2.3 }}
       >
-        <div className="w-6 h-6 border-b border-l" style={{ borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)" }} />
+        <div className="w-6 h-6 border-b border-l" style={{ borderColor: heroTokens.cornerBorder }} />
       </motion.div>
     </section>
   );

@@ -1,6 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
+import {
+  IBM_Plex_Sans_Arabic,
+  Playfair_Display,
+  Tajawal,
+} from "next/font/google";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { FloatingJoinButton } from "@/components/ui/FloatingJoinButton";
 import { FloatingChatButton } from "@/components/ui/FloatingChatButton";
@@ -11,7 +16,6 @@ import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerR
 import { CartSyncProvider } from "@/components/store/CartSyncProvider";
 import { ProfileBootstrapper } from "@/components/auth/ProfileBootstrapper";
 import { ReamazeLoader } from "@/components/support/ReamazeLoader";
-import Script from "next/script";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -22,7 +26,261 @@ export const viewport: Viewport = {
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+const BUILD_VERSION =
+  process.env.NEXT_PUBLIC_BUILD_VERSION ||
+  process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+  "dev";
 const THEME_INIT_SCRIPT = `(function(){try{var key='wusha-theme';var stored=localStorage.getItem(key);var theme=(stored==='light'||stored==='dark')?stored:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();`;
+const CSS_GUARD_STYLE = `
+html[data-css-ready="pending"] body {
+  opacity: 0;
+  visibility: hidden;
+}
+
+html[data-css-ready="ready"] body,
+html[data-css-ready="fallback"] body {
+  opacity: 1;
+  visibility: visible;
+}
+
+html[data-css-ready="fallback"] body {
+  background: #f4ede3;
+  color: #1a1612;
+}
+
+html[data-css-ready="fallback"] .noise-overlay,
+html[data-css-ready="fallback"] .public-orb,
+html[data-css-ready="fallback"] .video-overlay {
+  display: none !important;
+}
+
+#css-recovery-banner[hidden] {
+  display: none !important;
+}
+
+html[data-css-ready="fallback"] #css-recovery-banner {
+  position: sticky;
+  top: 0;
+  z-index: 2147483647;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #fff7ed;
+  color: #7c2d12;
+  border-bottom: 1px solid rgba(124, 45, 18, 0.18);
+  font: 600 0.95rem/1.4 Tahoma, Arial, sans-serif;
+}
+
+html[data-css-ready="fallback"] #css-recovery-banner a {
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: underline;
+}
+`;
+const CSS_GUARD_SCRIPT = String.raw`(function(){
+  var doc = document.documentElement;
+  var buildVersion = ${JSON.stringify(BUILD_VERSION)};
+  var recoveryKey = "wusha-css-recovery:" + buildVersion;
+  var recoveryParam = "__css_recover";
+  var maxWaitMs = 2800;
+  doc.dataset.cssReady = "pending";
+
+  function emitRecoveryEvent(phase, detail) {
+    var payload = Object.assign({ phase: phase, buildVersion: buildVersion }, detail || {});
+    try {
+      window.dispatchEvent(new CustomEvent("wusha:css-recovery", { detail: payload }));
+    } catch (error) {
+      console.warn("[CSS] Failed to dispatch recovery event", error);
+    }
+    if (phase === "reload" || phase === "fallback") {
+      console.warn("[CSS] Recovery state:", payload);
+    } else {
+      console.info("[CSS] Recovery state:", payload);
+    }
+  }
+
+  function clearRecoveryState() {
+    try {
+      sessionStorage.removeItem(recoveryKey);
+    } catch (error) {
+      console.warn("[CSS] Failed to clear recovery state", error);
+    }
+  }
+
+  function cleanRecoveryUrl() {
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.has(recoveryParam)) {
+        url.searchParams.delete(recoveryParam);
+        history.replaceState(null, "", url.toString());
+      }
+    } catch (error) {
+      console.warn("[CSS] Failed to clean recovery URL", error);
+    }
+  }
+
+  function markState(state) {
+    if (doc.dataset.cssReady === state) {
+      return;
+    }
+    doc.dataset.cssReady = state;
+    if (state === "ready") {
+      clearRecoveryState();
+      cleanRecoveryUrl();
+      var banner = document.getElementById("css-recovery-banner");
+      if (banner) {
+        banner.hidden = true;
+      }
+    }
+    if (state === "fallback") {
+      var fallbackBanner = document.getElementById("css-recovery-banner");
+      if (fallbackBanner) {
+        fallbackBanner.hidden = false;
+      }
+    }
+    emitRecoveryEvent(state);
+  }
+
+  function hasHealthyStylesheet() {
+    try {
+      if (!document.body) {
+        return false;
+      }
+      var rootStyles = getComputedStyle(doc);
+      var bgVar = rootStyles.getPropertyValue("--wusha-bg").trim();
+      var bodyStyles = getComputedStyle(document.body);
+      var hasNextCss = Array.prototype.some.call(document.styleSheets, function(sheet) {
+        try {
+          var href = sheet.href || "";
+          return href.indexOf("/_next/static/css/") !== -1 || href.indexOf("/_next/static/chunks/") !== -1;
+        } catch (error) {
+          return false;
+        }
+      });
+      return Boolean(bgVar) && bodyStyles.backgroundColor !== "rgba(0, 0, 0, 0)" && hasNextCss;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function hardReload() {
+    var url = new URL(window.location.href);
+    url.searchParams.set(recoveryParam, buildVersion);
+    window.location.replace(url.toString());
+  }
+
+  function recoverFromCssFailure() {
+    var alreadyRetried = false;
+    try {
+      var currentUrl = new URL(window.location.href);
+      alreadyRetried = currentUrl.searchParams.get(recoveryParam) === buildVersion;
+    } catch (error) {
+      alreadyRetried = false;
+    }
+    try {
+      alreadyRetried = alreadyRetried || sessionStorage.getItem(recoveryKey) === "reloaded";
+    } catch (error) {
+      alreadyRetried = alreadyRetried || false;
+    }
+
+    if (alreadyRetried) {
+      markState("fallback");
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(recoveryKey, "reloaded");
+    } catch (error) {
+      console.warn("[CSS] Failed to persist recovery state", error);
+    }
+
+    var cleanupTasks = [];
+
+    if ("serviceWorker" in navigator) {
+      cleanupTasks.push(
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          return Promise.all(registrations.map(function(registration) {
+            return registration.update();
+          }));
+        })
+      );
+    }
+
+    if ("caches" in window) {
+      cleanupTasks.push(
+        window.caches.keys().then(function(keys) {
+          return Promise.all(
+            keys
+              .filter(function(key) {
+                return key.indexOf("wusha") === 0;
+              })
+              .map(function(key) {
+                return window.caches.delete(key);
+              })
+          );
+        })
+      );
+    }
+
+    emitRecoveryEvent("reload", { cacheClearRequested: cleanupTasks.length > 0 });
+    Promise.allSettled(cleanupTasks).finally(hardReload);
+  }
+
+  function watchForCss() {
+    var startedAt = Date.now();
+    var poll = function() {
+      if (hasHealthyStylesheet()) {
+        markState("ready");
+        return;
+      }
+
+      if (Date.now() - startedAt >= maxWaitMs) {
+        recoverFromCssFailure();
+        return;
+      }
+
+      window.requestAnimationFrame(poll);
+    };
+
+    poll();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", watchForCss, { once: true });
+  } else {
+    watchForCss();
+  }
+
+  window.addEventListener("pageshow", function() {
+    if (hasHealthyStylesheet()) {
+      markState("ready");
+    }
+  });
+})();`;
+
+const arabicFont = IBM_Plex_Sans_Arabic({
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-arabic",
+});
+
+const bodyFont = Tajawal({
+  subsets: ["arabic", "latin"],
+  weight: ["200", "300", "400", "500", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-tajawal",
+});
+
+const displayFont = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -78,7 +336,7 @@ const clerkAppearance = {
     colorBackground: "var(--wusha-surface)",
     colorInputBackground: "var(--wusha-surface-2)",
     colorInputText: "var(--wusha-text)",
-    colorTextSecondary: "color-mix(in srgb, var(--wusha-text) 60%, transparent)",
+    colorTextSecondary: "var(--clerk-secondary-text)",
     fontFamily: "var(--font-arabic), 'IBM Plex Sans Arabic', sans-serif",
     borderRadius: "0.75rem",
   },
@@ -95,7 +353,7 @@ const clerkAppearance = {
     userButtonPopoverActionButton: "!text-[var(--wusha-text)] hover:!text-[var(--wusha-gold)]",
     userButtonPopoverActionButtonText: "!text-[var(--wusha-text)]",
     userPreviewMainIdentifier: "!text-[var(--wusha-text)]",
-    userPreviewSecondaryIdentifier: "!text-[color-mix(in_srgb,var(--wusha-text)_60%,transparent)]",
+    userPreviewSecondaryIdentifier: "!text-[var(--clerk-secondary-text)]",
   },
 };
 
@@ -110,11 +368,28 @@ export default function RootLayout({
       appearance={clerkAppearance}
       dynamic
     >
-      <html lang="ar" dir="rtl" suppressHydrationWarning data-theme="light">
+      <html
+        lang="ar"
+        dir="rtl"
+        suppressHydrationWarning
+        data-theme="light"
+        className={`${arabicFont.variable} ${bodyFont.variable} ${displayFont.variable}`}
+      >
         <head>
+          <meta name="wusha-build" content={BUILD_VERSION} />
+          <style
+            dangerouslySetInnerHTML={{
+              __html: CSS_GUARD_STYLE,
+            }}
+          />
           <script
             dangerouslySetInnerHTML={{
               __html: THEME_INIT_SCRIPT,
+            }}
+          />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: CSS_GUARD_SCRIPT,
             }}
           />
           {/* JSON-LD Structured Data */}
@@ -152,6 +427,10 @@ export default function RootLayout({
           />
         </head>
         <body className="font-arabic" style={{ backgroundColor: "var(--wusha-bg)", color: "var(--wusha-text)" }} suppressHydrationWarning>
+          <div id="css-recovery-banner" hidden>
+            <span>تعذر تحميل التنسيق بالكامل. تمت محاولة الاسترداد تلقائيًا.</span>
+            <a href="">إعادة التحميل</a>
+          </div>
           {/* Skip to Content — Accessibility */}
           <a
             href="#main-content"
@@ -175,7 +454,7 @@ export default function RootLayout({
             <ProfileBootstrapper />
             <VisitLogger />
             <ClientErrorLogger />
-            <main id="main-content" className="min-h-screen">
+            <main id="main-content" className="min-h-[100svh] min-h-[100dvh]">
               {children}
             </main>
           </ThemeProvider>

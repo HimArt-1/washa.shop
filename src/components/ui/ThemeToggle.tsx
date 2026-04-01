@@ -32,8 +32,8 @@ export function ThemeToggle() {
         className="relative flex h-8 w-8 items-center justify-center rounded-full border"
         style={{
           color: "var(--wusha-gold)",
-          backgroundColor: "color-mix(in srgb, var(--wusha-gold) 12%, transparent)",
-          borderColor: "color-mix(in srgb, var(--wusha-gold) 16%, transparent)",
+          backgroundColor: "var(--header-chip-active-bg)",
+          borderColor: "var(--header-chip-active-border)",
         }}
       >
         {resolvedTheme === "dark" ? (

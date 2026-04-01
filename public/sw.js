@@ -3,7 +3,8 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const CACHE_NAME = "wusha-v6";
+const SW_VERSION = "2026-04-css-recovery-1";
+const CACHE_NAME = `wusha-shell-${SW_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
 // Static assets to pre-cache
@@ -19,6 +20,10 @@ function createServiceUnavailableResponse() {
         statusText: "Service Unavailable",
         headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+}
+
+function shouldCacheAssetResponse(response) {
+    return Boolean(response && response.ok && response.type !== "error");
 }
 
 // ─── Install: Pre-cache offline page & critical assets ───
@@ -66,9 +71,16 @@ self.addEventListener("notificationclick", (event) => {
     );
 });
 
+self.addEventListener("message", (event) => {
+    if (event.data?.type === "SKIP_WAITING") {
+        self.skipWaiting();
+    }
+});
+
 // ─── Fetch Strategy ─────────────────────────────────────
 // RSC, dashboard, API → Network only (no cache)
-// Static assets (images, fonts, CSS, JS) → Stale-While-Revalidate
+// Next.js CSS/JS/fonts → Browser/HTTP cache only
+// Public images/icons → Stale-While-Revalidate
 // Navigation → Network first, offline fallback
 self.addEventListener("fetch", (event) => {
     const { request } = event;
@@ -87,9 +99,19 @@ self.addEventListener("fetch", (event) => {
     if (request.method !== "GET") return;
 
     const isDtfStudio = pathname === "/design/washa-ai" || pathname.startsWith("/design/washa-ai/");
+    const isNextStatic = pathname.startsWith("/_next/");
+    const isStylesheet = request.destination === "style";
+    const isScript = request.destination === "script";
+    const isFont = request.destination === "font";
 
     if (isDtfStudio) {
         // Keep the immersive DTF Studio outside SW interception completely.
+        return;
+    }
+
+    if (isNextStatic || isStylesheet || isScript || isFont) {
+        // Let the browser and Next.js manage versioned CSS/JS/font assets.
+        // Intercepting them here risks mixed deploys and stale stylesheet states.
         return;
     }
 
@@ -117,16 +139,17 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // Static assets → stale-while-revalidate
+    // Public images/icons → stale-while-revalidate
     const isStaticAsset =
-        url.match(/\.(png|jpg|jpeg|webp|avif|svg|gif|ico|woff2?|ttf|css|js)(\?.*)?$/);
+        request.destination === "image" ||
+        url.match(/\.(png|jpg|jpeg|webp|avif|svg|gif|ico)(\?.*)?$/);
 
     if (isStaticAsset) {
         event.respondWith(
             caches.match(request).then((cached) => {
                 const fetchPromise = fetch(request)
                     .then((response) => {
-                        if (response.ok) {
+                        if (shouldCacheAssetResponse(response)) {
                             const clone = response.clone();
                             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                         }

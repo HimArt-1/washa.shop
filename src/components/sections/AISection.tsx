@@ -186,7 +186,7 @@ export function AISection({ config }: AISectionProps) {
                       : "glass-card border-transparent hover:border-theme-soft opacity-55 hover:opacity-90"
                   }`}
                   style={isActive ? {
-                    background: "linear-gradient(135deg, color-mix(in srgb, var(--wusha-gold) 10%, transparent), color-mix(in srgb, var(--wusha-gold) 5%, transparent))",
+                    background: "var(--ai-step-active-bg)",
                   } : {}}
                 >
                   {isActive && (
@@ -250,7 +250,7 @@ export function AISection({ config }: AISectionProps) {
                       priority
                     />
                   </motion.div>
-                  <div className="absolute -right-4 sm:right-10 top-1/4 flex flex-col gap-2">
+                  <div className="pointer-events-none absolute inset-x-4 bottom-4 flex flex-wrap justify-center gap-2 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-1/4 sm:flex-col sm:items-stretch">
                     <motion.div
                       animate={{ y: [0, -10, 0] }}
                       transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -377,7 +377,7 @@ export function AISection({ config }: AISectionProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6, type: "spring" }}
-                    className="absolute bottom-4 sm:bottom-12 glass-card px-6 py-3 rounded-full border-gold/40 flex items-center gap-2 shadow-[0_0_30px_rgba(202,160,82,0.3)]"
+                    className="absolute inset-x-4 bottom-4 mx-auto flex max-w-[calc(100%-2rem)] items-center justify-center gap-2 rounded-[1.5rem] border-gold/40 px-4 py-3 text-center shadow-[0_0_30px_rgba(202,160,82,0.3)] glass-card sm:inset-x-auto sm:bottom-12 sm:max-w-none sm:px-6"
                   >
                     <Sparkles className="w-5 h-5 text-gold" />
                     <span className="font-bold text-theme-strong text-sm sm:text-base">تحفتك الفنية جاهزة للإرتداء!</span>

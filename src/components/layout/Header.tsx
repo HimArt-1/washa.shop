@@ -97,6 +97,24 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
       ? "backdrop-blur-xl border-b"
       : "bg-transparent";
   const headerSurfaceActive = isScrolled || isMobileMenuOpen;
+  const headerTokens = {
+    overlayBg: "var(--header-overlay-bg)",
+    overlayBorder: "var(--header-overlay-border)",
+    surfaceGradient: "var(--header-surface-gradient)",
+    surfaceBorder: "var(--header-surface-panel-border)",
+    surfaceShadow: "var(--header-surface-panel-shadow)",
+    lineGradient: "var(--header-line-gradient)",
+    chipBg: "var(--header-chip-bg)",
+    chipBorder: "var(--header-chip-border)",
+    chipText: "var(--header-chip-text)",
+    chipTextStrong: "var(--header-chip-text-strong)",
+    chipActiveBg: "var(--header-chip-active-bg)",
+    chipActiveBorder: "var(--header-chip-active-border)",
+    menuBackdrop: "var(--header-menu-backdrop)",
+    menuCardGradient: "var(--header-menu-card-gradient)",
+    menuCardShadow: "var(--header-menu-card-shadow)",
+    clerkSecondary: "var(--clerk-secondary-text)",
+  };
 
   return (
     <>
@@ -106,8 +124,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
         style={{
           transform: isHidden ? "translateY(-100%)" : "translateY(0)",
           transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.5s ease-out, border-color 0.5s ease-out",
-          backgroundColor: isScrolled || isMobileMenuOpen ? "color-mix(in srgb, var(--wusha-bg) 95%, transparent)" : "transparent",
-          borderColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
+          backgroundColor: isScrolled || isMobileMenuOpen ? headerTokens.overlayBg : "transparent",
+          borderColor: headerTokens.overlayBorder,
         }}
       >
         <div className="container-wusha">
@@ -116,11 +134,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
             style={
               headerSurfaceActive
                 ? {
-                    background:
-                      "linear-gradient(180deg, color-mix(in srgb, var(--wusha-surface) 92%, transparent), color-mix(in srgb, var(--wusha-surface-2) 72%, transparent))",
-                    borderColor: "color-mix(in srgb, var(--wusha-text) 10%, transparent)",
-                    boxShadow:
-                      "0 24px 64px color-mix(in srgb, var(--wusha-bg) 18%, transparent), 0 0 0 1px color-mix(in srgb, var(--wusha-gold) 4%, transparent) inset",
+                    background: headerTokens.surfaceGradient,
+                    borderColor: headerTokens.surfaceBorder,
+                    boxShadow: headerTokens.surfaceShadow,
                   }
                 : undefined
             }
@@ -129,8 +145,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               <div
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
                 style={{
-                  background:
-                    "linear-gradient(90deg, transparent, color-mix(in srgb, var(--wusha-gold) 25%, transparent), transparent)",
+                  background: headerTokens.lineGradient,
                 }}
               />
             )}
@@ -143,8 +158,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
             <nav
               className="hidden md:flex items-center justify-center gap-5 lg:gap-7 flex-1 max-w-2xl mx-6 rounded-full border px-5 py-2.5"
               style={{
-                backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                backgroundColor: headerTokens.chipBg,
+                borderColor: headerTokens.chipBorder,
               }}
             >
               {filteredNavItems.map((item, index) => (
@@ -158,9 +173,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     style={{
                       color: isNavItemActive(item.href)
                         ? "var(--wusha-gold)"
-                        : "color-mix(in srgb, var(--wusha-text) 70%, transparent)",
+                        : headerTokens.chipText,
                       backgroundColor: isNavItemActive(item.href)
-                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
+                        ? headerTokens.chipActiveBg
                         : "transparent",
                     }}
                     initial={{ opacity: 0, y: -10 }}
@@ -179,8 +194,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
             <div
               className="hidden md:flex items-center gap-2 flex-shrink-0 rounded-full border px-2 py-2"
               style={{
-                backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                backgroundColor: headerTokens.chipBg,
+                borderColor: headerTokens.chipBorder,
               }}
             >
               <ThemeToggle />
@@ -234,12 +249,12 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                           userButtonPopoverActionButtonIconBox: "text-gold/60",
                           userButtonPopoverFooter: "hidden",
                           userPreviewMainIdentifier: "!text-[var(--wusha-text)]",
-                          userPreviewSecondaryIdentifier: "!text-[color-mix(in_srgb,var(--wusha-text)_60%,transparent)]",
+                          userPreviewSecondaryIdentifier: "!text-[var(--clerk-secondary-text)]",
                         },
                         variables: {
                           colorBackground: "var(--wusha-surface)",
                           colorText: "var(--wusha-text)",
-                          colorTextSecondary: "color-mix(in srgb, var(--wusha-text) 60%, transparent)",
+                          colorTextSecondary: headerTokens.clerkSecondary,
                           colorPrimary: "var(--wusha-gold)",
                           colorDanger: "var(--wusha-text)",
                           borderRadius: "1rem",
@@ -320,7 +335,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
             {/* Backdrop */}
             <div
               className="absolute inset-0 backdrop-blur-xl"
-              style={{ backgroundColor: "color-mix(in srgb, var(--wusha-bg) 90%, transparent)" }}
+              style={{ backgroundColor: headerTokens.menuBackdrop }}
               onClick={() => setIsMobileMenuOpen(false)}
               aria-hidden="true"
             />
@@ -336,11 +351,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               <div
                 className="w-full max-w-sm rounded-[2rem] border px-5 py-6 shadow-2xl sm:px-6 sm:py-7"
                 style={{
-                  background:
-                    "linear-gradient(180deg, color-mix(in srgb, var(--wusha-surface) 96%, transparent), color-mix(in srgb, var(--wusha-surface-2) 82%, transparent))",
-                  borderColor: "color-mix(in srgb, var(--wusha-text) 10%, transparent)",
-                  boxShadow:
-                    "0 30px 80px color-mix(in srgb, var(--wusha-bg) 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                  background: headerTokens.menuCardGradient,
+                  borderColor: headerTokens.surfaceBorder,
+                  boxShadow: headerTokens.menuCardShadow,
                 }}
               >
                 <div className="mb-5 space-y-2">
@@ -363,11 +376,11 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     }`}
                     style={{
                       backgroundColor: pathname === "/"
-                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
-                        : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                        ? headerTokens.chipActiveBg
+                        : headerTokens.chipBg,
                       borderColor: pathname === "/"
-                        ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
-                        : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                        ? headerTokens.chipActiveBorder
+                        : headerTokens.chipBorder,
                     }}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -381,11 +394,11 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     }`}
                     style={{
                       backgroundColor: pathname === "/search"
-                        ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
-                        : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                        ? headerTokens.chipActiveBg
+                        : headerTokens.chipBg,
                       borderColor: pathname === "/search"
-                        ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
-                        : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                        ? headerTokens.chipActiveBorder
+                        : headerTokens.chipBorder,
                     }}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
@@ -399,8 +412,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     }}
                     className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
                     style={{
-                      backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                      borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                      backgroundColor: headerTokens.chipBg,
+                      borderColor: headerTokens.chipBorder,
                     }}
                   >
                     <span>السلة</span>
@@ -418,8 +431,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       href="/account"
                       className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
                       style={{
-                        backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                        borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                        backgroundColor: headerTokens.chipBg,
+                        borderColor: headerTokens.chipBorder,
                       }}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
@@ -433,8 +446,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                         href="/sign-in"
                         className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-bold text-theme transition-all duration-300"
                         style={{
-                          backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                          borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                          backgroundColor: headerTokens.chipBg,
+                          borderColor: headerTokens.chipBorder,
                         }}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
@@ -461,13 +474,13 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                         style={{
                           color: isNavItemActive(item.href)
                             ? "var(--wusha-gold)"
-                            : "color-mix(in srgb, var(--wusha-text) 88%, transparent)",
+                            : headerTokens.chipTextStrong,
                           backgroundColor: isNavItemActive(item.href)
-                            ? "color-mix(in srgb, var(--wusha-gold) 12%, transparent)"
-                            : "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
+                            ? headerTokens.chipActiveBg
+                            : headerTokens.chipBg,
                           borderColor: isNavItemActive(item.href)
-                            ? "color-mix(in srgb, var(--wusha-gold) 18%, transparent)"
-                            : "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                            ? headerTokens.chipActiveBorder
+                            : headerTokens.chipBorder,
                         }}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
@@ -489,9 +502,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       href="/account"
                       className="flex items-center justify-center gap-3 rounded-2xl border px-4 py-4 text-lg font-bold transition-colors hover:text-[var(--wusha-gold)]"
                       style={{
-                        color: "color-mix(in srgb, var(--wusha-text) 88%, transparent)",
-                        backgroundColor: "color-mix(in srgb, var(--wusha-text) 4%, transparent)",
-                        borderColor: "color-mix(in srgb, var(--wusha-text) 8%, transparent)",
+                        color: headerTokens.chipTextStrong,
+                        backgroundColor: headerTokens.chipBg,
+                        borderColor: headerTokens.chipBorder,
                       }}
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
@@ -513,12 +526,12 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                             userButtonPopoverActionButtonIconBox: "text-gold/60",
                             userButtonPopoverFooter: "hidden",
                             userPreviewMainIdentifier: "!text-[var(--wusha-text)]",
-                            userPreviewSecondaryIdentifier: "!text-[color-mix(in_srgb,var(--wusha-text)_60%,transparent)]",
+                            userPreviewSecondaryIdentifier: "!text-[var(--clerk-secondary-text)]",
                           },
                           variables: {
                             colorBackground: "var(--wusha-surface)",
                             colorText: "var(--wusha-text)",
-                            colorTextSecondary: "color-mix(in srgb, var(--wusha-text) 60%, transparent)",
+                            colorTextSecondary: headerTokens.clerkSecondary,
                             colorPrimary: "var(--wusha-gold)",
                             colorDanger: "var(--wusha-text)",
                             borderRadius: "1rem",

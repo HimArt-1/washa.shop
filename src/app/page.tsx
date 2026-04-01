@@ -7,7 +7,7 @@ export default async function Home() {
     const settings = await getSiteSettings();
     return (
         <PublicPageWrapper>
-            <main className="relative">
+            <div className="relative">
                 <Hero
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={settings.visibility.hero_washa_ai_button}
@@ -15,7 +15,7 @@ export default async function Home() {
                 {settings.visibility.ai_section !== false && (
                     <AISection config={settings.ai_simulation} />
                 )}
-            </main>
+            </div>
         </PublicPageWrapper>
     );
 }
