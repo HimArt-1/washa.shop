@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
+import { WashaAiEntryGate } from "@/components/studio/washa-ai/WashaAiEntryGate";
 import { getDesignPieceDeniedVariant } from "@/lib/design-piece-access";
 import { resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
 
 export const metadata: Metadata = {
     title: "WASHA AI | وشّى",
-    description: "استوديو DTF المطور لتوليد موكب الملابس واستخراج ملف DTF عالي الجودة داخل تجربة واحدة.",
+    description: "صمّم قطعتك بالذكاء الاصطناعي — من الوصف إلى موكب DTF جاهز للطباعة في ثوانٍ.",
 };
 
 export default async function DesignDtfStudioEntryPage() {
@@ -20,11 +21,19 @@ export default async function DesignDtfStudioEntryPage() {
         redirect("/design/washa-ai/app");
     }
 
+    const variant = getDesignPieceDeniedVariant(access.reason);
+
+    // Full immersive landing for unauthenticated visitors
+    if (variant === "auth") {
+        return <WashaAiEntryGate redirectUrl="/design/washa-ai" />;
+    }
+
+    // Simple error state for service / identity issues
     return (
         <div className="min-h-[100dvh] bg-[#050505] px-4 py-10 text-theme sm:px-6">
             <DesignPieceAccessDenied
                 redirectUrl="/design/washa-ai"
-                variant={getDesignPieceDeniedVariant(access.reason)}
+                variant={variant}
             />
         </div>
     );
