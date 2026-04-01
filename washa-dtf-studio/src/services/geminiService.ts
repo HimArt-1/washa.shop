@@ -59,6 +59,7 @@ export async function generateMockup(
   preferences: GenerationPreferences = {}
 ): Promise<string | null> {
   const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
+  const isArabicText = isCalligraphy && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(calligraphyText!);
   const printDirectives = [
     'Premium DTF print integrated directly into the garment.',
     preferences.removeBackground
@@ -76,11 +77,15 @@ export async function generateMockup(
   const prompt = isCalligraphy
     ? compactPrompt([
         sceneDirectives,
-        `Render ONLY this phrase as artistic calligraphy: "${calligraphyText}".`,
+        isArabicText
+          ? `Render ONLY this Arabic phrase as artistic calligraphy, written right-to-left with fully accurate Arabic letterforms and correct connections between letters: "${calligraphyText}". Do not transliterate, do not romanize, do not substitute Latin characters. Reproduce every Arabic letter exactly as written.`
+          : `Render ONLY this phrase as artistic calligraphy: "${calligraphyText}".`,
         `Calligraphy style: ${style}.`,
         `Technique: ${technique}.`,
         `Palette: ${palette}.`,
-        'Graceful curves, elegant strokes, sharp lettering on fabric, and no duplicated layers or extra words.',
+        isArabicText
+          ? 'Graceful Arabic strokes, authentic calligraphy proportions, right-to-left flow, sharp letterforms on fabric, and no duplicated layers or extra words.'
+          : 'Graceful curves, elegant strokes, sharp lettering on fabric, and no duplicated layers or extra words.',
         ...printDirectives,
       ])
     : compactPrompt([
