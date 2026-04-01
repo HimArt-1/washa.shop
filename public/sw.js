@@ -86,7 +86,7 @@ self.addEventListener("fetch", (event) => {
     // Skip non-GET requests
     if (request.method !== "GET") return;
 
-    const isDtfStudio = pathname === "/design/dtf-studio" || pathname.startsWith("/design/dtf-studio/");
+    const isDtfStudio = pathname === "/design/washa-ai" || pathname.startsWith("/design/washa-ai/");
 
     if (isDtfStudio) {
         // Keep the immersive DTF Studio outside SW interception completely.
