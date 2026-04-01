@@ -9,16 +9,17 @@ import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    searchParams?: Promise<{ page?: string; status?: string; admin?: string; search?: string }>;
+    searchParams?: Promise<{ page?: string; status?: string; admin?: string; search?: string; method?: string }>;
 }
 
 export default async function DesignOrdersPage({ searchParams }: PageProps) {
     const params = (await searchParams) ?? {} as Record<string, string | undefined>;
     const page = Number(params.page) || 1;
     const status = (params.status || "all") as CustomDesignOrderStatus | "all";
+    const method = (params.method || "all") as "studio" | "from_text" | "from_image" | "all";
 
     const [ordersResult, promptTemplate, adminList, snapshot, user] = await Promise.all([
-        getDesignOrders(page, status),
+        getDesignOrders(page, status, method),
         getDesignPromptTemplate(),
         getAdminList(),
         getDesignOperationsSnapshot(),
@@ -53,6 +54,7 @@ export default async function DesignOrdersPage({ searchParams }: PageProps) {
                     totalPages: ordersResult.totalPages,
                     currentPage: page,
                     currentStatus: status,
+                    currentMethod: method,
                     promptTemplate,
                     stats: {
                         new: snapshot.stats.new,

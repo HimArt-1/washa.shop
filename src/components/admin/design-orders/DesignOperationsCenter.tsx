@@ -55,6 +55,7 @@ interface DesignOperationsCenterProps {
         totalPages: number;
         currentPage: number;
         currentStatus: string;
+        currentMethod: "studio" | "from_text" | "from_image" | "all";
         promptTemplate: string;
         stats: {
             new: number;

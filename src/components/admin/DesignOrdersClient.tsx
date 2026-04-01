@@ -19,6 +19,7 @@ import {
     Save,
     Search,
     Settings2,
+    Sparkles,
     UserCircle2,
     X,
     XCircle,
@@ -67,6 +68,7 @@ interface Props {
     totalPages: number;
     currentPage: number;
     currentStatus: string;
+    currentMethod: "studio" | "from_text" | "from_image" | "all";
     promptTemplate: string;
     stats: DesignOrderStats;
     adminList: AdminProfile[];
@@ -81,6 +83,7 @@ export function DesignOrdersClient({
     totalPages,
     currentPage,
     currentStatus,
+    currentMethod,
     promptTemplate,
     stats,
     adminList,
@@ -95,6 +98,7 @@ export function DesignOrdersClient({
         const sp = new URLSearchParams();
         sp.set("page", params.page || String(currentPage));
         sp.set("status", params.status || currentStatus);
+        sp.set("method", params.method ?? currentMethod);
         router.push(`/dashboard/design-orders?${sp.toString()}`);
     };
 
@@ -139,6 +143,22 @@ export function DesignOrdersClient({
 
             {/* ══ Toolbar ══ */}
             <div className="flex flex-wrap items-center gap-3">
+                {/* Method Filter */}
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => navigate({ method: "all", page: "1" })}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${currentMethod === "all" ? "bg-theme-subtle text-theme border-theme-subtle" : "bg-theme-faint text-theme-faint border-theme-subtle hover:text-theme-subtle"}`}
+                    >
+                        الكل
+                    </button>
+                    <button
+                        onClick={() => navigate({ method: "studio", page: "1" })}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${currentMethod === "studio" ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-theme-faint text-theme-faint border-theme-subtle hover:text-theme-subtle"}`}
+                    >
+                        <Sparkles className="w-3 h-3" />
+                        WASHA AI
+                    </button>
+                </div>
                 {/* Status Filter */}
                 <div className="flex flex-wrap gap-2 flex-1 min-w-0">
                     {FILTER_STATUSES.map((s) => (
@@ -237,17 +257,37 @@ export function DesignOrdersClient({
                                         </td>
                                         {/* Garment */}
                                         <td className="px-4 py-3">
-                                            <p className="text-theme-strong text-sm">{order.garment_name}</p>
-                                            <p className="text-[10px] text-theme-faint mt-0.5">{order.color_name} · {order.size_name}</p>
-                                            {order.preset_name ? (
-                                                <p className={`mt-1 inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${
-                                                    order.preset_fully_aligned
-                                                        ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
-                                                        : "border border-gold/20 bg-gold/10 text-gold"
-                                                }`}>
-                                                    {order.preset_fully_aligned ? `Preset: ${order.preset_name}` : `Preset start: ${order.preset_name}`}
-                                                </p>
-                                            ) : null}
+                                            <div className="flex items-start gap-2">
+                                                {order.design_method === "studio" && order.dtf_mockup_url && (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img
+                                                        src={order.dtf_mockup_url}
+                                                        alt="mockup"
+                                                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-emerald-500/20"
+                                                    />
+                                                )}
+                                                <div>
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <p className="text-theme-strong text-sm">{order.garment_name}</p>
+                                                        {order.design_method === "studio" && (
+                                                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
+                                                                <Sparkles className="w-2.5 h-2.5" />
+                                                                WASHA AI
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[10px] text-theme-faint mt-0.5">{order.color_name} · {order.size_name}</p>
+                                                    {order.preset_name ? (
+                                                        <p className={`mt-1 inline-flex rounded-full px-2 py-1 text-[9px] font-bold ${
+                                                            order.preset_fully_aligned
+                                                                ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
+                                                                : "border border-gold/20 bg-gold/10 text-gold"
+                                                        }`}>
+                                                            {order.preset_fully_aligned ? `Preset: ${order.preset_name}` : `Preset start: ${order.preset_name}`}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                            </div>
                                         </td>
                                         {/* Status */}
                                         <td className="px-4 py-3">
@@ -269,12 +309,21 @@ export function DesignOrdersClient({
                                         </td>
                                         {/* Results */}
                                         <td className="px-4 py-3">
-                                            <div className="flex gap-1">
-                                                {order.result_design_url && <div className="w-2 h-2 rounded-full bg-emerald-400" title="تصميم" />}
-                                                {order.result_mockup_url && <div className="w-2 h-2 rounded-full bg-blue-400" title="موكاب" />}
-                                                {order.result_pdf_url && <div className="w-2 h-2 rounded-full bg-amber-400" title="PDF" />}
-                                                {!order.result_design_url && !order.result_mockup_url && !order.result_pdf_url && (
-                                                    <span className="text-[10px] text-theme-faint">—</span>
+                                            <div className="flex flex-col gap-1">
+                                                {order.design_method === "studio" ? (
+                                                    <div className="flex gap-1">
+                                                        <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="موكب AI" />
+                                                        <div className={`w-2 h-2 rounded-full ${order.dtf_extracted_url ? "bg-sky-400" : "bg-theme-faint"}`} title="ملف DTF" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-1">
+                                                        {order.result_design_url && <div className="w-2 h-2 rounded-full bg-emerald-400" title="تصميم" />}
+                                                        {order.result_mockup_url && <div className="w-2 h-2 rounded-full bg-blue-400" title="موكاب" />}
+                                                        {order.result_pdf_url && <div className="w-2 h-2 rounded-full bg-amber-400" title="PDF" />}
+                                                        {!order.result_design_url && !order.result_mockup_url && !order.result_pdf_url && (
+                                                            <span className="text-[10px] text-theme-faint">—</span>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                         </td>

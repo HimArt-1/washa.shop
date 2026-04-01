@@ -1256,7 +1256,7 @@ export async function submitDesignOrder(orderData: {
 
 // ─── Admin: Get Design Orders ───────────────────────────
 
-export async function getDesignOrders(page = 1, status: CustomDesignOrderStatus | "all" = "all") {
+export async function getDesignOrders(page = 1, status: CustomDesignOrderStatus | "all" = "all", method: "studio" | "from_text" | "from_image" | "all" = "all") {
     const { sb } = await requireSmartStoreAdmin();
     const perPage = 20;
     const from = (page - 1) * perPage;
@@ -1265,6 +1265,9 @@ export async function getDesignOrders(page = 1, status: CustomDesignOrderStatus 
     let query = sb.from("custom_design_orders").select("*", { count: "exact" });
     if (status !== "all") {
         query = query.eq("status", status);
+    }
+    if (method !== "all") {
+        query = query.eq("design_method", method);
     }
     const { data, count, error } = await query.order("created_at", { ascending: false }).range(from, to);
     if (error) {
