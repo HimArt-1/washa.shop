@@ -197,7 +197,17 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setConfig(loadedConfig);
         setState((current) => {
-          if (current.garmentId || current.styleId || current.techniqueId || current.paletteId) {
+          // Only preserve current selections if every set ID actually exists in the
+          // freshly loaded config. Fake fallback IDs (e.g. 'garment-tshirt') won't
+          // be found, so state will be rebuilt with real DB IDs.
+          const inList = (id: string | null, list: { id: string }[]) =>
+            !id || list.some((x) => x.id === id);
+          const selectionsAreValid =
+            inList(current.garmentId, loadedConfig.garments) &&
+            inList(current.styleId, loadedConfig.styles) &&
+            inList(current.techniqueId, loadedConfig.techniques) &&
+            inList(current.paletteId, loadedConfig.palettes);
+          if (selectionsAreValid && (current.garmentId || current.styleId || current.techniqueId || current.paletteId)) {
             return current;
           }
           return buildInitialState(loadedConfig);
@@ -208,10 +218,17 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setConfig(FALLBACK_DTF_CONFIG);
         setConfigError(message);
         setState((current) => {
-          if (current.garmentId || current.styleId || current.techniqueId || current.paletteId) {
-            return current;
+          // Don't initialise with fallback IDs if user already has real selections
+          const inFallback = (id: string | null, list: { id: string }[]) =>
+            !id || list.some((x) => x.id === id);
+          const hasRealSelections =
+            (current.garmentId || current.styleId || current.techniqueId || current.paletteId) &&
+            !inFallback(current.garmentId, FALLBACK_DTF_CONFIG.garments);
+          if (hasRealSelections) return current;
+          if (!current.garmentId && !current.styleId && !current.techniqueId && !current.paletteId) {
+            return buildInitialState(FALLBACK_DTF_CONFIG);
           }
-          return buildInitialState(FALLBACK_DTF_CONFIG);
+          return current;
         });
       } finally {
         if (!cancelled) {

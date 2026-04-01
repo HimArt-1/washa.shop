@@ -178,13 +178,29 @@ function mapPaletteOption(row: CustomDesignColorPackage): WashaDtfStudioPaletteO
 export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     const sb = getSupabaseAdminClient();
 
-    const [garmentsRes, colorsRes, sizesRes, stylesRes, artStylesRes, colorPackagesRes] = await Promise.all([
+    const [garmentsRes, colorsRes, sizesRes, stylesResScoped, artStylesResScoped, colorPackagesResScoped] = await Promise.all([
         sb.from("custom_design_garments").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_colors").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_sizes").select("*").eq("is_active", true).order("name"),
         sb.from("custom_design_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
         sb.from("custom_design_art_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
         sb.from("custom_design_color_packages").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
+    ]);
+
+    // If catalog_scope column doesn't exist yet (migration not applied), fall back to unfiltered queries
+    const scopeColumnMissing = (err: { message: string } | null) =>
+        !!err && /catalog_scope/i.test(err.message);
+
+    const [stylesRes, artStylesRes, colorPackagesRes] = await Promise.all([
+        scopeColumnMissing(stylesResScoped.error)
+            ? sb.from("custom_design_styles").select("*").eq("is_active", true).order("sort_order")
+            : Promise.resolve(stylesResScoped),
+        scopeColumnMissing(artStylesResScoped.error)
+            ? sb.from("custom_design_art_styles").select("*").eq("is_active", true).order("sort_order")
+            : Promise.resolve(artStylesResScoped),
+        scopeColumnMissing(colorPackagesResScoped.error)
+            ? sb.from("custom_design_color_packages").select("*").eq("is_active", true).order("sort_order")
+            : Promise.resolve(colorPackagesResScoped),
     ]);
 
     assertQuerySucceeded("custom_design_garments", garmentsRes.error);
