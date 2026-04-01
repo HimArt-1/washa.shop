@@ -75,6 +75,7 @@ export class AiStudioService {
         // Properly cast config to avoid @ts-ignore debt, as the SDK types
         // might not fully map standard imageConfig structures seamlessly.
         const config = {
+            responseModalities: ["IMAGE", "TEXT"],
             imageConfig: {
                 aspectRatio: "1:1",
                 imageSize: "1K",
@@ -145,6 +146,7 @@ export class AiStudioService {
         const providerStartedAt = Date.now();
         const client = getWashaDtfGenAiClient();
         const config = {
+            responseModalities: ["IMAGE", "TEXT"],
             imageConfig: {
                 aspectRatio: "1:1",
                 imageSize: "1K",

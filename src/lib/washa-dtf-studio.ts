@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const WASHA_DTF_MODEL = "gemini-3.1-flash-image-preview";
+export const WASHA_DTF_MODEL = "gemini-2.5-flash-image";
 
 export function getWashaDtfGenAiClient() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
