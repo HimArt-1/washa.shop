@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { ArrowDown, LogIn, UserPlus, Sparkles } from "lucide-react";
+import { ArrowDown, LogIn, UserPlus, Sparkles, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -258,18 +258,22 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                 <motion.button
                   type="button"
-                  className="group relative px-8 py-4 font-bold rounded-2xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                  className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                   style={{
-                    background: "linear-gradient(to right, var(--wusha-earth), var(--wusha-gold), var(--wusha-earth))",
-                    color: "var(--wusha-bg)",
-                    boxShadow: "0 4px 24px var(--neon-gold)",
+                    borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)",
+                    background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 20%, transparent), color-mix(in srgb, var(--wusha-earth) 18%, transparent), color-mix(in srgb, var(--wusha-gold) 16%, transparent))",
+                    color: "var(--wusha-text)",
                   }}
-                  whileHover={{ boxShadow: "0 8px 40px color-mix(in srgb, var(--wusha-gold) 40%, transparent)" }}
+                  whileHover={{
+                    boxShadow: "0 8px 32px color-mix(in srgb, var(--wusha-gold) 25%, transparent)",
+                    borderColor: "color-mix(in srgb, var(--wusha-gold) 50%, transparent)",
+                  }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => router.push("/store")}
                   suppressHydrationWarning
                 >
                   <span className="relative z-10 flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4" />
                     المتجر
                     <motion.span
                       animate={{ x: [0, 5, 0] }}
@@ -284,13 +288,13 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                     type="button"
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                     style={{
-                      borderColor: "color-mix(in srgb, var(--wusha-gold) 30%, transparent)",
-                      background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 20%, transparent), color-mix(in srgb, #06b6d4 18%, transparent), color-mix(in srgb, #22c55e 16%, transparent))",
+                      borderColor: "color-mix(in srgb, #a855f7 30%, transparent)",
+                      background: "linear-gradient(120deg, color-mix(in srgb, var(--wusha-gold) 18%, transparent), color-mix(in srgb, #a855f7 18%, transparent), color-mix(in srgb, #c084fc 16%, transparent))",
                       color: "var(--wusha-text)",
                     }}
                     whileHover={{
-                      boxShadow: "0 8px 32px color-mix(in srgb, #22c55e 20%, transparent)",
-                      borderColor: "color-mix(in srgb, #22c55e 35%, transparent)",
+                      boxShadow: "0 8px 32px color-mix(in srgb, #a855f7 22%, transparent)",
+                      borderColor: "color-mix(in srgb, #c084fc 40%, transparent)",
                     }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push("/design/washa-ai")}
