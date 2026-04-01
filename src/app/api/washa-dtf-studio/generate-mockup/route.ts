@@ -15,10 +15,7 @@ import {
 } from "../utils/trace";
 
 export const runtime = "nodejs";
-const ROUTE_MAX_DURATION_SECONDS = Number.parseInt(process.env.WASHA_DTF_ROUTE_MAX_DURATION_SECONDS || "120", 10);
-export const maxDuration = Number.isFinite(ROUTE_MAX_DURATION_SECONDS)
-    ? Math.min(Math.max(ROUTE_MAX_DURATION_SECONDS, 30), 300)
-    : 120;
+export const maxDuration = 120;
 const GENERATE_MOCKUP_TIMEOUT_MS = (() => {
     const parsed = Number.parseInt(process.env.WASHA_DTF_PROVIDER_TIMEOUT_MS || "90000", 10);
     if (!Number.isFinite(parsed)) return 90_000;

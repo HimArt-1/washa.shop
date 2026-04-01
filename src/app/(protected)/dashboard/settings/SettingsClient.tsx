@@ -19,6 +19,21 @@ interface SettingsProps {
     diagnostics: OperationalRulesDiagnostics;
 }
 
+type VisibilityState = {
+    gallery: boolean;
+    store: boolean;
+    signup: boolean;
+    join: boolean;
+    join_artist: boolean;
+    ai_section: boolean;
+    hero_auth_buttons: boolean;
+    hero_washa_ai_button: boolean;
+    design_piece: boolean;
+    design_piece_ai_switch: boolean;
+    design_piece_dtf_studio_switch: boolean;
+    design_piece_generation_public: boolean;
+};
+
 // ─── Toggle Switch ──────────────────────────────────────
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -269,7 +284,7 @@ function buildRuleSections(
 // ═══════════════════════════════════════════════════════════
 
 export function SettingsClient({ settings, diagnostics }: SettingsProps) {
-    const [visibility, setVisibility] = useState({
+    const [visibility, setVisibility] = useState<VisibilityState>({
         gallery: settings.visibility.gallery ?? false,
         store: settings.visibility.store ?? false,
         signup: settings.visibility.signup ?? false,
@@ -277,6 +292,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         join_artist: settings.visibility.join_artist ?? true,
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
+        hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,

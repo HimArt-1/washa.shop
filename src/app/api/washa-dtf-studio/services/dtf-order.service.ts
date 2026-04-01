@@ -376,9 +376,7 @@ export class DtfOrderService {
             });
 
             const orderInsertStartedAt = Date.now();
-            const { data: insertedOrder, error: insertOrderError } = await sb
-                .from("custom_design_orders")
-                .insert({
+            const designOrderInsertPayload: Record<string, unknown> = {
                     user_id: userId,
                     garment_id: garmentRow?.id ?? null,
                     garment_name: resolvedGarmentName,
@@ -418,7 +416,10 @@ export class DtfOrderService {
                     dtf_style_label: resolvedStyleName,
                     dtf_technique_label: resolvedTechniqueName,
                     dtf_palette_label: resolvedPaletteLabel,
-                })
+                };
+            const { data: insertedOrder, error: insertOrderError } = await (sb
+                .from("custom_design_orders") as any)
+                .insert(designOrderInsertPayload)
                 .select("id, order_number, tracker_token")
                 .single();
 
