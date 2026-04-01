@@ -378,7 +378,7 @@ function CheckoutContent() {
                                     </div>
                                 </button>
 
-                                {process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY && (
+                                {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
                                     <button
                                         type="button"
                                         onClick={() => setPaymentMethod("stripe")}
