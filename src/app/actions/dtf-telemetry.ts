@@ -22,7 +22,7 @@ export async function getDtfTelemetryLogs(page = 1, limit = 50): Promise<{ data:
 
         const { data, count, error } = await sb
             .from("dtf_studio_activity_logs")
-            .select("*", { count: "exact" })
+            .select("*", { count: "estimated" })
             .order("created_at", { ascending: false })
             .range(from, to);
 
@@ -71,7 +71,8 @@ export async function getDtfTelemetryStats(days = 7): Promise<{ data: DtfTelemet
             .from("dtf_studio_activity_logs")
             .select("status, created_at")
             .gte("created_at", daysAgo.toISOString())
-            .order("created_at", { ascending: true }); // chronological
+            .order("created_at", { ascending: true })
+            .limit(5000);
 
         if (error) {
             logDiagnosticWarning("admin-fetch-dtf-stats", error);
