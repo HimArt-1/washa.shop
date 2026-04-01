@@ -293,7 +293,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                       borderColor: "color-mix(in srgb, #22c55e 35%, transparent)",
                     }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => router.push("/design/ai")}
+                    onClick={() => router.push("/design/washa-ai")}
                     suppressHydrationWarning
                   >
                     <span className="relative z-10 flex items-center gap-2">

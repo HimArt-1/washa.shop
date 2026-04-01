@@ -43,7 +43,7 @@ export default async function DesignAiPage() {
                             </Link>
                             {visibility.design_piece_dtf_studio_switch !== false ? (
                                 <Link
-                                    href="/design/dtf-studio"
+                                    href="/design/washa-ai"
                                     className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-sm font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
                                 >
                                     <Wand2 className="h-4 w-4" />
@@ -78,7 +78,7 @@ export default async function DesignAiPage() {
                     <DesignPieceWizard />
                 ) : (
                     <DesignPieceAccessDenied
-                        redirectUrl="/design/ai"
+                        redirectUrl="/design/washa-studio"
                         variant={getDesignPieceDeniedVariant(access.reason)}
                     />
                 )}

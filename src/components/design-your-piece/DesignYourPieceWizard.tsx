@@ -606,7 +606,7 @@ export function DesignYourPieceWizard({
                     </div>
                     {aiModelShortcutEnabled ? (
                         <Link
-                            href="/design/ai"
+                            href="/design/washa-studio"
                             className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200 transition-colors hover:border-emerald-300/35 hover:bg-emerald-500/15"
                         >
                             <Sparkles className="h-3.5 w-3.5" />
@@ -616,7 +616,7 @@ export function DesignYourPieceWizard({
                     ) : null}
                     {dtfStudioShortcutEnabled ? (
                         <Link
-                            href="/design/dtf-studio"
+                            href="/design/washa-ai"
                             className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
                         >
                             <Wand2 className="h-3.5 w-3.5" />

@@ -696,8 +696,8 @@ export async function restoreDtfStudioCreativeCatalog() {
         }));
 
         revalidatePath("/dashboard/smart-store");
-        revalidatePath("/design/dtf-studio");
-        revalidatePath("/design/dtf-studio/app");
+        revalidatePath("/design/washa-ai");
+        revalidatePath("/design/washa-ai/app");
         revalidatePath("/api/washa-dtf-studio/config");
 
         const summary: CreativeCatalogRestoreSummary = {

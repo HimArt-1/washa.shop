@@ -238,7 +238,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                     active={workspace === "dtfStudio"}
                     icon={Camera}
                     title="WASHA AI"
-                    description="لوحة التحكم الفعلية التي تغذي /design/dtf-studio من حيث القطع والألوان والمقاسات والستايلات والتقنيات والباليت والموكبات."
+                    description="لوحة التحكم الفعلية التي تغذي /design/washa-ai من حيث القطع والألوان والمقاسات والستايلات والتقنيات والباليت والموكبات."
                     stats={[
                         `${garmentsState.length} قطع نشطة`,
                         `${colorsState.length} ألوان`,
@@ -376,7 +376,7 @@ function WorkspaceOverview({
             { label: "كتالوج مشترك", value: garments.length + colors.length + sizes.length, note: "قطع وألوان ومقاسات يتشاركها المساران" },
         ]
         : [
-            { label: "القطع النشطة", value: garments.length, note: "تظهر مباشرة في واجهة /design/dtf-studio" },
+            { label: "القطع النشطة", value: garments.length, note: "تظهر مباشرة في واجهة /design/washa-ai" },
             { label: "ألوان ومقاسات", value: colors.length + sizes.length, note: "تحدد ما يراه العميل فعليًا أثناء التصميم" },
             { label: "خيارات الإبداع", value: styles.length + artStyles.length + colorPackages.length, note: "ستايلات وتقنيات وباليت للتوليد" },
             { label: "موكبات التشغيل", value: garmentStudioMockups.length, note: "مرجع العرض البصري للمقاسات والمنتجات" },

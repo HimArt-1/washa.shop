@@ -825,8 +825,8 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
     revalidatePath("/");
     revalidatePath("/account");
     revalidatePath("/design");
-    revalidatePath("/design/ai");
-    revalidatePath("/design/dtf-studio");
+    revalidatePath("/design/washa-studio");
+    revalidatePath("/design/washa-ai");
     revalidatePath("/studio");
     if (key === "operational_rules") {
         revalidatePath("/dashboard/analytics");

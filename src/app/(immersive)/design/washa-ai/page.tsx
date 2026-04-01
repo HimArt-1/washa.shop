@@ -5,7 +5,7 @@ import { getDesignPieceDeniedVariant } from "@/lib/design-piece-access";
 import { resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
 
 export const metadata: Metadata = {
-    title: "DTF Studio | وشّى",
+    title: "WASHA AI | وشّى",
     description: "استوديو DTF المطور لتوليد موكب الملابس واستخراج ملف DTF عالي الجودة داخل تجربة واحدة.",
 };
 
@@ -17,13 +17,13 @@ export default async function DesignDtfStudioEntryPage() {
     }
 
     if (showWizard) {
-        redirect("/design/dtf-studio/app");
+        redirect("/design/washa-ai/app");
     }
 
     return (
         <div className="min-h-[100dvh] bg-[#050505] px-4 py-10 text-theme sm:px-6">
             <DesignPieceAccessDenied
-                redirectUrl="/design/dtf-studio"
+                redirectUrl="/design/washa-ai"
                 variant={getDesignPieceDeniedVariant(access.reason)}
             />
         </div>

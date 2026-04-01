@@ -31,7 +31,7 @@ async function ensureDtfStudioAccess(request: NextRequest) {
     }
 
     if (!access.allowed) {
-        return NextResponse.redirect(new URL("/design/dtf-studio", request.url));
+        return NextResponse.redirect(new URL("/design/washa-ai", request.url));
     }
 
     return null;
