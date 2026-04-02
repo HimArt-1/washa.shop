@@ -78,13 +78,13 @@ export async function generateMockup(
     ? compactPrompt([
         sceneDirectives,
         isArabicText
-          ? `Render ONLY this Arabic phrase as artistic calligraphy, written right-to-left with fully accurate Arabic letterforms and correct connections between letters: "${calligraphyText}". Do not transliterate, do not romanize, do not substitute Latin characters. Reproduce every Arabic letter exactly as written.`
+          ? `قم بتصميم المخطوطة الفنية التالية بالخط العربي الاحترافي وبدقة عالية وبدون أي نصوص لاتينية: "${calligraphyText}".`
           : `Render ONLY this phrase as artistic calligraphy: "${calligraphyText}".`,
         `Calligraphy style: ${style}.`,
         `Technique: ${technique}.`,
         `Palette: ${palette}.`,
         isArabicText
-          ? 'Graceful Arabic strokes, authentic calligraphy proportions, right-to-left flow, sharp letterforms on fabric, and no duplicated layers or extra words.'
+          ? 'خط عربي سليم، تداخل انسيابي للكلمات، تفاصيل عالية الوضوح على القماش، وبدون أي طبقات مكررة أو كلمات إضافية.'
           : 'Graceful curves, elegant strokes, sharp lettering on fabric, and no duplicated layers or extra words.',
         ...printDirectives,
       ])
