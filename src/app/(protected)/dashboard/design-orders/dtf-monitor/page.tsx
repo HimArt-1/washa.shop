@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowRightIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 120; // Allow 2 minutes on Vercel because of large log aggregations
 
 interface PageProps {
     searchParams?: Promise<{ page?: string }>;

@@ -72,7 +72,7 @@ export async function getDtfTelemetryStats(days = 7): Promise<{ data: DtfTelemet
             .select("status, created_at")
             .gte("created_at", daysAgo.toISOString())
             .order("created_at", { ascending: true })
-            .limit(5000);
+            .limit(1500);
 
         if (error) {
             logDiagnosticWarning("admin-fetch-dtf-stats", error);

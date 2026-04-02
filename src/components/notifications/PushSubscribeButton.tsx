@@ -233,8 +233,8 @@ async function getOrCreatePushSubscription(reg: ServiceWorkerRegistration) {
             userVisibleOnly: true,
             applicationServerKey,
         });
-    } catch (error) {
-        if (error instanceof DOMException && error.name === "InvalidStateError") {
+    } catch (error: any) {
+        if (error && typeof error === "object" && error.name === "InvalidStateError") {
             const staleSubscription = await reg.pushManager.getSubscription();
             if (staleSubscription) {
                 await staleSubscription.unsubscribe().catch(() => false);
