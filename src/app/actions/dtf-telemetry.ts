@@ -20,11 +20,15 @@ export async function getDtfTelemetryLogs(page = 1, limit = 50): Promise<{ data:
         const from = (page - 1) * limit;
         const to = from + limit - 1;
 
+        // Select required columns, using limit directly to guard against huge base64 string payloads
+        // causing JSON unterminated string crashes over the wire and pagination timeouts
         const { data, count, error } = await sb
             .from("dtf_studio_activity_logs")
-            .select("*", { count: "estimated" })
+            .select("id, status, action, prompt, error_message, result_image_url, profile_id, created_at", { count: "estimated" })
             .order("created_at", { ascending: false })
             .range(from, to);
+        
+        // const count = 0; // We will handle pagination without totalCount for now, or fetch count differently.
 
         if (error) {
             logDiagnosticWarning("admin-fetch-dtf-telemetry", error);
@@ -67,11 +71,10 @@ export async function getDtfTelemetryStats(days = 7): Promise<{ data: DtfTelemet
         daysAgo.setUTCHours(0, 0, 0, 0);
 
         // Fetch minimal data needed for statistics to avoid payload bloat
+        // Notice: Removed .gte() and .order() to prevent PostgreSQL statement timeout on large unindexed tables
         const { data, error } = await sb
             .from("dtf_studio_activity_logs")
             .select("status, created_at")
-            .gte("created_at", daysAgo.toISOString())
-            .order("created_at", { ascending: true })
             .limit(1500);
 
         if (error) {

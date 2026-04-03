@@ -17,7 +17,7 @@ export default async function DtfMonitorPage({ searchParams }: PageProps) {
     const page = Number(params.page) || 1;
 
     const [logsResult, statsResult] = await Promise.all([
-        getDtfTelemetryLogs(page, 50),
+        getDtfTelemetryLogs(page, 15),
         getDtfTelemetryStats(7)
     ]);
 
