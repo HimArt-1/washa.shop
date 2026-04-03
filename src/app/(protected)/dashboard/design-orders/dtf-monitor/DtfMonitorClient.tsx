@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import Image from "next/image";
@@ -16,6 +16,11 @@ interface DtfMonitorClientProps {
 export function DtfMonitorClient({ initialLogs, totalCount, currentPage }: DtfMonitorClientProps) {
     const totalPages = Math.ceil(totalCount / 15);
     const [selectedLog, setSelectedLog] = useState<DtfStudioActivityLog | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -140,7 +145,7 @@ export function DtfMonitorClient({ initialLogs, totalCount, currentPage }: DtfMo
                                     )}
                                 </td>
                                 <td className="px-6 py-5 whitespace-nowrap text-neutral-400 font-mono text-xs tracking-widest">
-                                    {format(new Date(log.created_at), "dd MMM yy-HH:mm", { locale: ar })}
+                                    {mounted ? format(new Date(log.created_at), "dd MMM yy-HH:mm", { locale: ar }) : "---"}
                                 </td>
                             </tr>
                         ))}
@@ -248,7 +253,7 @@ export function DtfMonitorClient({ initialLogs, totalCount, currentPage }: DtfMo
                                         </div>
                                         <div>
                                             <p className="text-xs text-neutral-500 tracking-wide mb-1">الختم الزمني (TIMESTAMP)</p>
-                                            <p className="text-sm text-neutral-200 font-mono tracking-widest" dir="ltr">{format(new Date(selectedLog.created_at), "PPPpp")}</p>
+                                            <p className="text-sm text-neutral-200 font-mono tracking-widest" dir="ltr">{mounted ? format(new Date(selectedLog.created_at), "PPPpp") : ""}</p>
                                         </div>
                                     </div>
                                     <div className="w-full h-px bg-white/5" />
