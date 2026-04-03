@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { DesignPieceAccessDenied } from "@/components/studio/design-piece/DesignPieceAccessDenied";
 import { WashaAiEntryGate } from "@/components/studio/washa-ai/WashaAiEntryGate";
 import { getDesignPieceDeniedVariant } from "@/lib/design-piece-access";
-import { resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
+import { isWashaAiRouteAvailable, resolveDesignPiecePageState } from "@/lib/design-piece-runtime";
 
 export const metadata: Metadata = {
     title: "WASHA AI | وشّى",
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function DesignDtfStudioEntryPage() {
     const { visibility, access, showWizard } = await resolveDesignPiecePageState();
 
-    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
+    if (!isWashaAiRouteAvailable(visibility)) {
         redirect("/design");
     }
 

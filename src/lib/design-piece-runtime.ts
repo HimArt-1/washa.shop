@@ -3,6 +3,14 @@ import { resolveDesignPieceAccess, type DesignPieceAccessResult } from "@/lib/de
 
 export type DesignPieceVisibility = Awaited<ReturnType<typeof getPublicVisibility>>;
 
+/** Same rule as `/design/washa-ai` before access checks: section on + DTF shortcut not disabled. */
+export function isWashaAiRouteAvailable(visibility: {
+    design_piece?: boolean;
+    design_piece_dtf_studio_switch?: boolean;
+}): boolean {
+    return Boolean(visibility.design_piece) && visibility.design_piece_dtf_studio_switch !== false;
+}
+
 function getPublicAccessResult(): DesignPieceAccessResult {
     return {
         allowed: true,
