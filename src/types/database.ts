@@ -977,7 +977,8 @@ export type Database = {
 
 export type CustomDesignOrderStatus = "new" | "in_progress" | "awaiting_review" | "completed" | "cancelled" | "modification_requested";
 
-export type DesignPricingSnapshot = {
+/** لقطة تسعير مسار المتجر الذكي (طباعة حسب الموضع/الحجم). */
+export type DesignPricingSnapshotClassic = {
     garment_id: string | null;
     garment_name: string;
     captured_at: string;
@@ -988,7 +989,17 @@ export type DesignPricingSnapshot = {
     price_back_small: number;
     price_shoulder_large: number;
     price_shoulder_small: number;
-}
+};
+
+/** لقطة تسعير طلبات WASHA AI / DTF Studio (مخزّنة في JSON). */
+export type DesignPricingSnapshotDtf = {
+    base_price: number;
+    design_price: number;
+    final_price: number;
+    dtf: true;
+};
+
+export type DesignPricingSnapshot = DesignPricingSnapshotClassic | DesignPricingSnapshotDtf;
 
 export type CustomDesignOrder = {
     id: string;

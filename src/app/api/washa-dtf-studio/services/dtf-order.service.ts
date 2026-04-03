@@ -18,9 +18,13 @@ import type {
     CustomDesignGarment,
     CustomDesignSize,
     CustomDesignStyle,
+    Database,
+    DesignPricingSnapshotDtf,
 } from "@/types/database";
 
 export type SubmitOrderPayload = z.infer<typeof submitOrderSchema>;
+
+type CustomDesignOrderInsert = Database["public"]["Tables"]["custom_design_orders"]["Insert"];
 
 const DEFAULT_DTF_PRINT_POSITION: PrintPosition = "chest";
 const DEFAULT_DTF_PRINT_SIZE: PrintSize = "large";
@@ -376,49 +380,54 @@ export class DtfOrderService {
             });
 
             const orderInsertStartedAt = Date.now();
-            const designOrderInsertPayload: Record<string, unknown> = {
-                    user_id: userId,
-                    garment_id: garmentRow?.id ?? null,
-                    garment_name: resolvedGarmentName,
-                    garment_image_url: garmentRow?.image_url ?? null,
-                    color_id: colorRow?.id ?? null,
-                    color_name: resolvedColorName,
-                    color_hex: resolvedColorHex,
-                    color_image_url: colorRow?.image_url ?? null,
-                    size_id: sizeRow?.id ?? null,
-                    size_name: resolvedSizeName,
-                    design_method: "studio",
-                    text_prompt: calligraphyText?.trim() ? `مخطوطة: ${calligraphyText.trim()}` : (prompt || "تصميم DTF من الاستوديو"),
-                    reference_image_url: extractedUrl ?? mockupResult.url,
-                    style_id: styleRow?.id ?? null,
-                    style_name: resolvedStyleName,
-                    style_image_url: styleRow?.image_url ?? null,
-                    art_style_id: artStyleRow?.id ?? null,
-                    art_style_name: resolvedTechniqueName,
-                    art_style_image_url: artStyleRow?.image_url ?? null,
-                    color_package_id: colorPackageRow?.id ?? (paletteId ?? null),
-                    color_package_name: resolvedPaletteLabel,
-                    custom_colors: DtfOrderService.buildCustomColorsPayload(customPalette),
-                    ai_prompt: aiPrompt,
-                    customer_name: customerName,
-                    customer_email: customerEmail,
-                    customer_phone: customerPhone,
-                    print_position: DEFAULT_DTF_PRINT_POSITION,
-                    print_size: DEFAULT_DTF_PRINT_SIZE,
-                    pricing_snapshot: {
-                        base_price: pricing.base_price,
-                        design_price: designPrice,
-                        final_price: finalPrice,
-                        dtf: true,
-                    },
-                    dtf_mockup_url: mockupResult.url,
-                    dtf_extracted_url: extractedUrl,
-                    dtf_style_label: resolvedStyleName,
-                    dtf_technique_label: resolvedTechniqueName,
-                    dtf_palette_label: resolvedPaletteLabel,
-                };
-            const { data: insertedOrder, error: insertOrderError } = await (sb
-                .from("custom_design_orders") as any)
+            const dtfPricingSnapshot: DesignPricingSnapshotDtf = {
+                base_price: pricing.base_price,
+                design_price: designPrice,
+                final_price: finalPrice,
+                dtf: true,
+            };
+            const designOrderInsertPayload: CustomDesignOrderInsert = {
+                user_id: userId,
+                garment_id: garmentRow?.id ?? null,
+                garment_name: resolvedGarmentName,
+                garment_image_url: garmentRow?.image_url ?? null,
+                color_id: colorRow?.id ?? null,
+                color_name: resolvedColorName,
+                color_hex: resolvedColorHex,
+                color_image_url: colorRow?.image_url ?? null,
+                size_id: sizeRow?.id ?? null,
+                size_name: resolvedSizeName,
+                design_method: "studio",
+                text_prompt: calligraphyText?.trim() ? `مخطوطة: ${calligraphyText.trim()}` : (prompt || "تصميم DTF من الاستوديو"),
+                reference_image_url: extractedUrl ?? mockupResult.url,
+                preset_id: null,
+                preset_name: null,
+                preset_fully_aligned: false,
+                style_id: styleRow?.id ?? null,
+                style_name: resolvedStyleName,
+                style_image_url: styleRow?.image_url ?? null,
+                art_style_id: artStyleRow?.id ?? null,
+                art_style_name: resolvedTechniqueName,
+                art_style_image_url: artStyleRow?.image_url ?? null,
+                color_package_id: colorPackageRow?.id ?? (paletteId ?? null),
+                color_package_name: resolvedPaletteLabel,
+                custom_colors: DtfOrderService.buildCustomColorsPayload(customPalette),
+                studio_item_id: null,
+                ai_prompt: aiPrompt,
+                customer_name: customerName,
+                customer_email: customerEmail,
+                customer_phone: customerPhone,
+                print_position: DEFAULT_DTF_PRINT_POSITION,
+                print_size: DEFAULT_DTF_PRINT_SIZE,
+                pricing_snapshot: dtfPricingSnapshot,
+                dtf_mockup_url: mockupResult.url,
+                dtf_extracted_url: extractedUrl,
+                dtf_style_label: resolvedStyleName,
+                dtf_technique_label: resolvedTechniqueName,
+                dtf_palette_label: resolvedPaletteLabel,
+            };
+            const { data: insertedOrder, error: insertOrderError } = await sb
+                .from("custom_design_orders")
                 .insert(designOrderInsertPayload)
                 .select("id, order_number, tracker_token")
                 .single();

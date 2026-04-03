@@ -12,7 +12,7 @@ import type {
     CustomDesignStudioItem,
     CustomDesignStyle,
     Database,
-    DesignPricingSnapshot,
+    DesignPricingSnapshotClassic,
 } from "@/types/database";
 import {
     type DesignMethod,
@@ -51,7 +51,7 @@ export type ResolvedDesignOrderSelections = {
     colorImageUrl: string | null;
     sizeId: string | null;
     sizeName: string;
-    pricingSnapshot: DesignPricingSnapshot;
+    pricingSnapshot: DesignPricingSnapshotClassic;
 };
 
 export type ResolvedDesignCreativeSelections = {
@@ -243,7 +243,7 @@ export function buildPricingSnapshot(
     garmentId: string | null,
     garmentName: string,
     pricing: GarmentPricing
-): DesignPricingSnapshot {
+): DesignPricingSnapshotClassic {
     return {
         garment_id: garmentId,
         garment_name: garmentName,
@@ -252,7 +252,7 @@ export function buildPricingSnapshot(
     };
 }
 
-export function normalizePricingSnapshot(value: unknown): DesignPricingSnapshot | null {
+export function normalizePricingSnapshot(value: unknown): DesignPricingSnapshotClassic | null {
     if (!value || typeof value !== "object") return null;
     const snapshot = value as Record<string, unknown>;
     const garmentName = sanitizePlainText(snapshot.garment_name, 120);
@@ -613,7 +613,7 @@ export async function resolveDesignCreativeSelections(
 export function getPricingSnapshotForOrder(
     order: Pick<CustomDesignOrder, "pricing_snapshot" | "garment_id" | "garment_name">,
     fallbackPricing: GarmentPricing
-): DesignPricingSnapshot {
+): DesignPricingSnapshotClassic {
     const snapshot = normalizePricingSnapshot(order.pricing_snapshot);
     if (snapshot) {
         return snapshot;
