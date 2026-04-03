@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useCartStore } from "@/stores/cartStore";
 import { motion } from "framer-motion";
 import { ArrowRight, Check, Loader2, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
@@ -28,11 +28,45 @@ type AddressFormValues = z.infer<typeof addressSchema>;
 type PaymentMethod = "cod" | "stripe";
 type CheckoutStep = "address" | "paying";
 
+async function verifyCheckoutPayment(params: {
+    orderId?: string;
+    orderNumber: string;
+    sessionId?: string;
+}) {
+    try {
+        const response = await fetch("/api/stripe/checkout-session/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(params),
+        });
+
+        const json = await response.json();
+        if (!response.ok || !json.success) {
+            return {
+                success: false as const,
+                error: json.error || "تعذر التحقق من الدفع",
+            };
+        }
+
+        return {
+            success: true as const,
+            orderNumber: typeof json.orderNumber === "string" ? json.orderNumber : params.orderNumber,
+        };
+    } catch {
+        return {
+            success: false as const,
+            error: "تعذر الاتصال بالخادم للتحقق من الدفع",
+        };
+    }
+}
+
 function CheckoutContent() {
     const { items, getCartTotal, clearCart, getSubtotal, getDiscountAmount, coupon } = useCartStore();
     const searchParams = useSearchParams();
+    const verifiedPaymentKeyRef = useRef<string | null>(null);
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -40,14 +74,51 @@ function CheckoutContent() {
     // حالة الدفع المدمج
     const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("address");
     const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
+    const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
     const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
+    const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
 
     useEffect(() => {
         const orderNum = searchParams.get("order");
-        if (searchParams.get("success") === "1" && orderNum) {
-            setSuccess(orderNum);
-            clearCart();
+        const orderId = searchParams.get("order_id");
+        const sessionId = searchParams.get("session_id");
+
+        if (searchParams.get("success") !== "1" || !orderNum) {
+            return;
         }
+
+        const verificationKey = `${orderId || "unknown"}:${sessionId || "unknown"}:${orderNum}`;
+        if (verifiedPaymentKeyRef.current === verificationKey) {
+            return;
+        }
+        verifiedPaymentKeyRef.current = verificationKey;
+
+        setIsVerifyingPayment(true);
+        setError(null);
+
+        void (async () => {
+            const result = await verifyCheckoutPayment({
+                orderId: orderId || undefined,
+                orderNumber: orderNum,
+                sessionId: sessionId || undefined,
+            });
+
+            if (!result.success) {
+                setError(result.error);
+                setIsVerifyingPayment(false);
+                return;
+            }
+
+            clearCart();
+            setSuccess(result.orderNumber);
+            setCheckoutStep("address");
+            setStripeClientSecret(null);
+            setPendingOrderId(null);
+            setPendingOrderNumber(null);
+            setPendingSessionId(null);
+            setIsVerifyingPayment(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        })();
     }, [searchParams, clearCart]);
 
     const form = useForm<AddressFormValues>({
@@ -68,6 +139,44 @@ function CheckoutContent() {
     }, []);
 
     if (!isClient) return null;
+
+    const isReturningFromStripe =
+        searchParams.get("success") === "1" && Boolean(searchParams.get("order"));
+
+    if ((isVerifyingPayment || (isReturningFromStripe && !error)) && !success) {
+        return (
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center gap-4 pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
+                <Loader2 className="h-10 w-10 animate-spin text-gold" />
+                <div className="space-y-2">
+                    <h1 className="text-2xl font-bold">جاري التحقق من الدفع</h1>
+                    <p className="text-sm text-theme-subtle">
+                        نتحقق الآن من Stripe ونؤكد الطلب داخل النظام.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (isReturningFromStripe && error && !success) {
+        return (
+            <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
+                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                    <h1 className="mb-4 text-2xl font-bold">تعذر تأكيد الدفع تلقائياً</h1>
+                    <p className="mb-8 text-theme-subtle">
+                        {error}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        <Link href="/account/orders" className="btn-gold px-8 py-3 rounded-xl">
+                            متابعة الطلبات
+                        </Link>
+                        <Link href="/checkout" className="px-8 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
+                            العودة للدفع
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (items.length === 0 && !success) {
         return (
@@ -139,7 +248,7 @@ function CheckoutContent() {
 
         if (paymentMethod === "stripe" && result.order_id && result.order_number && result.total) {
             // إنشاء جلسة Checkout مدمجة (ui_mode: 'custom')
-            let json: { clientSecret?: string; error?: string } = {};
+            let json: { clientSecret?: string; sessionId?: string; error?: string } = {};
             try {
                 const response = await fetch("/api/stripe/checkout-session", {
                     method: "POST",
@@ -151,7 +260,7 @@ function CheckoutContent() {
                     }),
                 });
                 json = await response.json();
-                if (!response.ok || !json.clientSecret) {
+                if (!response.ok || !json.clientSecret || !json.sessionId) {
                     setError(json.error || "فشل في إنشاء جلسة الدفع");
                     setIsSubmitting(false);
                     return;
@@ -163,7 +272,9 @@ function CheckoutContent() {
             }
 
             setStripeClientSecret(json.clientSecret!);
+            setPendingOrderId(result.order_id);
             setPendingOrderNumber(result.order_number);
+            setPendingSessionId(json.sessionId);
             setCheckoutStep("paying");
         } else {
             // الدفع عند الاستلام
@@ -175,10 +286,30 @@ function CheckoutContent() {
         setIsSubmitting(false);
     }
 
-    function handlePaymentSuccess() {
+    async function handlePaymentSuccess(params: {
+        orderId: string;
+        orderNumber: string;
+        sessionId: string;
+    }) {
+        setIsVerifyingPayment(true);
+        setError(null);
+
+        const result = await verifyCheckoutPayment(params);
+        if (!result.success) {
+            setIsVerifyingPayment(false);
+            return result;
+        }
+
         clearCart();
-        setSuccess(pendingOrderNumber || "#ORDER");
+        setSuccess(result.orderNumber);
+        setCheckoutStep("address");
+        setStripeClientSecret(null);
+        setPendingOrderId(null);
+        setPendingOrderNumber(null);
+        setPendingSessionId(null);
+        setIsVerifyingPayment(false);
         window.scrollTo({ top: 0, behavior: "smooth" });
+        return { success: true as const };
     }
 
     if (success) {
@@ -211,7 +342,7 @@ function CheckoutContent() {
     }
 
     // ─── خطوة الدفع المدمج ────────────────────────────────────
-    if (checkoutStep === "paying" && stripeClientSecret && pendingOrderNumber) {
+    if (checkoutStep === "paying" && stripeClientSecret && pendingOrderId && pendingOrderNumber && pendingSessionId) {
         return (
             <div className="min-h-screen bg-theme pt-28 pb-16 sm:pt-32 sm:pb-20">
                 <div className="container-wusha max-w-2xl">
@@ -232,7 +363,9 @@ function CheckoutContent() {
 
                     <StripePaymentForm
                         clientSecret={stripeClientSecret}
+                        orderId={pendingOrderId}
                         orderNumber={pendingOrderNumber}
+                        sessionId={pendingSessionId}
                         onSuccess={handlePaymentSuccess}
                     />
 

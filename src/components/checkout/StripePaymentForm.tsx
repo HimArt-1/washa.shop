@@ -8,11 +8,10 @@
 import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
-    Elements,
+    CheckoutProvider,
     PaymentElement,
-    useStripe,
-    useElements,
-} from "@stripe/react-stripe-js";
+    useCheckout,
+} from "@stripe/react-stripe-js/checkout";
 import { Loader2, Lock, ShieldCheck } from "lucide-react";
 
 const stripePromise = loadStripe(
@@ -66,43 +65,94 @@ const appearance: import("@stripe/stripe-js").Appearance = {
     },
 };
 
+type PaymentConfirmationResult = {
+    success: boolean;
+    error?: string;
+};
+
 // ─── نموذج الدفع الداخلي ────────────────────────────────────
 function PaymentForm({
+    orderId,
     orderNumber,
+    sessionId,
     onSuccess,
     onError,
 }: {
+    orderId: string;
     orderNumber: string;
-    onSuccess: () => void;
+    sessionId: string;
+    onSuccess: (params: {
+        orderId: string;
+        orderNumber: string;
+        sessionId: string;
+    }) => Promise<PaymentConfirmationResult>;
     onError: (msg: string) => void;
 }) {
-    const stripe = useStripe();
-    const elements = useElements();
+    const checkoutState = useCheckout();
     const [isProcessing, setIsProcessing] = useState(false);
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!stripe || !elements) return;
+
+        if (checkoutState.type !== "success") {
+            onError(
+                checkoutState.type === "error"
+                    ? checkoutState.error.message
+                    : "جاري تحميل بوابة الدفع، أعد المحاولة بعد لحظات"
+            );
+            return;
+        }
 
         setIsProcessing(true);
 
-        const { error, paymentIntent } = await stripe.confirmPayment({
-            elements,
+        const returnUrl = new URL("/checkout", window.location.origin);
+        returnUrl.searchParams.set("success", "1");
+        returnUrl.searchParams.set("order", orderNumber);
+        returnUrl.searchParams.set("order_id", orderId);
+        returnUrl.searchParams.set("session_id", sessionId);
+
+        const result = await checkoutState.checkout.confirm({
             redirect: "if_required",
-            confirmParams: {
-                return_url: `${window.location.origin}/checkout?success=1&order=${encodeURIComponent(orderNumber)}`,
-            },
+            returnUrl: returnUrl.toString(),
         });
 
-        if (error) {
-            onError(error.message || "فشل في معالجة الدفع");
+        if (result.type === "error") {
+            onError(result.error.message || "فشل في معالجة الدفع");
             setIsProcessing(false);
-        } else if (paymentIntent?.status === "succeeded") {
-            onSuccess();
-        } else {
-            setIsProcessing(false);
+            return;
         }
+
+        if (
+            result.session.status.type === "complete" &&
+            result.session.status.paymentStatus === "paid"
+        ) {
+            const confirmation = await onSuccess({
+                orderId,
+                orderNumber,
+                sessionId: result.session.id,
+            });
+
+            if (!confirmation.success) {
+                onError(confirmation.error || "تم الدفع لكن تعذر تأكيد الطلب");
+                setIsProcessing(false);
+            }
+            return;
+        }
+
+        onError(result.session.lastPaymentError?.message || "عملية الدفع لم تكتمل بعد");
+        setIsProcessing(false);
     }
+
+    if (checkoutState.type === "error") {
+        return (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
+                {checkoutState.error.message}
+            </div>
+        );
+    }
+
+    const canConfirm =
+        checkoutState.type === "success" && checkoutState.checkout.canConfirm;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -110,7 +160,7 @@ function PaymentForm({
 
             <button
                 type="submit"
-                disabled={!stripe || !elements || isProcessing}
+                disabled={!canConfirm || isProcessing}
                 className="w-full btn-gold py-4 text-base font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
             >
                 {isProcessing ? (
@@ -137,12 +187,20 @@ function PaymentForm({
 // ─── المكوّن الرئيسي ────────────────────────────────────────
 export function StripePaymentForm({
     clientSecret,
+    orderId,
     orderNumber,
+    sessionId,
     onSuccess,
 }: {
     clientSecret: string;
+    orderId: string;
     orderNumber: string;
-    onSuccess: () => void;
+    sessionId: string;
+    onSuccess: (params: {
+        orderId: string;
+        orderNumber: string;
+        sessionId: string;
+    }) => Promise<PaymentConfirmationResult>;
 }) {
     const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -159,16 +217,21 @@ export function StripePaymentForm({
                 </div>
             )}
 
-            <Elements
+            <CheckoutProvider
                 stripe={stripePromise}
-                options={{ clientSecret, appearance }}
+                options={{
+                    clientSecret,
+                    elementsOptions: { appearance },
+                }}
             >
                 <PaymentForm
+                    orderId={orderId}
                     orderNumber={orderNumber}
+                    sessionId={sessionId}
                     onSuccess={onSuccess}
                     onError={setPaymentError}
                 />
-            </Elements>
+            </CheckoutProvider>
         </div>
     );
 }

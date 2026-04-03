@@ -4,9 +4,9 @@
 // ═══════════════════════════════════════════════════════════
 
 import { stripe } from "@/lib/stripe";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
     if (!stripe) {
@@ -26,10 +26,7 @@ export async function POST(req: NextRequest) {
         }
 
         // التحقق من ملكية الطلب ومطابقة المبلغ
-        const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
+        const supabase = getSupabaseAdminClient();
 
         const [
             { data: order, error: orderErr },
@@ -81,11 +78,14 @@ export async function POST(req: NextRequest) {
                 clerk_user_id: user.id,
             },
             // عند 3D Secure يُعاد التوجيه لهذا الرابط
-            return_url: `${baseUrl}/checkout?success=1&order=${encodeURIComponent(orderNumber)}`,
+            return_url: `${baseUrl}/checkout?success=1&order=${encodeURIComponent(orderNumber)}&order_id=${encodeURIComponent(orderId)}`,
             customer_email: user.emailAddresses?.[0]?.emailAddress || undefined,
         });
 
-        return NextResponse.json({ clientSecret: session.client_secret });
+        return NextResponse.json({
+            clientSecret: session.client_secret,
+            sessionId: session.id,
+        });
     } catch (err: unknown) {
         console.error("[Stripe Checkout Session]", err);
         return NextResponse.json(
