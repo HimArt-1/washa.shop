@@ -1,5 +1,6 @@
 import { Hero } from "@/components/sections/Hero";
 import { AISection } from "@/components/sections/AISection";
+import { Store } from "@/components/sections/Store";
 import { getSiteSettings } from "@/app/actions/settings";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
 import { isWashaAiRouteAvailable } from "@/lib/design-piece-runtime";
@@ -16,6 +17,7 @@ export default async function Home() {
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={showWashaAiButton}
                 />
+                {v.store ? <Store /> : null}
                 {settings.visibility.ai_section !== false && (
                     <AISection config={settings.ai_simulation} />
                 )}

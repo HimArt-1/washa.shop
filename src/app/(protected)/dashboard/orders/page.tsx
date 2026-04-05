@@ -1,17 +1,19 @@
-import { getAdminOrders, getOrdersOperationsSnapshot } from "@/app/actions/admin";
+import { Suspense } from "react";
+import { getAdminOrderForFocusList, getAdminOrders, getOrdersOperationsSnapshot } from "@/app/actions/admin";
 import { OrdersClient } from "@/components/admin/OrdersClient";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    searchParams?: { page?: string; status?: string };
+    searchParams?: { page?: string; status?: string; focus?: string };
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const params = searchParams ?? {};
     const page = Number(params.page) || 1;
     const status = params.status || "all";
+    const focusOrderId = typeof params.focus === "string" ? params.focus.trim() : "";
 
     const snapshot = await getOrdersOperationsSnapshot();
 
@@ -27,6 +29,18 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
         console.error("[Orders] Error:", err);
     }
 
+    if (focusOrderId && orders.length > 0 && !orders.some((o) => o.id === focusOrderId)) {
+        const focused = await getAdminOrderForFocusList(focusOrderId);
+        if (focused) {
+            orders = [focused, ...orders.filter((o) => o.id !== focusOrderId)];
+        }
+    } else if (focusOrderId && orders.length === 0) {
+        const focused = await getAdminOrderForFocusList(focusOrderId);
+        if (focused) {
+            orders = [focused];
+        }
+    }
+
     return (
         <div className="space-y-6">
             <AdminHeader
@@ -34,14 +48,24 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                 subtitle="غرفة تشغيل يومية لمراجعة الطلبات، المدفوعات، التنفيذ، والشحن من زاوية واحدة."
             />
 
-            <OrdersClient
-                snapshot={snapshot}
-                orders={orders}
-                count={count}
-                totalPages={totalPages}
-                currentPage={page}
-                currentStatus={status}
-            />
+            <Suspense
+                fallback={
+                    <div
+                        className="h-72 animate-pulse rounded-[28px] border border-theme-subtle bg-theme-faint"
+                        aria-hidden
+                    />
+                }
+            >
+                <OrdersClient
+                    snapshot={snapshot}
+                    orders={orders}
+                    count={count}
+                    totalPages={totalPages}
+                    currentPage={page}
+                    currentStatus={status}
+                    initialFocusOrderId={focusOrderId || undefined}
+                />
+            </Suspense>
         </div>
     );
 }

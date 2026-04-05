@@ -1725,6 +1725,33 @@ export async function getAdminOrders(page = 1, status = "all") {
     }
 }
 
+/** نفس شكل عناصر قائمة getAdminOrders — لإبراز طلب عبر ?focus= من لوحة المؤشرات */
+export async function getAdminOrderForFocusList(orderId: string) {
+    noStore();
+    if (!orderId?.trim()) {
+        return null;
+    }
+    try {
+        const { supabase } = await requireAdmin();
+        const selectQuery = `
+            *,
+            buyer:profiles(id, display_name, username, avatar_url),
+            order_items(
+                id, product_id, quantity, size, unit_price, total_price,
+                custom_design_url, custom_garment, custom_title,
+                product:products(id, title, image_url)
+            )
+        `;
+        const { data, error } = await supabase.from("orders").select(selectQuery).eq("id", orderId).maybeSingle();
+        if (error || !data) {
+            return null;
+        }
+        return data;
+    } catch {
+        return null;
+    }
+}
+
 export async function updateOrderStatus(orderId: string, newStatus: string) {
     const { supabase } = await requireAdmin();
 

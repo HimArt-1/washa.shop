@@ -5,10 +5,22 @@ import { StoreFilters } from "./StoreFilters";
 import { ProductCard } from "@/components/store/ProductCard";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
     title: "المتجر | WUSHA",
     description: "اكتشف مجموعة WUSHA الحصرية من القطع الفنية والملابس المصممة بعناية.",
+    openGraph: {
+        title: "المتجر | وشّى",
+        description: "قطع فنية وملابس مصممة بعناية — تصفح النوع والترتيب والمخزون.",
+        type: "website",
+        locale: "ar_SA",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "المتجر | وشّى",
+        description: "قطع فنية وملابس مصممة بعناية.",
+    },
 };
 
 export default async function StorePage({
@@ -28,48 +40,66 @@ export default async function StorePage({
     }
 
     const { data: products, count, totalPages } = await getProducts(page, type, inStockOnly, sort);
+    const list = products || [];
+    const showFeaturedTile = page === 1 && list.length >= 3;
 
     return (
         <div className="min-h-[60vh] pb-12 pt-6 sm:pb-16 sm:pt-8" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
-                {/* ─── Header ─── */}
-                <div className="mb-10 theme-surface-panel rounded-[2rem] px-5 py-8 text-center sm:mb-12 sm:px-8 sm:py-10 lg:px-10">
-                    <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-xs">
-                        <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 font-semibold text-gold">
-                            {count || 0} منتج متاح الآن
-                        </span>
-                        <Link
-                            href="/search"
-                            className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
-                        >
-                            بحث سريع
-                        </Link>
-                        <Link
-                            href="/design"
-                            className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
-                        >
-                            صمّم قطعتك
-                        </Link>
+                {/* ─── Header — تخطيط غير متماثل على الشاشات الواسعة ─── */}
+                <div className="mb-10 theme-surface-panel rounded-[2rem] px-5 py-8 sm:mb-12 sm:px-8 sm:py-10 lg:px-10">
+                    <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+                        <div className="min-w-0 text-center lg:text-right">
+                            <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">STORE</p>
+                            <h1 className="mb-3 text-3xl font-black sm:text-4xl md:text-5xl" style={{ color: "var(--wusha-text)" }}>
+                                المتجر
+                            </h1>
+                            <p className="prose-readable mx-auto mt-1 text-sm text-theme-subtle sm:text-[15px] lg:mx-0">
+                                اكتشف قطع وشّى الفنية بتجربة قراءة أوضح في الفاتح والداكن. لدينا الآن {count || 0} منتجًا فنيًا فريدًا.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2 text-xs lg:shrink-0 lg:justify-end">
+                            <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 font-semibold text-gold">
+                                {count || 0} منتج متاح الآن
+                            </span>
+                            <Link
+                                href="/search"
+                                className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                            >
+                                بحث سريع
+                            </Link>
+                            <Link
+                                href="/design"
+                                className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                            >
+                                صمّم قطعتك
+                            </Link>
+                        </div>
                     </div>
-                    <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">STORE</p>
-                    <h1 className="mb-3 text-3xl font-black sm:text-4xl md:text-5xl" style={{ color: "var(--wusha-text)" }}>
-                        المتجر
-                    </h1>
-                    <p className="mx-auto max-w-2xl text-sm leading-7 text-theme-subtle sm:text-[15px]">
-                        اكتشف قطع وشّى الفنية بتجربة قراءة أوضح في الفاتح والداكن. لدينا الآن {count || 0} منتجًا فنيًا فريدًا.
-                    </p>
                 </div>
 
                 {/* ─── Filters (Client Component) ─── */}
                 <StoreFilters currentType={type} inStockOnly={inStockOnly} currentSort={sort} />
 
                 {/* ─── Grid ─── */}
-                {products && products.length > 0 ? (
+                {list.length > 0 ? (
                     <>
-                        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
-                            {products.map((product: any) => (
-                                <ProductCard key={product.id} product={product} />
-                            ))}
+                        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4">
+                            {list.map((product: any, index: number) => {
+                                const isFeatured = showFeaturedTile && index === 0;
+                                const singleFull = page === 1 && list.length === 1;
+                                return (
+                                    <div
+                                        key={product.id}
+                                        className={cn(
+                                            isFeatured && "col-span-2",
+                                            singleFull && index === 0 && "col-span-2 md:col-span-4",
+                                        )}
+                                    >
+                                        <ProductCard product={product} featured={isFeatured} />
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         {/* Pagination */}

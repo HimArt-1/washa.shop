@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { updateOrderStatus } from "@/app/actions/admin";
+import { cn } from "@/lib/utils";
 import { InvoiceBuilder } from "./InvoiceBuilder";
 
 interface OrdersClientProps {
@@ -44,6 +45,8 @@ interface OrdersClientProps {
     totalPages: number;
     currentPage: number;
     currentStatus: string;
+    /** من ?focus= — يُوسَّع الصف ويُمرَّر للتمرير */
+    initialFocusOrderId?: string;
 }
 
 const statuses = [
@@ -211,22 +214,42 @@ export function OrdersClient({
     totalPages = 0,
     currentPage = 1,
     currentStatus = "all",
+    initialFocusOrderId,
 }: OrdersClientProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isPending, startTransition] = useTransition();
     const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
     const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
     const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const navigate = (params: Record<string, string>) => {
+    const navigate = (params: Record<string, string>, opts?: { clearFocus?: boolean }) => {
         const sp = new URLSearchParams();
         if (params.status && params.status !== "all") sp.set("status", params.status);
         if (params.page && params.page !== "1") sp.set("page", params.page);
+        if (!opts?.clearFocus) {
+            const f = searchParams.get("focus") || initialFocusOrderId;
+            if (f) sp.set("focus", f);
+        }
         startTransition(() => {
-            router.push(`/dashboard/orders?${sp.toString()}`);
+            const q = sp.toString();
+            router.push(q ? `/dashboard/orders?${q}` : "/dashboard/orders");
         });
     };
+
+    const focusFromUrl = searchParams.get("focus");
+    useEffect(() => {
+        const focusId = focusFromUrl || initialFocusOrderId || null;
+        if (!focusId) return;
+        const exists = orders.some((o) => o.id === focusId);
+        if (!exists) return;
+        setExpandedOrder(focusId);
+        const t = window.setTimeout(() => {
+            document.getElementById(`admin-order-row-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 120);
+        return () => window.clearTimeout(t);
+    }, [focusFromUrl, initialFocusOrderId, orders]);
 
     const handleStatusChange = async (orderId: string, newStatus: string) => {
         setUpdatingOrder(orderId);
@@ -246,6 +269,8 @@ export function OrdersClient({
             setUpdatingOrder(null);
         }
     };
+
+    const highlightedOrderId = searchParams.get("focus") || initialFocusOrderId || null;
 
     const collectionRate =
         snapshot.stats.totalOrders > 0
@@ -312,7 +337,7 @@ export function OrdersClient({
 
                         <div className="grid gap-3 sm:grid-cols-3">
                             <button
-                                onClick={() => navigate({ status: "pending", page: "1" })}
+                                onClick={() => navigate({ status: "pending", page: "1" }, { clearFocus: true })}
                                 className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
                             >
                                 <div className="text-right">
@@ -322,7 +347,7 @@ export function OrdersClient({
                                 <ShoppingCart className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                             </button>
                             <button
-                                onClick={() => navigate({ status: "processing", page: "1" })}
+                                onClick={() => navigate({ status: "processing", page: "1" }, { clearFocus: true })}
                                 className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
                             >
                                 <div className="text-right">
@@ -332,7 +357,7 @@ export function OrdersClient({
                                 <Truck className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                             </button>
                             <button
-                                onClick={() => navigate({ status: "all", page: "1" })}
+                                onClick={() => navigate({ status: "all", page: "1" }, { clearFocus: true })}
                                 className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
                             >
                                 <div className="text-right">
@@ -432,7 +457,7 @@ export function OrdersClient({
                     title="بانتظار التأكيد"
                     subtitle="طلبات دخلت المسار وتحتاج قرارًا سريعًا لتحريكها."
                     hrefLabel="تصفية العرض"
-                    onOpen={() => navigate({ status: "pending", page: "1" })}
+                    onOpen={() => navigate({ status: "pending", page: "1" }, { clearFocus: true })}
                     items={snapshot.awaitingConfirmation}
                     emptyState="لا توجد طلبات تنتظر التأكيد الآن."
                 />
@@ -440,7 +465,7 @@ export function OrdersClient({
                     title="مراقبة التحصيل"
                     subtitle="طلبات معلقة ماليًا وتحتاج متابعة تحصيل أو تحقق."
                     hrefLabel="فتح القائمة"
-                    onOpen={() => navigate({ status: "all", page: "1" })}
+                    onOpen={() => navigate({ status: "all", page: "1" }, { clearFocus: true })}
                     items={snapshot.paymentWatchlist}
                     emptyState="لا توجد مدفوعات معلقة تستحق الانتباه الآن."
                 />
@@ -448,7 +473,7 @@ export function OrdersClient({
                     title="مكتب الشحن والتنفيذ"
                     subtitle="طلبات تحركت إلى التنفيذ أو خرجت للشحن وتحتاج متابعة."
                     hrefLabel="عرض الطابور"
-                    onOpen={() => navigate({ status: "processing", page: "1" })}
+                    onOpen={() => navigate({ status: "processing", page: "1" }, { clearFocus: true })}
                     items={snapshot.shippingDesk}
                     emptyState="طابور التنفيذ والشحن فارغ حاليًا."
                 />
@@ -492,7 +517,7 @@ export function OrdersClient({
                         {statuses.map((s) => (
                             <button
                                 key={s.value}
-                                onClick={() => navigate({ status: s.value, page: "1" })}
+                                onClick={() => navigate({ status: s.value, page: "1" }, { clearFocus: true })}
                                 className={`rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
                                     currentStatus === s.value
                                         ? "bg-gold/10 text-gold ring-1 ring-gold/20"
@@ -536,10 +561,15 @@ export function OrdersClient({
                                         return (
                                             <AnimatePresence key={order.id} initial={false}>
                                                 <motion.tr
+                                                    id={`admin-order-row-${order.id}`}
                                                     initial={{ opacity: 0 }}
                                                     animate={{ opacity: 1 }}
                                                     transition={{ delay: index * 0.02 }}
-                                                    className="border-b border-theme-faint transition-colors hover:bg-theme-faint"
+                                                    className={cn(
+                                                        "border-b border-theme-faint transition-colors hover:bg-theme-faint",
+                                                        highlightedOrderId === order.id &&
+                                                            "bg-gold/[0.07] ring-1 ring-inset ring-gold/35"
+                                                    )}
                                                 >
                                                     <td className="px-3 py-4">
                                                         {items.length > 0 ? (

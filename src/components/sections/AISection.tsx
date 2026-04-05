@@ -162,7 +162,7 @@ export function AISection({ config }: AISectionProps) {
             <br />
             <span className="text-theme-strong text-3xl md:text-4xl lg:text-5xl font-bold">بالذكاء الاصطناعي</span>
           </h2>
-          <p className="text-theme-subtle max-w-xl mx-auto text-base sm:text-lg leading-relaxed">
+          <p className="prose-readable text-theme-subtle mx-auto max-w-xl text-base sm:text-lg">
             من الخيال إلى قطعة ترتديها — رحلة إبداعية في ثلاث خطوات
           </p>
         </motion.div>

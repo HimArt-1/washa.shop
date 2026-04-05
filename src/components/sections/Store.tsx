@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Star, ShoppingCart } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Star, ShoppingCart } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { getProducts } from "@/app/actions/products";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product } from "@/types/database";
+import { cn } from "@/lib/utils";
 
 type ProductWithArtist = Product & {
   artist: {
@@ -53,18 +55,18 @@ export function Store() {
             <span className="text-gradient">المتجر</span>
           </motion.h2>
           <motion.p
-            className="text-theme-subtle max-w-2xl mx-auto"
+            className="prose-readable text-theme-subtle mx-auto max-w-2xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            منتجات فنية حصرية بجودة عالية
+            منتجات فنية حصرية بجودة عالية — تختارها الفريق وتُحدَّث أسبوعيًا.
           </motion.p>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="glass-card rounded-2xl overflow-hidden animate-pulse">
                 <div className="relative aspect-square bg-theme-faint/50 border-b border-theme-subtle"></div>
@@ -83,17 +85,22 @@ export function Store() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-            {products.map((product, index) => (
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
+            {products.map((product, index) => {
+              const featured = products.length >= 3 && index === 0;
+              return (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass-card rounded-2xl overflow-hidden group"
+                className={cn(
+                  "glass-card rounded-2xl overflow-hidden group",
+                  featured && "col-span-2 md:col-span-2 ring-1 ring-gold/15",
+                )}
               >
-                <div className="relative aspect-square overflow-hidden">
+                <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
                   <Image
                     src={product.image_url}
                     alt={product.title}
@@ -157,9 +164,27 @@ export function Store() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+            );
+            })}
           </div>
         )}
+
+        {!loading && products.length > 0 ? (
+          <motion.div
+            className="mt-12 flex justify-center"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <Link
+              href="/store"
+              className="group inline-flex items-center gap-2 rounded-2xl border border-gold/25 bg-theme-faint px-6 py-3 text-sm font-bold text-theme transition-colors hover:border-gold/40 hover:bg-theme-subtle"
+            >
+              تصفح المتجر بالكامل
+              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" aria-hidden />
+            </Link>
+          </motion.div>
+        ) : null}
 
         {!loading && products.length === 0 && (
           <div className="text-center text-theme-subtle">لا توجد منتجات حالياً.</div>

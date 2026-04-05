@@ -434,7 +434,7 @@ export default function RootLayout({
           {/* Skip to Content — Accessibility */}
           <a
             href="#main-content"
-            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[9999] focus:px-6 focus:py-3 focus:rounded-xl focus:font-bold focus:text-sm"
+            className="skip-to-content sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:px-6 focus:py-3 focus:rounded-xl focus:font-bold focus:text-sm focus:shadow-lg"
             style={{ background: "var(--wusha-gold)", color: "var(--wusha-bg)" }}
           >
             تخطي إلى المحتوى الرئيسي

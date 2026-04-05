@@ -15,8 +15,11 @@ import {
 } from "@/app/actions/social";
 import { useRouter } from "next/navigation";
 import { SignedIn } from "@clerk/nextjs";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
+    /** عرض أوسع في الشبكة — نسبة صورة أقل رسوخًا من المربع */
+    featured?: boolean;
     product: {
         id: string;
         title: string;
@@ -31,7 +34,7 @@ interface ProductCardProps {
     };
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, featured = false }: ProductCardProps) {
     const router = useRouter();
     const typeBadgeStyle = {
         backgroundColor: "color-mix(in srgb, var(--wusha-surface) 76%, transparent)",
@@ -128,15 +131,22 @@ export function ProductCard({ product }: ProductCardProps) {
         return (
             <Link
                 href={`/products/${product.id}`}
-                className="group theme-surface-panel block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30"
+                className={cn(
+                    "group theme-surface-panel block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30",
+                    featured && "ring-1 ring-gold/20 shadow-[0_12px_40px_-12px_rgba(90,62,43,0.22)]"
+                )}
             >
-                <div className="aspect-square relative overflow-hidden">
+                <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
                     <Image
                         src={product.image_url}
                         alt={product.title}
                         fill
                         className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? 'group-hover:scale-105' : 'grayscale opacity-70'}`}
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        sizes={
+                            featured
+                                ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                                : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        }
                     />
                     
                     {/* Status Badges */}
@@ -157,6 +167,11 @@ export function ProductCard({ product }: ProductCardProps) {
                             </span>
                         ) : null}
                     </div>
+                    {featured ? (
+                        <span className="pointer-events-none absolute start-2 top-2 rounded-lg border border-gold/30 bg-[color:rgba(15,15,15,0.42)] px-2 py-0.5 text-[10px] font-semibold text-gold backdrop-blur-sm">
+                            مختار
+                        </span>
+                    ) : null}
                 </div>
                 <div className="bg-[color:color-mix(in_srgb,var(--wusha-text)_2%,transparent)] p-3 sm:p-4">
                     <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold transition-colors group-hover:text-gold" style={{ color: "var(--wusha-text)" }}>
@@ -174,15 +189,22 @@ export function ProductCard({ product }: ProductCardProps) {
     return (
         <Link
             href={`/products/${product.id}`}
-            className="group theme-surface-panel relative block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30"
+            className={cn(
+                "group theme-surface-panel relative block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30",
+                featured && "ring-1 ring-gold/20 shadow-[0_12px_40px_-12px_rgba(90,62,43,0.22)]"
+            )}
         >
-            <div className="aspect-square relative overflow-hidden">
+            <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
                 <Image
                     src={product.image_url}
                     alt={product.title}
                     fill
                     className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? 'group-hover:scale-105' : 'grayscale opacity-70'}`}
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    sizes={
+                        featured
+                            ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                            : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    }
                 />
                 
                 {/* Status Badges */}
@@ -203,6 +225,11 @@ export function ProductCard({ product }: ProductCardProps) {
                         </span>
                     ) : null}
                 </div>
+                {featured ? (
+                    <span className="pointer-events-none absolute start-2 top-2 rounded-lg border border-gold/30 bg-[color:rgba(15,15,15,0.42)] px-2 py-0.5 text-[10px] font-semibold text-gold backdrop-blur-sm">
+                        مختار
+                    </span>
+                ) : null}
 
                 {/* Action buttons on hover */}
                 <div className="absolute bottom-2 left-2 right-2 flex justify-center gap-2 opacity-100 transition-all duration-300 sm:translate-y-2 sm:opacity-0 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">

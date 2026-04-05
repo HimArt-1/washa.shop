@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     AlertTriangle,
@@ -11,6 +12,7 @@ import {
     DollarSign,
     FileText,
     HeadphonesIcon,
+    LayoutList,
     Mail,
     Package,
     ShoppingCart,
@@ -22,6 +24,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import type { LowStockItem, TopProduct } from "@/app/actions/analytics";
 import LowStockWidget from "@/components/admin/analytics/LowStockWidget";
 import TopProductsList from "@/components/admin/analytics/TopProductsList";
+import { cn } from "@/lib/utils";
 
 type DashboardProps = {
     stats: {
@@ -109,6 +112,40 @@ const panelClass =
 
 const subtlePanelClass =
     "theme-surface-panel rounded-[26px]";
+
+function DashboardSection({
+    eyebrow,
+    title,
+    description,
+    action,
+    children,
+    className,
+    sectionId,
+}: {
+    eyebrow: string;
+    title: string;
+    description?: string;
+    action?: React.ReactNode;
+    children: React.ReactNode;
+    className?: string;
+    sectionId?: string;
+}) {
+    return (
+        <section id={sectionId} className={cn("scroll-mt-24 space-y-5", className)}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gold/90">{eyebrow}</p>
+                    <h2 className="mt-1.5 text-xl font-black tracking-tight text-theme sm:text-2xl">{title}</h2>
+                    {description ? (
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-theme-subtle">{description}</p>
+                    ) : null}
+                </div>
+                {action ? <div className="shrink-0">{action}</div> : null}
+            </div>
+            {children}
+        </section>
+    );
+}
 
 function formatCurrency(value: number) {
     return new Intl.NumberFormat("ar-SA", {
@@ -247,6 +284,203 @@ function getHealthMeta(score: number) {
     };
 }
 
+const DASHBOARD_QUICK_NAV = [
+    { id: "dashboard-hero", label: "الملخص" },
+    { id: "dashboard-kpi", label: "المؤشرات" },
+    { id: "dashboard-analytics", label: "التحليل" },
+    { id: "dashboard-lanes", label: "المراكز" },
+    { id: "dashboard-queues", label: "الطوابير" },
+    { id: "dashboard-commerce", label: "المبيعات" },
+    { id: "dashboard-community", label: "المجتمع" },
+] as const;
+
+type PriorityEntry = {
+    key: string;
+    label: string;
+    count: number;
+    href: string;
+    tone: "critical" | "warning" | "info";
+};
+
+function buildPriorityEntries(
+    ops: DashboardProps["controlTower"]["ops"],
+    lowStockCount: number,
+    pendingApplications: number
+): PriorityEntry[] {
+    const raw: PriorityEntry[] = [];
+    if (ops.alertsCritical > 0) {
+        raw.push({
+            key: "alerts-critical",
+            label: "تنبيهات حرجة",
+            count: ops.alertsCritical,
+            href: "/dashboard/notifications",
+            tone: "critical",
+        });
+    }
+    if (ops.supportUrgent > 0) {
+        raw.push({
+            key: "support-urgent",
+            label: "دعم عاجل",
+            count: ops.supportUrgent,
+            href: "/dashboard/support",
+            tone: "critical",
+        });
+    }
+    if (ops.pendingPayments > 0) {
+        raw.push({
+            key: "payments",
+            label: "مدفوعات معلقة",
+            count: ops.pendingPayments,
+            href: "/dashboard/orders",
+            tone: "warning",
+        });
+    }
+    if (lowStockCount > 0) {
+        raw.push({
+            key: "low-stock",
+            label: "أصناف مخزون منخفض",
+            count: lowStockCount,
+            href: "/dashboard/products-inventory",
+            tone: "warning",
+        });
+    }
+    if (ops.ordersNeedingReview > 0) {
+        raw.push({
+            key: "orders-review",
+            label: "طلبات تحتاج مراجعة",
+            count: ops.ordersNeedingReview,
+            href: "/dashboard/orders",
+            tone: "info",
+        });
+    }
+    if (pendingApplications > 0) {
+        raw.push({
+            key: "applications",
+            label: "طلبات انضمام معلقة",
+            count: pendingApplications,
+            href: "/dashboard/applications",
+            tone: "info",
+        });
+    }
+    if (ops.designAwaitingReview > 0) {
+        raw.push({
+            key: "design-review",
+            label: "تصميم بانتظار المراجعة",
+            count: ops.designAwaitingReview,
+            href: "/dashboard/design-orders",
+            tone: "info",
+        });
+    }
+
+    const toneOrder = { critical: 0, warning: 1, info: 2 } as const;
+    raw.sort((a, b) => toneOrder[a.tone] - toneOrder[b.tone] || b.count - a.count);
+    return raw.slice(0, 6);
+}
+
+function priorityToneClass(tone: PriorityEntry["tone"]) {
+    if (tone === "critical") {
+        return "border-red-500/25 bg-red-500/[0.07] hover:border-red-500/35 hover:bg-red-500/[0.1]";
+    }
+    if (tone === "warning") {
+        return "border-amber-500/25 bg-amber-500/[0.06] hover:border-amber-500/35 hover:bg-amber-500/[0.09]";
+    }
+    return "border-theme-subtle bg-theme-faint hover:border-theme-soft hover:bg-theme-subtle";
+}
+
+const quickNavLinkClass =
+    "rounded-full border border-transparent bg-theme-faint/80 px-3 py-1.5 text-xs font-semibold text-theme-subtle transition-colors hover:border-gold/25 hover:bg-theme-subtle hover:text-theme";
+
+function DashboardQuickNav() {
+    const primary = DASHBOARD_QUICK_NAV.slice(0, 4);
+    const extra = DASHBOARD_QUICK_NAV.slice(4);
+
+    return (
+        <nav
+            aria-label="انتقال سريع داخل لوحة المؤشرات"
+            className="sticky top-0 z-20 -mx-1 mb-1 rounded-[22px] border border-theme-subtle/55 bg-[color:color-mix(in_srgb,var(--wusha-surface)_90%,transparent)] px-2 py-2.5 shadow-sm backdrop-blur-md sm:-mx-2 sm:px-3"
+        >
+            <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-1.5 text-[11px] font-bold text-theme-faint">
+                    <LayoutList className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    انتقال
+                </span>
+
+                {primary.map((item) => (
+                    <a key={item.id} href={`#${item.id}`} className={quickNavLinkClass}>
+                        {item.label}
+                    </a>
+                ))}
+
+                <details className="group relative sm:hidden">
+                    <summary className="list-none cursor-pointer rounded-full border border-theme-subtle bg-theme-faint/90 px-3 py-1.5 text-xs font-semibold text-gold transition-colors marker:content-none hover:border-gold/30 [&::-webkit-details-marker]:hidden">
+                        المزيد
+                        <span className="mr-1 text-[10px] text-theme-faint group-open:rotate-180">▼</span>
+                    </summary>
+                    <div className="absolute end-0 top-[calc(100%+6px)] z-30 flex min-w-[10rem] flex-col gap-1 rounded-2xl border border-theme-subtle bg-[color:var(--wusha-surface)] p-2 shadow-lg">
+                        {extra.map((item) => (
+                            <a
+                                key={item.id}
+                                href={`#${item.id}`}
+                                className="rounded-xl px-3 py-2 text-sm font-semibold text-theme-subtle transition-colors hover:bg-theme-faint hover:text-theme"
+                            >
+                                {item.label}
+                            </a>
+                        ))}
+                    </div>
+                </details>
+
+                {extra.map((item) => (
+                    <a key={item.id} href={`#${item.id}`} className={cn(quickNavLinkClass, "hidden sm:inline-flex")}>
+                        {item.label}
+                    </a>
+                ))}
+            </div>
+        </nav>
+    );
+}
+
+function PriorityStrip({ entries }: { entries: PriorityEntry[] }) {
+    return (
+        <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            aria-labelledby="dashboard-priority-heading"
+            className="rounded-[28px] border border-theme-subtle bg-gradient-to-br from-theme-faint/90 to-theme-faint/40 p-4 sm:p-5"
+        >
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                    <h3 id="dashboard-priority-heading" className="text-base font-black text-theme">
+                        أولويات تحتاج تدخلًا
+                    </h3>
+                    <p className="mt-1 text-xs text-theme-subtle">مرتبة حسب الخطورة ثم الحجم — اضغط للانتقال إلى الصفحة المناسبة.</p>
+                </div>
+            </div>
+            {entries.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-emerald-500/25 bg-emerald-500/[0.05] px-4 py-6 text-center text-sm text-emerald-200/90">
+                    لا توجد عناصر في قائمة الأولويات — التشغيل يبدو هادئًا من هذه الزاوية.
+                </p>
+            ) : (
+                <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {entries.map((e) => (
+                        <li key={e.key}>
+                            <Link
+                                href={e.href}
+                                className={cn(
+                                    "flex min-h-[3.25rem] items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition-colors",
+                                    priorityToneClass(e.tone)
+                                )}
+                            >
+                                <span className="min-w-0 text-sm font-bold text-theme">{e.label}</span>
+                                <span className="shrink-0 tabular-nums text-lg font-black text-gold">{e.count}</span>
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </motion.section>
+    );
+}
+
 function KpiCard({
     title,
     value,
@@ -320,10 +554,10 @@ function RevenueRunway({
             <div className="relative space-y-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <p className="text-xs font-medium tracking-[0.22em] text-theme-faint uppercase">Revenue Trajectory</p>
-                        <h3 className="mt-2 text-2xl font-black text-theme">مسار الإيراد والزخم التجاري</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-7 text-theme-subtle">
-                            قراءة شهرية واضحة لحركة الإيرادات والطلبات حتى تعرف أين تتسارع المنصة وأين تحتاج إلى تدخل تسويقي أو تشغيلي.
+                        <p className="text-xs font-semibold text-gold/90">مسار الإيرادات</p>
+                        <h3 className="mt-2 text-2xl font-black text-theme">الزخم الشهري للإيراد والطلبات</h3>
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-theme-subtle">
+                            مقارنة شهرية بين الإيراد وعدد الطلبات لمعرفة أين يتسارع الأداء.
                         </p>
                     </div>
 
@@ -511,6 +745,7 @@ export function DashboardClient({
     lastUpdatedLabel,
     dataQuality,
 }: DashboardProps) {
+    const router = useRouter();
     const lowStockCount = lowStockList.length;
     const healthScore = calculateHealthScore(controlTower.ops, lowStockCount);
     const healthMeta = getHealthMeta(healthScore);
@@ -526,54 +761,61 @@ export function DashboardClient({
         controlTower.ops.designNew +
         controlTower.ops.designAwaitingReview;
     const managedCommunity = stats.totalArtists + stats.totalPlatformSubscribers;
+    const priorityEntries = buildPriorityEntries(
+        controlTower.ops,
+        lowStockCount,
+        pendingApplications.length
+    );
 
     return (
-        <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+        <div className="space-y-10 sm:space-y-12">
+            <DashboardQuickNav />
+            <div id="dashboard-hero" className="grid scroll-mt-24 gap-5 xl:grid-cols-[1.35fr_0.65fr]">
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={`${panelClass} p-5 sm:p-6 md:p-7`}
+                    aria-labelledby="dashboard-hero-heading"
                 >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.22),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_30%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_32%)]" />
                     <div className="relative space-y-6">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
-                                Executive Control Tower
+                            <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
+                                مركز التشغيل
                             </span>
                             <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                مركز قيادة مباشر للمنصة
-                            </span>
-                            <span className="rounded-full border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_72%,transparent)] px-3 py-1 text-xs text-theme-subtle">
-                                آخر تحديث: {lastUpdatedLabel}
+                                تحديث مباشر · {lastUpdatedLabel}
                             </span>
                         </div>
 
                         <div className="max-w-3xl">
-                            <h2 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
-                                الداشبورد لم تعد مجرد تقارير، بل غرفة عمليات حية لوشّى.
+                            <p className="text-xs font-semibold text-gold/90">نظرة تنفيذية</p>
+                            <h2
+                                id="dashboard-hero-heading"
+                                className="mt-2 text-2xl font-black leading-snug text-theme sm:text-3xl md:text-[1.65rem] md:leading-tight"
+                            >
+                                صورة واحدة للإيراد والطوابير والضغط التشغيلي
                             </h2>
-                            <p className="mt-4 text-sm leading-8 text-theme-subtle md:text-base">
-                                هنا ترى نبض الإيراد، ضغط العمليات، ازدحام الدعم، جاهزية التصميمات، والتنبيهات الحساسة في شاشة واحدة
-                                تساعدك على اتخاذ القرار بسرعة بدل التنقل بين صفحات متفرقة.
+                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle md:text-[15px]">
+                                اختصر التنقل بين الصفحات: راقب ما يحتاج تدخلًا الآن، ثم انتقل بالاختصارات أدناه.
                             </p>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">عناصر تحتاج تدخل الآن</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{attentionNow}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">حرج، دعم عاجل، مدفوعات معلقة، أو مخزون منخفض.</p>
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                                <p className="text-xs text-theme-faint">يحتاج تدخلًا الآن</p>
+                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{attentionNow}</p>
+                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">حرج، دعم عاجل، مدفوعات، مخزون منخفض</p>
                             </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">الطوابير التشغيلية النشطة</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{activeQueues}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات، تنفيذ، دعم، وتصميمات تحتاج متابعة مستمرة.</p>
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                                <p className="text-xs text-theme-faint">طوابير نشطة</p>
+                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{activeQueues}</p>
+                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">طلبات، تنفيذ، دعم، تصميم</p>
                             </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">المجتمع المُدار من الداشبورد</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{managedCommunity}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">وشّايون ومشتركون داخل المنصة، دون احتساب مشتركي النشرة البريدية.</p>
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                                <p className="text-xs text-theme-faint">مجتمع المنصة</p>
+                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{managedCommunity}</p>
+                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">وشّايون ومشتركون (دون النشرة)</p>
                             </div>
                         </div>
 
@@ -628,11 +870,11 @@ export function DashboardClient({
                     <div className="space-y-5">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <p className="text-xs font-medium tracking-[0.2em] text-theme-faint uppercase">Operational Health</p>
+                                <p className="text-xs font-semibold text-gold/90">الصحة التشغيلية</p>
                                 <h3 className="mt-2 text-2xl font-black text-theme">مؤشر سلامة التشغيل</h3>
-                                <p className="mt-2 text-sm leading-7 text-theme-subtle">{healthMeta.summary}</p>
+                                <p className="mt-2 text-sm leading-relaxed text-theme-subtle">{healthMeta.summary}</p>
                             </div>
-                            <Clock3 className="mt-1 h-5 w-5 text-theme-faint" />
+                            <Clock3 className="mt-1 h-5 w-5 shrink-0 text-theme-faint" aria-hidden />
                         </div>
 
                         <div className="flex items-center justify-center py-3">
@@ -641,6 +883,8 @@ export function DashboardClient({
                                 style={{
                                     background: `conic-gradient(${healthMeta.accent} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
                                 }}
+                                role="img"
+                                aria-label={`مؤشر سلامة التشغيل ${healthScore} من مئة، الحالة: ${healthMeta.label}`}
                             >
                                 <div className="grid h-full w-full place-items-center rounded-full border border-theme-subtle bg-[color:var(--wusha-surface)]">
                                     <div className="text-center">
@@ -674,7 +918,16 @@ export function DashboardClient({
                 </motion.section>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <PriorityStrip entries={priorityEntries} />
+
+            <DashboardSection
+                sectionId="dashboard-kpi"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="الأداء المالي"
+                title="المؤشرات الرئيسية"
+                description="قراءة لحظية للإيراد والطلبات وتماسك المجتمع داخل المنصة."
+            >
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="الإيراد الكلي"
                     value={formatCurrency(stats.totalRevenue)}
@@ -693,7 +946,7 @@ export function DashboardClient({
                 <KpiCard
                     title="متوسط قيمة الطلب"
                     value={formatCurrency(stats.averageOrderValue)}
-                    subtitle="قراءة مباشرة لقوة السلة الشرائية"
+                    subtitle="متوسط قيمة السلة"
                     icon={Truck}
                     accent="#38bdf8"
                     href="/dashboard/orders"
@@ -706,8 +959,16 @@ export function DashboardClient({
                     accent="#a78bfa"
                     href="/dashboard/users"
                 />
-            </div>
+                </div>
+            </DashboardSection>
 
+            <DashboardSection
+                sectionId="dashboard-analytics"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="التحليل"
+                title="الإيرادات والتنبيهات"
+                description="مسار الشهور بجانب أحدث التنبيهات التي تحتاج قرارًا."
+            >
             <div className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
                 <RevenueRunway
                     data={monthlyRevenue}
@@ -722,10 +983,10 @@ export function DashboardClient({
                 >
                     <div className="mb-5 flex items-start justify-between gap-4">
                         <div>
-                            <p className="text-xs font-medium tracking-[0.2em] text-theme-faint uppercase">Mission Feed</p>
-                            <h3 className="mt-2 text-2xl font-black text-theme">موجز التنبيهات والقرارات</h3>
-                            <p className="mt-2 text-sm leading-7 text-theme-subtle">
-                                أقرب إشارات الخطر والفرص التي يجب أن تراها قبل الغوص في التفاصيل.
+                            <p className="text-xs font-semibold text-gold/90">التنبيهات</p>
+                            <h3 className="mt-2 text-2xl font-black text-theme">موجز القرارات</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-theme-subtle">
+                                أحدث الإشارات قبل الدخول إلى التفاصيل.
                             </p>
                         </div>
                         <Link href="/dashboard/notifications" className="text-sm font-medium text-gold hover:text-gold-light">
@@ -772,11 +1033,19 @@ export function DashboardClient({
                     </div>
                 </motion.section>
             </div>
+            </DashboardSection>
 
+            <DashboardSection
+                sectionId="dashboard-lanes"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="المراكز"
+                title="اختصارات التشغيل"
+                description="انتقال سريع إلى صفحة كل محور مع أبرز رقم لكل قسم."
+            >
             <div className="grid gap-4 xl:grid-cols-4">
                 <OperationLaneCard
                     title="مركز الطلبات"
-                    description="راقب ما يحتاج قبولًا فوريًا وما دخل مرحلة التنفيذ والشحن."
+                    description="مراجعة فورية، تنفيذ، ومدفوعات."
                     primaryValue={controlTower.ops.ordersNeedingReview}
                     primaryLabel="طلبات بحاجة مراجعة أو تأكيد"
                     secondary={[
@@ -789,7 +1058,7 @@ export function DashboardClient({
                 />
                 <OperationLaneCard
                     title="مركز الدعم"
-                    description="اعرف ضغط التذاكر المفتوحة وما إذا كانت هناك حالات عاجلة تتطلب تصعيدًا."
+                    description="تذاكر مفتوحة وأولويات وارتباط بالتنبيهات."
                     primaryValue={controlTower.ops.supportOpen}
                     primaryLabel="تذاكر مفتوحة أو قيد المتابعة"
                     secondary={[
@@ -802,7 +1071,7 @@ export function DashboardClient({
                 />
                 <OperationLaneCard
                     title="مركز التصميم"
-                    description="تابع الطلبات الجديدة وما ينتظر مراجعة أو اعتمادًا من الفريق."
+                    description="جديد، مراجعة، وطلبات انضمام مرتبطة."
                     primaryValue={controlTower.ops.designNew}
                     primaryLabel="طلبات تصميم جديدة"
                     secondary={[
@@ -815,7 +1084,7 @@ export function DashboardClient({
                 />
                 <OperationLaneCard
                     title="مركز المخاطر"
-                    description="نقطة واحدة للتنبيهات الحرجة والمخزون المنخفض وإشارات الاحتكاك التشغيلي."
+                    description="تنبيهات حرجة، غير مقروءة، ومخزون منخفض."
                     primaryValue={controlTower.ops.alertsCritical}
                     primaryLabel="تنبيهات حرجة"
                     secondary={[
@@ -827,7 +1096,15 @@ export function DashboardClient({
                     accent="#ef4444"
                 />
             </div>
+            </DashboardSection>
 
+            <DashboardSection
+                sectionId="dashboard-queues"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="الطوابير"
+                title="دعم، تصميم، انضمام"
+                description="عناصر بانتظار الاستجابة — من نفس مصادر البيانات في أعلى الصفحة."
+            >
             <div className="grid gap-5 xl:grid-cols-3">
                 <QueueCard
                     title="صف الدعم"
@@ -911,7 +1188,15 @@ export function DashboardClient({
                     ))}
                 />
             </div>
+            </DashboardSection>
 
+            <DashboardSection
+                sectionId="dashboard-commerce"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="التجارة والمخزون"
+                title="الطلبات الأخيرة والمنتجات"
+                description="آخر المبيعات مع أعلى المنتجات والمخزون المنخفض."
+            >
             <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
                 <motion.section
                     initial={{ opacity: 0, y: 14 }}
@@ -921,10 +1206,10 @@ export function DashboardClient({
                     <div className="border-b border-theme-subtle px-6 py-5">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <p className="text-xs font-medium tracking-[0.2em] text-theme-faint uppercase">Recent Commerce Flow</p>
-                                <h3 className="mt-2 text-2xl font-black text-theme">آخر الطلبات في قلب التشغيل</h3>
-                                <p className="mt-2 text-sm leading-7 text-theme-subtle">
-                                    نظرة سريعة على آخر حركة شرائية حتى تتمكن من القفز مباشرة إلى الطلبات المهمة.
+                                <p className="text-xs font-semibold text-gold/90">المبيعات</p>
+                                <h3 className="mt-2 text-2xl font-black text-theme">آخر الطلبات</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-theme-subtle">
+                                    انتقال سريع إلى تفاصيل الطلب.
                                 </p>
                             </div>
                             <Link href="/dashboard/orders" className="text-sm font-medium text-gold hover:text-gold-light">
@@ -948,7 +1233,22 @@ export function DashboardClient({
                             <tbody>
                                 {recentOrders.length > 0 ? (
                                     recentOrders.map((order) => (
-                                        <tr key={order.id} className="border-b border-theme-faint transition-colors hover:bg-theme-faint">
+                                        <tr
+                                            key={order.id}
+                                            role="link"
+                                            tabIndex={0}
+                                            title="فتح الطلب في مركز العمليات"
+                                            className="cursor-pointer border-b border-theme-faint transition-colors hover:bg-theme-faint"
+                                            onClick={() =>
+                                                router.push(`/dashboard/orders?focus=${encodeURIComponent(order.id)}`)
+                                            }
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" || e.key === " ") {
+                                                    e.preventDefault();
+                                                    router.push(`/dashboard/orders?focus=${encodeURIComponent(order.id)}`);
+                                                }
+                                            }}
+                                        >
                                             <td className="px-6 py-4 font-mono text-xs font-bold text-gold">{order.order_number}</td>
                                             <td className="px-4 py-4 text-theme-soft">{order.buyer?.display_name || "—"}</td>
                                             <td className="px-4 py-4 font-bold text-theme">{formatCurrency(Number(order.total) || 0)}</td>
@@ -996,7 +1296,15 @@ export function DashboardClient({
                     </div>
                 </div>
             </div>
+            </DashboardSection>
 
+            <DashboardSection
+                sectionId="dashboard-community"
+                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
+                eyebrow="المجتمع والمحتوى"
+                title="أرقام إضافية"
+                description="مستخدمون، نشرة، أعمال، وتنبيهات — مع روابط للتفاصيل."
+            >
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <Link href="/dashboard/users" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
                     <div className="flex items-center justify-between">
@@ -1031,6 +1339,7 @@ export function DashboardClient({
                     <p className="mt-2 text-sm text-theme-subtle">{controlTower.ops.alertsCritical} منها في مستوى حرج.</p>
                 </Link>
             </div>
+            </DashboardSection>
         </div>
     );
 }

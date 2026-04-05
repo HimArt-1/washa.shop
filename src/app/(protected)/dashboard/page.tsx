@@ -25,6 +25,7 @@ export default async function AdminDashboardPage() {
     const { metrics, monthlyRevenue, topProducts, lowStock } = analytics;
 
     const { stats, recentOrders, pendingApplications } = overview;
+    const ops = controlTower.ops;
     const dashboardStats = {
         totalUsers: metrics.totalUsers || stats.totalUsers,
         totalArtists: stats.totalArtists,
@@ -52,8 +53,14 @@ export default async function AdminDashboardPage() {
         <div className="space-y-8">
             <AdminHeader
                 title="لوحة المؤشرات"
-                subtitle="ملخص الشامل لأداء المنصة والمبيعات والمخزون والعملاء."
-                actions={<AdminQuickActions pendingCount={stats.pendingApplications} />}
+                subtitle="ملخص واحد لأداء المنصة: المبيعات، المخزون، العملاء، والتشغيل. استخدم شريط «انتقال» أعلى اللوحة للقفز بين الأقسام بسرعة."
+                actions={
+                    <AdminQuickActions
+                        pendingCount={stats.pendingApplications}
+                        alertsUnread={ops?.alertsUnread ?? 0}
+                        ordersNeedingReview={ops?.ordersNeedingReview ?? 0}
+                    />
+                }
             />
             <DashboardClient
                 stats={dashboardStats}
