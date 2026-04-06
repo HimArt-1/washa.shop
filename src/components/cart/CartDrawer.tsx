@@ -12,14 +12,17 @@ import { useState } from "react";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 
 export function CartDrawer() {
+  const [mounted, setMounted] = useState(false);
   const { items, isOpen, toggleCart, updateQuantity, removeItem, getCartTotal, getSubtotal, coupon, applyCoupon, removeCoupon, getDiscountAmount } = useCartStore();
   const drawerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoError, setPromoError] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
-  const [checkoutError, setCheckoutError] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Handle escape key
   useEffect(() => {
@@ -72,32 +75,7 @@ export function CartDrawer() {
     }
   };
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
-    setCheckoutError("");
-    
-    // Map CartItems to CheckoutItems
-    const checkoutItems = items.map(item => ({
-      id: item.id,
-      name: item.title,
-      price: item.price,
-      quantity: item.quantity,
-      image: item.image_url,
-      custom_design_url: item.customDesignUrl,
-      custom_garment: item.customGarment,
-    }));
-
-    const result = await createCheckoutSession(checkoutItems, "/checkout/success", "/cart", coupon?.id);
-    
-    setIsCheckingOut(false);
-
-    if (result.success && result.url) {
-      window.location.href = result.url; // Redirect to Stripe
-    } else {
-      console.error("Checkout failed:", result.error);
-      setCheckoutError(result.error || "حدث خطأ أثناء الانتقال للدفع");
-    }
-  };
+  if (!mounted) return null;
 
   return (
     <AnimatePresence>
@@ -295,11 +273,6 @@ export function CartDrawer() {
                     )}
                 </div>
 
-                {checkoutError && (
-                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                    {checkoutError}
-                  </div>
-                )}
 
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-theme-subtle text-sm">
@@ -332,23 +305,14 @@ export function CartDrawer() {
                     >
                         متابعة التسوق
                     </button>
-                    <button
-                        onClick={handleCheckout}
-                        disabled={isCheckingOut}
-                        className="btn-gold py-4 w-full rounded-xl text-sm font-bold flex items-center justify-center gap-2 group shadow-[0_10px_30px_-10px_rgba(202,160,82,0.4)] disabled:opacity-50"
+                    <Link
+                        href="/checkout"
+                        onClick={() => toggleCart(false)}
+                        className="btn-gold py-4 w-full rounded-xl text-sm font-bold flex items-center justify-center gap-2 group shadow-[0_10px_30px_-10px_rgba(202,160,82,0.4)]"
                     >
-                        {isCheckingOut ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            جاري التحويل...
-                          </>
-                        ) : (
-                          <>
-                            إتمام الطلب
-                            <ArrowRight className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                          </>
-                        )}
-                    </button>
+                        إتمام الطلب
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                    </Link>
                 </div>
               </div>
             )}

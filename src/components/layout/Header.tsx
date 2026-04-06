@@ -24,7 +24,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { toggleCart, getCartCount } = useCartStore();
+  const toggleCart = useCartStore((s) => s.toggleCart);
+  const items = useCartStore((s) => s.items);
+  const cartCount = items.reduce((a, b) => a + b.quantity, 0);
   const lastScrollY = useRef(0);
   const [hasMounted, setHasMounted] = useState(false);
 
@@ -220,10 +222,10 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       aria-label="سلة المشتريات"
                     >
                       <ShoppingBag className="w-5 h-5" />
-                      {hasMounted && getCartCount() > 0 && (
+                      {hasMounted && cartCount > 0 && (
                         <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
                           <span className="text-[10px] font-bold text-white leading-none">
-                            {getCartCount() > 99 ? "99+" : getCartCount()}
+                            {cartCount > 99 ? "99+" : cartCount}
                           </span>
                         </div>
                       )}
@@ -295,13 +297,13 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                     aria-label="سلة المشتريات"
                   >
                     <ShoppingBag className="w-5 h-5" />
-                    {hasMounted && getCartCount() > 0 && (
-                      <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
-                        <span className="text-[10px] font-bold text-white leading-none">
-                          {getCartCount() > 99 ? "99+" : getCartCount()}
-                        </span>
-                      </div>
-                    )}
+                      {hasMounted && cartCount > 0 && (
+                        <div className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-gold rounded-full border-2 border-[var(--wusha-surface)]">
+                          <span className="text-[10px] font-bold text-white leading-none">
+                            {cartCount > 99 ? "99+" : cartCount}
+                          </span>
+                        </div>
+                      )}
                   </button>
                 </div>
               </SignedIn>
@@ -418,9 +420,9 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                   >
                     <span>السلة</span>
                     <div className="flex items-center gap-2">
-                      {hasMounted && getCartCount() > 0 && (
+                      {hasMounted && cartCount > 0 && (
                         <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-[var(--wusha-bg)]">
-                          {getCartCount() > 99 ? "99+" : getCartCount()}
+                          {cartCount > 99 ? "99+" : cartCount}
                         </span>
                       )}
                       <ShoppingBag className="h-4 w-4" />

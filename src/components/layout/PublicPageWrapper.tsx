@@ -1,6 +1,5 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { CartSheet } from "@/components/store/CartSheet";
 import { getPublicVisibility } from "@/app/actions/settings";
 
 /**
@@ -13,7 +12,6 @@ export async function PublicPageWrapper({ children }: { children: React.ReactNod
     return (
         <>
             <Header visibility={visibility} />
-            <CartSheet />
             <div className="public-shell">
                 <div className="public-orb public-orb-primary" aria-hidden />
                 <div className="public-orb public-orb-secondary" aria-hidden />
