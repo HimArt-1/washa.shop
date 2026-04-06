@@ -61,6 +61,7 @@ module.exports = (phase) => {
         hostname,
       })),
     },
+    staticPageGenerationTimeout: 300,
     async headers() {
       return [
         {
