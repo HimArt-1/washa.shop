@@ -647,29 +647,120 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
             {/* ─── 3. Shipping & Tax ─── */}
             <SettingsCard title="الشحن والضريبة" icon={Truck}>
-                <div className="space-y-4">
+                <div className="space-y-5">
+                    {/* Enable/Disable Toggles */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setShipping({ ...shipping, shipping_enabled: !(shipping.shipping_enabled ?? true) })}
+                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                                (shipping.shipping_enabled ?? true)
+                                    ? "border-green-500/40 bg-green-500/10"
+                                    : "border-theme-subtle bg-theme-faint"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Truck className={`w-4 h-4 ${(shipping.shipping_enabled ?? true) ? "text-green-400" : "text-theme-faint"}`} />
+                                <span className="text-sm font-medium">الشحن مفعّل</span>
+                            </div>
+                            <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${(shipping.shipping_enabled ?? true) ? "bg-green-500/80" : "bg-white/10"}`}>
+                                <motion.div
+                                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md"
+                                    animate={{ left: (shipping.shipping_enabled ?? true) ? 22 : 2 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setShipping({ ...shipping, tax_enabled: !(shipping.tax_enabled ?? true) })}
+                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                                (shipping.tax_enabled ?? true)
+                                    ? "border-green-500/40 bg-green-500/10"
+                                    : "border-theme-subtle bg-theme-faint"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Tag className={`w-4 h-4 ${(shipping.tax_enabled ?? true) ? "text-green-400" : "text-theme-faint"}`} />
+                                <span className="text-sm font-medium">الضريبة مفعّلة</span>
+                            </div>
+                            <div className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${(shipping.tax_enabled ?? true) ? "bg-green-500/80" : "bg-white/10"}`}>
+                                <motion.div
+                                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md"
+                                    animate={{ left: (shipping.tax_enabled ?? true) ? 22 : 2 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                />
+                            </div>
+                        </button>
+                    </div>
+
+                    {/* Values */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Field
-                            label="تكلفة الشحن الثابتة (ر.س)"
-                            value={String(shipping.flat_rate)}
-                            onChange={(v) => setShipping({ ...shipping, flat_rate: Number(v) || 0 })}
-                            type="number"
-                            dir="ltr"
-                        />
-                        <Field
-                            label="شحن مجاني فوق (ر.س)"
-                            value={String(shipping.free_above)}
-                            onChange={(v) => setShipping({ ...shipping, free_above: Number(v) || 0 })}
-                            type="number"
-                            dir="ltr"
-                        />
-                        <Field
-                            label="نسبة الضريبة (%)"
-                            value={String(shipping.tax_rate)}
-                            onChange={(v) => setShipping({ ...shipping, tax_rate: Number(v) || 0 })}
-                            type="number"
-                            dir="ltr"
-                        />
+                        <div className={`transition-opacity ${(shipping.shipping_enabled ?? true) ? "opacity-100" : "opacity-40"}`}>
+                            <Field
+                                label="تكلفة الشحن الثابتة (ر.س)"
+                                value={String(shipping.flat_rate ?? 30)}
+                                onChange={(v) => setShipping({ ...shipping, flat_rate: Number(v) || 0 })}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                        <div className={`transition-opacity ${(shipping.shipping_enabled ?? true) ? "opacity-100" : "opacity-40"}`}>
+                            <Field
+                                label="شحن مجاني فوق (ر.س)"
+                                value={String(shipping.free_above ?? 500)}
+                                onChange={(v) => setShipping({ ...shipping, free_above: Number(v) || 0 })}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                        <div className={`transition-opacity ${(shipping.tax_enabled ?? true) ? "opacity-100" : "opacity-40"}`}>
+                            <Field
+                                label="نسبة الضريبة (%)"
+                                value={String(shipping.tax_rate ?? 15)}
+                                onChange={(v) => setShipping({ ...shipping, tax_rate: Number(v) || 0 })}
+                                type="number"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Live Preview */}
+                    <div className="rounded-xl bg-theme-faint border border-theme-subtle p-4 text-sm space-y-2">
+                        <p className="text-xs text-theme-faint font-bold mb-2">معاينة فورية لفاتورة 300 ر.س:</p>
+                        <div className="flex justify-between text-theme-soft">
+                            <span>المجموع الفرعي</span>
+                            <span>300.00 ر.س</span>
+                        </div>
+                        <div className="flex justify-between text-theme-soft">
+                            <span>الشحن</span>
+                            <span>
+                                {!(shipping.shipping_enabled ?? true)
+                                    ? <span className="text-theme-faint line-through">معطّل</span>
+                                    : 300 >= (shipping.free_above ?? 500)
+                                        ? "مجاني 🎉"
+                                        : `${shipping.flat_rate ?? 30} ر.س`}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-theme-soft">
+                            <span>الضريبة ({shipping.tax_rate ?? 15}%)</span>
+                            <span>
+                                {!(shipping.tax_enabled ?? true)
+                                    ? <span className="text-theme-faint">معطّلة</span>
+                                    : `${(300 * ((shipping.tax_rate ?? 15) / 100)).toFixed(2)} ر.س`}
+                            </span>
+                        </div>
+                        <div className="flex justify-between font-bold border-t border-theme-subtle pt-2 mt-2">
+                            <span>الإجمالي</span>
+                            <span className="text-gold">
+                                {(
+                                    300 +
+                                    (!(shipping.shipping_enabled ?? true) ? 0 : 300 >= (shipping.free_above ?? 500) ? 0 : (shipping.flat_rate ?? 30)) +
+                                    (!(shipping.tax_enabled ?? true) ? 0 : 300 * ((shipping.tax_rate ?? 15) / 100))
+                                ).toFixed(2)} ر.س
+                            </span>
+                        </div>
                     </div>
                 </div>
                 <button
@@ -678,9 +769,10 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                     {saving === "shipping" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    حفظ إعدادات الشحن
+                    حفظ إعدادات الشحن والضريبة
                 </button>
             </SettingsCard>
+
 
             <SettingsCard title="قواعد التشغيل والتصعيد" icon={ShieldAlert}>
                 <p className="text-theme-subtle text-sm mb-4">

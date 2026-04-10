@@ -59,7 +59,13 @@ export type SiteSettingsType = {
         dtf_daily_quota_limit?: number;
     };
     site_info: Record<string, string>;
-    shipping: Record<string, number>;
+    shipping: {
+        flat_rate?: number;
+        free_above?: number;
+        tax_rate?: number;
+        shipping_enabled?: boolean;
+        tax_enabled?: boolean;
+    };
     creation_prices?: { tshirt?: number; hoodie?: number; pullover?: number };
     product_identifiers?: { prefix?: string; product_code_template?: string; sku_template?: string; type_map?: Record<string, string> };
     ai_simulation?: {
@@ -117,7 +123,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         dtf_daily_quota_limit: 5,
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
-    shipping: { flat_rate: 30, free_above: 500, tax_rate: 15 },
+    shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
     creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
     product_identifiers: {
         prefix: "WSH",
@@ -349,7 +355,19 @@ export async function getSiteSettings() {
                 ),
             },
             site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
-            shipping: settings.shipping || DEFAULT_SITE_SETTINGS.shipping,
+            shipping: {
+                flat_rate: Number(settings.shipping?.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
+                free_above: Number(settings.shipping?.free_above ?? DEFAULT_SITE_SETTINGS.shipping.free_above),
+                tax_rate: Number(settings.shipping?.tax_rate ?? DEFAULT_SITE_SETTINGS.shipping.tax_rate),
+                shipping_enabled: coerceBooleanSetting(
+                    settings.shipping?.shipping_enabled,
+                    DEFAULT_SITE_SETTINGS.shipping.shipping_enabled ?? true
+                ),
+                tax_enabled: coerceBooleanSetting(
+                    settings.shipping?.tax_enabled,
+                    DEFAULT_SITE_SETTINGS.shipping.tax_enabled ?? true
+                ),
+            },
             creation_prices: {
                 tshirt: cp.tshirt ?? DEFAULT_SITE_SETTINGS.creation_prices?.tshirt ?? 89,
                 hoodie: cp.hoodie ?? DEFAULT_SITE_SETTINGS.creation_prices?.hoodie ?? 149,

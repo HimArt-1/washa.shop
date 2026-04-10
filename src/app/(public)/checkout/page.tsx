@@ -26,6 +26,33 @@ const addressSchema = z.object({
 type AddressFormValues = z.infer<typeof addressSchema>;
 type PaymentMethod = "cod" | "paylink";
 
+interface ShippingConfig {
+    flat_rate: number;
+    free_above: number;
+    tax_rate: number;
+    shipping_enabled: boolean;
+    tax_enabled: boolean;
+}
+
+const SHIPPING_DEFAULTS: ShippingConfig = {
+    flat_rate: 30,
+    free_above: 500,
+    tax_rate: 15,
+    shipping_enabled: true,
+    tax_enabled: true,
+};
+
+async function fetchShippingConfig(): Promise<ShippingConfig> {
+    try {
+        const res = await fetch("/api/settings/shipping", { cache: "no-store" });
+        if (!res.ok) return SHIPPING_DEFAULTS;
+        return await res.json();
+    } catch {
+        return SHIPPING_DEFAULTS;
+    }
+}
+
+
 async function verifyPaylinkPayment(params: {
     orderId?: string;
     orderNumber: string;
@@ -68,6 +95,8 @@ function CheckoutContent() {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [shippingConfig, setShippingConfig] = useState<ShippingConfig>(SHIPPING_DEFAULTS);
+
 
     // Auto-verify on return from Paylink
     useEffect(() => {
@@ -123,7 +152,9 @@ function CheckoutContent() {
 
     useEffect(() => {
         setIsClient(true);
+        void fetchShippingConfig().then(setShippingConfig);
     }, []);
+
 
     if (!isClient) return null;
 
@@ -190,9 +221,18 @@ function CheckoutContent() {
     const subtotal = getSubtotal();
     const discount = getDiscountAmount();
     const taxableAmount = Math.max(0, subtotal - discount);
-    const shipping = 30;
-    const tax = taxableAmount * 0.15;
-    const total = getCartTotal() + shipping + tax;
+
+    // Dynamic from dashboard settings
+    const shippingCost = (() => {
+        if (!shippingConfig.shipping_enabled) return 0;
+        if (taxableAmount >= shippingConfig.free_above) return 0;
+        return shippingConfig.flat_rate;
+    })();
+    const taxAmount = shippingConfig.tax_enabled
+        ? taxableAmount * (shippingConfig.tax_rate / 100)
+        : 0;
+    const total = taxableAmount + shippingCost + taxAmount;
+
 
     async function onSubmit(data: AddressFormValues) {
         setIsSubmitting(true);
@@ -240,8 +280,10 @@ function CheckoutContent() {
                     qty: item.quantity,
                 }));
 
-                // Add shipping as a product line
-                products.push({ title: "تكلفة الشحن", price: shipping, qty: 1 });
+                // Add shipping as a product line (only if enabled and applicable)
+                if (shippingCost > 0) {
+                    products.push({ title: "تكلفة الشحن", price: shippingCost, qty: 1 });
+                }
 
                 const response = await fetch("/api/paylink/create-invoice", {
                     method: "POST",
@@ -531,11 +573,21 @@ function CheckoutContent() {
                                 )}
                                 <div className="flex justify-between text-theme-soft text-sm">
                                     <span>الشحن</span>
-                                    <span>{shipping.toLocaleString()} ر.س</span>
+                                    <span>
+                                        {!shippingConfig.shipping_enabled
+                                            ? <span className="text-theme-faint text-xs">مجاني — معطّل</span>
+                                            : taxableAmount >= shippingConfig.free_above
+                                                ? <span className="text-green-400 text-xs">شحن مجاني 🎉</span>
+                                                : `${shippingCost.toLocaleString()} ر.س`}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between text-theme-soft text-sm">
-                                    <span>الضريبة (15%)</span>
-                                    <span>{tax.toLocaleString()} ر.س</span>
+                                    <span>الضريبة ({shippingConfig.tax_rate}%)</span>
+                                    <span>
+                                        {!shippingConfig.tax_enabled
+                                            ? <span className="text-theme-faint text-xs">غير مطبّقة</span>
+                                            : `${taxAmount.toLocaleString()} ر.س`}
+                                    </span>
                                 </div>
                                 <div className="flex justify-between font-bold text-lg pt-4 border-t border-theme-soft mt-4">
                                     <span>الإجمالي</span>
