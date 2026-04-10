@@ -28,6 +28,7 @@ type VisibilityState = {
     ai_section: boolean;
     hero_auth_buttons: boolean;
     hero_washa_ai_button: boolean;
+    hero_join_artist_button: boolean;
     design_piece: boolean;
     design_piece_ai_switch: boolean;
     design_piece_dtf_studio_switch: boolean;
@@ -293,6 +294,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
+        hero_join_artist_button: settings.visibility.hero_join_artist_button ?? false,
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
@@ -315,7 +317,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
     });
 
     const [aiSimulation, setAiSimulation] = useState({
-        step1_image: settings.ai_simulation?.step1_image ?? "/images/design/heavy-tshirt-black-front.png",
+        step1_image: settings.ai_simulation?.step1_image ?? "/images/design/heavy-tshirt-black-front.svg",
         step1_color_name: settings.ai_simulation?.step1_color_name ?? "أسود كلاسيك",
         step1_pattern: settings.ai_simulation?.step1_pattern ?? "بدون نمط",
         step2_prompt: settings.ai_simulation?.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
@@ -507,6 +509,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         label="زر WASHA AI في هيرو الصفحة الرئيسية"
                         checked={visibility.hero_washa_ai_button ?? true}
                         onChange={(v) => setVisibility({ ...visibility, hero_washa_ai_button: v })}
+                    />
+                    <Toggle
+                        label="زر «انضم كفنان» في الهيرو"
+                        checked={visibility.hero_join_artist_button ?? false}
+                        onChange={(v) => setVisibility({ ...visibility, hero_join_artist_button: v })}
                     />
                     <Toggle
                         label="صمم قطعتك (Design Your Piece)"

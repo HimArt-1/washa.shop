@@ -16,6 +16,7 @@ export default async function Home() {
                 <Hero
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={showWashaAiButton}
+                    showJoinArtistButton={settings.visibility.hero_join_artist_button}
                 />
                 {v.store ? <Store /> : null}
                 {settings.visibility.ai_section !== false && (

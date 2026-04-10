@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { revalidatePath, unstable_noStore as noStore } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache, unstable_noStore as noStore } from "next/cache";
 import { generateNextSKU } from "@/lib/product-identifiers";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import {
@@ -49,6 +49,7 @@ export type SiteSettingsType = {
         ai_section?: boolean;
         hero_auth_buttons?: boolean;
         hero_washa_ai_button?: boolean;
+        hero_join_artist_button?: boolean;
         design_piece?: boolean;
         design_piece_ai_switch?: boolean;
         design_piece_dtf_studio_switch?: boolean;
@@ -106,6 +107,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         ai_section: true,
         hero_auth_buttons: true,
         hero_washa_ai_button: true,
+        hero_join_artist_button: false,
         design_piece: true,
         design_piece_ai_switch: true,
         design_piece_dtf_studio_switch: true,
@@ -124,7 +126,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         type_map: {},
     },
     ai_simulation: {
-        step1_image: "/images/design/heavy-tshirt-black-front.png",
+        step1_image: "/images/design/heavy-tshirt-black-front.svg",
         step1_color_name: "أسود كلاسيك",
         step1_pattern: "بدون نمط",
         step2_prompt: "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
@@ -255,6 +257,7 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         ai_section: coerceBooleanSetting(visibility.ai_section, fallback.ai_section ?? true),
         hero_auth_buttons: coerceBooleanSetting(visibility.hero_auth_buttons, fallback.hero_auth_buttons ?? true),
         hero_washa_ai_button: coerceBooleanSetting(visibility.hero_washa_ai_button, fallback.hero_washa_ai_button ?? true),
+        hero_join_artist_button: coerceBooleanSetting(visibility.hero_join_artist_button, fallback.hero_join_artist_button ?? false),
         design_piece: coerceBooleanSetting(visibility.design_piece, fallback.design_piece ?? true),
         design_piece_ai_switch: coerceBooleanSetting(visibility.design_piece_ai_switch, fallback.design_piece_ai_switch ?? true),
         design_piece_dtf_studio_switch: coerceBooleanSetting(visibility.design_piece_dtf_studio_switch, fallback.design_piece_dtf_studio_switch ?? true),
@@ -753,12 +756,11 @@ export async function getWashaAiSettings() {
 
 // ─── Public visibility (للصفحات العامة — بدون صلاحية أدمن) ───
 
-export async function getPublicVisibility() {
-    // Check if Supabase is configured before attempting to use it
+async function getPublicVisibilityUncached(): Promise<SiteSettingsType["visibility"]> {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return normalizeVisibilitySettings(null);
     }
-    
+
     try {
         const supabase = getAdminSupabase();
         const { data } = await supabase
@@ -769,10 +771,17 @@ export async function getPublicVisibility() {
 
         const visibility = (data as { value?: Record<string, unknown> } | null)?.value;
         return normalizeVisibilitySettings(visibility);
-    } catch (error) {
-        // Return defaults if Supabase is not configured
+    } catch {
         return normalizeVisibilitySettings(null);
     }
+}
+
+/** تخزين مؤقت لتقليل استعلامات Supabase على كل طلب (تحسين TTFB للصفحات العامة) */
+export async function getPublicVisibility() {
+    return unstable_cache(getPublicVisibilityUncached, ["public-visibility"], {
+        revalidate: 120,
+        tags: ["public-visibility"],
+    })();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -806,6 +815,10 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
 
     if (error) {
         return { success: false, error: error.message };
+    }
+
+    if (key === "visibility") {
+        revalidateTag("public-visibility");
     }
 
     if (key === "operational_rules" && changedRuleKeys.length > 0) {

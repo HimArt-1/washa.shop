@@ -12,9 +12,10 @@ import { SignedIn, SignedOut } from "@clerk/nextjs";
 interface HeroProps {
   showAuthButtons?: boolean;
   showWashaAiButton?: boolean;
+  showJoinArtistButton?: boolean;
 }
 
-export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroProps) {
+export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoinArtistButton = false }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
@@ -182,7 +183,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           disablePictureInPicture
           disableRemotePlayback
           controlsList="nodownload nofullscreen noremoteplayback"
@@ -365,23 +366,25 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true }: HeroP
                     تسجيل الدخول
                   </Link>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setJoinOpen(true)}
-                  className="text-sm font-medium transition-colors underline-offset-4 hover:underline"
-                  style={{
-                    color: heroTokens.linkMuted,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = "var(--wusha-gold)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = heroTokens.linkMuted;
-                  }}
-                  suppressHydrationWarning
-                >
-                  انضم كفنان إلى المنصة
-                </button>
+                {showJoinArtistButton && (
+                  <button
+                    type="button"
+                    onClick={() => setJoinOpen(true)}
+                    className="text-sm font-medium transition-colors underline-offset-4 hover:underline"
+                    style={{
+                      color: heroTokens.linkMuted,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "var(--wusha-gold)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = heroTokens.linkMuted;
+                    }}
+                    suppressHydrationWarning
+                  >
+                    انضم كفنان إلى المنصة
+                  </button>
+                )}
               </div>
             </SignedOut>
           </motion.div>
