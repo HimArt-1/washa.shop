@@ -31,18 +31,8 @@ const BUILD_VERSION =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
   "dev";
 const THEME_INIT_SCRIPT = `(function(){try{var key='wusha-theme';var stored=localStorage.getItem(key);var theme=(stored==='light'||stored==='dark')?stored:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();`;
+/* لا نخفي body أثناء pending — كان يسبب شاشة بيضاء طويلة وبطء ملاحظ حتى يكتمل فحص CSS */
 const CSS_GUARD_STYLE = `
-html[data-css-ready="pending"] body {
-  opacity: 0;
-  visibility: hidden;
-}
-
-html[data-css-ready="ready"] body,
-html[data-css-ready="fallback"] body {
-  opacity: 1;
-  visibility: visible;
-}
-
 html[data-css-ready="fallback"] body {
   background: #f4ede3;
   color: #1a1612;
@@ -84,7 +74,7 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
   var buildVersion = ${JSON.stringify(BUILD_VERSION)};
   var recoveryKey = "wusha-css-recovery:" + buildVersion;
   var recoveryParam = "__css_recover";
-  var maxWaitMs = 2800;
+  var maxWaitMs = 1800;
   doc.dataset.cssReady = "pending";
 
   function emitRecoveryEvent(phase, detail) {

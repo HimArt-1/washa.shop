@@ -45,7 +45,11 @@ export function AISection({ config }: AISectionProps) {
   const [promptText, setPromptText] = useState("");
 
   const fullPrompt = config?.step2_prompt || "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...";
-  const garmentImage = config?.step1_image || "/images/design/heavy-tshirt-black-front.png";
+  const defaultGarment = "/images/design/heavy-tshirt-black-front.svg";
+  const rawGarment = config?.step1_image || defaultGarment;
+  /** مسار قديم .png — يُعاد توجيهه في next.config إلى الـ SVG */
+  const garmentImage =
+    rawGarment === "/images/design/heavy-tshirt-black-front.png" ? defaultGarment : rawGarment;
   const garmentColorName = config?.step1_color_name || "أسود كلاسيك";
   const garmentPattern = config?.step1_pattern || "بدون نمط";
   const artStyle = config?.step2_art_style || "رسم رقمي (Digital Art)";
@@ -248,6 +252,7 @@ export function AISection({ config }: AISectionProps) {
                       fill
                       className="object-contain"
                       priority
+                      unoptimized={garmentImage.endsWith(".svg")}
                     />
                   </motion.div>
                   <div className="pointer-events-none absolute inset-x-4 bottom-4 flex flex-wrap justify-center gap-2 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-1/4 sm:flex-col sm:items-stretch">

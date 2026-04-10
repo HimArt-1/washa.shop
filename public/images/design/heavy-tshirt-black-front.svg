@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 340" fill="none">
+  <defs>
+    <linearGradient id="tshirt-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#333;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+    <filter id="tshirt-shadow" x="-20%" y="-10%" width="140%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <!-- ,3E 'D*J4J1* - 4CD (3J7 #E'EJ -->
+  <path
+    d="M140 20 L180 55 L200 120 L200 300 Q200 320 140 330 Q80 320 80 300 L80 120 L100 55 Z"
+    fill="url(#tshirt-grad)"
+    stroke="rgba(255,255,255,0.06)"
+    stroke-width="1"
+    filter="url(#tshirt-shadow)"
+  />
+  <!-- 1B() -->
+  <ellipse cx="140" cy="42" rx="22" ry="14" fill="#080808" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+</svg>

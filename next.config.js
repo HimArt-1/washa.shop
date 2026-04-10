@@ -62,6 +62,15 @@ module.exports = (phase) => {
       })),
     },
     staticPageGenerationTimeout: 300,
+    /** روابط قديمة تشير إلى .png — الملف الفعلي SVG */
+    async rewrites() {
+      return [
+        {
+          source: '/images/design/heavy-tshirt-black-front.png',
+          destination: '/images/design/heavy-tshirt-black-front.svg',
+        },
+      ];
+    },
     async headers() {
       return [
         {
