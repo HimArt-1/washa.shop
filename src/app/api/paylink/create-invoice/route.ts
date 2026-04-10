@@ -60,13 +60,6 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Save transaction number to order for later verification
-        const supabase = getSupabaseAdminClient();
-        await supabase
-            .from("orders")
-            .update({ paylink_transaction_no: invoice.transactionNo } as any)
-            .eq("id", orderId);
-
         return NextResponse.json({
             success: true,
             url: invoice.url,
