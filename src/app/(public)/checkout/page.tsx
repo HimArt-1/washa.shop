@@ -11,7 +11,6 @@ import * as z from "zod";
 import { createOrder } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { StripePaymentForm } from "@/components/checkout/StripePaymentForm";
 
 // Schema
 const addressSchema = z.object({
@@ -25,16 +24,15 @@ const addressSchema = z.object({
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
-type PaymentMethod = "cod" | "stripe";
-type CheckoutStep = "address" | "paying";
+type PaymentMethod = "cod" | "paylink";
 
-async function verifyCheckoutPayment(params: {
+async function verifyPaylinkPayment(params: {
     orderId?: string;
     orderNumber: string;
-    sessionId?: string;
+    transactionNo?: string;
 }) {
     try {
-        const response = await fetch("/api/stripe/checkout-session/verify", {
+        const response = await fetch("/api/paylink/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(params),
@@ -71,23 +69,17 @@ function CheckoutContent() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // حالة الدفع المدمج
-    const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>("address");
-    const [stripeClientSecret, setStripeClientSecret] = useState<string | null>(null);
-    const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
-    const [pendingOrderNumber, setPendingOrderNumber] = useState<string | null>(null);
-    const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
-
+    // Auto-verify on return from Paylink
     useEffect(() => {
         const orderNum = searchParams.get("order");
         const orderId = searchParams.get("order_id");
-        const sessionId = searchParams.get("session_id");
+        const transactionNo = searchParams.get("transactionNo") || searchParams.get("transaction_no");
 
         if (searchParams.get("success") !== "1" || !orderNum) {
             return;
         }
 
-        const verificationKey = `${orderId || "unknown"}:${sessionId || "unknown"}:${orderNum}`;
+        const verificationKey = `${orderId || "unknown"}:${transactionNo || "unknown"}:${orderNum}`;
         if (verifiedPaymentKeyRef.current === verificationKey) {
             return;
         }
@@ -97,10 +89,10 @@ function CheckoutContent() {
         setError(null);
 
         void (async () => {
-            const result = await verifyCheckoutPayment({
+            const result = await verifyPaylinkPayment({
                 orderId: orderId || undefined,
                 orderNumber: orderNum,
-                sessionId: sessionId || undefined,
+                transactionNo: transactionNo || undefined,
             });
 
             if (!result.success) {
@@ -111,11 +103,6 @@ function CheckoutContent() {
 
             clearCart();
             setSuccess(result.orderNumber);
-            setCheckoutStep("address");
-            setStripeClientSecret(null);
-            setPendingOrderId(null);
-            setPendingOrderNumber(null);
-            setPendingSessionId(null);
             setIsVerifyingPayment(false);
             window.scrollTo({ top: 0, behavior: "smooth" });
         })();
@@ -140,31 +127,29 @@ function CheckoutContent() {
 
     if (!isClient) return null;
 
-    const isReturningFromStripe =
+    const isReturningFromPaylink =
         searchParams.get("success") === "1" && Boolean(searchParams.get("order"));
 
-    if ((isVerifyingPayment || (isReturningFromStripe && !error)) && !success) {
+    if ((isVerifyingPayment || (isReturningFromPaylink && !error)) && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center gap-4 pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
                 <Loader2 className="h-10 w-10 animate-spin text-gold" />
                 <div className="space-y-2">
                     <h1 className="text-2xl font-bold">جاري التحقق من الدفع</h1>
                     <p className="text-sm text-theme-subtle">
-                        نتحقق الآن من Stripe ونؤكد الطلب داخل النظام.
+                        نتحقق من Paylink ونؤكد الطلب داخل النظام.
                     </p>
                 </div>
             </div>
         );
     }
 
-    if (isReturningFromStripe && error && !success) {
+    if (isReturningFromPaylink && error && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
                 <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
                     <h1 className="mb-4 text-2xl font-bold">تعذر تأكيد الدفع تلقائياً</h1>
-                    <p className="mb-8 text-theme-subtle">
-                        {error}
-                    </p>
+                    <p className="mb-8 text-theme-subtle">{error}</p>
                     <div className="flex flex-wrap justify-center gap-3">
                         <Link href="/account/orders" className="btn-gold px-8 py-3 rounded-xl">
                             متابعة الطلبات
@@ -235,9 +220,9 @@ function CheckoutContent() {
 
         const address = { ...data, state: "" };
         const result = await createOrder(orderItems, address, {
-            paymentMethod: paymentMethod === "stripe" ? "stripe" : "cod",
+            paymentMethod: paymentMethod === "paylink" ? "paylink" : "cod",
             couponId: coupon?.id,
-            discountAmount: discount
+            discountAmount: discount,
         });
 
         if (!result.success) {
@@ -246,70 +231,55 @@ function CheckoutContent() {
             return;
         }
 
-        if (paymentMethod === "stripe" && result.order_id && result.order_number && result.total) {
-            // إنشاء جلسة Checkout مدمجة (ui_mode: 'custom')
-            let json: { clientSecret?: string; sessionId?: string; error?: string } = {};
+        if (paymentMethod === "paylink" && result.order_id && result.order_number && result.total) {
+            // Create Paylink invoice and redirect to payment page
             try {
-                const response = await fetch("/api/stripe/checkout-session", {
+                const products = items.map((item) => ({
+                    title: item.title,
+                    price: item.price,
+                    qty: item.quantity,
+                }));
+
+                // Add shipping as a product line
+                products.push({ title: "تكلفة الشحن", price: shipping, qty: 1 });
+
+                const response = await fetch("/api/paylink/create-invoice", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         orderId: result.order_id,
                         orderNumber: result.order_number,
                         total: result.total,
+                        clientName: data.name,
+                        clientMobile: data.phone,
+                        products,
                     }),
                 });
-                json = await response.json();
-                if (!response.ok || !json.clientSecret || !json.sessionId) {
-                    setError(json.error || "فشل في إنشاء جلسة الدفع");
+
+                const json = await response.json();
+
+                if (!response.ok || !json.url) {
+                    setError(json.error || "فشل في إنشاء رابط الدفع");
                     setIsSubmitting(false);
                     return;
                 }
+
+                // Redirect to Paylink payment page
+                window.location.href = json.url;
+                return;
             } catch {
                 setError("خطأ في الاتصال — تحقق من الإنترنت وأعد المحاولة");
                 setIsSubmitting(false);
                 return;
             }
-
-            setStripeClientSecret(json.clientSecret!);
-            setPendingOrderId(result.order_id);
-            setPendingOrderNumber(result.order_number);
-            setPendingSessionId(json.sessionId);
-            setCheckoutStep("paying");
         } else {
-            // الدفع عند الاستلام
+            // Cash on delivery
             setSuccess(result.order_number || "#ORDER");
             clearCart();
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         setIsSubmitting(false);
-    }
-
-    async function handlePaymentSuccess(params: {
-        orderId: string;
-        orderNumber: string;
-        sessionId: string;
-    }) {
-        setIsVerifyingPayment(true);
-        setError(null);
-
-        const result = await verifyCheckoutPayment(params);
-        if (!result.success) {
-            setIsVerifyingPayment(false);
-            return result;
-        }
-
-        clearCart();
-        setSuccess(result.orderNumber);
-        setCheckoutStep("address");
-        setStripeClientSecret(null);
-        setPendingOrderId(null);
-        setPendingOrderNumber(null);
-        setPendingSessionId(null);
-        setIsVerifyingPayment(false);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return { success: true as const };
     }
 
     if (success) {
@@ -330,10 +300,7 @@ function CheckoutContent() {
                     <p className="text-theme-subtle mb-8 max-w-md mx-auto">
                         شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً.
                     </p>
-                    <Link
-                        href="/"
-                        className="btn-gold px-8 py-3 rounded-xl"
-                    >
+                    <Link href="/" className="btn-gold px-8 py-3 rounded-xl">
                         العودة للرئيسية
                     </Link>
                 </div>
@@ -341,44 +308,6 @@ function CheckoutContent() {
         );
     }
 
-    // ─── خطوة الدفع المدمج ────────────────────────────────────
-    if (checkoutStep === "paying" && stripeClientSecret && pendingOrderId && pendingOrderNumber && pendingSessionId) {
-        return (
-            <div className="min-h-screen bg-theme pt-28 pb-16 sm:pt-32 sm:pb-20">
-                <div className="container-wusha max-w-2xl">
-                    <button
-                        onClick={() => { setCheckoutStep("address"); setError(null); }}
-                        className="mb-8 flex items-center gap-2 text-sm text-theme-subtle transition-colors hover:text-theme"
-                    >
-                        <ArrowRight className="h-4 w-4" />
-                        العودة للطلب
-                    </button>
-
-                    <h1 className="text-3xl md:text-4xl font-bold mb-8">إتمام الدفع</h1>
-
-                    <div className="mb-6 p-4 theme-surface-panel rounded-2xl flex justify-between text-sm">
-                        <span className="text-theme-subtle">رقم الطلب</span>
-                        <span className="font-mono font-bold text-gold">{pendingOrderNumber}</span>
-                    </div>
-
-                    <StripePaymentForm
-                        clientSecret={stripeClientSecret}
-                        orderId={pendingOrderId}
-                        orderNumber={pendingOrderNumber}
-                        sessionId={pendingSessionId}
-                        onSuccess={handlePaymentSuccess}
-                    />
-
-                    <div className="mt-4 p-4 theme-surface-panel rounded-2xl flex justify-between text-sm">
-                        <span className="text-theme-subtle">الإجمالي</span>
-                        <span className="font-bold text-gold">{total.toLocaleString()} ر.س</span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // ─── خطوة العنوان وطريقة الدفع ───────────────────────────
     return (
         <div className="min-h-screen bg-theme pb-20 pt-28 sm:pt-32">
             <div className="container-wusha">
@@ -481,6 +410,7 @@ function CheckoutContent() {
                             </form>
                         </div>
 
+                        {/* Payment Method */}
                         <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <CreditCard className="text-gold w-5 h-5" />
@@ -488,18 +418,18 @@ function CheckoutContent() {
                             </h2>
 
                             <div className="space-y-3">
+                                {/* COD */}
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMethod("cod")}
-                                        className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "cod"
+                                    className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "cod"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
-                                    >
+                                >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"
-                                                }`}>
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"}`}>
                                                 {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                             </div>
                                             <div>
@@ -511,33 +441,33 @@ function CheckoutContent() {
                                     </div>
                                 </button>
 
-                                {process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setPaymentMethod("stripe")}
-                                        className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "stripe"
-                                            ? "border-gold/40 bg-gold/10"
-                                            : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
-                                            }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "stripe" ? "border-gold bg-gold" : "border-theme-soft"
-                                                }`}>
-                                                    {paymentMethod === "stripe" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
-                                                </div>
-                                                <div>
-                                                    <span className="font-bold">الدفع الإلكتروني</span>
-                                                    <p className="mt-1 text-xs text-theme-subtle">ادفع مباشرة ببطاقاتك أو Apple Pay وMada.</p>
-                                                </div>
+                                {/* Paylink */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentMethod("paylink")}
+                                    className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "paylink"
+                                        ? "border-gold/40 bg-gold/10"
+                                        : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
+                                        }`}
+                                >
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "paylink" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                {paymentMethod === "paylink" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
                                             </div>
-                                            <span className="inline-flex items-center gap-1 text-xs text-theme-subtle">
-                                                <Smartphone className="w-3.5 h-3.5" />
-                                                Visa · Mada · Apple Pay
-                                            </span>
+                                            <div>
+                                                <span className="font-bold">الدفع الإلكتروني</span>
+                                                <p className="mt-1 text-xs text-theme-subtle">
+                                                    ادفع بـ Mada، Visa، Apple Pay، STC Pay، Tabby، أو Tamara.
+                                                </p>
+                                            </div>
                                         </div>
-                                    </button>
-                                )}
+                                        <span className="inline-flex items-center gap-1 text-xs text-theme-subtle">
+                                            <Smartphone className="w-3.5 h-3.5" />
+                                            Mada · Visa · STC Pay
+                                        </span>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -551,7 +481,7 @@ function CheckoutContent() {
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
                                 <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "stripe" ? "دفع إلكتروني" : "دفع عند الاستلام"}
+                                    {paymentMethod === "paylink" ? "دفع إلكتروني — Paylink" : "دفع عند الاستلام"}
                                 </span>
                             </div>
 
@@ -630,7 +560,7 @@ function CheckoutContent() {
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "stripe" ? "متابعة للدفع" : "تأكيد الطلب"}
+                                            {paymentMethod === "paylink" ? "متابعة للدفع عبر Paylink" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

@@ -409,7 +409,7 @@ export async function createOrder(
     items: OrderItemInput[],
     shippingAddress: ShippingAddressInput,
     options?: {
-        paymentMethod?: "cod" | "stripe";
+        paymentMethod?: "cod" | "stripe" | "paylink";
         couponId?: string | null;
         discountAmount?: number;
     }
@@ -470,11 +470,11 @@ export async function createOrder(
     const tax = taxableAmount * TAX_RATE;
     const total = taxableAmount + SHIPPING_COST + tax;
 
-    const isCod = options?.paymentMethod !== "stripe";
+    const isCod = options?.paymentMethod !== "stripe" && options?.paymentMethod !== "paylink";
 
     // 4. Create order
     // COD: مؤكد — الدفع عند الاستلام
-    // Stripe: معلق — ينتظر تأكيد الدفع عبر Webhook
+    // Paylink/Stripe: معلق — ينتظر تأكيد الدفع عبر Webhook أو Callback
     const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
