@@ -9,6 +9,11 @@ import { getPaylinkInvoice } from "@/lib/paylink";
 import { confirmOrderPayment } from "@/app/actions/orders";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
+/** Paylink يرسل GET لاختبار الرابط — نرد بـ JSON صالح */
+export async function GET() {
+    return NextResponse.json({ received: true, status: "ok" });
+}
+
 export async function POST(req: NextRequest) {
     try {
         // Paylink sends form-encoded or JSON body with transactionNo & orderNumber
