@@ -1982,7 +1982,7 @@ export async function getFulfillmentCalculation(orderId: string) {
 
 export async function initiateWarehousePayment(orderId: string) {
     try {
-        const { supabase, adminProfile } = await requireAdmin();
+        const { supabase, profile: adminProfile } = await requireAdmin();
         const calculation = await getFulfillmentCalculation(orderId);
         
         if (!calculation.success || !calculation.breakdown) {
@@ -2064,7 +2064,7 @@ export async function markAsPaidToWarehouse(orderId: string) {
 
 export async function initiateBulkWarehousePayment(orderIds: string[]) {
     try {
-        const { supabase, adminProfile } = await requireAdmin();
+        const { supabase, profile: adminProfile } = await requireAdmin();
         
         const allProducts: any[] = [];
         let grandTotal = 0;
