@@ -1703,7 +1703,7 @@ export async function getFulfillmentHubData() {
         // حساب دين المستودع — جميع الطلبات المؤكدة والمدفوعة من العميل لم يُدفع للمستودع عنها بعد
         let totalDebt = 0;
         (paidOrders || []).forEach(order => {
-            const orderItems = (order.order_items as any[]) || [];
+            const orderItems = (order.order_items as unknown as any[]) || [];
             orderItems.forEach(item => {
                 const garmentSlug = item.custom_garment || "premium-tshirt";
                 const base = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
