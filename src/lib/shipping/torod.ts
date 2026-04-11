@@ -1,3 +1,5 @@
+import { createHmac } from "crypto";
+
 /**
  * ═══════════════════════════════════════════════════════════
  *  وشّى | WASHA — Torod Shipping Integration
@@ -30,6 +32,7 @@ export interface TorodShipmentResponse {
 class TorodClient {
     private clientId = process.env.TOROD_CLIENT_ID;
     private clientSecret = process.env.TOROD_CLIENT_SECRET;
+    private webhookSecret = process.env.TOROD_WEBHOOK_SECRET;
     private apiUrl = process.env.TOROD_API_URL || "https://api.torod.co";
 
     private isConfigured() {
@@ -57,34 +60,42 @@ class TorodClient {
         };
     }
 
+    private async getAccessToken(): Promise<string> {
+        if (!this.clientId || !this.clientSecret) {
+            throw new Error("Torod credentials missing");
+        }
+
+        const formData = new FormData();
+        formData.append("client_id", this.clientId);
+        formData.append("client_secret", this.clientSecret);
+
+        const res = await fetch(`${this.apiUrl}/ar/api/token`, {
+            method: "POST",
+            body: formData,
+            headers: { "Accept": "application/json" }
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || "Failed to authenticate with Torod");
+        }
+
+        const data = await res.json();
+        const access_token = data.data?.token || data.token || data.access_token;
+        if (!access_token) throw new Error("Authentication successful but no token received");
+
+        return access_token;
+    }
+
     async bookShipment(request: TorodShipmentRequest): Promise<TorodShipmentResponse> {
         if (!this.isConfigured()) {
             return this.simulateBooking(request);
         }
 
         try {
-            // 1. Get Access Token (Authentication)
-            const formData = new FormData();
-            formData.append("client_id", this.clientId!);
-            formData.append("client_secret", this.clientSecret!);
-
-            const authRes = await fetch(`${this.apiUrl}/ar/api/token`, {
-                method: "POST",
-                body: formData,
-                headers: { "Accept": "application/json" }
-            });
-
-            if (!authRes.ok) {
-                const errorData = await authRes.json().catch(() => ({}));
-                throw new Error(errorData.message || "Failed to authenticate with Torod");
-            }
-            
-            const authData = await authRes.json();
-            const access_token = authData.data?.token || authData.token || authData.access_token;
-            if (!access_token) throw new Error("Authentication successful but no token received");
+            const access_token = await this.getAccessToken();
 
             // 2. Create Order
-            // Official Path: /ar/api/order/create
             const orderRes = await fetch(`${this.apiUrl}/ar/api/order/create`, {
                 method: "POST",
                 headers: {
@@ -97,13 +108,13 @@ class TorodClient {
                     email: request.receiver_email || "no-email@washa.shop",
                     phone_number: request.receiver_mobile,
                     item_description: `Items: ${request.items_count} from Order #${request.order_number}`,
-                    order_total: Math.round(request.cod_amount || 0), // Assuming COD is the total for now
+                    order_total: Math.round(request.cod_amount || 0),
                     payment: (request.cod_amount && request.cod_amount > 0) ? "COD" : "Prepaid",
                     weight: Math.ceil(request.weight),
                     no_of_box: 1,
                     type: "address",
                     address: request.address,
-                    locate_address: request.address, // Using same string for map location if city is in it
+                    locate_address: request.address,
                     reference_id: request.order_number,
                     order_type: "normal"
                 })
@@ -118,7 +129,6 @@ class TorodClient {
                 };
             }
 
-            // Torod typically returns structured data under .data
             const shipmentDetails = data.data || data;
 
             return {
@@ -135,23 +145,65 @@ class TorodClient {
         }
     }
 
-    /**
-     * تتبع الشحنة باستخدام رقم التتبع أو معرف الطلب
-     */
+    async cancelOrder(trackingId: string): Promise<{ success: boolean; error?: string }> {
+        if (!this.isConfigured()) {
+            console.log("[Torod Simulation] Cancelling order:", trackingId);
+            return { success: true };
+        }
+
+        try {
+            const token = await this.getAccessToken();
+            const res = await fetch(`${this.apiUrl}/ar/api/shipment/cancel`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                body: JSON.stringify({ tracking_id: trackingId })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                return { success: false, error: data.message || "Failed to cancel shipment" };
+            }
+
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: String(error) };
+        }
+    }
+
+    async getShippingRates(request: TorodShipmentRequest): Promise<any[]> {
+        if (!this.isConfigured()) return [];
+
+        try {
+            const token = await this.getAccessToken();
+            const res = await fetch(`${this.apiUrl}/ar/api/order/rates`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    weight: request.weight,
+                    city: request.city,
+                    cod_amount: request.cod_amount || 0
+                })
+            });
+
+            const data = await res.json();
+            return data.data || [];
+        } catch {
+            return [];
+        }
+    }
+
     async trackShipment(trackingId: string): Promise<any> {
         if (!this.isConfigured()) return { success: false, error: "Not configured" };
 
         try {
-            // 1. Get Token (Standard flow)
-            const formData = new FormData();
-            formData.append("client_id", this.clientId!);
-            formData.append("client_secret", this.clientSecret!);
-
-            const authRes = await fetch(`${this.apiUrl}/ar/api/token`, { method: "POST", body: formData });
-            const authData = await authRes.json();
-            const token = authData.data?.token || authData.token;
-
-            // 2. Track Request
+            const token = await this.getAccessToken();
             const trackFormData = new FormData();
             trackFormData.append("tracking_id", trackingId);
 
@@ -170,6 +222,16 @@ class TorodClient {
             return { success: false, error: String(error) };
         }
     }
+
+    validateWebhookSignature(body: string, signature: string): boolean {
+        if (!this.webhookSecret) return true; // Fail-safe if secret not set for now (legacy)
+        
+        const hmac = createHmac("sha256", this.webhookSecret);
+        const digest = hmac.update(body).digest("hex");
+        
+        return digest === signature;
+    }
 }
 
 export const torod = new TorodClient();
+

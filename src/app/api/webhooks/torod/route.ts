@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { torod } from "@/lib/shipping/torod";
 
 /**
  * ═══════════════════════════════════════════════════════════
@@ -8,28 +9,49 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
  * ═══════════════════════════════════════════════════════════
  */
 
+// Torod checking for 200 OK on GET/POST during validation
+export async function GET() {
+    return NextResponse.json({ status: "ok", message: "Wusha Torod Endpoint Active" });
+}
+
 export async function POST(req: Request) {
     try {
-        const payload = await req.json();
+        const rawBody = await req.text();
+        
+        // Handle empty bodies (Ping/Validation)
+        if (!rawBody) {
+            return NextResponse.json({ success: true, message: "Ping received" });
+        }
+
+        const payload = JSON.parse(rawBody);
         const headerHmac = req.headers.get("X-Hmac-Sha256");
 
         console.log("[Torod Webhook Received]:", JSON.stringify(payload, null, 2));
 
+        // 1. Security Check
+        if (headerHmac && !torod.validateWebhookSignature(rawBody, headerHmac)) {
+            console.error("[Torod Webhook Security] Invalid HMAC signature");
+            return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
+
         const { order_id, tracking_id, status } = payload;
 
+        // Validation/Ping check (if specific identifiers missing but body exists)
         if (!order_id && !tracking_id) {
-            return NextResponse.json({ error: "Missing order identifiers" }, { status: 400 });
+            return NextResponse.json({ success: true, message: "Validation payload received" });
         }
 
         const supabase = getSupabaseAdminClient();
 
-        // Map Torod status to Wusha Status
+        // 2. Map Torod status to Wusha Status
         let wushaStatus: string | null = null;
+        const normalizedStatus = status?.toLowerCase() || "unknown";
         
-        switch (status?.toLowerCase()) {
+        switch (normalizedStatus) {
             case "shipped":
             case "in transit":
             case "ready for pickup":
+            case "picked up":
                 wushaStatus = "shipped";
                 break;
             case "delivered":
@@ -45,13 +67,13 @@ export async function POST(req: Request) {
                 wushaStatus = "shipping_failed";
                 break;
             default:
-                wushaStatus = null; // No change if status unknown
+                wushaStatus = null; // No change if status unknown or intermediate
         }
 
-        // 1. Find the order by reference_id (Wusha Order ID) or tracking_id
+        // 3. Find the order
         const { data: order, error: fetchError } = await supabase
             .from("orders")
-            .select("id, status")
+            .select("id, status, metadata")
             .or(`id.eq.${order_id},tracking_number.eq.${tracking_id}`)
             .single();
 
@@ -60,13 +82,26 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Order not found" }, { status: 404 });
         }
 
-        // 2. Perform Update
+        // 4. Update metadata with history
+        const currentMetadata = (order.metadata as any) || {};
+        const history = currentMetadata.shipping_history || [];
+        
+        const newHistoryEntry = {
+            status: normalizedStatus,
+            timestamp: new Date().toISOString(),
+            raw_payload: payload
+        };
+
         const updateData: any = {
             torod_last_status: status,
+            metadata: {
+                ...currentMetadata,
+                shipping_history: [...history, newHistoryEntry]
+            },
             updated_at: new Date().toISOString()
         };
 
-        if (wushaStatus) {
+        if (wushaStatus && wushaStatus !== order.status) {
             updateData.status = wushaStatus;
         }
 
@@ -79,7 +114,7 @@ export async function POST(req: Request) {
             throw updateError;
         }
 
-        console.log(`[Torod Webhook Success] Updated Order #${order.id} to status: ${status}`);
+        console.log(`[Torod Webhook Success] Updated Order #${order.id} status to: ${normalizedStatus}`);
 
         return NextResponse.json({ success: true });
 

@@ -1840,14 +1840,22 @@ export async function bookTorodShipment(orderId: string) {
             return { success: false, error: "الطلب غير موجود" };
         }
 
-        // 2. Fetch Order Items (to count items and estimate weight)
+        // 2. Fetch Order Items with product types for better weight estimation
         const { data: items } = await supabase
             .from("order_items")
-            .select("quantity")
+            .select("quantity, product:products(type)")
             .eq("order_id", orderId);
 
         const totalItemsCount = (items || []).reduce((sum, item) => sum + item.quantity, 0);
-        const estimatedWeight = Math.max(0.5, totalItemsCount * 0.4); // 0.4kg per item avg
+        
+        // Dynamic weight estimation based on item types
+        let estimatedWeight = 0;
+        (items || []).forEach(item => {
+            const type = (item.product as any)?.type || 'print';
+            const unitWeight = type === 'apparel' ? 0.4 : 0.15;
+            estimatedWeight += item.quantity * unitWeight;
+        });
+        estimatedWeight = Math.max(0.5, estimatedWeight);
 
         // 3. Map Shipping Address
         const addr = order.shipping_address as any;
@@ -1857,7 +1865,7 @@ export async function bookTorodShipment(orderId: string) {
 
         // 4. Book via Torod
         const orderTotal = Math.round(order.total);
-        console.log(`[Torod Booking] Attempting to book Order #${order.order_number} for total: ${orderTotal} SAR`);
+        console.log(`[Torod Booking] Order #${order.order_number} | Items: ${totalItemsCount} | Weight: ${estimatedWeight.toFixed(2)}kg`);
 
         const result = await torod.bookShipment({
             order_number: order.order_number,
@@ -1903,6 +1911,47 @@ export async function bookTorodShipment(orderId: string) {
 
     } catch (err) {
         console.error("[bookTorodShipment] error:", err);
+        return { success: false, error: String(err) };
+    }
+}
+
+export async function cancelTorodShipment(orderId: string) {
+    try {
+        const { supabase } = await requireAdmin();
+
+        const { data: order, error: orderError } = await supabase
+            .from("orders")
+            .select("tracking_number, status")
+            .eq("id", orderId)
+            .single();
+
+        if (orderError || !order || !order.tracking_number) {
+            return { success: false, error: "لا توجد شحنة نشطة لإلغائها" };
+        }
+
+        const result = await torod.cancelOrder(order.tracking_number);
+
+        if (!result.success) {
+            return { success: false, error: result.error || "فشل إلغاء الشحنة في طرود" };
+        }
+
+        // Return order status to processing after cancellation
+        await supabase
+            .from("orders")
+            .update({
+                status: "processing",
+                tracking_number: null,
+                waybill_url: null,
+                torod_order_id: null,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", orderId);
+
+        revalidatePath("/dashboard/orders");
+        revalidatePath("/dashboard/orders/command-center");
+
+        return { success: true };
+    } catch (err) {
         return { success: false, error: String(err) };
     }
 }

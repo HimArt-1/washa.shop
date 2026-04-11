@@ -29,7 +29,7 @@ import { InvoiceBuilder } from "@/components/admin/InvoiceBuilder";
 import { ShippingLabelBuilder } from "@/components/admin/ShippingLabelBuilder";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap, Info } from "lucide-react";
+import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap, Info, XCircle } from "lucide-react";
 import { FulfillmentLedger } from "./FulfillmentLedger";
 import { toast } from "sonner";
 import {
@@ -39,6 +39,7 @@ import {
     initiateBulkWarehousePayment,
     markBatchAsPaidToWarehouse,
     bookTorodShipment,
+    cancelTorodShipment, // New
 } from "@/app/actions/admin";
 
 interface OrderItem {
@@ -230,6 +231,19 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 );
             } else {
                 toast.error(result.error || "فشل الحجز مع طرود");
+            }
+        });
+    };
+
+    const handleCancelTorod = async (orderId: string) => {
+        if (!confirm("هل أنت متأكد من إلغاء الشحنة في طرود؟ سيؤدي ذلك إلى إلغاء بوليصة الشحن تماماً.")) return;
+
+        startTransition(async () => {
+            const result = await cancelTorodShipment(orderId);
+            if (result.success) {
+                toast.success("تم إلغاء الشحنة بنجاح");
+            } else {
+                toast.error(result.error || "فشل إلغاء الشحنة");
             }
         });
     };
@@ -616,15 +630,26 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                                 <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{order.courier_name || "TRACKING"}</p>
                                                                 <p className="text-sm font-mono font-black text-theme tracking-tighter">{order.tracking_number}</p>
                                                             </div>
-                                                            {order.waybill_url && (
-                                                                <a 
-                                                                    href={order.waybill_url} 
-                                                                    target="_blank" 
-                                                                    className="p-3 rounded-xl bg-theme-faint border border-theme-soft hover:border-gold hover:text-gold transition-all"
+                                                            <div className="flex items-center gap-2">
+                                                                {order.waybill_url && (
+                                                                    <a 
+                                                                        href={order.waybill_url} 
+                                                                        target="_blank" 
+                                                                        title="View Waybill"
+                                                                        className="p-3 rounded-xl bg-theme-faint border border-theme-soft hover:border-gold hover:text-gold transition-all"
+                                                                    >
+                                                                        <FileText className="w-4 h-4" />
+                                                                    </a>
+                                                                )}
+                                                                <button 
+                                                                    disabled={isPending}
+                                                                    onClick={() => handleCancelTorod(order.id)}
+                                                                    title="Cancel Torod Shipment"
+                                                                    className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 transition-all active:scale-95 disabled:opacity-50"
                                                                 >
-                                                                    <FileText className="w-4 h-4" />
-                                                                </a>
-                                                            )}
+                                                                    <XCircle className="w-4 h-4" />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>
