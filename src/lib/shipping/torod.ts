@@ -1,4 +1,4 @@
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 /**
  * ═══════════════════════════════════════════════════════════
@@ -223,13 +223,36 @@ class TorodClient {
         }
     }
 
+    /**
+     * Torod sends `X-Hmac-Sha256`: HMAC-SHA256(raw body), **base64** (see their webhook docs).
+     * Secret is your app **Client Secret**; use `TOROD_WEBHOOK_SECRET` or fall back to `TOROD_CLIENT_SECRET`.
+     */
     validateWebhookSignature(body: string, signature: string): boolean {
-        if (!this.webhookSecret) return true; // Fail-safe if secret not set for now (legacy)
-        
-        const hmac = createHmac("sha256", this.webhookSecret);
-        const digest = hmac.update(body).digest("hex");
-        
-        return digest === signature;
+        const secret = this.webhookSecret || this.clientSecret;
+        if (!secret) return true;
+
+        const sig = signature.trim();
+        const expected = createHmac("sha256", secret).update(body, "utf8").digest();
+
+        // Primary: base64 (Torod)
+        try {
+            const decoded = Buffer.from(sig, "base64");
+            if (decoded.length === expected.length && timingSafeEqual(decoded, expected)) {
+                return true;
+            }
+        } catch {
+            /* invalid base64 */
+        }
+
+        // Fallback: hex (older / custom setups)
+        if (/^[0-9a-fA-F]+$/.test(sig) && sig.length === expected.length * 2) {
+            const fromHex = Buffer.from(sig, "hex");
+            if (fromHex.length === expected.length && timingSafeEqual(fromHex, expected)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
