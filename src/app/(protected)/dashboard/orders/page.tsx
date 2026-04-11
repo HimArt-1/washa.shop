@@ -21,7 +21,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     let count = 0;
     let totalPages = 0;
     try {
-        const result = await getAdminOrders(page, status);
+        const result = await getAdminOrders({ page, status });
         orders = result.data ?? [];
         count = result.count ?? 0;
         totalPages = result.totalPages ?? 0;
