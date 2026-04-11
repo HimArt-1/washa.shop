@@ -207,6 +207,8 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 toast.error(result.error || "فشل التحديث الجماعي");
             }
         });
+    };
+
     const handleBookTorod = async (orderId: string) => {
         startTransition(async () => {
             const result = await bookTorodShipment(orderId);
