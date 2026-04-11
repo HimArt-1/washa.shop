@@ -1699,7 +1699,7 @@ export async function getFulfillmentHubData() {
             supabase.from("orders").select(selectStr).in("status", ["processing"]),
             supabase.from("orders").select(selectStr).in("status", ["shipped"]),
             supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, metadata, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
-            supabase.from("event_dispatches").select("*").in("channel", ["warehouse_payment"]).order("created_at", { ascending: false }).limit(10),
+            (supabase as any).from("event_dispatches").select("*").in("channel", ["warehouse_payment"]).order("created_at", { ascending: false }).limit(10),
         ]);
 
         // حساب دين المستودع — فقط الطلبات التي لم يدفع لها بعد
@@ -2136,7 +2136,7 @@ export async function initiateWarehousePayment(orderId: string) {
 
         if (invoice.url) {
             // Register as initiated in dispatches for tracking (optional but good for logs)
-            await getSupabaseAdminClient().from("event_dispatches").insert({
+            await (getSupabaseAdminClient() as any).from("event_dispatches").insert({
                 dispatch_key: `paylink:initiate:FUL-${order.order_number}`,
                 event_type: "fulfillment_initiated",
                 channel: "warehouse_payment",
@@ -2174,7 +2174,7 @@ export async function confirmWarehousePayment(paymentIdentifier: string, amount?
         } else if (paymentIdentifier.startsWith("BATCH-FUL-")) {
             // Bulk Batch
             const { data: batch } = await supabase
-                .from("event_dispatches")
+                .from("event_dispatches" as any)
                 .select("metadata")
                 .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`)
                 .single();
@@ -2259,7 +2259,7 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
 
         if (invoice.url) {
             // Register the batch for automated webhook confirmation
-            await supabase.from("event_dispatches").insert({
+            await (supabase as any).from("event_dispatches").insert({
                 dispatch_key: `paylink:initiate:${batchId}`,
                 event_type: "fulfillment_bulk_initiated",
                 channel: "warehouse_payment",
