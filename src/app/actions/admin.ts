@@ -1685,7 +1685,8 @@ export async function getFulfillmentHubData() {
         const { supabase } = await requireAdmin();
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-        const selectStr = "id, order_number, total, status, payment_status, metadata, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url))";
+        // لا يوجد عمود metadata في جدول orders — نستخدم الحقول المتاحة فقط
+        const selectStr = "id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url))";
         
         const [
             { data: paidOrders },
@@ -1699,26 +1700,21 @@ export async function getFulfillmentHubData() {
             supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
         ]);
 
-        // Calculate actual Warehouse Debt for all orders that are PAID but NOT yet FULFILLMENT_PAID
+        // حساب دين المستودع — جميع الطلبات المؤكدة والمدفوعة من العميل لم يُدفع للمستودع عنها بعد
         let totalDebt = 0;
         (paidOrders || []).forEach(order => {
-            const isFulfillmentPaid = (order.metadata as any)?.fulfillment_paid === true;
-            if (!isFulfillmentPaid) {
-                // Approximate calculation based on items (Garment + Base Packaging)
-                // For high precision, use getFulfillmentCalculation, but for bulk KPI, this logic is safer
-                const orderItems = (order.order_items as any[]) || [];
-                orderItems.forEach(item => {
-                    const garmentSlug = item.custom_garment || "premium-tshirt";
-                    const base = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
-                    const positions = item.custom_position ? item.custom_position.split(",").map((p: string) => p.trim()) : [];
-                    let printTotal = 0;
-                    positions.forEach((pos: string) => {
-                        printTotal += FULFILLMENT_RATES.printing[pos as keyof typeof FULFILLMENT_RATES.printing] || 0;
-                    });
-                    totalDebt += (base + printTotal + FULFILLMENT_RATES.packaging_unit) * item.quantity;
+            const orderItems = (order.order_items as any[]) || [];
+            orderItems.forEach(item => {
+                const garmentSlug = item.custom_garment || "premium-tshirt";
+                const base = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
+                const positions = item.custom_position ? item.custom_position.split(",").map((p: string) => p.trim()) : [];
+                let printTotal = 0;
+                positions.forEach((pos: string) => {
+                    printTotal += FULFILLMENT_RATES.printing[pos as keyof typeof FULFILLMENT_RATES.printing] || 0;
                 });
-                totalDebt += FULFILLMENT_RATES.handling_per_order;
-            }
+                totalDebt += (base + printTotal + FULFILLMENT_RATES.packaging_unit) * item.quantity;
+            });
+            totalDebt += FULFILLMENT_RATES.handling_per_order;
         });
 
         return {
@@ -1741,7 +1737,7 @@ export async function getFulfillmentHubData() {
         return {
             queues: { confirmed: [], processing: [], shipped: [] },
             recentPaid: [],
-            stats: { totalPendingFulfillment: 0, confirmedCount: 0, processingCount: 0, shippedCount: 0 }
+            stats: { totalPendingFulfillment: 0, confirmedCount: 0, processingCount: 0, shippedCount: 0, warehouseDebt: 0 }
         };
     }
 }
@@ -2043,8 +2039,7 @@ export async function markAsPaidToWarehouse(orderId: string) {
         const { error: statusError } = await supabase
             .from("orders")
             .update({ 
-                status: "processing",
-                metadata: { fulfillment_paid: true, fulfillment_paid_at: new Date().toISOString() }
+                status: "processing"
             })
             .eq("id", orderId);
 
@@ -2123,8 +2118,7 @@ export async function markBatchAsPaidToWarehouse(orderIds: string[]) {
             const { error } = await supabase
                 .from("orders")
                 .update({ 
-                    status: "processing",
-                    metadata: { fulfillment_paid: true, fulfillment_paid_at: new Date().toISOString(), batch_payment: true }
+                    status: "processing"
                 })
                 .eq("id", id);
             
