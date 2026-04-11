@@ -2071,7 +2071,13 @@ export async function getFulfillmentCalculation(orderId: string) {
     }
 }
 
-export async function getBulkFulfillmentCalculation(orderIds: string[]) {
+export type BulkFulfillmentCalculationResult =
+    | { success: true; grandTotal: number; breakdowns: Record<string, any> }
+    | { success: false; error: string };
+
+export async function getBulkFulfillmentCalculation(
+    orderIds: string[]
+): Promise<BulkFulfillmentCalculationResult> {
     try {
         let grandTotal = 0;
         const individualBreakdowns: Record<string, any> = {};
@@ -2084,11 +2090,10 @@ export async function getBulkFulfillmentCalculation(orderIds: string[]) {
             }
         }
 
-        return {
-            success: grandTotal > 0,
-            grandTotal,
-            breakdowns: individualBreakdowns
-        };
+        if (grandTotal > 0) {
+            return { success: true, grandTotal, breakdowns: individualBreakdowns };
+        }
+        return { success: false, error: "No fulfillment amount for selection" };
     } catch (err) {
         return { success: false, error: String(err) };
     }

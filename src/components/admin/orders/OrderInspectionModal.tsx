@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, MapPin, Package, CreditCard, Clock, Calendar, Hash, FileText, ExternalLink, ShieldCheck, Printer, Loader2, Check } from "lucide-react";
+import { X, User, MapPin, Package, CreditCard, Clock, Calendar, Hash, FileText, ExternalLink, ShieldCheck, Printer, Loader2, Check, Truck } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
