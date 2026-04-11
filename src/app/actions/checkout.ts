@@ -9,8 +9,6 @@ import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { currentUser } from "@clerk/nextjs/server";
 
-const SHIPPING_COST = 30;
-const TAX_RATE = 0.15;
 
 function buildInternalUrl(path: string, baseUrl: string): string | null {
     if (!path.startsWith("/") || path.startsWith("//")) {

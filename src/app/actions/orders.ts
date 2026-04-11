@@ -13,6 +13,7 @@ import { createAdminNotification } from "@/app/actions/notifications";
 import { createUserNotification } from "@/app/actions/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { getSiteSettings } from "@/app/actions/settings";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -35,8 +36,6 @@ interface ShippingAddressInput {
     phone?: string;
 }
 
-const SHIPPING_COST = 30;
-const TAX_RATE = 0.15;
 
 function buildOrderDispatchMetadata(
     orderId: string,
@@ -463,12 +462,26 @@ export async function createOrder(
         return { success: false, error: stockCheck.error || "المخزون غير كافٍ" };
     }
 
+    // 3.5 Get dynamic settings
+    const settings = await getSiteSettings();
+    const config = settings.shipping;
+
     // 4. Calculate totals
     const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
     const discount = options?.discountAmount || 0;
     const taxableAmount = Math.max(0, subtotal - discount);
-    const tax = taxableAmount * TAX_RATE;
-    const total = taxableAmount + SHIPPING_COST + tax;
+
+    const shipping_cost = (() => {
+        if (!config.shipping_enabled) return 0;
+        if (taxableAmount >= (config.free_above ?? 500)) return 0;
+        return config.flat_rate ?? 30;
+    })();
+
+    const tax = config.tax_enabled
+        ? taxableAmount * ((config.tax_rate ?? 15) / 100)
+        : 0;
+
+    const total = taxableAmount + shipping_cost + tax;
 
     const isCod = options?.paymentMethod !== "stripe" && options?.paymentMethod !== "paylink";
 
@@ -480,7 +493,7 @@ export async function createOrder(
         .insert({
             buyer_id: buyerId,
             subtotal,
-            shipping_cost: SHIPPING_COST,
+            shipping_cost,
             tax,
             total,
             currency: "SAR",
