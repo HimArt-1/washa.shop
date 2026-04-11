@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { getFulfillmentCalculation, initiateWarehousePayment, updateOrderStatus } from "@/app/actions/admin";
 import { toast } from "sonner";
+import { ShippingLabelBuilder } from "@/components/admin/ShippingLabelBuilder";
 
 interface OrderInspectionModalProps {
     order: any;
@@ -19,6 +20,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
     const [fulfillmentCalc, setFulfillmentCalc] = useState<any>(null);
     const [isLoadingCalc, setIsLoadingCalc] = useState(false);
     const [isPaying, setIsPaying] = useState(false);
+    const [showLabelBuilder, setShowLabelBuilder] = useState(false);
 
     useEffect(() => {
         if (isOpen && order?.id) {
@@ -296,12 +298,57 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                         </div>
                                     </section>
 
+                                    {order.tracking_number && (
+                                        <section>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Truck className="w-4 h-4 text-sky-400" />
+                                                <h3 className="text-sm font-bold uppercase tracking-widest text-sky-400/80">معلومات الشحن (Torod)</h3>
+                                            </div>
+                                            <div className="p-6 rounded-3xl bg-sky-500/5 border border-sky-500/10 space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-[10px] uppercase text-theme-faint mb-1">شركة الشحن</p>
+                                                        <p className="font-bold text-theme">{order.courier_name || "طرود"}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] uppercase text-theme-faint mb-1">رقم التتبع</p>
+                                                        <p className="font-mono font-black text-sky-400 tracking-tighter cursor-copy" onClick={() => {
+                                                            navigator.clipboard.writeText(order.tracking_number);
+                                                            toast.success("تم نسخ رقم التتبع");
+                                                        }}>
+                                                            {order.tracking_number}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {order.waybill_url && (
+                                                    <a 
+                                                        href={order.waybill_url} 
+                                                        target="_blank"
+                                                        className="flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-400 text-sm font-bold border border-sky-500/30 transition-all"
+                                                    >
+                                                        <ExternalLink className="w-4 h-4" />
+                                                        عرض بوليصة الشحن الرسمية
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </section>
+                                    )}
+
                                     <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
-                                        <button className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-theme text-sm font-bold border border-white/10 transition-all">
+                                        <button 
+                                            onClick={() => {
+                                                if (order.waybill_url) {
+                                                    window.open(order.waybill_url, "_blank");
+                                                } else {
+                                                    setShowLabelBuilder(true);
+                                                }
+                                            }}
+                                            className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-theme text-sm font-bold border border-white/10 transition-all hover:border-gold/30 hover:text-gold"
+                                        >
                                             <Printer className="w-4 h-4" />
-                                            طباعة ملصق الشحن
+                                            {order.waybill_url ? "تحميل بوليصة طرود" : "إنشاء ملصق شحن داخلي"}
                                         </button>
-                                        {(order.status === 'confirmed' || order.status === 'paid') && (
+                                        {(order.status === 'confirmed' || order.status === 'paid' || order.status === 'pending') && (
                                             <button 
                                                 onClick={() => handleUpdateStatus("processing")}
                                                 className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-gold text-[#0a0a0a] text-sm font-black hover:bg-gold-light transition-all shadow-xl shadow-gold/10"
@@ -319,6 +366,15 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
                     </motion.div>
                 </div>
+            )}
+            {showLabelBuilder && (
+                <ShippingLabelBuilder 
+                    order={{
+                        ...order,
+                        coupon_code: order.coupon?.code || null
+                    }} 
+                    onClose={() => setShowLabelBuilder(false)} 
+                />
             )}
         </AnimatePresence>
     );

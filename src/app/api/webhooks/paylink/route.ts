@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPaylinkInvoice } from "@/lib/paylink";
 import { confirmOrderPayment } from "@/app/actions/orders";
+import { confirmWarehousePayment } from "@/app/actions/admin";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 
 /** Paylink يرسل GET لاختبار الرابط — نرد بـ JSON صالح */
@@ -55,7 +56,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
-        // Look up the order from Supabase
+        // --- NEW: Warehouse Fulfillment Payment handling ---
+        if (resolvedOrderNumber.startsWith("FUL-") || resolvedOrderNumber.startsWith("BATCH-FUL-")) {
+            console.log(`[Paylink Webhook] Fulfillment payment detected: ${resolvedOrderNumber}`);
+            await confirmWarehousePayment(resolvedOrderNumber, invoice.amount);
+            return NextResponse.json({ received: true });
+        }
+
+        // Look up the standard customer order from Supabase
         const supabase = getSupabaseAdminClient();
         const { data: order } = await supabase
             .from("orders")
@@ -64,7 +72,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (!order) {
-            console.error(`[Paylink Webhook] Order not found: ${resolvedOrderNumber}`);
+            console.error(`[Paylink Webhook] Standard order not found: ${resolvedOrderNumber}`);
             return NextResponse.json({ received: true });
         }
 
@@ -77,7 +85,7 @@ export async function POST(req: NextRequest) {
             webhookEventId: transactionNo,
         });
 
-        console.log(`[Paylink Webhook] ✓ Order confirmed: ${resolvedOrderNumber}`);
+        console.log(`[Paylink Webhook] ✓ Customer Order confirmed: ${resolvedOrderNumber}`);
         return NextResponse.json({ received: true });
     } catch (error: any) {
         console.error("[Paylink Webhook] Error:", error);

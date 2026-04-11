@@ -26,11 +26,12 @@ import {
 } from "lucide-react";
 import { OrderInspectionModal } from "./OrderInspectionModal";
 import { InvoiceBuilder } from "@/components/admin/InvoiceBuilder";
+import { ShippingLabelBuilder } from "@/components/admin/ShippingLabelBuilder";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { updateOrderStatus, initiateWarehousePayment, initiateBulkWarehousePayment, markBatchAsPaidToWarehouse } from "@/app/actions/admin";
-import { toast } from "sonner";
-import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap } from "lucide-react";
+import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap, Info } from "lucide-react";
+import { FulfillmentLedger } from "./FulfillmentLedger";
+import { getBulkFulfillmentCalculation } from "@/app/actions/admin";
 
 interface OrderItem {
     id: string;
@@ -66,6 +67,10 @@ interface Order {
     };
     order_items: OrderItem[];
     coupon?: { code: string } | null;
+    tracking_number?: string | null;
+    courier_name?: string | null;
+    waybill_url?: string | null;
+    torod_order_id?: string | null;
 }
 
 interface FulfillmentCommandCenterProps {
@@ -83,6 +88,7 @@ interface FulfillmentCommandCenterProps {
             shippedCount: number;
             warehouseDebt: number;
         };
+        warehouseLedger: any[];
     };
 }
 
@@ -95,17 +101,36 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
     const [isPending, startTransition] = useTransition();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
+    const [labelOrder, setLabelOrder] = useState<any | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [realBatchCalculation, setRealBatchCalculation] = useState<{ grandTotal: number; breakdowns: Record<string, any> } | null>(null);
+    const [showBreakdownModal, setShowBreakdownModal] = useState(false);
 
     const toggleSelection = (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         const next = new Set(selectedIds);
         if (next.has(id)) next.delete(id);
         else next.add(id);
+        
         setSelectedIds(next);
+        
+        // Trigger real calculation on change
+        if (next.size > 0) {
+            startTransition(async () => {
+                const res = await getBulkFulfillmentCalculation(Array.from(next));
+                if (res.success) {
+                    setRealBatchCalculation({ grandTotal: res.grandTotal, breakdowns: res.breakdowns || {} });
+                }
+            });
+        } else {
+            setRealBatchCalculation(null);
+        }
     };
 
-    const clearSelection = () => setSelectedIds(new Set());
+    const clearSelection = () => {
+        setSelectedIds(new Set());
+        setRealBatchCalculation(null);
+    };
 
     const calculateBatchDebt = () => {
         const selectedOrders = data.queues.confirmed.filter(o => selectedIds.has(o.id));
@@ -180,6 +205,18 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 setSelectedIds(new Set());
             } else {
                 toast.error(result.error || "فشل التحديث الجماعي");
+            }
+        });
+    const handleBookTorod = async (orderId: string) => {
+        startTransition(async () => {
+            const result = await bookTorodShipment(orderId);
+            if (result.success) {
+                toast.success(result.is_simulation 
+                    ? `[Sim] تم حجز الشحنة بنجاح: ${result.tracking_number}` 
+                    : `تم حجز الشحنة بنجاح: ${result.tracking_number}`
+                );
+            } else {
+                toast.error(result.error || "فشل الحجز مع طرود");
             }
         });
     };
@@ -495,16 +532,28 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                 </div>
 
                                                 <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                                                    <button 
-                                                        onClick={() => setInvoiceOrder({
-                                                            ...order,
-                                                            coupon_code: order.coupon?.code || null
-                                                        })}
-                                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 hover:border-gold/20"
-                                                    >
-                                                        <Printer className="w-4 h-4" />
-                                                        <span className="hidden sm:inline uppercase tracking-widest">Generate Invoice</span>
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button 
+                                                            onClick={() => setInvoiceOrder({
+                                                                ...order,
+                                                                coupon_code: order.coupon?.code || null
+                                                            })}
+                                                            className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 hover:border-gold/20"
+                                                        >
+                                                            <Printer className="w-4 h-4" />
+                                                            <span className="hidden sm:inline uppercase tracking-widest">Invoice</span>
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setLabelOrder({
+                                                                ...order,
+                                                                coupon_code: order.coupon?.code || null
+                                                            })}
+                                                            className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-gold/5 hover:bg-gold/10 text-[11px] font-black text-gold/60 hover:text-gold transition-all border border-gold/10"
+                                                        >
+                                                            <Truck className="w-4 h-4" />
+                                                            <span className="hidden sm:inline uppercase tracking-widest">Waybill</span>
+                                                        </button>
+                                                    </div>
                                                     
                                                     {order.status === "confirmed" && (
                                                         <div className="flex items-center gap-3">
@@ -530,13 +579,40 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                         </div>
                                                     )}
                                                     {order.status === "processing" && (
-                                                        <button 
-                                                            disabled={isPending}
-                                                            onClick={() => handleStatusUpdate(order.id, "shipped")}
-                                                            className="px-7 py-3 rounded-2xl bg-sky-500 text-white text-xs font-black hover:bg-sky-400 transition-all shadow-[0_10px_20px_rgba(14,165,233,0.2)] hover:-translate-y-0.5 active:translate-y-0.5"
-                                                        >
-                                                            تأكيد الشحن
-                                                        </button>
+                                                        <div className="flex items-center gap-3">
+                                                            <button 
+                                                                disabled={isPending}
+                                                                onClick={() => handleBookTorod(order.id)}
+                                                                className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 text-xs font-black border border-sky-500/30 transition-all active:scale-95 disabled:opacity-50"
+                                                            >
+                                                                <Truck className="w-4 h-4" />
+                                                                الشحن عبر طرود
+                                                            </button>
+                                                            <button 
+                                                                disabled={isPending}
+                                                                onClick={() => handleStatusUpdate(order.id, "shipped")}
+                                                                className="px-7 py-3 rounded-2xl bg-sky-500 text-white text-xs font-black hover:bg-sky-400 transition-all shadow-[0_10px_20px_rgba(14,165,233,0.2)] hover:-translate-y-0.5 active:translate-y-0.5"
+                                                            >
+                                                                {isPending ? "جاري التأكيد..." : "تأكيد يدوي"}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {order.status === "shipped" && order.tracking_number && (
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex flex-col items-end mr-2">
+                                                                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{order.courier_name || "TRACKING"}</p>
+                                                                <p className="text-sm font-mono font-black text-theme tracking-tighter">{order.tracking_number}</p>
+                                                            </div>
+                                                            {order.waybill_url && (
+                                                                <a 
+                                                                    href={order.waybill_url} 
+                                                                    target="_blank" 
+                                                                    className="p-3 rounded-xl bg-theme-faint border border-theme-soft hover:border-gold hover:text-gold transition-all"
+                                                                >
+                                                                    <FileText className="w-4 h-4" />
+                                                                </a>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -571,43 +647,9 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                     {/* Performance Metrics */}
                     <FulfillmentPerformanceGauge stats={data.stats} />
 
-                    {/* Recent Payments Watch */}
-                    <div className="bg-[var(--wusha-surface)] border border-theme-soft rounded-[40px] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
-                        <div className="p-7 border-b border-white/5 flex items-center justify-between bg-gold/[0.03]">
-                            <h3 className="font-black text-theme text-sm uppercase tracking-[0.1em] flex items-center gap-3">
-                                <CreditCard className="w-5 h-5 text-gold" />
-                                Digital Ledger Activity
-                            </h3>
-                            <div className="flex gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse delay-75" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse delay-150" />
-                            </div>
-                        </div>
-                        <div className="divide-y divide-white/5 max-h-[440px] overflow-y-auto styled-scrollbar">
-                            {data.recentPaid.map((order: any) => (
-                                <div key={order.id} className="p-6 hover:bg-gold/[0.04] transition-all duration-300 flex items-center justify-between gap-6 group">
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-black text-theme group-hover:text-gold transition-colors">#{order.order_number}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] text-theme-subtle font-black uppercase tracking-tight truncate max-w-[120px]">{order.buyer.display_name}</span>
-                                            <span className="w-1 h-1 rounded-full bg-theme-soft" />
-                                            <span className="text-[10px] text-theme-faint font-mono uppercase font-bold">{new Date(order.created_at).toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-left shrink-0">
-                                        <p className="text-sm font-black text-emerald-400 tabular-nums">{formatCurrency(order.total)}</p>
-                                        <p className="text-[9px] text-theme-faint font-black mt-1 uppercase tracking-tighter opacity-40">Verified Tx ✓</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {data.recentPaid.length === 0 && (
-                                <div className="p-20 text-center opacity-30">
-                                    <CreditCard className="w-12 h-12 text-theme-faint mx-auto mb-4" />
-                                    <p className="text-[10px] text-theme-faint font-black uppercase tracking-[0.2em]">Silence in the Ledger</p>
-                                </div>
-                            )}
-                        </div>
+                    {/* Recent Payments Watch (Digital Ledger) */}
+                    <div className="bg-[var(--wusha-surface)] border border-theme-soft rounded-[40px] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                        <FulfillmentLedger transactions={data.warehouseLedger || []} />
                     </div>
 
                     {/* Quick Access Grid */}
@@ -657,8 +699,18 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 </div>
                                 <div className="h-10 w-px bg-white/10" />
                                 <div>
-                                    <p className="text-[10px] font-black text-gold/60 uppercase tracking-widest mb-0.5">إجمالي الدفعة (تقديري)</p>
-                                    <p className="text-lg font-black text-gold tracking-tighter tabular-nums">{formatCurrency(calculateBatchDebt())}</p>
+                                    <p className="text-[10px] font-black text-gold/60 uppercase tracking-widest mb-0.5">إجمالي الدفعة</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-2xl font-black text-gold tracking-tighter tabular-nums">
+                                            {formatCurrency(realBatchCalculation?.grandTotal || calculateBatchDebt())}
+                                        </p>
+                                        <button 
+                                            onClick={() => setShowBreakdownModal(true)}
+                                            className="w-6 h-6 rounded-full bg-gold/10 flex items-center justify-center text-gold hover:bg-gold/20 transition-all border border-gold/20"
+                                        >
+                                            <Info className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -694,7 +746,64 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 )}
             </AnimatePresence>
 
-            {/* Modal Portal */}
+            {/* Real Calculation Breakdown Modal */}
+            <AnimatePresence>
+                {showBreakdownModal && realBatchCalculation && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-md"
+                            onClick={() => setShowBreakdownModal(false)}
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl overflow-hidden p-8"
+                        >
+                            <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest flex items-center gap-3">
+                                <Zap className="text-gold w-6 h-6" />
+                                تفاصيل الدفعة المالية
+                            </h2>
+                            
+                            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {Object.entries(realBatchCalculation.breakdowns).map(([id, breakdown]: [string, any]) => (
+                                    <div key={id} className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs font-black text-gold uppercase tracking-widest">
+                                                Order ID: {id.slice(-8)}
+                                            </span>
+                                            <span className="text-sm font-black text-white">
+                                                {formatCurrency(breakdown.summary.grandTotal)}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-[10px] text-white/40 uppercase tracking-tighter">
+                                            <div className="flex justify-between"><span>Garments</span> <span>{formatCurrency(breakdown.summary.garmentSubtotal)}</span></div>
+                                            <div className="flex justify-between"><span>Printing</span> <span>{formatCurrency(breakdown.summary.printingSubtotal)}</span></div>
+                                            <div className="flex justify-between"><span>Packaging</span> <span>{formatCurrency(breakdown.summary.packagingTotal)}</span></div>
+                                            <div className="flex justify-between"><span>Handling</span> <span>{formatCurrency(breakdown.summary.handlingFee)}</span></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] text-white/40 uppercase tracking-widest">الإجمالي النهائي</p>
+                                    <p className="text-4xl font-black text-gold tracking-tighter">{formatCurrency(realBatchCalculation.grandTotal)}</p>
+                                </div>
+                                <button 
+                                    onClick={() => setShowBreakdownModal(false)}
+                                    className="px-10 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-black text-xs transition-all border border-white/10 uppercase tracking-widest"
+                                >
+                                    إغلاق
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             <OrderInspectionModal 
                 isOpen={!!selectedOrder}
                 order={selectedOrder}
@@ -705,6 +814,13 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 <InvoiceBuilder 
                     order={invoiceOrder} 
                     onClose={() => setInvoiceOrder(null)} 
+                />
+            )}
+
+            {labelOrder && (
+                <ShippingLabelBuilder 
+                    order={labelOrder} 
+                    onClose={() => setLabelOrder(null)} 
                 />
             )}
         </div>

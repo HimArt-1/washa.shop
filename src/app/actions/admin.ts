@@ -10,6 +10,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { sendApplicationAcceptedEmail, sendApplicationRejectedEmail } from "@/lib/email";
+import { torod } from "@/lib/shipping/torod";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
 import { emitOrderRevenueEscalations } from "@/lib/operational-escalations";
@@ -1685,24 +1686,27 @@ export async function getFulfillmentHubData() {
         const { supabase } = await requireAdmin();
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-        // لا يوجد عمود metadata في جدول orders — نستخدم الحقول المتاحة فقط
-        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
+        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, metadata, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
         
         const [
             { data: paidOrders },
             { data: processingOrders },
             { data: shippedOrders },
             { data: recentPaid },
+            { data: warehouseLedger },
         ] = await Promise.all([
-            supabase.from("orders").select(selectStr).eq("payment_status", "paid").in("status", ["confirmed"]),
+            supabase.from("orders").select(selectStr).eq("payment_status", "paid").in("status", ["confirmed", "processing"]),
             supabase.from("orders").select(selectStr).in("status", ["processing"]),
             supabase.from("orders").select(selectStr).in("status", ["shipped"]),
-            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
+            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, metadata, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
+            supabase.from("event_dispatches").select("*").in("channel", ["warehouse_payment"]).order("created_at", { ascending: false }).limit(10),
         ]);
 
-        // حساب دين المستودع — جميع الطلبات المؤكدة والمدفوعة من العميل لم يُدفع للمستودع عنها بعد
+        // حساب دين المستودع — فقط الطلبات التي لم يدفع لها بعد
         let totalDebt = 0;
         (paidOrders || []).forEach(order => {
+            if (order.metadata?.fulfillment_paid) return; // Skip if already paid to warehouse
+
             const orderItems = (order.order_items as unknown as any[]) || [];
             orderItems.forEach(item => {
                 const garmentSlug = item.custom_garment || "premium-tshirt";
@@ -1719,14 +1723,15 @@ export async function getFulfillmentHubData() {
 
         return {
             queues: {
-                confirmed: (paidOrders || []),
+                confirmed: (paidOrders || []).filter(o => !o.metadata?.fulfillment_paid),
                 processing: (processingOrders || []),
                 shipped: (shippedOrders || []),
             },
             recentPaid: (recentPaid || []),
+            warehouseLedger: (warehouseLedger || []),
             stats: {
-                totalPendingFulfillment: (paidOrders?.length || 0) + (processingOrders?.length || 0),
-                confirmedCount: paidOrders?.length || 0,
+                totalPendingFulfillment: (paidOrders?.filter(o => !o.metadata?.fulfillment_paid).length || 0) + (processingOrders?.length || 0),
+                confirmedCount: paidOrders?.filter(o => !o.metadata?.fulfillment_paid).length || 0,
                 processingCount: processingOrders?.length || 0,
                 shippedCount: shippedOrders?.length || 0,
                 warehouseDebt: totalDebt,
@@ -1818,6 +1823,89 @@ export async function getAdminOrderForFocusList(orderId: string) {
         return null;
     }
 }
+
+export async function bookTorodShipment(orderId: string) {
+    try {
+        const { supabase } = await requireAdmin();
+
+        // 1. Fetch Order Details
+        const { data: order, error: orderError } = await supabase
+            .from("orders")
+            .select("*, profile:profiles(email, display_name)")
+            .eq("id", orderId)
+            .single();
+
+        if (orderError || !order) {
+            return { success: false, error: "الطلب غير موجود" };
+        }
+
+        // 2. Fetch Order Items (to count items and estimate weight)
+        const { data: items } = await supabase
+            .from("order_items")
+            .select("quantity")
+            .eq("order_id", orderId);
+
+        const totalItemsCount = (items || []).reduce((sum, item) => sum + item.quantity, 0);
+        const estimatedWeight = Math.max(0.5, totalItemsCount * 0.4); // 0.4kg per item avg
+
+        // 3. Map Shipping Address
+        const addr = order.shipping_address as any;
+        if (!addr || !addr.city || !addr.phone) {
+            return { success: false, error: "بيانات العنوان غير مكتملة (تأكد من وجود المدينة ورقم الجوال)" };
+        }
+
+        // 4. Book via Torod
+        const orderTotal = Math.round(order.total);
+        console.log(`[Torod Booking] Attempting to book Order #${order.order_number} for total: ${orderTotal} SAR`);
+
+        const result = await torod.bookShipment({
+            order_number: order.order_number,
+            receiver_name: addr.name || order.profile?.display_name || "عميل",
+            receiver_mobile: addr.phone,
+            receiver_email: order.profile?.email || undefined,
+            address: `${addr.line1} ${addr.line2 || ""}`.trim(),
+            city: addr.city,
+            weight: estimatedWeight,
+            items_count: totalItemsCount,
+            cod_amount: (order.payment_status === "pending") ? orderTotal : 0
+        });
+
+        if (!result.success) {
+            return { success: false, error: result.error || "فشل الحجز مع طرود" };
+        }
+
+        // 5. Update Order in DB
+        const { error: updateError } = await supabase
+            .from("orders")
+            .update({
+                tracking_number: result.tracking_number,
+                courier_name: result.courier_name,
+                waybill_url: result.waybill_url,
+                torod_order_id: result.torod_order_id,
+                status: "shipped",
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", orderId);
+
+        if (updateError) {
+            return { success: false, error: "تم حجز الشحنة ولكن فشل تحديث قاعدة البيانات" };
+        }
+
+        revalidatePath("/dashboard/orders");
+        revalidatePath("/dashboard/orders/command-center");
+
+        return { 
+            success: true, 
+            tracking_number: result.tracking_number,
+            is_simulation: result.is_simulation 
+        };
+
+    } catch (err) {
+        console.error("[bookTorodShipment] error:", err);
+        return { success: false, error: String(err) };
+    }
+}
+
 
 export async function updateOrderStatus(orderId: string, newStatus: string) {
     const { supabase } = await requireAdmin();
@@ -1982,6 +2070,29 @@ export async function getFulfillmentCalculation(orderId: string) {
     }
 }
 
+export async function getBulkFulfillmentCalculation(orderIds: string[]) {
+    try {
+        let grandTotal = 0;
+        const individualBreakdowns: Record<string, any> = {};
+
+        for (const orderId of orderIds) {
+            const result = await getFulfillmentCalculation(orderId);
+            if (result.success && result.breakdown) {
+                grandTotal += result.breakdown.summary.grandTotal;
+                individualBreakdowns[orderId] = result.breakdown;
+            }
+        }
+
+        return {
+            success: grandTotal > 0,
+            grandTotal,
+            breakdowns: individualBreakdowns
+        };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
 export async function initiateWarehousePayment(orderId: string) {
     try {
         const { supabase, profile: adminProfile } = await requireAdmin();
@@ -2024,11 +2135,60 @@ export async function initiateWarehousePayment(orderId: string) {
         });
 
         if (invoice.url) {
+            // Register as initiated in dispatches for tracking (optional but good for logs)
+            await getSupabaseAdminClient().from("event_dispatches").insert({
+                dispatch_key: `paylink:initiate:FUL-${order.order_number}`,
+                event_type: "fulfillment_initiated",
+                channel: "warehouse_payment",
+                status: "processing",
+                metadata: { order_id: orderId, amount: calculation.breakdown.summary.grandTotal }
+            });
+
             return { success: true, url: invoice.url };
         }
 
         return { success: false, error: "Paylink URL generation failed" };
     } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
+export async function confirmWarehousePayment(paymentIdentifier: string, amount?: number) {
+    try {
+        const supabase = getSupabaseAdminClient();
+        console.log(`[confirmWarehousePayment] Processing: ${paymentIdentifier}`);
+
+        if (paymentIdentifier.startsWith("FUL-")) {
+            // Single Order
+            const orderNumber = paymentIdentifier.replace("FUL-", "");
+            const { data: order } = await supabase
+                .from("orders")
+                .select("id")
+                .eq("order_number", orderNumber)
+                .single();
+
+            if (order) {
+                await markAsPaidToWarehouse(order.id);
+                return { success: true };
+            }
+        } else if (paymentIdentifier.startsWith("BATCH-FUL-")) {
+            // Bulk Batch
+            const { data: batch } = await supabase
+                .from("event_dispatches")
+                .select("metadata")
+                .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`)
+                .single();
+
+            if (batch?.metadata?.order_ids) {
+                const orderIds = batch.metadata.order_ids as string[];
+                await markBatchAsPaidToWarehouse(orderIds);
+                return { success: true };
+            }
+        }
+
+        return { success: false, error: "Identifier not recognized or batch missing" };
+    } catch (err) {
+        console.error("[confirmWarehousePayment] Error:", err);
         return { success: false, error: String(err) };
     }
 }
@@ -2066,42 +2226,50 @@ export async function markAsPaidToWarehouse(orderId: string) {
 
 export async function initiateBulkWarehousePayment(orderIds: string[]) {
     try {
-        const { supabase, profile: adminProfile } = await requireAdmin();
-        
-        const allProducts: any[] = [];
-        let grandTotal = 0;
-        const orderSummary = [];
+        const { supabase } = await requireAdmin();
+        const calculation = await getBulkFulfillmentCalculation(orderIds);
 
-        for (const orderId of orderIds) {
-            const calculation = await getFulfillmentCalculation(orderId);
-            if (calculation.success && calculation.breakdown) {
-                const { data: order } = await supabase.from("orders").select("order_number").eq("id", orderId).single();
-                if (order) {
-                    const orderCost = calculation.breakdown.summary.grandTotal;
-                    grandTotal += orderCost;
-                    allProducts.push({
-                        title: `Fulfillment: #${order.order_number}`,
-                        price: orderCost,
-                        qty: 1
-                    });
-                    orderSummary.push(order.order_number);
-                }
+        if (!calculation.success || !calculation.grandTotal) {
+            return { success: false, error: "Bulk calculation failed" };
+        }
+
+        const batchId = `BATCH-FUL-${Date.now()}`;
+        const allProducts = [];
+
+        for (const [orderId, breakdown] of Object.entries(calculation.breakdowns || {})) {
+            const { data: order } = await supabase.from("orders").select("order_number").eq("id", orderId).single();
+            if (order) {
+                allProducts.push({
+                    title: `Fulfillment: #${order.order_number}`,
+                    price: (breakdown as any).summary.grandTotal,
+                    qty: 1
+                });
             }
         }
 
-        if (allProducts.length === 0) return { success: false, error: "No valid orders for batch payment" };
-
         const invoice = await createPaylinkInvoice({
-            orderNumber: `BATCH-FUL-${Date.now()}`,
+            orderNumber: batchId,
             clientName: "Wusha Operations (Batch)",
             clientMobile: "0555555555",
             clientEmail: "ops@washa.com",
             callBackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "https://washa.shop"}/dashboard/orders`,
-            amount: grandTotal,
+            amount: calculation.grandTotal,
             products: allProducts,
         });
 
         if (invoice.url) {
+            // Register the batch for automated webhook confirmation
+            await supabase.from("event_dispatches").insert({
+                dispatch_key: `paylink:initiate:${batchId}`,
+                event_type: "fulfillment_bulk_initiated",
+                channel: "warehouse_payment",
+                status: "processing",
+                metadata: { 
+                    order_ids: orderIds, 
+                    amount: calculation.grandTotal 
+                }
+            });
+
             return { success: true, url: invoice.url };
         }
 
