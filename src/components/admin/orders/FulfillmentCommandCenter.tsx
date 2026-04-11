@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { updateOrderStatus, initiateWarehousePayment, initiateBulkWarehousePayment, markBatchAsPaidToWarehouse } from "@/app/actions/admin";
 import { toast } from "sonner";
-import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon } from "lucide-react";
+import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap } from "lucide-react";
 
 interface OrderItem {
     id: string;
