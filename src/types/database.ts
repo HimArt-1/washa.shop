@@ -196,6 +196,7 @@ export type OrderItem = {
     custom_design_url?: string;
     custom_garment?: string | null;
     custom_title?: string | null;
+    custom_position?: string | null;
 }
 
 // ─── Admin Notifications ───────────────────────────────────
@@ -619,12 +620,13 @@ export type Database = {
             };
             order_items: {
                 Row: OrderItem;
-                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "custom_design_url" | "custom_garment" | "custom_title"> & {
+                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "custom_design_url" | "custom_garment" | "custom_title" | "custom_position"> & {
                     quantity?: number;
                     size: string | null;
                     custom_design_url?: string;
                     custom_garment?: string | null;
                     custom_title?: string | null;
+                    custom_position?: string | null;
                 };
                 Update: Partial<Omit<OrderItem, "id" | "order_id">>;
                 Relationships: [
