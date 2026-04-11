@@ -70,8 +70,8 @@ export async function POST(req: Request) {
                 wushaStatus = null; // No change if status unknown or intermediate
         }
 
-        // 3. Find the order
-        const { data: order, error: fetchError } = await supabase
+        // 3. Find the order (metadata column exists in DB but may be missing from generated types)
+        const { data: order, error: fetchError } = await (supabase as any)
             .from("orders")
             .select("id, status, metadata")
             .or(`id.eq.${order_id},tracking_number.eq.${tracking_id}`)
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
             updateData.status = wushaStatus;
         }
 
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
             .from("orders")
             .update(updateData)
             .eq("id", order.id);
