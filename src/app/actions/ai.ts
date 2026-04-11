@@ -4,9 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 
-// ─── مزوّد التوليد: Replicate أو Gemini (Imagen 3) ────────
-// ضبط في .env: IMAGE_PROVIDER=replicate | gemini (اختياري، الافتراضي replicate إن وُجد المفتاح)
-const IMAGE_PROVIDER = (process.env.IMAGE_PROVIDER || "replicate").toLowerCase();
+// ─── مزوّد التوليد: Nano Banana (Gemini 3), Replicate أو Gemini (Imagen 3) ────────
+// ضبط في .env: IMAGE_PROVIDER=nanobanana | replicate | gemini
+const IMAGE_PROVIDER = (process.env.IMAGE_PROVIDER || "nanobanana").toLowerCase();
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
@@ -14,6 +14,7 @@ const FLUX_SCHNELL = "black-forest-labs/flux-schnell";
 const FLUX_IMG2IMG = "bxclib2/flux_img2img"; // صورة → صورة
 const REPLICATE_WAIT = 120; // ثواني انتظار أقصى
 const IMAGEN_MODEL = "imagen-3.0-generate-002";
+const NANO_BANANA_MODEL = "gemini-3-flash-preview"; // Nano Banana 2
 
 const AI_ALLOWED_ROLES = new Set(["admin", "wushsha", "subscriber"]);
 const AI_LOG_SOURCE = "ai.generation";
@@ -213,6 +214,7 @@ function sanitizeBase64Image(imageBase64?: string | null) {
 }
 
 function getAiProviderName() {
+    if (isNanoBananaEnabled()) return "nanobanana";
     if (isGeminiEnabled()) return "gemini";
     if (isReplicateEnabled()) return "replicate";
     return "mock";
@@ -259,7 +261,12 @@ function getNoProviderResponse() {
     } as const;
 }
 
-/** هل مزوّد التوليد الحالي هو Gemini؟ */
+/** هل مزوّد التوليد الحالي هو Nano Banana 2؟ */
+function isNanoBananaEnabled(): boolean {
+    return (IMAGE_PROVIDER === "nanobanana" || IMAGE_PROVIDER === "gemini") && !!GEMINI_API_KEY;
+}
+
+/** هل مزוّد التوليد الحالي هو Gemini (Imagen)؟ */
 function isGeminiEnabled(): boolean {
     return IMAGE_PROVIDER === "gemini" && !!GEMINI_API_KEY;
 }
@@ -267,6 +274,63 @@ function isGeminiEnabled(): boolean {
 /** هل مزوّد التوليد الحالي هو Replicate؟ */
 function isReplicateEnabled(): boolean {
     return !!REPLICATE_API_TOKEN;
+}
+
+/**
+ * توليد/تعديل صورة عبر Nano Banana 2 (Gemini 3 Flash Image).
+ */
+async function runNanoBanana(prompt: string, imageBase64?: string | null): Promise<string | null> {
+    if (!GEMINI_API_KEY) return null;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${NANO_BANANA_MODEL}:predict`;
+    const instance: any = { prompt };
+    
+    if (imageBase64) {
+        const match = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (match) {
+            instance.image = {
+                bytesBase64Encoded: match[2],
+                mimeType: `image/${match[1] === "jpg" ? "jpeg" : match[1]}`
+            };
+        }
+    }
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: {
+            "x-goog-api-key": GEMINI_API_KEY,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            instances: [instance],
+            parameters: { 
+                sampleCount: 1,
+                aspectRatio: "1:1",
+                outputMimeType: "image/png"
+            },
+        }),
+    });
+
+    if (!res.ok) {
+        const err = await res.text();
+        console.error("Nano Banana API error:", res.status, err);
+        await reportAiOperationalAlert({
+            dispatchKey: `ai:nanobanana_http_error:${res.status}`,
+            bucketMs: 30 * 60 * 1000,
+            severity: "warning",
+            title: "فشل موفر Nano Banana للتوليد",
+            message: "خدمة Nano Banana (Gemini 3) أعادت استجابة فاشلة.",
+            metadata: { provider: "nanobanana", status: res.status },
+        });
+        return null;
+    }
+
+    const data = await res.json();
+    const pred = data.predictions?.[0];
+    const b64 = pred?.bytesBase64Encoded;
+    if (!b64) return null;
+    const mime = pred?.mimeType || "image/png";
+    return `data:${mime};base64,${b64}`;
 }
 
 /**
@@ -437,11 +501,24 @@ export async function generateImage(prompt: string, style: string): Promise<Gene
 
         const fullPrompt = `${styleCheck.style} style: ${promptCheck.prompt}. High quality, detailed.`;
 
+        if (isNanoBananaEnabled()) {
+            provider = "nanobanana";
+            const dataUrl = await runNanoBanana(fullPrompt);
+            if (dataUrl) {
+                await logAiEvent(access.supabase, access.profileId, "info", "AI image generated (Nano Banana)", {
+                    action: "generateImage",
+                    provider,
+                    promptLength: promptCheck.prompt.length,
+                });
+                return { success: true, imageUrl: dataUrl };
+            }
+        }
+
         if (isGeminiEnabled()) {
             provider = "gemini";
             const dataUrl = await runGeminiImagen(fullPrompt);
             if (dataUrl) {
-                await logAiEvent(access.supabase, access.profileId, "info", "AI image generated", {
+                await logAiEvent(access.supabase, access.profileId, "info", "AI image generated (Imagen)", {
                     action: "generateImage",
                     provider,
                     promptLength: promptCheck.prompt.length,
@@ -559,13 +636,29 @@ export async function generateDesignForPrint(
             if (!imageCheck.imageBase64) {
                 return { success: false, error: "الصورة المرجعية مطلوبة" };
             }
+
+            // محاولة استخدام Nano Banana أولاً للتعديل (Native)
+            if (isNanoBananaEnabled()) {
+                provider = "nanobanana";
+                const dataUrl = await runNanoBanana(fullPrompt, imageCheck.imageBase64);
+                if (dataUrl) {
+                    await logAiEvent(access.supabase, access.profileId, "info", "AI design edited (Nano Banana)", {
+                        action: "generateDesignForPrint",
+                        provider,
+                        method: input.method,
+                        promptLength: promptCheck.prompt.length,
+                    });
+                    return { success: true, imageUrl: dataUrl };
+                }
+            }
+
             if (!isReplicateEnabled()) {
                 await reportAiOperationalAlert({
                     dispatchKey: "ai:img2img_provider_missing",
                     bucketMs: 60 * 60 * 1000,
                     severity: "critical",
                     title: "تعطل التوليد من صورة مرجعية",
-                    message: "ميزة image-to-image مطلوبة من الواجهة لكن Replicate غير مهيأ حالياً.",
+                    message: "ميزة image-to-image مطلوبة من الواجهة لكن Replicate و Nano Banana غير مهيأين حالياً.",
                     metadata: {
                         action: "generateDesignForPrint",
                         method: input.method,
@@ -590,7 +683,7 @@ export async function generateDesignForPrint(
             });
 
             if (imgOut?.urls?.[0]) {
-                await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated", {
+                await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated (Flux)", {
                     action: "generateDesignForPrint",
                     provider,
                     method: input.method,
@@ -603,11 +696,26 @@ export async function generateDesignForPrint(
             return { success: false, error: "لم يتم توليد الصورة المرجعية، جرّب مرة أخرى" };
         }
 
+        if (isNanoBananaEnabled()) {
+            provider = "nanobanana";
+            const dataUrl = await runNanoBanana(fullPrompt);
+            if (dataUrl) {
+                await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated (Nano Banana)", {
+                    action: "generateDesignForPrint",
+                    provider,
+                    method: input.method,
+                    promptLength: promptCheck.prompt.length,
+                    colorCount: colorCheck.colorIds.length,
+                });
+                return { success: true, imageUrl: dataUrl };
+            }
+        }
+
         if (isGeminiEnabled()) {
             provider = "gemini";
             const dataUrl = await runGeminiImagen(fullPrompt);
             if (dataUrl) {
-                await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated", {
+                await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated (Imagen)", {
                     action: "generateDesignForPrint",
                     provider,
                     method: input.method,
