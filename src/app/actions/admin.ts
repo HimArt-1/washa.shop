@@ -16,6 +16,7 @@ import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sy
 import { emitOrderRevenueEscalations } from "@/lib/operational-escalations";
 import { FULFILLMENT_RATES, calculateUnitFulfillmentCost } from "@/config/fulfillment-rates";
 import { createPaylinkInvoice } from "@/lib/paylink";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
