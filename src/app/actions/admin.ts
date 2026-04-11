@@ -2173,9 +2173,9 @@ export async function confirmWarehousePayment(paymentIdentifier: string, amount?
                 return { success: true };
             }
         } else if (paymentIdentifier.startsWith("BATCH-FUL-")) {
-            // Bulk Batch
-            const { data: batch } = await supabase
-                .from("event_dispatches" as any)
+            // Bulk Batch (event_dispatches not in generated DB types — use loose client)
+            const { data: batch } = await (supabase as any)
+                .from("event_dispatches")
                 .select("metadata")
                 .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`)
                 .single();
