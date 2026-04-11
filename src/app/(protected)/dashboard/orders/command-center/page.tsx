@@ -18,7 +18,7 @@ export default async function FulfillmentHubPage() {
                 subtitle="منصة موحدة لتتبع الطلبات المدفوعة وإدارة التنفيذ اللحظي."
             />
 
-            <FulfillmentCommandCenter data={data} />
+            <FulfillmentCommandCenter data={data as any} />
         </div>
     );
 }
