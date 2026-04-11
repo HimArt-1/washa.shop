@@ -9,21 +9,44 @@ import { torod } from "@/lib/shipping/torod";
  * ═══════════════════════════════════════════════════════════
  */
 
-// Torod checking for 200 OK on GET/POST during validation
+// Torod (and similar platforms) may probe the URL with GET, HEAD, POST (empty), or non-JSON POST.
+// All must return 2xx for “webhook valid” checks in the dashboard.
+
 export async function GET() {
     return NextResponse.json({ status: "ok", message: "Wusha Torod Endpoint Active" });
+}
+
+/** Some providers validate with HEAD only — return 200 with no body. */
+export async function HEAD() {
+    return new NextResponse(null, { status: 200 });
+}
+
+export async function OPTIONS() {
+    return new NextResponse(null, {
+        status: 200,
+        headers: {
+            Allow: "GET, HEAD, POST, OPTIONS",
+        },
+    });
 }
 
 export async function POST(req: Request) {
     try {
         const rawBody = await req.text();
-        
-        // Handle empty bodies (Ping/Validation)
-        if (!rawBody) {
+
+        // Ping / empty body (common for “test webhook URL”)
+        if (!rawBody.trim()) {
             return NextResponse.json({ success: true, message: "Ping received" });
         }
 
-        const payload = JSON.parse(rawBody);
+        let payload: Record<string, unknown>;
+        try {
+            payload = JSON.parse(rawBody) as Record<string, unknown>;
+        } catch {
+            console.warn("[Torod Webhook] Non-JSON body (treating as URL validation)");
+            return NextResponse.json({ success: true, message: "Acknowledged" });
+        }
+
         const headerHmac = req.headers.get("X-Hmac-Sha256");
 
         console.log("[Torod Webhook Received]:", JSON.stringify(payload, null, 2));
@@ -34,7 +57,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
         }
 
-        const { order_id, tracking_id, status } = payload;
+        const order_id =
+            typeof payload.order_id === "string" ? payload.order_id : undefined;
+        const tracking_id =
+            typeof payload.tracking_id === "string" ? payload.tracking_id : undefined;
+        const status =
+            typeof payload.status === "string" ? payload.status : undefined;
 
         // Validation/Ping check (if specific identifiers missing but body exists)
         if (!order_id && !tracking_id) {
@@ -45,7 +73,7 @@ export async function POST(req: Request) {
 
         // 2. Map Torod status to Wusha Status
         let wushaStatus: string | null = null;
-        const normalizedStatus = status?.toLowerCase() || "unknown";
+        const normalizedStatus = status ? status.toLowerCase() : "unknown";
         
         switch (normalizedStatus) {
             case "shipped":
