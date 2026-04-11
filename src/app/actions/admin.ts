@@ -2014,11 +2014,11 @@ export async function initiateWarehousePayment(orderId: string) {
         const invoice = await createPaylinkInvoice({
             orderNumber: `FUL-${order.order_number}`,
             clientName: "Wusha Operations",
-            clientMobile: "0555555555", // Default Ops Mobile
+            clientMobile: "0555555555",
             clientEmail: "ops@washa.com",
+            callBackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "https://washa.shop"}/dashboard/orders`,
             amount: calculation.breakdown.summary.grandTotal,
             products,
-            id: orderId, // Use the orderId as the payment reference
         });
 
         if (invoice.url) {
@@ -2094,9 +2094,9 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
             clientName: "Wusha Operations (Batch)",
             clientMobile: "0555555555",
             clientEmail: "ops@washa.com",
+            callBackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "https://washa.shop"}/dashboard/orders`,
             amount: grandTotal,
             products: allProducts,
-            id: orderIds.join(","), // Combine IDs as reference
         });
 
         if (invoice.url) {
