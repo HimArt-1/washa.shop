@@ -1686,7 +1686,7 @@ export async function getFulfillmentHubData() {
         const { supabase } = await requireAdmin();
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, metadata, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
+        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
         
         const [
             { data: paidOrders },
@@ -1698,14 +1698,14 @@ export async function getFulfillmentHubData() {
             supabase.from("orders").select(selectStr).eq("payment_status", "paid").in("status", ["confirmed", "processing"]),
             supabase.from("orders").select(selectStr).in("status", ["processing"]),
             supabase.from("orders").select(selectStr).in("status", ["shipped"]),
-            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, metadata, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
+            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
             (supabase as any).from("event_dispatches").select("*").in("channel", ["warehouse_payment"]).order("created_at", { ascending: false }).limit(10),
         ]);
 
         // حساب دين المستودع — فقط الطلبات التي لم يدفع لها بعد
         let totalDebt = 0;
         (paidOrders || []).forEach(order => {
-            if (order.metadata?.fulfillment_paid) return; // Skip if already paid to warehouse
+            if (order.status !== "confirmed") return; // Only 'confirmed' (not processing/shipped) count as debt
 
             const orderItems = (order.order_items as unknown as any[]) || [];
             orderItems.forEach(item => {
@@ -1723,15 +1723,15 @@ export async function getFulfillmentHubData() {
 
         return {
             queues: {
-                confirmed: (paidOrders || []).filter(o => !o.metadata?.fulfillment_paid),
+                confirmed: (paidOrders || []).filter(o => o.status === "confirmed"),
                 processing: (processingOrders || []),
                 shipped: (shippedOrders || []),
             },
             recentPaid: (recentPaid || []),
             warehouseLedger: (warehouseLedger || []),
             stats: {
-                totalPendingFulfillment: (paidOrders?.filter(o => !o.metadata?.fulfillment_paid).length || 0) + (processingOrders?.length || 0),
-                confirmedCount: paidOrders?.filter(o => !o.metadata?.fulfillment_paid).length || 0,
+                totalPendingFulfillment: (paidOrders?.filter(o => o.status === "confirmed").length || 0) + (processingOrders?.length || 0),
+                confirmedCount: paidOrders?.filter(o => o.status === "confirmed").length || 0,
                 processingCount: processingOrders?.length || 0,
                 shippedCount: shippedOrders?.length || 0,
                 warehouseDebt: totalDebt,
