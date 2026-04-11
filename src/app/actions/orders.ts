@@ -574,7 +574,6 @@ export async function createOrder(
         await decrementStockForOrder(order.id);
     }
 
-    const subtotal = items.reduce((acc, item) => acc + item.unit_price * item.quantity, 0);
 
     await dispatchOrderCreatedSideEffects({
         orderId: order.id,
@@ -587,8 +586,8 @@ export async function createOrder(
         emailItems: buildOrderEmailItems(items),
         breakdown: {
             subtotal,
-            shipping: shippingPrice,
-            tax: taxAmount,
+            shipping: shipping_cost,
+            tax,
             discount: options?.discountAmount || 0,
         },
     });

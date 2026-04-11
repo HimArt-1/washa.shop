@@ -1746,6 +1746,7 @@ export async function getFulfillmentHubData() {
     }
 }
 
+export async function getAdminOrders({ page = 1, status = "all" }: { page?: number; status?: string }) {
     noStore();
     try {
         const { supabase } = await requireAdmin();
