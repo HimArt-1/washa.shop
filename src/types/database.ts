@@ -600,7 +600,22 @@ export type Database = {
                 Row: Order;
                 Insert: Omit<Order, "id" | "created_at" | "updated_at" | "order_number" | "status" | "payment_status" | "shipping_cost" | "tax" | "discount_amount"> & { status?: OrderStatus; payment_status?: PaymentStatus; shipping_cost?: number; tax?: number; discount_amount?: number; coupon_id?: string | null; };
                 Update: Partial<Omit<Order, "id" | "created_at" | "buyer_id">>;
-                Relationships: any[];
+                Relationships: [
+                    {
+                        foreignKeyName: "orders_buyer_id_fkey";
+                        columns: ["buyer_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "order_items_order_id_fkey";
+                        columns: ["id"];
+                        isOneToOne: false;
+                        referencedRelation: "order_items";
+                        referencedColumns: ["order_id"];
+                    }
+                ];
             };
             order_items: {
                 Row: OrderItem;
