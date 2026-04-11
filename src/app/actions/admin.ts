@@ -2015,7 +2015,7 @@ export async function initiateWarehousePayment(orderId: string) {
             orderNumber: `FUL-${order.order_number}`,
             clientName: "Wusha Operations",
             clientMobile: "0555555555", // Default Ops Mobile
-            clientEmail: adminProfile.email || "ops@washa.com",
+            clientEmail: "ops@washa.com",
             amount: calculation.breakdown.summary.grandTotal,
             products,
             id: orderId, // Use the orderId as the payment reference
@@ -2093,7 +2093,7 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
             orderNumber: `BATCH-FUL-${Date.now()}`,
             clientName: "Wusha Operations (Batch)",
             clientMobile: "0555555555",
-            clientEmail: adminProfile.email || "ops@washa.com",
+            clientEmail: "ops@washa.com",
             amount: grandTotal,
             products: allProducts,
             id: orderIds.join(","), // Combine IDs as reference
