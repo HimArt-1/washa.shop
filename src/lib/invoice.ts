@@ -23,6 +23,8 @@ export interface InvoiceOrder {
     shipping_cost: number;
     tax: number;
     total: number;
+    discount_amount?: number;
+    coupon_code?: string | null;
     currency: string;
     created_at: string;
     shipping_address?: {
@@ -165,9 +167,10 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
     const taxAmount = config.showTax
         ? Math.round((order.subtotal * (config.taxRate / 100)) * 100) / 100
         : 0;
+    const discountAmount = order.discount_amount || 0;
     const finalTotal = config.showTax
-        ? order.subtotal + (order.shipping_cost || 0) + taxAmount
-        : order.subtotal + (order.shipping_cost || 0);
+        ? order.subtotal + (order.shipping_cost || 0) + taxAmount - discountAmount
+        : order.subtotal + (order.shipping_cost || 0) - discountAmount;
 
     // ─── STYLES PER TEMPLATE ─────────────────────────────────
 
@@ -376,6 +379,10 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
                     ${config.showTax ? `<tr>
                         <td>ضريبة القيمة المضافة (${config.taxRate}%)</td>
                         <td class="num">${taxAmount.toLocaleString("ar-SA")} ر.س</td>
+                    </tr>` : ""}
+                    ${discountAmount > 0 ? `<tr style="color: #16a34a;">
+                        <td>الخصم ${order.coupon_code ? `<span style="font-size:11px; background:#f0fdf4; padding:2px 6px; border-radius:4px; margin-right:4px;">${order.coupon_code}</span>` : ""}</td>
+                        <td class="num" style="color: #16a34a;">- ${discountAmount.toLocaleString("ar-SA")} ر.س</td>
                     </tr>` : ""}
                     <tr class="total-row">
                         <td>الإجمالي الكلي</td>

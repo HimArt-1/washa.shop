@@ -25,6 +25,7 @@ import {
     Activity
 } from "lucide-react";
 import { OrderInspectionModal } from "./OrderInspectionModal";
+import { InvoiceBuilder } from "@/components/admin/InvoiceBuilder";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { updateOrderStatus, initiateWarehousePayment, initiateBulkWarehousePayment, markBatchAsPaidToWarehouse } from "@/app/actions/admin";
@@ -50,6 +51,9 @@ interface OrderItem {
 interface Order {
     id: string;
     order_number: string;
+    subtotal: number;
+    discount_amount: number;
+    shipping_cost?: number;
     total: number;
     status: string;
     payment_status: string;
@@ -61,6 +65,7 @@ interface Order {
         username: string;
     };
     order_items: OrderItem[];
+    coupon?: { code: string } | null;
 }
 
 interface FulfillmentCommandCenterProps {
@@ -89,6 +94,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
     const [searchQuery, setSearchQuery] = useState("");
     const [isPending, startTransition] = useTransition();
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const toggleSelection = (e: React.MouseEvent, id: string) => {
@@ -103,9 +109,11 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
 
     const calculateBatchDebt = () => {
         const selectedOrders = data.queues.confirmed.filter(o => selectedIds.has(o.id));
-        // Using a simplified calculation for the HUD recap to maintain performance
-        // The real calculation happens on the server before payment
-        return selectedOrders.length * 55; // Placeholder for UI estimate
+        // Real calculation involves garments + printing + handling
+        // For the tactical estimate, we use an average of 45 SAR per base item + 15 SAR handling per order
+        const itemQuantity = selectedOrders.reduce((acc, o) => acc + o.order_items.reduce((total, i) => total + (i.quantity || 1), 0), 0);
+        const handlingFees = selectedOrders.length * 15;
+        return (itemQuantity * 45) + handlingFees;
     };
 
     const formatCurrency = (val: number) => {
@@ -419,7 +427,16 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                     </div>
                                                     <div className="text-left min-w-[120px]">
                                                         <p className="text-[10px] uppercase tracking-[0.2em] text-theme-faint font-black mb-1">Total Payload</p>
-                                                        <p className="text-3xl font-black text-gold tracking-tighter">{formatCurrency(order.total)}</p>
+                                                        {order.discount_amount > 0 ? (
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-[10px] text-theme-faint line-through decoration-red-500/30">
+                                                                    {formatCurrency(Number(order.subtotal + (order.shipping_cost || 0)))}
+                                                                </span>
+                                                                <span className="text-2xl font-black text-gold tracking-tighter">{formatCurrency(order.total)}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-3xl font-black text-gold tracking-tighter">{formatCurrency(order.total)}</p>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -478,29 +495,37 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                 </div>
 
                                                 <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                                                    <button className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 hover:border-gold/20">
+                                                    <button 
+                                                        onClick={() => setInvoiceOrder({
+                                                            ...order,
+                                                            coupon_code: order.coupon?.code || null
+                                                        })}
+                                                        className="flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 hover:border-gold/20"
+                                                    >
                                                         <Printer className="w-4 h-4" />
                                                         <span className="hidden sm:inline uppercase tracking-widest">Generate Invoice</span>
                                                     </button>
                                                     
                                                     {order.status === "confirmed" && (
                                                         <div className="flex items-center gap-3">
-                                                            {!order.metadata?.fulfillment_paid && (
-                                                                <button 
-                                                                    disabled={isPending}
-                                                                    onClick={() => handleWarehousePayment(order.id)}
-                                                                    className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gold/10 hover:bg-gold/20 text-gold text-xs font-black border border-gold/20 transition-all active:scale-95"
-                                                                >
+                                                            <button 
+                                                                disabled={isPending}
+                                                                onClick={() => handleWarehousePayment(order.id)}
+                                                                className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gold/10 hover:bg-gold/20 text-gold text-xs font-black border border-gold/20 transition-all active:scale-95 disabled:opacity-50"
+                                                            >
+                                                                {isPending ? (
+                                                                    <Activity className="w-4 h-4 animate-spin" />
+                                                                ) : (
                                                                     <CreditCard className="w-4 h-4" />
-                                                                    ادفع للمستودع
-                                                                </button>
-                                                            )}
+                                                                )}
+                                                                ادفع للمستودع
+                                                            </button>
                                                             <button 
                                                                 disabled={isPending}
                                                                 onClick={() => handleStatusUpdate(order.id, "processing")}
                                                                 className="px-7 py-3 rounded-2xl bg-gold text-[#0a0a0a] text-xs font-black hover:bg-gold-light transition-all shadow-[0_10px_20px_rgba(212,175,55,0.2)] hover:-translate-y-0.5 active:translate-y-0.5"
                                                             >
-                                                                بدء المعالجة
+                                                                {isPending ? "جاري البدء..." : "بدء المعالجة"}
                                                             </button>
                                                         </div>
                                                     )}
@@ -632,8 +657,8 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 </div>
                                 <div className="h-10 w-px bg-white/10" />
                                 <div>
-                                    <p className="text-[10px] font-black text-gold/60 uppercase tracking-widest mb-0.5">إجمالي الدفعة</p>
-                                    <p className="text-lg font-black text-gold tracking-tighter">{formatCurrency(calculateBatchDebt())}</p>
+                                    <p className="text-[10px] font-black text-gold/60 uppercase tracking-widest mb-0.5">إجمالي الدفعة (تقديري)</p>
+                                    <p className="text-lg font-black text-gold tracking-tighter tabular-nums">{formatCurrency(calculateBatchDebt())}</p>
                                 </div>
                             </div>
 
@@ -647,17 +672,21 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 <button 
                                     disabled={isPending}
                                     onClick={handleBulkMarkAsPaid}
-                                    className="px-5 py-2.5 rounded-2xl bg-theme-soft/20 hover:bg-theme-soft/40 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 uppercase tracking-widest"
+                                    className="px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 uppercase tracking-widest disabled:opacity-50"
                                 >
-                                    تأكيد يدوي
+                                    {isPending ? "جاري التأكيد..." : "تأكيد يدوي"}
                                 </button>
                                 <button 
                                     disabled={isPending}
                                     onClick={handleBulkPayment}
-                                    className="px-8 py-3 rounded-2xl bg-gold text-[#0a0a0a] text-xs font-black hover:bg-gold-light transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:-translate-y-0.5 active:translate-y-0.5 flex items-center gap-2 uppercase tracking-widest"
+                                    className="px-8 py-3 rounded-2xl bg-gold text-[#0a0a0a] text-xs font-black hover:bg-gold-light transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:-translate-y-0.5 active:translate-y-0.5 flex items-center gap-2 uppercase tracking-widest disabled:opacity-50"
                                 >
-                                    <CardIcon className="w-4 h-4" />
-                                    دفع مجمع للمستودع
+                                    {isPending ? (
+                                        <Activity className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <CardIcon className="w-4 h-4" />
+                                    )}
+                                    {isPending ? "جاري الإرسال..." : "دفع مجمع للمستودع"}
                                 </button>
                             </div>
                         </div>
@@ -671,6 +700,13 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 order={selectedOrder}
                 onClose={() => setSelectedOrder(null)}
             />
+
+            {invoiceOrder && (
+                <InvoiceBuilder 
+                    order={invoiceOrder} 
+                    onClose={() => setInvoiceOrder(null)} 
+                />
+            )}
         </div>
     );
 }

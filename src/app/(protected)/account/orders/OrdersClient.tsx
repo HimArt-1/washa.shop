@@ -308,12 +308,25 @@ export function OrdersClient({
                                     <div className="flex flex-wrap items-center gap-4">
                                         <div>
                                             <span className="text-xs text-theme-subtle block mb-0.5">الإجمالي</span>
-                                            <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                            {(order.discount_amount > 0) ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-theme-faint line-through">{Number(order.subtotal + (order.shipping_cost || 0)).toLocaleString()} ر.س</span>
+                                                    <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                                    <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-md">خصم {Number(order.discount_amount).toLocaleString()} ر.س{order.coupon?.code ? ` (${order.coupon.code})` : ''}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                            )}
                                         </div>
                                         {/* Invoice Button */}
                                         <button
                                             onClick={() => {
-                                                const opened = openInvoicePrint(order);
+                                                const invoiceData = {
+                                                    ...order,
+                                                    order_items: order.items,
+                                                    coupon_code: order.coupon?.code || null,
+                                                };
+                                                const opened = openInvoicePrint(invoiceData);
                                                 if (!opened) {
                                                     setActionError("يرجى السماح بالنوافذ المنبثقة لفتح الفاتورة.");
                                                 }

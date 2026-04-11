@@ -679,7 +679,8 @@ export async function getUserOrders() {
             items:order_items(
                 *,
                 product:products(id, title, image_url, type)
-            )
+            ),
+            coupon:discount_coupons(code)
         `, { count: "exact" })
         .eq("buyer_id", profile.id)
         .order("created_at", { ascending: false });

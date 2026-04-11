@@ -181,11 +181,19 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                         <div className="space-y-3">
                                             <div className="flex justify-between text-theme-subtle text-sm">
                                                 <span>المجموع الفرعي</span>
-                                                <span className="font-mono">{formatCurrency(order.total)}</span>
+                                                <span className="font-mono">{formatCurrency(order.subtotal || order.total)}</span>
                                             </div>
+                                            {order.discount_amount > 0 && (
+                                                <div className="flex justify-between text-emerald-400 text-sm font-bold">
+                                                    <span>الخصم {order.coupon?.code ? `(${order.coupon.code})` : ''}</span>
+                                                    <span className="font-mono">-{formatCurrency(order.discount_amount)}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between text-theme-subtle text-sm">
                                                 <span>الشحن</span>
-                                                <span className="text-emerald-400 font-bold">مجاني</span>
+                                                <span className={cn("font-bold", (order.shipping_cost || 0) === 0 ? "text-emerald-400" : "text-theme-subtle")}>
+                                                    {(order.shipping_cost || 0) === 0 ? "مجاني" : formatCurrency(order.shipping_cost)}
+                                                </span>
                                             </div>
                                             <div className="pt-3 border-t border-white/10 flex justify-between items-end">
                                                 <span className="text-lg font-bold text-theme">الإجمالي النهائي</span>

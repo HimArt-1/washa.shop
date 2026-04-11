@@ -590,7 +590,18 @@ export function OrdersClient({
                                                             ) : null}
                                                         </div>
                                                     </td>
-                                                    <td className="px-4 py-4 font-bold text-theme">{formatCurrency(Number(order.total) || 0)}</td>
+                                                    <td className="px-4 py-4 font-bold text-theme">
+                                                        {order.discount_amount > 0 ? (
+                                                            <div className="flex flex-col items-start gap-1">
+                                                                <span className="text-[10px] text-theme-faint line-through decoration-red-500/30">
+                                                                    {formatCurrency(Number(order.subtotal + (order.shipping_cost || 0)))}
+                                                                </span>
+                                                                <span className="text-gold font-black">{formatCurrency(Number(order.total))}</span>
+                                                            </div>
+                                                        ) : (
+                                                            formatCurrency(Number(order.total) || 0)
+                                                        )}
+                                                    </td>
                                                     <td className="px-4 py-4">
                                                         <StatusBadge status={order.status} type="order" />
                                                     </td>
@@ -612,8 +623,11 @@ export function OrdersClient({
                                                     <td className="px-4 py-4 text-xs text-theme-faint">{formatShortDate(order.created_at)}</td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-wrap items-center gap-2">
-                                                            <button
-                                                                onClick={() => setInvoiceOrder(order)}
+                                                             <button
+                                                                onClick={() => setInvoiceOrder({
+                                                                    ...order,
+                                                                    coupon_code: order.coupon?.code || null
+                                                                })}
                                                                 className="inline-flex items-center gap-1.5 rounded-lg border border-theme-subtle bg-theme-faint px-3 py-1.5 text-[11px] font-bold text-theme-soft transition-all hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
                                                             >
                                                                 <FileDown className="h-3.5 w-3.5" />

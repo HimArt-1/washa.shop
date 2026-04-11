@@ -1686,7 +1686,7 @@ export async function getFulfillmentHubData() {
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
         // لا يوجد عمود metadata في جدول orders — نستخدم الحقول المتاحة فقط
-        const selectStr = "id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url))";
+        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
         
         const [
             { data: paidOrders },
@@ -1759,7 +1759,8 @@ export async function getAdminOrders({ page = 1, status = "all" }: { page?: numb
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title,
                 product:products(id, title, image_url)
-            )
+            ),
+            coupon:discount_coupons(code)
         `;
 
         let query = supabase
@@ -1805,7 +1806,8 @@ export async function getAdminOrderForFocusList(orderId: string) {
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title,
                 product:products(id, title, image_url)
-            )
+            ),
+            coupon:discount_coupons(code)
         `;
         const { data, error } = await supabase.from("orders").select(selectQuery).eq("id", orderId).maybeSingle();
         if (error || !data) {
