@@ -15,13 +15,7 @@ export default async function FulfillmentHubPage() {
         <div className="space-y-6">
             <AdminHeader
                 title="مركز قيادة الطلبات"
-                description="منصة موحدة لتتبع الطلبات المدفوعة وإدارة التنفيذ اللحظي."
-                icon={ShoppingCart}
-                breadcrumb={[
-                    { label: "لوحة التحكم", href: "/dashboard" },
-                    { label: "الطلبات", href: "/dashboard/orders" },
-                    { label: "مركز القيادة", active: true },
-                ]}
+                subtitle="منصة موحدة لتتبع الطلبات المدفوعة وإدارة التنفيذ اللحظي."
             />
 
             <FulfillmentCommandCenter data={data} />
