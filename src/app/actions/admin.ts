@@ -13,6 +13,8 @@ import { sendApplicationAcceptedEmail, sendApplicationRejectedEmail } from "@/li
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
 import { emitOrderRevenueEscalations } from "@/lib/operational-escalations";
+import { FULFILLMENT_RATES, calculateUnitFulfillmentCost } from "@/config/fulfillment-rates";
+import { createPaylinkInvoice } from "@/lib/paylink";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
@@ -1677,7 +1679,73 @@ export async function getOrdersOperationsSnapshot() {
     }
 }
 
-export async function getAdminOrders(page = 1, status = "all") {
+export async function getFulfillmentHubData() {
+    noStore();
+    try {
+        const { supabase } = await requireAdmin();
+        const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+
+        const selectStr = "id, order_number, total, status, payment_status, metadata, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url))";
+        
+        const [
+            { data: paidOrders },
+            { data: processingOrders },
+            { data: shippedOrders },
+            { data: recentPaid },
+        ] = await Promise.all([
+            supabase.from("orders").select(selectStr).eq("payment_status", "paid").in("status", ["confirmed"]),
+            supabase.from("orders").select(selectStr).in("status", ["processing"]),
+            supabase.from("orders").select(selectStr).in("status", ["shipped"]),
+            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
+        ]);
+
+        // Calculate actual Warehouse Debt for all orders that are PAID but NOT yet FULFILLMENT_PAID
+        let totalDebt = 0;
+        (paidOrders || []).forEach(order => {
+            const isFulfillmentPaid = (order.metadata as any)?.fulfillment_paid === true;
+            if (!isFulfillmentPaid) {
+                // Approximate calculation based on items (Garment + Base Packaging)
+                // For high precision, use getFulfillmentCalculation, but for bulk KPI, this logic is safer
+                const orderItems = (order.order_items as any[]) || [];
+                orderItems.forEach(item => {
+                    const garmentSlug = item.custom_garment || "premium-tshirt";
+                    const base = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
+                    const positions = item.custom_position ? item.custom_position.split(",").map((p: string) => p.trim()) : [];
+                    let printTotal = 0;
+                    positions.forEach((pos: string) => {
+                        printTotal += FULFILLMENT_RATES.printing[pos as keyof typeof FULFILLMENT_RATES.printing] || 0;
+                    });
+                    totalDebt += (base + printTotal + FULFILLMENT_RATES.packaging_unit) * item.quantity;
+                });
+                totalDebt += FULFILLMENT_RATES.handling_per_order;
+            }
+        });
+
+        return {
+            queues: {
+                confirmed: (paidOrders || []),
+                processing: (processingOrders || []),
+                shipped: (shippedOrders || []),
+            },
+            recentPaid: (recentPaid || []),
+            stats: {
+                totalPendingFulfillment: (paidOrders?.length || 0) + (processingOrders?.length || 0),
+                confirmedCount: paidOrders?.length || 0,
+                processingCount: processingOrders?.length || 0,
+                shippedCount: shippedOrders?.length || 0,
+                warehouseDebt: totalDebt,
+            }
+        };
+    } catch (err) {
+        console.error("getFulfillmentHubData error:", err);
+        return {
+            queues: { confirmed: [], processing: [], shipped: [] },
+            recentPaid: [],
+            stats: { totalPendingFulfillment: 0, confirmedCount: 0, processingCount: 0, shippedCount: 0 }
+        };
+    }
+}
+
     noStore();
     try {
         const { supabase } = await requireAdmin();
@@ -1831,6 +1899,246 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
     revalidatePath("/dashboard/orders");
     revalidatePath("/dashboard/products-inventory");
     return { success: true };
+}
+
+/**
+ * ──────────────────────────────────────────────────────────
+ *  WAREHOUSE FULFILLMENT ACTIONS
+ * ──────────────────────────────────────────────────────────
+ */
+
+export async function getFulfillmentCalculation(orderId: string) {
+    noStore();
+    try {
+        const { supabase } = await requireAdmin();
+        
+        const { data: items, error } = await supabase
+            .from("order_items")
+            .select("*")
+            .eq("order_id", orderId);
+
+        if (error || !items) throw new Error("Could not fetch items");
+
+        let totalGarmentCost = 0;
+        let totalPrintingCost = 0;
+        const breakdownItems = [];
+
+        for (const item of items) {
+            if (item.custom_design_url) {
+                const garmentSlug = item.custom_garment || "premium-tshirt";
+                const positions = item.custom_position ? item.custom_position.split(",").map(p => p.trim()) : [];
+                
+                const garmentBase = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
+                let itemPrintingTotal = 0;
+                
+                positions.forEach(pos => {
+                    itemPrintingTotal += FULFILLMENT_RATES.printing[pos as keyof typeof FULFILLMENT_RATES.printing] || 0;
+                });
+
+                const itemTotal = (garmentBase + itemPrintingTotal + FULFILLMENT_RATES.packaging_unit) * item.quantity;
+                
+                totalGarmentCost += garmentBase * item.quantity;
+                totalPrintingCost += itemPrintingTotal * item.quantity;
+
+                breakdownItems.push({
+                    title: item.custom_title || "Custom Design",
+                    qty: item.quantity,
+                    garmentBase,
+                    printing: itemPrintingTotal,
+                    packaging: FULFILLMENT_RATES.packaging_unit,
+                    total: itemTotal
+                });
+            } else {
+                // Standard product fulfillment (assumed flat for now)
+                const STO_FEE = 15; 
+                totalGarmentCost += STO_FEE * item.quantity;
+                breakdownItems.push({
+                    title: `Inventory Item: ${item.quantity} units`,
+                    qty: item.quantity,
+                    garmentBase: STO_FEE,
+                    printing: 0,
+                    packaging: 2,
+                    total: (STO_FEE + 2) * item.quantity
+                });
+            }
+        }
+
+        const grandFulfillmentTotal = totalGarmentCost + totalPrintingCost + (breakdownItems.length > 0 ? FULFILLMENT_RATES.handling_per_order : 0) + (breakdownItems.reduce((acc, i) => acc + (i.packaging * i.qty), 0));
+
+        return {
+            success: true,
+            breakdown: {
+                items: breakdownItems,
+                summary: {
+                    garmentSubtotal: totalGarmentCost,
+                    printingSubtotal: totalPrintingCost,
+                    handlingFee: FULFILLMENT_RATES.handling_per_order,
+                    packagingTotal: breakdownItems.reduce((acc, i) => acc + (i.packaging * i.qty), 0),
+                    grandTotal: grandFulfillmentTotal
+                }
+            }
+        };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
+export async function initiateWarehousePayment(orderId: string) {
+    try {
+        const { supabase, adminProfile } = await requireAdmin();
+        const calculation = await getFulfillmentCalculation(orderId);
+        
+        if (!calculation.success || !calculation.breakdown) {
+            return { success: false, error: "Calculation failed" };
+        }
+
+        const { data: order } = await supabase
+            .from("orders")
+            .select("order_number")
+            .eq("id", orderId)
+            .single();
+
+        if (!order) return { success: false, error: "Order not found" };
+
+        const products = calculation.breakdown.items.map(item => ({
+            title: item.title,
+            price: (item.garmentBase + item.printing + item.packaging),
+            qty: item.qty
+        }));
+
+        if (calculation.breakdown.summary.handlingFee > 0) {
+            products.push({
+                title: "Handling Fee",
+                price: calculation.breakdown.summary.handlingFee,
+                qty: 1
+            });
+        }
+
+        const invoice = await createPaylinkInvoice({
+            orderNumber: `FUL-${order.order_number}`,
+            clientName: "Wusha Operations",
+            clientMobile: "0555555555", // Default Ops Mobile
+            clientEmail: adminProfile.email || "ops@washa.com",
+            amount: calculation.breakdown.summary.grandTotal,
+            products,
+            id: orderId, // Use the orderId as the payment reference
+        });
+
+        if (invoice.url) {
+            return { success: true, url: invoice.url };
+        }
+
+        return { success: false, error: "Paylink URL generation failed" };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
+export async function markAsPaidToWarehouse(orderId: string) {
+    try {
+        const { supabase } = await requireAdmin();
+        
+        // 1. Update order status to processing
+        const { error: statusError } = await supabase
+            .from("orders")
+            .update({ 
+                status: "processing",
+                metadata: { fulfillment_paid: true, fulfillment_paid_at: new Date().toISOString() }
+            })
+            .eq("id", orderId);
+
+        if (statusError) throw statusError;
+
+        // 2. Trigger inventory logic
+        const { decrementStockForOrder } = await import("@/lib/inventory");
+        await decrementStockForOrder(orderId);
+
+        revalidatePath("/dashboard/orders");
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ *  BATCH FULFILLMENT ACTIONS
+ * ═══════════════════════════════════════════════════════════
+ */
+
+export async function initiateBulkWarehousePayment(orderIds: string[]) {
+    try {
+        const { supabase, adminProfile } = await requireAdmin();
+        
+        const allProducts: any[] = [];
+        let grandTotal = 0;
+        const orderSummary = [];
+
+        for (const orderId of orderIds) {
+            const calculation = await getFulfillmentCalculation(orderId);
+            if (calculation.success && calculation.breakdown) {
+                const { data: order } = await supabase.from("orders").select("order_number").eq("id", orderId).single();
+                if (order) {
+                    const orderCost = calculation.breakdown.summary.grandTotal;
+                    grandTotal += orderCost;
+                    allProducts.push({
+                        title: `Fulfillment: #${order.order_number}`,
+                        price: orderCost,
+                        qty: 1
+                    });
+                    orderSummary.push(order.order_number);
+                }
+            }
+        }
+
+        if (allProducts.length === 0) return { success: false, error: "No valid orders for batch payment" };
+
+        const invoice = await createPaylinkInvoice({
+            orderNumber: `BATCH-FUL-${Date.now()}`,
+            clientName: "Wusha Operations (Batch)",
+            clientMobile: "0555555555",
+            clientEmail: adminProfile.email || "ops@washa.com",
+            amount: grandTotal,
+            products: allProducts,
+            id: orderIds.join(","), // Combine IDs as reference
+        });
+
+        if (invoice.url) {
+            return { success: true, url: invoice.url };
+        }
+
+        return { success: false, error: "Batch URL generation failed" };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
+}
+
+export async function markBatchAsPaidToWarehouse(orderIds: string[]) {
+    try {
+        const { supabase } = await requireAdmin();
+        const { decrementStockForOrder } = await import("@/lib/inventory");
+
+        const updatePromises = orderIds.map(async (id) => {
+            const { error } = await supabase
+                .from("orders")
+                .update({ 
+                    status: "processing",
+                    metadata: { fulfillment_paid: true, fulfillment_paid_at: new Date().toISOString(), batch_payment: true }
+                })
+                .eq("id", id);
+            
+            if (!error) {
+                await decrementStockForOrder(id);
+            }
+        });
+
+        await Promise.all(updatePromises);
+        
+        revalidatePath("/dashboard/orders");
+        return { success: true };
+    } catch (err) {
+        return { success: false, error: String(err) };
+    }
 }
 
 // ═══════════════════════════════════════════════════════════

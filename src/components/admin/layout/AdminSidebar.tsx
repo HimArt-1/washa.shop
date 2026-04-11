@@ -75,6 +75,7 @@ export function AdminSidebar({
             title: "الطلبات",
             items: [
                 { icon: ShoppingCart, label: "إدارة الطلبات", href: "/dashboard/orders" },
+                { icon: Activity, label: "مركز قيادة الطلبات", href: "/dashboard/orders/command-center" },
                 { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders },
             ],
         },

@@ -141,6 +141,8 @@ function getPageMeta(pathname: string) {
     };
 }
 
+import { OrderRadar } from "@/components/admin/orders/OrderRadar";
+
 export function AdminTopBar() {
     const router = useRouter();
     const pathname = usePathname();
@@ -273,6 +275,7 @@ export function AdminTopBar() {
                     </div>
                 </div>
             </header>
+            <OrderRadar />
 
             {/* Command Palette Modal */}
             <AnimatePresence>

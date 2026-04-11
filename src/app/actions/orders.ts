@@ -23,6 +23,7 @@ interface OrderItemInput {
     custom_design_url?: string;
     custom_garment?: string;
     custom_title?: string;
+    custom_position?: string;
 }
 
 interface ShippingAddressInput {
@@ -95,8 +96,14 @@ async function dispatchOrderCreatedSideEffects(params: {
     customerEmail?: string | null;
     customerName?: string | null;
     emailItems: OrderEmailItem[];
+    breakdown?: {
+        subtotal: number;
+        discount: number;
+        shipping: number;
+        tax: number;
+    };
 }) {
-    const { orderId, orderNumber, total, buyerId, isCod, customerEmail, customerName, emailItems } = params;
+    const { orderId, orderNumber, total, buyerId, isCod, customerEmail, customerName, emailItems, breakdown } = params;
     const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total);
 
     const sideEffects = [
@@ -193,7 +200,8 @@ async function dispatchOrderCreatedSideEffects(params: {
                         customerName || "عميل",
                         orderNumber,
                         total,
-                        emailItems
+                        emailItems,
+                        breakdown
                     );
                     assertSuccessfulDispatch(result, "Failed to send customer order confirmation email");
                 }
@@ -288,8 +296,14 @@ async function dispatchOrderPaymentSideEffects(params: {
     customerEmail?: string | null;
     customerName?: string | null;
     webhookEventId?: string;
+    breakdown?: {
+        subtotal: number;
+        discount: number;
+        shipping: number;
+        tax: number;
+    };
 }) {
-    const { orderId, orderNumber, total, buyerId, customerEmail, customerName, webhookEventId } = params;
+    const { orderId, orderNumber, total, buyerId, customerEmail, customerName, webhookEventId, breakdown } = params;
     const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total, webhookEventId ? { webhook_event_id: webhookEventId } : undefined);
 
     const sideEffects = [
@@ -305,11 +319,11 @@ async function dispatchOrderPaymentSideEffects(params: {
             async () => {
                 const result = await createAdminNotification({
                     type: "payment_received",
-                    category: "payments",
+                    category: "orders",
                     severity: "info",
                     title: "تم استلام الدفع",
                     message: `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
-                    link: "/dashboard/orders",
+                    link: "/dashboard/orders/command-center",
                     metadata,
                 });
                 assertSuccessfulDispatch(result, "Failed to create payment admin notification");
@@ -392,7 +406,8 @@ async function dispatchOrderPaymentSideEffects(params: {
                         customerName || "عميل",
                         orderNumber,
                         total,
-                        emailItems
+                        emailItems,
+                        breakdown
                     );
                     assertSuccessfulDispatch(result, "Failed to send payment customer email");
                 }
@@ -471,13 +486,17 @@ export async function createOrder(
     const discount = options?.discountAmount || 0;
     const taxableAmount = Math.max(0, subtotal - discount);
 
+    // Shipping logic with strict flag check
+    const isShippingEnabled = config.shipping_enabled === true;
     const shipping_cost = (() => {
-        if (!config.shipping_enabled) return 0;
+        if (!isShippingEnabled) return 0;
         if (taxableAmount >= (config.free_above ?? 500)) return 0;
         return config.flat_rate ?? 30;
     })();
 
-    const tax = config.tax_enabled
+    // Tax logic with strict flag check
+    const isTaxEnabled = config.tax_enabled === true;
+    const tax = isTaxEnabled
         ? taxableAmount * ((config.tax_rate ?? 15) / 100)
         : 0;
 
@@ -524,6 +543,7 @@ export async function createOrder(
             custom_design_url: item.custom_design_url,
             custom_garment: item.custom_garment ?? null,
             custom_title: item.custom_title ?? null,
+            custom_position: item.custom_position ?? null,
         }),
     }));
 
@@ -554,6 +574,8 @@ export async function createOrder(
         await decrementStockForOrder(order.id);
     }
 
+    const subtotal = items.reduce((acc, item) => acc + item.unit_price * item.quantity, 0);
+
     await dispatchOrderCreatedSideEffects({
         orderId: order.id,
         orderNumber: order.order_number,
@@ -563,6 +585,12 @@ export async function createOrder(
         customerEmail: user.emailAddresses?.[0]?.emailAddress,
         customerName: shippingAddress.name || user.firstName || "عميل",
         emailItems: buildOrderEmailItems(items),
+        breakdown: {
+            subtotal,
+            shipping: shippingPrice,
+            tax: taxAmount,
+            discount: options?.discountAmount || 0,
+        },
     });
 
     return {
@@ -584,7 +612,7 @@ export async function confirmOrderPayment(
 
         const { data: order } = await supabase
             .from("orders")
-            .select("order_number, total, shipping_address, payment_status, buyer_id, coupon_id, status")
+            .select("order_number, total, shipping_address, payment_status, buyer_id, coupon_id, status, subtotal, discount_amount, shipping_cost, tax")
             .eq("id", orderId)
             .single();
 
@@ -608,9 +636,16 @@ export async function confirmOrderPayment(
             orderNumber: order.order_number,
             total: order.total,
             buyerId: order.buyer_id,
-            customerEmail: options?.customerEmail,
+            customerEmail: options?.customerEmail || null,
             customerName: getShippingContactName(order.shipping_address),
             webhookEventId: options?.webhookEventId,
+            breakdown: {
+                total: order.total,
+                subtotal: order.subtotal || 0,
+                discount: order.discount_amount || 0,
+                shipping: order.shipping_cost || 0,
+                tax: order.tax || 0,
+            } as any
         });
 
         return { success: true };

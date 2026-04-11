@@ -203,11 +203,11 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
     const taxableAmount = Math.max(0, subtotal - discount);
 
     const shippingCost = (() => {
-        if (!shippingConfig.shipping_enabled) return 0;
+        if (shippingConfig.shipping_enabled !== true) return 0;
         if (taxableAmount >= shippingConfig.free_above) return 0;
         return shippingConfig.flat_rate;
     })();
-    const taxAmount = shippingConfig.tax_enabled
+    const taxAmount = (shippingConfig.tax_enabled === true)
         ? taxableAmount * (shippingConfig.tax_rate / 100)
         : 0;
     const total = taxableAmount + shippingCost + taxAmount;
@@ -226,6 +226,7 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                     custom_design_url: item.customDesignUrl ?? undefined,
                     custom_garment: item.customGarment ?? undefined,
                     custom_title: item.title,
+                    custom_position: item.customPosition ?? undefined,
                 };
             }
             return {
@@ -259,6 +260,23 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
 
                 if (shippingCost > 0) {
                     products.push({ title: "تكلفة الشحن", price: shippingCost, qty: 1 });
+                }
+
+                if (discount > 0) {
+                    products.push({ 
+                        title: `خصم ${coupon ? `(${coupon.code})` : "كود خصم"}`, 
+                        price: -discount, 
+                        qty: 1 
+                    });
+                }
+
+                if (taxAmount > 0) {
+                    const taxRate = shippingConfig.tax_rate ?? 15;
+                    products.push({ 
+                        title: `ضريبة القيمة المضافة (${taxRate}%)`, 
+                        price: taxAmount, 
+                        qty: 1 
+                    });
                 }
 
                 const response = await fetch("/api/paylink/create-invoice", {

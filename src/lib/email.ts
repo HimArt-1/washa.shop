@@ -300,10 +300,18 @@ export async function sendOrderConfirmationEmail(
     name: string,
     orderNumber: string,
     total: number,
-    items?: OrderEmailItem[]
+    items?: OrderEmailItem[],
+    breakdown?: {
+        subtotal: number;
+        discount: number;
+        shipping: number;
+        tax: number;
+    }
 ) {
     const safeName = sanitizeText(name, 80, "عميل");
     const safeOrderNumber = sanitizeText(orderNumber, 40, "—");
+    
+    // Items table
     const itemsHtml = items && items.length > 0 ? `
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse;">
           <tr>
@@ -320,18 +328,31 @@ export async function sendOrderConfirmationEmail(
           </tr>`).join("")}
         </table>` : "";
 
+    // Detailed breakdown (if provided) or fallback to simple total
+    const summaryHtml = breakdown ? `
+        <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(206,174,127,0.12);">
+          ${infoBlock("المجموع الفرعي", `${breakdown.subtotal.toLocaleString()} ر.س`)}
+          ${breakdown.discount > 0 ? infoBlock("الخصم", `<span style="color:#4ade80;">- ${breakdown.discount.toLocaleString()} ر.س</span>`) : ""}
+          ${infoBlock("الشحن", breakdown.shipping > 0 ? `${breakdown.shipping.toLocaleString()} ر.س` : `<span style="color:#4ade80;">مجاني</span>`)}
+          ${breakdown.tax > 0 ? infoBlock("الضريبة", `${breakdown.tax.toLocaleString()} ر.س`) : ""}
+          <div style="height:8px;"></div>
+          ${infoBlock("الإجمالي النهائي", `<strong style="color:#ceae7f;font-size:18px;">${total.toLocaleString()} ر.س</strong>`)}
+        </div>
+    ` : infoBlock("الإجمالي", `<strong style="color:#ceae7f;font-size:17px;">${total.toLocaleString()} ر.س</strong>`);
+
     return send({
         to,
         subject: `تم استلام طلبك #${safeOrderNumber} ✅`,
         html: wushaTemplate(`
             ${heading(`شكراً لطلبك، ${safeName} ✅`)}
-            ${paragraph("تم استلام طلبك بنجاح. فيما يلي تفاصيل طلبك:")}
+            ${paragraph("تم استلام طلبك بنجاح. فيما يلي ملخص الفاتورة وتفاصيل المنتجات:")}
 
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.05);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
               <tr><td>
                 ${itemsHtml}
+                ${summaryHtml}
+                <div style="height:12px;"></div>
                 ${infoBlock("رقم الطلب", `#${safeOrderNumber}`)}
-                ${infoBlock("الإجمالي", `<strong style="color:#ceae7f;font-size:17px;">${total.toLocaleString()} ر.س</strong>`)}
               </td></tr>
             </table>
 
