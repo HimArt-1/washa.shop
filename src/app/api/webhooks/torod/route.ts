@@ -99,15 +99,34 @@ export async function POST(req: Request) {
         }
 
         // 3. Find the order (metadata column exists in DB but may be missing from generated types)
-        const { data: order, error: fetchError } = await (supabase as any)
+        let orderQuery = (supabase as any)
             .from("orders")
-            .select("id, status, metadata")
-            .or(`id.eq.${order_id},tracking_number.eq.${tracking_id}`)
-            .single();
+            .select("id, status, metadata");
+
+        if (order_id && tracking_id) {
+            orderQuery = orderQuery.or(
+                `id.eq.${order_id},tracking_number.eq.${tracking_id}`
+            );
+        } else if (order_id) {
+            orderQuery = orderQuery.eq("id", order_id);
+        } else {
+            orderQuery = orderQuery.eq("tracking_number", tracking_id as string);
+        }
+
+        const { data: order, error: fetchError } = await orderQuery.single();
 
         if (fetchError || !order) {
-            console.warn("[Torod Webhook] Order not found for:", { order_id, tracking_id });
-            return NextResponse.json({ message: "Order not found" }, { status: 404 });
+            // Torod’s “validate webhook URL” often POSTs sample payloads; those IDs won’t exist → must still be 2xx.
+            console.warn("[Torod Webhook] Order not found (ack 200):", {
+                order_id,
+                tracking_id,
+                fetchError: fetchError?.message,
+            });
+            return NextResponse.json({
+                success: true,
+                acknowledged: true,
+                message: "No matching order; event ignored",
+            });
         }
 
         // 4. Update metadata with history
