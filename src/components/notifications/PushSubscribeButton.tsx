@@ -218,34 +218,62 @@ export function PushSubscribeButton({
     );
 }
 
-async function getOrCreatePushSubscription(reg: ServiceWorkerRegistration) {
-    const existingSubscription = await reg.pushManager.getSubscription();
-    if (existingSubscription) {
-        return existingSubscription;
+function applicationServerKeysMatch(
+    existing: ArrayBuffer | null | undefined,
+    desired: BufferSource | undefined
+): boolean {
+    if (!existing || !desired) return false;
+    const a = new Uint8Array(existing);
+    const b =
+        desired instanceof ArrayBuffer
+            ? new Uint8Array(desired)
+            : new Uint8Array(desired.buffer, desired.byteOffset, desired.byteLength);
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
     }
+    return true;
+}
 
+async function getOrCreatePushSubscription(reg: ServiceWorkerRegistration) {
     const applicationServerKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
         ? (urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) as BufferSource)
         : undefined;
 
-    try {
-        return await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey,
-        });
-    } catch (error: any) {
-        if (error && typeof error === "object" && error.name === "InvalidStateError") {
-            const staleSubscription = await reg.pushManager.getSubscription();
-            if (staleSubscription) {
-                await staleSubscription.unsubscribe().catch(() => false);
-            }
-
-            return reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey,
-            });
+    let existingSubscription = await reg.pushManager.getSubscription();
+    if (existingSubscription && applicationServerKey) {
+        const currentKey = existingSubscription.options?.applicationServerKey ?? null;
+        if (!applicationServerKeysMatch(currentKey, applicationServerKey)) {
+            await existingSubscription.unsubscribe().catch(() => false);
+            existingSubscription = null;
         }
+    }
 
+    if (existingSubscription) {
+        return existingSubscription;
+    }
+
+    const subscribeOpts: PushSubscriptionOptionsInit = {
+        userVisibleOnly: true,
+        applicationServerKey,
+    };
+
+    try {
+        return await reg.pushManager.subscribe(subscribeOpts);
+    } catch (error: unknown) {
+        const err = error as { name?: string };
+        if (err?.name === "InvalidStateError") {
+            const stale = await reg.pushManager.getSubscription();
+            if (stale) {
+                await stale.unsubscribe().catch(() => false);
+            }
+            try {
+                return await reg.pushManager.subscribe(subscribeOpts);
+            } catch (second: unknown) {
+                console.warn("[Push] Resubscribe after InvalidStateError failed:", second);
+                throw second;
+            }
+        }
         throw error;
     }
 }

@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const SW_VERSION = "2026-04-css-recovery-1";
+const SW_VERSION = "2026-04-sw-api-bypass-1";
 const CACHE_NAME = `wusha-shell-${SW_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 
@@ -119,13 +119,9 @@ self.addEventListener("fetch", (event) => {
     const isDashboard = url.includes("/dashboard");
     const isApi = url.includes("/api/");
 
-    // Network-only for RSC, dashboard, API
+    // Do not intercept RSC, dashboard, or API — letting the browser handle them avoids
+    // turning transient network errors into synthetic 503 (e.g. checkout / paylink).
     if (isRSC || isDashboard || isApi) {
-        event.respondWith(
-            fetch(request).catch(() =>
-                createServiceUnavailableResponse()
-            )
-        );
         return;
     }
 
