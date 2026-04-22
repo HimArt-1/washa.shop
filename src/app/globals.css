@@ -1144,8 +1144,52 @@ h3 {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Video Background
+   Hero Background
 ═══════════════════════════════════════════════════════════ */
+
+.shader-wallpaper-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--wusha-earth) 68%, #080808);
+}
+
+.shader-wallpaper-canvas,
+.shader-wallpaper-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.shader-wallpaper-canvas {
+  display: block;
+  opacity: 0.96;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.shader-wallpaper-fallback {
+  background:
+    radial-gradient(circle at 50% 44%,
+      transparent 0 7.4rem,
+      color-mix(in srgb, var(--wusha-earth) 34%, transparent) 7.5rem 7.65rem,
+      transparent 7.8rem 12.8rem,
+      color-mix(in srgb, var(--wusha-surface) 24%, transparent) 12.9rem 13.05rem,
+      transparent 13.2rem 18.8rem,
+      color-mix(in srgb, var(--wusha-gold) 30%, transparent) 18.9rem 19.08rem,
+      transparent 19.25rem),
+    radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--wusha-surface) 30%, transparent) 0%, color-mix(in srgb, var(--wusha-gold) 18%, transparent) 24%, transparent 48%),
+    radial-gradient(circle at 72% 28%, color-mix(in srgb, var(--wusha-mist) 20%, transparent) 0%, transparent 30%),
+    radial-gradient(circle at 22% 70%, color-mix(in srgb, var(--wusha-surface) 15%, transparent) 0%, transparent 32%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--wusha-earth) 66%, #080808) 0%,
+      color-mix(in srgb, var(--wusha-mist) 24%, #080808) 46%,
+      color-mix(in srgb, var(--wusha-gold) 42%, var(--wusha-earth)) 160%
+    );
+}
 
 .video-bg {
   position: absolute;
@@ -1182,12 +1226,13 @@ h3 {
   inset: 0;
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--wusha-bg) 32%, transparent) 0%,
-      transparent 18%,
-      transparent 52%,
-      color-mix(in srgb, var(--wusha-bg) 72%, transparent) 76%,
-      color-mix(in srgb, var(--wusha-bg) 97%, transparent) 100%),
-    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--wusha-gold) 5%, transparent) 0%, transparent 55%);
+      rgba(6, 12, 18, 0.52) 0%,
+      rgba(6, 12, 18, 0.08) 28%,
+      rgba(6, 12, 18, 0.26) 58%,
+      rgba(6, 12, 18, 0.72) 84%,
+      var(--wusha-bg) 100%),
+    radial-gradient(ellipse at 50% 44%, color-mix(in srgb, var(--wusha-surface) 8%, transparent) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, color-mix(in srgb, var(--wusha-gold) 16%, transparent) 0%, transparent 58%);
   z-index: 1;
 }
 

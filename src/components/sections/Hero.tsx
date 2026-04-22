@@ -2,23 +2,30 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
-import { ArrowDown, LogIn, UserPlus, Sparkles, ShoppingBag } from "lucide-react";
+import { LogIn, UserPlus, Sparkles, ShoppingBag } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JoinModal } from "@/components/ui/JoinModal";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
+import { WushaShaderBackground } from "@/components/sections/WushaShaderBackground";
 
 interface HeroProps {
+  backgroundMode?: "shader" | "video";
   showAuthButtons?: boolean;
   showWashaAiButton?: boolean;
   showJoinArtistButton?: boolean;
 }
 
-export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoinArtistButton = false }: HeroProps) {
+export function Hero({
+  backgroundMode = "shader",
+  showAuthButtons = true,
+  showWashaAiButton = true,
+  showJoinArtistButton = false,
+}: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoReady, setVideoReady] = useState(false);
+  const [backgroundReady, setBackgroundReady] = useState(false);
   const [curtainLifted, setCurtainLifted] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const router = useRouter();
@@ -36,51 +43,58 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
   const y = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
-  const videoScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
+  const backgroundScale = useTransform(scrollYProgress, [0, 1], [1, 1.2]);
 
-  // Handle video ready state
+  const handleBackgroundReady = useCallback(() => {
+    setBackgroundReady(true);
+  }, []);
+
   useEffect(() => {
+    if (backgroundMode !== "video") return;
+
     const video = videoRef.current;
     if (!video) return;
 
-    const onCanPlay = () => setVideoReady(true);
+    const onCanPlay = () => setBackgroundReady(true);
 
-    // If already loaded (cached)
     if (video.readyState >= 3) {
-      setVideoReady(true);
+      setBackgroundReady(true);
     } else {
       video.addEventListener("canplay", onCanPlay);
     }
 
-    // Safety timeout — lift curtain after 4s no matter what
-    const fallback = setTimeout(() => setVideoReady(true), 4000);
-
     return () => {
       video.removeEventListener("canplay", onCanPlay);
-      clearTimeout(fallback);
     };
-  }, []);
+  }, [backgroundMode]);
 
-  // Lift curtain 600ms after video is ready (let animation breathe)
+  // Safety timeout: the entrance should not block if WebGL/video initialization is delayed.
   useEffect(() => {
-    if (!videoReady) return;
+    const fallbackMs = backgroundMode === "video" ? 4000 : 2500;
+    const fallback = setTimeout(() => setBackgroundReady(true), fallbackMs);
+    return () => clearTimeout(fallback);
+  }, [backgroundMode]);
+
+  // Lift curtain 600ms after the shader is ready (let animation breathe)
+  useEffect(() => {
+    if (!backgroundReady) return;
     const timer = setTimeout(() => setCurtainLifted(true), 600);
     return () => clearTimeout(timer);
-  }, [videoReady]);
+  }, [backgroundReady]);
 
   const heroTokens = {
-    subtitle: "var(--hero-subtitle)",
-    secondaryBorder: "var(--hero-secondary-border)",
-    secondaryBg: "var(--hero-secondary-bg)",
-    secondaryText: "var(--hero-secondary-text)",
-    secondaryBorderHover: "var(--hero-secondary-border-hover)",
-    secondaryBgHover: "var(--hero-secondary-bg-hover)",
-    linkMuted: "var(--hero-link-muted)",
-    scrollMuted: "var(--hero-scroll-muted)",
-    scrollBorder: "var(--hero-scroll-border)",
-    decorStrong: "var(--hero-decor-strong)",
-    decorSoft: "var(--hero-decor-soft)",
-    cornerBorder: "var(--hero-corner-border)",
+    subtitle: "rgba(224, 201, 154, 0.94)",
+    secondaryBorder: "rgba(250, 243, 230, 0.28)",
+    secondaryBg: "rgba(250, 243, 230, 0.08)",
+    secondaryText: "rgba(250, 243, 230, 0.92)",
+    secondaryBorderHover: "rgba(224, 201, 154, 0.42)",
+    secondaryBgHover: "rgba(250, 243, 230, 0.14)",
+    linkMuted: "rgba(250, 243, 230, 0.58)",
+    scrollMuted: "rgba(250, 243, 230, 0.46)",
+    scrollBorder: "rgba(224, 201, 154, 0.36)",
+    decorStrong: "rgba(224, 201, 154, 0.32)",
+    decorSoft: "rgba(180, 55, 37, 0.24)",
+    cornerBorder: "rgba(224, 201, 154, 0.24)",
   };
 
   return (
@@ -106,9 +120,9 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
             >
               <motion.div
                 animate={{
-                  filter: videoReady ? "blur(0px)" : ["blur(0px)", "blur(2px)", "blur(0px)"],
+                  filter: backgroundReady ? "blur(0px)" : ["blur(0px)", "blur(2px)", "blur(0px)"],
                 }}
-                transition={{ duration: 2, repeat: videoReady ? 0 : Infinity, ease: "easeInOut" }}
+                transition={{ duration: 2, repeat: backgroundReady ? 0 : Infinity, ease: "easeInOut" }}
               >
                 <div className="relative w-[180px] sm:w-[220px] md:w-[280px] aspect-[280/160]">
                   <Image
@@ -144,12 +158,12 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
                   key={i}
                   className="w-1.5 h-1.5 rounded-full bg-gold/60"
                   animate={{
-                    opacity: videoReady ? 0 : [0.3, 1, 0.3],
-                    scale: videoReady ? 0 : [1, 1.3, 1],
+                    opacity: backgroundReady ? 0 : [0.3, 1, 0.3],
+                    scale: backgroundReady ? 0 : [1, 1.3, 1],
                   }}
                   transition={{
                     duration: 1,
-                    repeat: videoReady ? 0 : Infinity,
+                    repeat: backgroundReady ? 0 : Infinity,
                     delay: i * 0.2,
                     ease: "easeInOut",
                   }}
@@ -159,7 +173,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
 
             {/* Ready checkmark flash */}
             <AnimatePresence>
-              {videoReady && (
+              {backgroundReady && (
                 <motion.span
                   className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em]"
                   initial={{ opacity: 0, y: 10 }}
@@ -175,26 +189,30 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
         )}
       </AnimatePresence>
 
-      {/* ═══ Video Background ═══ */}
-      <motion.div className="absolute inset-0 z-0" style={{ scale: videoScale }}>
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          disablePictureInPicture
-          disableRemotePlayback
-          controlsList="nodownload nofullscreen noremoteplayback"
-          className="video-bg pointer-events-none"
-          style={{ objectFit: "cover" }}
-        >
-          <source src="/videos/HERO1.mp4" type="video/mp4" />
-        </video>
+      {/* ═══ Hero Background ═══ */}
+      <motion.div className="absolute inset-0 z-0" style={{ scale: backgroundScale }}>
+        {backgroundMode === "video" ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            disablePictureInPicture
+            disableRemotePlayback
+            controlsList="nodownload nofullscreen noremoteplayback"
+            className="video-bg pointer-events-none"
+            style={{ objectFit: "cover" }}
+          >
+            <source src="/videos/HERO1.mp4" type="video/mp4" />
+          </video>
+        ) : (
+          <WushaShaderBackground onReady={handleBackgroundReady} />
+        )}
       </motion.div>
 
-      {/* ═══ Video Overlay — Gradient ═══ */}
+      {/* ═══ Hero Overlay — Gradient ═══ */}
       <div className="video-overlay" />
 
       {/* ═══ Gold Atmospheric Particles ═══ */}
@@ -257,7 +275,7 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
           </p>
           <div className="flex items-center gap-3">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="text-xs tracking-[0.3em] text-theme-faint uppercase">art you wear</span>
+            <span className="text-xs tracking-[0.3em] uppercase text-[rgba(250,243,230,0.58)]">art you wear</span>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-gold/40" />
           </div>
         </motion.div>
@@ -277,8 +295,8 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                     style={{
                       borderColor: "var(--hero-scroll-border)",
-                      background: "var(--ai-step-active-bg)",
-                      color: "var(--wusha-text)",
+                      background: "linear-gradient(120deg, rgba(250, 243, 230, 0.14), rgba(180, 55, 37, 0.2))",
+                      color: "rgba(250, 243, 230, 0.92)",
                     }}
                     whileHover={{
                       boxShadow: "0 8px 32px var(--neon-gold)",
@@ -305,8 +323,8 @@ export function Hero({ showAuthButtons = true, showWashaAiButton = true, showJoi
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                     style={{
                       borderColor: "rgba(168, 85, 247, 0.32)",
-                      background: "linear-gradient(120deg, rgba(154, 123, 61, 0.18), rgba(168, 85, 247, 0.18), rgba(192, 132, 252, 0.16))",
-                      color: "var(--wusha-text)",
+                      background: "linear-gradient(120deg, rgba(154, 123, 61, 0.2), rgba(180, 55, 37, 0.2), rgba(250, 243, 230, 0.1))",
+                      color: "rgba(250, 243, 230, 0.92)",
                     }}
                     whileHover={{
                       boxShadow: "0 8px 32px rgba(168, 85, 247, 0.22)",

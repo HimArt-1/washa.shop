@@ -9,11 +9,13 @@ export default async function Home() {
     const settings = await getSiteSettings();
     const v = settings.visibility;
     const showWashaAiButton = (v.hero_washa_ai_button ?? true) && isWashaAiRouteAvailable(v);
+    const heroBackgroundMode = process.env.HERO_BACKGROUND_MODE === "video" ? "video" : "shader";
 
     return (
         <PublicPageWrapper>
             <div className="relative">
                 <Hero
+                    backgroundMode={heroBackgroundMode}
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={showWashaAiButton}
                     showJoinArtistButton={settings.visibility.hero_join_artist_button}
