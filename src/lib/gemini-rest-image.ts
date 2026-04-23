@@ -5,10 +5,10 @@
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const IMAGEN_MODEL = "imagen-3.0-generate-002";
+const IMAGEN_MODEL = "imagen-4.0-generate-001";
 /** واجهة :predict (مُختلفة عن مسار DTF) — NANO_BANANA_PREDICT_MODEL للتجربة/الرجوع */
 const NANO_BANANA_MODEL =
-    (process.env.NANO_BANANA_PREDICT_MODEL || "gemini-3.1-flash-image-preview").trim() || "gemini-3.1-flash-image-preview";
+    (process.env.NANO_BANANA_PREDICT_MODEL || "imagen-4.0-generate-001").trim() || "imagen-4.0-generate-001";
 
 export function isGeminiKeyConfigured() {
     return Boolean(GEMINI_API_KEY);
