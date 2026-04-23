@@ -26,7 +26,8 @@ export async function runNanoBananaDataUrl(
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${NANO_BANANA_MODEL}:predict`;
     const instance: Record<string, unknown> = { prompt };
 
-    if (imageDataUrl) {
+    // نماذج Imagen لا تدعم إدخال الصور عبر هذه الواجهة (predict).
+    if (imageDataUrl && !NANO_BANANA_MODEL.toLowerCase().includes("imagen")) {
         const match = imageDataUrl.match(/^data:image\/(\w+);base64,(.+)$/);
         if (match) {
             instance.image = {
