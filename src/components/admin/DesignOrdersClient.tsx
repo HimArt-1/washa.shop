@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -92,10 +92,13 @@ export function DesignOrdersClient({
     hideStatsSummary = false,
 }: Props) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterAdmin, setFilterAdmin] = useState("all");
     const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
+
+    useEffect(() => { setMounted(true); }, []);
 
     const navigate = (params: Record<string, string>) => {
         const sp = new URLSearchParams();
@@ -255,7 +258,7 @@ export function DesignOrdersClient({
                                                     <span className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-gold/10 text-gold text-[10px] font-bold font-mono">
                                                         #{order.order_number}
                                                     </span>
-                                                    <span className="text-[10px] text-theme-faint">{new Date(order.created_at).toLocaleDateString("ar-SA")}</span>
+                                                    <span className="text-[10px] text-theme-faint">{mounted ? new Date(order.created_at).toLocaleDateString("ar-SA") : order.created_at?.split("T")[0]}</span>
                                                 </div>
                                                 
                                                 <div className="flex items-center gap-3 mb-3">
@@ -432,7 +435,7 @@ export function DesignOrdersClient({
                                         </td>
                                         {/* Date */}
                                         <td className="px-4 py-3 text-xs text-theme-faint whitespace-nowrap">
-                                            {new Date(order.created_at).toLocaleDateString("ar-SA")}
+                                            {mounted ? new Date(order.created_at).toLocaleDateString("ar-SA") : order.created_at?.split("T")[0]}
                                         </td>
                                     </tr>
                                 );
