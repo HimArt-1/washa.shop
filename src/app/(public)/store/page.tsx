@@ -6,20 +6,29 @@ import { ProductCard } from "@/components/store/ProductCard";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { buildItemListSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
 export const metadata: Metadata = {
-    title: "المتجر | WUSHA",
-    description: "اكتشف مجموعة WUSHA الحصرية من القطع الفنية والملابس المصممة بعناية.",
+    title: "المتجر | وشّى WUSHA",
+    description: "اكتشف مجموعة وشّى الحصرية — تيشرتات وهودي وملابس مطبوعة بتصاميم فنية حصرية. جودة عالية وشحن سريع.",
+    keywords: ["تيشرتات", "هودي", "ملابس فنية", "وشّى", "washa", "streetwear", "طباعة عند الطلب", "أزياء عربية"],
+    alternates: { canonical: `${SITE_URL}/store` },
     openGraph: {
         title: "المتجر | وشّى",
         description: "قطع فنية وملابس مصممة بعناية — تصفح النوع والترتيب والمخزون.",
+        url: `${SITE_URL}/store`,
         type: "website",
+        siteName: "وشّى | WASHA",
         locale: "ar_SA",
+        images: [{ url: `${SITE_URL}/icon-512.png`, width: 512, height: 512, alt: "متجر وشّى" }],
     },
     twitter: {
         card: "summary_large_image",
         title: "المتجر | وشّى",
         description: "قطع فنية وملابس مصممة بعناية.",
+        images: [`${SITE_URL}/icon-512.png`],
     },
 };
 
@@ -45,6 +54,20 @@ export default async function StorePage({
 
     return (
         <div className="min-h-[60vh] pb-12 pt-6 sm:pb-16 sm:pt-8" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
+            {/* JSON-LD Structured Data */}
+            {list.length > 0 && (
+                <>
+                    <JsonLd schema={buildItemListSchema(
+                        list.map((p: any) => ({ id: p.id, title: p.title, image_url: p.image_url, price: p.price })),
+                        "متجر وشّى",
+                        "/products"
+                    )} />
+                    <JsonLd schema={buildBreadcrumbSchema([
+                        { name: "الرئيسية", href: "/" },
+                        { name: "المتجر", href: "/store" },
+                    ])} />
+                </>
+            )}
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Header — تخطيط غير متماثل على الشاشات الواسعة ─── */}
                 <div className="mb-10 theme-surface-panel rounded-[2rem] px-5 py-8 sm:mb-12 sm:px-8 sm:py-10 lg:px-10">

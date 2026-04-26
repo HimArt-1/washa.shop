@@ -6,10 +6,30 @@ import { GalleryFilters } from "./GalleryFilters";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
+import { buildItemListSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
+
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
 export const metadata = {
-    title: "المعرض | WUSHA",
-    description: "استكشف معرض WUSHA للأعمال الفنية المتنوعة.",
+    title: "المعرض | وشّى WUSHA",
+    description: "استكشف معرض وشّى للأعمال الفنية الحصرية — لوحات رقمية، خط عربي، وتصاميم تجريدية بأساليب متنوعة.",
+    keywords: ["فن رقمي", "خط عربي", "لوحات فنية", "وشّى", "washa", "معرض فني", "تصاميم", "فنانون سعوديون"],
+    alternates: { canonical: `${SITE_URL}/gallery` },
+    openGraph: {
+        title: "المعرض | وشّى",
+        description: "استكشف أعمال فنية حصرية — لوحات، خط، وتصاميم عصرية.",
+        url: `${SITE_URL}/gallery`,
+        type: "website",
+        siteName: "وشّى | WASHA",
+        locale: "ar_SA",
+        images: [{ url: `${SITE_URL}/icon-512.png`, width: 512, height: 512, alt: "معرض وشّى" }],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "المعرض | وشّى",
+        description: "استكشف أعمال فنية حصرية من فناني وشّى.",
+        images: [`${SITE_URL}/icon-512.png`],
+    },
 };
 
 export default async function GalleryPage({
@@ -34,6 +54,20 @@ export default async function GalleryPage({
 
     return (
         <div className="min-h-[60vh] bg-theme pt-6 sm:pt-10 pb-16 sm:pb-24" dir="rtl">
+            {/* JSON-LD Structured Data */}
+            {artworks && artworks.length > 0 && (
+                <>
+                    <JsonLd schema={buildItemListSchema(
+                        artworks.map((a: any) => ({ id: a.id, title: a.title, image_url: a.image_url })),
+                        "معرض وشّى للفنون",
+                        "/artworks"
+                    )} />
+                    <JsonLd schema={buildBreadcrumbSchema([
+                        { name: "الرئيسية", href: "/" },
+                        { name: "المعرض", href: "/gallery" },
+                    ])} />
+                </>
+            )}
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ─── Hero Header ─── */}
