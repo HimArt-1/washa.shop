@@ -275,13 +275,13 @@ const displayFont = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "منصة وشّى | WASHA — فنٌ يرتدى",
+    default: "وشّى | WUSHA — فنٌ يرتدى",
     template: "%s | وشّى",
   },
-  description: "منصة فنية رقمية للأزياء. تصميم، متجر، واكتشاف أزياء فنية مميزة بالذكاء الاصطناعي.",
-  keywords: ["أزياء", "أزياء فنية", "تصميم أزياء", "متجر أزياء", "وشّى", "wusha", "washa", "streetwear", "أزياء عربية"],
-  authors: [{ name: "WASHA", url: SITE_URL }],
-  creator: "WASHA",
+  description: "منصة فنية رقمية للأزياء. صمّم قطعتك الفريدة، تصفح متجرنا، واكتشف أزياء عصرية مصممة بالذكاء الاصطناعي.",
+  keywords: ["أزياء", "أزياء فنية", "تصميم أزياء", "متجر أزياء", "وشّى", "wusha", "washa", "streetwear", "أزياء عربية", "تيشرتات مخصصة", "طباعة عند الطلب"],
+  authors: [{ name: "WUSHA", url: SITE_URL }],
+  creator: "WUSHA",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -298,21 +298,37 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
   },
   openGraph: {
-    title: "منصة وشّى | WASHA — فنٌ يرتدى",
-    description: "منصة فنية رقمية للأزياء. تصميم، متجر، واكتشاف أزياء فنية مميزة.",
+    title: "وشّى | WUSHA — فنٌ يرتدى",
+    description: "منصة فنية رقمية للأزياء. صمّم قطعتك الفريدة، تصفح متجرنا، واكتشف أزياء عصرية مصممة بالذكاء الاصطناعي.",
     type: "website",
     locale: "ar_SA",
     url: SITE_URL,
-    siteName: "وشّى",
+    siteName: "وشّى | WUSHA",
+    images: [
+      {
+        url: `${SITE_URL}/icon-512.png`, // Placeholder for actual OG image
+        width: 512,
+        height: 512,
+        alt: "وشّى - فنٌ يرتدى",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "منصة وشّى | WASHA",
+    title: "وشّى | WUSHA",
     description: "منصة فنية رقمية للأزياء — فنٌ يرتدى",
+    images: [`${SITE_URL}/icon-512.png`],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   alternates: {
     canonical: SITE_URL,

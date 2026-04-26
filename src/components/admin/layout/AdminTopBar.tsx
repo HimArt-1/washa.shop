@@ -26,14 +26,11 @@ import {
     getAdminNotificationCategoryLabel,
     getAdminNotificationSeverityLabel,
 } from "@/lib/admin-notification-meta";
-import {
-    getAdminNotifications,
-    getUnreadNotificationsCount,
-    markNotificationRead,
-    markAllNotificationsRead,
-} from "@/app/actions/notifications";
 import type { AdminNotification } from "@/types/database";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
+import { useNotificationStore } from "@/stores/notificationStore";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { toast } from "sonner";
 
 const COMMAND_ITEMS = [
     { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
@@ -149,37 +146,61 @@ export function AdminTopBar() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const { notifications, unreadCount, fetchInitial, addNotification, markAsRead, markAllAsRead } = useNotificationStore();
     const notificationSummary = { critical: 0, warning: 0, info: 0 };
     const pageMeta = getPageMeta(pathname);
 
     for (const notification of notifications) {
-        notificationSummary[notification.severity] += 1;
+        if (notificationSummary[notification.severity] !== undefined) {
+            notificationSummary[notification.severity] += 1;
+        }
     }
 
-    const fetchNotifications = useCallback(async () => {
-        const [list, count] = await Promise.all([
-            getAdminNotifications(15),
-            getUnreadNotificationsCount(),
-        ]);
-        setNotifications(list);
-        setUnreadCount(count);
-    }, []);
-
     useEffect(() => {
-        if (notificationsOpen) fetchNotifications();
-    }, [notificationsOpen, fetchNotifications]);
+        fetchInitial();
+    }, [fetchInitial]);
 
     useEffect(() => {
         setNotificationsOpen(false);
     }, [pathname]);
 
     useEffect(() => {
-        getUnreadNotificationsCount().then(setUnreadCount);
-        const interval = setInterval(() => getUnreadNotificationsCount().then(setUnreadCount), 15000);
-        return () => clearInterval(interval);
-    }, []);
+        const supabase = getSupabaseBrowserClient();
+        
+        const channel = supabase
+            .channel('admin_notifications_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'admin_notifications',
+                },
+                (payload) => {
+                    const newNotification = payload.new as AdminNotification;
+                    addNotification(newNotification);
+                    
+                    // Show a toast
+                    toast.success(newNotification.title, {
+                        description: newNotification.message,
+                        duration: 8000,
+                        action: {
+                            label: 'عرض',
+                            onClick: () => {
+                                if (newNotification.link) {
+                                    router.push(newNotification.link);
+                                }
+                            }
+                        }
+                    });
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [addNotification, router]);
 
     const filtered = query.trim()
         ? COMMAND_ITEMS.filter((i) =>
@@ -390,8 +411,7 @@ export function AdminTopBar() {
                                     {unreadCount > 0 && (
                                         <button
                                             onClick={async () => {
-                                                await markAllNotificationsRead();
-                                                fetchNotifications();
+                                                await markAllAsRead();
                                             }}
                                             className="text-xs text-gold hover:text-gold-light flex items-center gap-1"
                                         >
@@ -417,8 +437,7 @@ export function AdminTopBar() {
                                                 href={n.link || "#"}
                                                 onClick={async () => {
                                                     if (!n.is_read) {
-                                                        await markNotificationRead(n.id);
-                                                        fetchNotifications();
+                                                        await markAsRead(n.id);
                                                     }
                                                     setNotificationsOpen(false);
                                                 }}

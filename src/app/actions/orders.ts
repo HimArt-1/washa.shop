@@ -14,6 +14,7 @@ import { createUserNotification } from "@/app/actions/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
+import { sendAdminNotification } from "@/lib/notifications";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -179,6 +180,20 @@ async function dispatchOrderCreatedSideEffects(params: {
                     `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
                     "/dashboard/orders"
                 );
+            }
+        ),
+        runIdempotentDispatch(
+            {
+                dispatchKey: `order:${orderId}:webhook_admin:new_order`,
+                eventType: "order_created",
+                channel: "webhook_admin",
+                resourceType: "order",
+                resourceId: orderId,
+                metadata,
+            },
+            async () => {
+                const message = `🛍️ <b>طلب جديد!</b>\nالطلب: #${orderNumber}\nالقيمة: ${total.toLocaleString()} ر.س\nالدفع: ${isCod ? "عند الاستلام" : "إلكتروني (بانتظار الدفع)"}`;
+                await sendAdminNotification(message);
             }
         ),
     ];
@@ -360,6 +375,20 @@ async function dispatchOrderPaymentSideEffects(params: {
                 );
             }
         ),
+        runIdempotentDispatch(
+            {
+                dispatchKey: `order:${orderId}:webhook_admin:payment_received`,
+                eventType: "order_payment_received",
+                channel: "webhook_admin",
+                resourceType: "order",
+                resourceId: orderId,
+                metadata,
+            },
+            async () => {
+                const message = `💸 <b>تم استلام الدفع!</b>\nالطلب: #${orderNumber}\nالقيمة: ${total.toLocaleString()} ر.س`;
+                await sendAdminNotification(message);
+            }
+        ),
     ];
 
     if (buyerId) {
@@ -423,7 +452,7 @@ export async function createOrder(
     items: OrderItemInput[],
     shippingAddress: ShippingAddressInput,
     options?: {
-        paymentMethod?: "cod" | "stripe" | "paylink";
+        paymentMethod?: "cod" | "stripe" | "paylink" | "pos_cash" | "pos_card";
         couponId?: string | null;
         discountAmount?: number;
     }
@@ -502,10 +531,15 @@ export async function createOrder(
 
     const total = taxableAmount + shipping_cost + tax;
 
-    const isCod = options?.paymentMethod !== "stripe" && options?.paymentMethod !== "paylink";
+    const isCod = options?.paymentMethod === "cod";
+    const isPos = options?.paymentMethod === "pos_cash" || options?.paymentMethod === "pos_card";
+    const initialStatus = (isCod || isPos) ? "confirmed" : "pending";
+    const initialPaymentStatus = isPos ? "paid" : "pending";
+    const orderNotes = isPos ? (options?.paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)") : null;
 
     // 4. Create order
     // COD: مؤكد — الدفع عند الاستلام
+    // POS: مؤكد — الدفع فوري (مدفوع)
     // Paylink/Stripe: معلق — ينتظر تأكيد الدفع عبر Webhook أو Callback
     const { data: order, error: orderError } = await supabase
         .from("orders")
@@ -517,11 +551,11 @@ export async function createOrder(
             total,
             currency: "SAR",
             shipping_address: shippingAddress,
-            status: isCod ? "confirmed" : "pending",
-            payment_status: isCod ? "pending" : "pending",
+            status: initialStatus,
+            payment_status: initialPaymentStatus,
             coupon_id: options?.couponId || null,
             discount_amount: options?.discountAmount || 0,
-            notes: null,
+            notes: orderNotes,
         })
         .select("id, order_number")
         .single();
@@ -568,9 +602,9 @@ export async function createOrder(
         await supabase.rpc("increment_coupon_uses_by_id" as never, { p_coupon_id: options.couponId } as never);
     }
 
-    // المخزون: يُنقص فقط عند COD (مؤكد مباشرة)
+    // المخزون: يُنقص عند COD أو POS
     // Stripe: يُنقص في confirmOrderPayment عند اكتمال الدفع
-    if (isCod) {
+    if (isCod || isPos) {
         await decrementStockForOrder(order.id);
     }
 

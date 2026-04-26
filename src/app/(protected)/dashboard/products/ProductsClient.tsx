@@ -70,6 +70,10 @@ export function ProductsClient({
     const [editingProduct, setEditingProduct] = useState<any | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+    // ─── Inline Editing State
+    const [inlineEditing, setInlineEditing] = useState<{ id: string, field: "price" | "stock_quantity", value: string } | null>(null);
+    const [inlineSaving, setInlineSaving] = useState(false);
+
     // ─── Advanced Features State
     const [searchQuery, setSearchQuery] = useState("");
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -207,13 +211,45 @@ export function ProductsClient({
         showToast("تم تصدير CSV ✓");
     };
 
-    // ─── Toggle Handlers
+    // ─── Toggle & Inline Handlers
     const handleToggle = async (id: string, field: "in_stock" | "is_featured", currentValue: boolean) => {
         setLoadingId(id);
         const result = await updateProduct(id, { [field]: !currentValue });
         setLoadingId(null);
         if (result.success) { showToast("تم التحديث ✓"); router.refresh(); }
         else setError(result.error || "فشل التحديث");
+    };
+
+    const handleInlineSave = async (item: any) => {
+        if (!inlineEditing || inlineEditing.id !== item.id) return;
+        const { field, value } = inlineEditing;
+        
+        let numValue: number | null = null;
+        if (field === "price") {
+            numValue = parseFloat(value);
+            if (isNaN(numValue)) { setError("سعر غير صالح"); return; }
+        } else if (field === "stock_quantity") {
+            if (value.trim() === "" || value.toLowerCase() === "inf") numValue = null;
+            else {
+                numValue = parseInt(value, 10);
+                if (isNaN(numValue) || numValue < 0) { setError("كمية غير صالحة"); return; }
+            }
+        }
+
+        if (item[field] === numValue) { setInlineEditing(null); return; }
+
+        setInlineSaving(true);
+        setError(null);
+        const result = await updateProduct(item.id, { [field]: numValue });
+        setInlineSaving(false);
+
+        if (result.success) { 
+            showToast("تم التحديث ✓"); 
+            setInlineEditing(null);
+            router.refresh(); 
+        } else {
+            setError(result.error || "فشل التحديث");
+        }
     };
 
     const confirmDelete = async (productId: string) => {
@@ -409,12 +445,51 @@ export function ProductsClient({
                                             <span className="text-[10px] bg-theme-subtle px-2 py-1 rounded-lg text-theme-subtle">{typeLabels[product.type] || product.type}</span>
                                         </td>
                                         {/* Price */}
-                                        <td className="px-4 py-3 font-bold text-gold text-xs">{Number(product.price).toLocaleString()} ر.س</td>
+                                        <td className="px-4 py-3">
+                                            {inlineEditing?.id === product.id && inlineEditing?.field === "price" ? (
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <input 
+                                                        type="number" min="0" step="0.01" autoFocus
+                                                        value={inlineEditing?.value || ""}
+                                                        onChange={(e) => setInlineEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                        onKeyDown={(e) => { if (e.key === "Enter") handleInlineSave(product); if (e.key === "Escape") setInlineEditing(null); }}
+                                                        className="w-16 text-left text-xs font-bold bg-theme-subtle border border-gold/30 rounded py-1 px-1.5 text-gold focus:outline-none"
+                                                    />
+                                                    <button onClick={() => handleInlineSave(product)} disabled={inlineSaving} className="text-emerald-400 hover:text-emerald-300">
+                                                        {inlineSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => setInlineEditing({ id: product.id, field: "price", value: product.price?.toString() || "0" })}
+                                                    className="font-bold text-gold text-xs hover:bg-gold/10 px-2 py-1 rounded transition-colors group flex items-center justify-end gap-1 w-full text-right">
+                                                    {Number(product.price).toLocaleString()} ر.س
+                                                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-theme-subtle" />
+                                                </button>
+                                            )}
+                                        </td>
                                         {/* Stock */}
                                         <td className="px-4 py-3">
-                                            <span className={`font-mono text-xs ${product.stock_quantity != null && product.stock_quantity <= 5 ? "text-amber-400" : "text-theme-soft"}`}>
-                                                {product.stock_quantity == null ? "∞" : product.stock_quantity}
-                                            </span>
+                                            {inlineEditing?.id === product.id && inlineEditing?.field === "stock_quantity" ? (
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <input 
+                                                        type="number" min="0" step="1" autoFocus
+                                                        value={inlineEditing?.value || ""}
+                                                        placeholder="∞"
+                                                        onChange={(e) => setInlineEditing(prev => prev ? { ...prev, value: e.target.value } : null)}
+                                                        onKeyDown={(e) => { if (e.key === "Enter") handleInlineSave(product); if (e.key === "Escape") setInlineEditing(null); }}
+                                                        className="w-12 text-center text-xs font-mono bg-theme-subtle border border-gold/30 rounded py-1 text-theme focus:outline-none"
+                                                    />
+                                                    <button onClick={() => handleInlineSave(product)} disabled={inlineSaving} className="text-emerald-400 hover:text-emerald-300">
+                                                        {inlineSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button onClick={() => setInlineEditing({ id: product.id, field: "stock_quantity", value: product.stock_quantity?.toString() || "" })}
+                                                    className={`font-mono text-xs w-full text-right flex items-center justify-end gap-1 hover:bg-theme-subtle px-2 py-1 rounded transition-colors group ${product.stock_quantity != null && product.stock_quantity <= 5 ? "text-amber-400 font-bold" : "text-theme-soft"}`}>
+                                                    {product.stock_quantity == null ? "∞" : product.stock_quantity}
+                                                    <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-theme-subtle" />
+                                                </button>
+                                            )}
                                         </td>
                                         {/* SKU / Barcode */}
                                         <td className="px-3 py-3 text-center">

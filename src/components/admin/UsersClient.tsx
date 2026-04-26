@@ -388,7 +388,7 @@ export function UsersClient({
                                 </th>
                                 <th className="text-right px-6 py-3.5 text-theme-faint font-medium text-xs">المستخدم</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">معلومات الاتصال</th>
-                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">اسم المستخدم</th>
+                                <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الإنفاق (LTV)</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">الدور</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">التحقق</th>
                                 <th className="text-right px-4 py-3.5 text-theme-faint font-medium text-xs">تاريخ الانضمام</th>
@@ -450,7 +450,16 @@ export function UsersClient({
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3.5 text-theme-subtle font-mono text-xs">@{user.username}</td>
+                                    <td className="px-4 py-3.5">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-sm font-bold text-theme">
+                                                {user.total_spent ? `${user.total_spent} ر.س` : "0 ر.س"}
+                                            </span>
+                                            <span className="text-xs text-theme-faint">
+                                                {user.orders_count ? `${user.orders_count} طلبات` : "لا توجد طلبات"}
+                                            </span>
+                                        </div>
+                                    </td>
                                     <td className="px-4 py-3.5">
                                         <div className="flex items-center gap-2">
                                             <StatusBadge status={user.role} type="role" />

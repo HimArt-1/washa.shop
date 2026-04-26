@@ -50,7 +50,9 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
 
     if (profileError) throw profileError;
 
-    if (existingProfile?.role === "admin") {
+    const isStaff = ["admin", "dev", "shipping_manager", "financial_manager", "support_agent", "booth"].includes(existingProfile?.role as string);
+
+    if (isStaff) {
         return {
             supabase,
             profile: existingProfile as AdminAccessProfile,

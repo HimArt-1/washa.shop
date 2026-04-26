@@ -742,7 +742,7 @@ export async function getAdminUsers(
 
     let query = supabase
         .from("profiles")
-        .select("*", { count: "exact" });
+        .select("*, orders(total, payment_status, status)", { count: "exact" });
 
     if (role !== "all") {
         query = query.eq("role", role as UserRole);
@@ -786,7 +786,6 @@ export async function getAdminUsers(
                         user.email = email;
                         user.phone = phone;
 
-                        // Async update back to DB so it doesn't block the request too much
                         updates.push(
                             supabase.from("profiles").update({ email, phone }).eq("id", user.id) as unknown as Promise<any>
                         );
@@ -795,12 +794,30 @@ export async function getAdminUsers(
                 return user;
             });
 
-            // Fire and forget
             Promise.all(updates).catch((err) => console.error("Backfill update error:", err));
         }
     } catch (err) {
         console.error("Error during Clerk backfill:", err);
     }
+
+    // --- Aggregate orders logic for ALL fetched users --- //
+    users = users.map((user) => {
+        let ordersCount = 0;
+        let totalSpent = 0;
+        if (Array.isArray(user.orders)) {
+            ordersCount = user.orders.length;
+            totalSpent = user.orders
+                .filter((o: any) => o.payment_status === "paid" && o.status !== "cancelled" && o.status !== "refunded")
+                .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
+        }
+        
+        return {
+            ...user,
+            orders: [] as any, // remove full array to save payload
+            orders_count: ordersCount,
+            total_spent: totalSpent,
+        };
+    });
 
     return {
         data: users,
@@ -1748,7 +1765,7 @@ export async function getFulfillmentHubData() {
     }
 }
 
-export async function getAdminOrders({ page = 1, status = "all" }: { page?: number; status?: string }) {
+export async function getAdminOrders({ page = 1, status = "all", search = "" }: { page?: number; status?: string; search?: string }) {
     noStore();
     try {
         const { supabase } = await requireAdmin();
@@ -1775,6 +1792,10 @@ export async function getAdminOrders({ page = 1, status = "all" }: { page?: numb
 
         if (status !== "all") {
             query = query.eq("status", status as OrderStatus);
+        }
+
+        if (search.trim() !== "") {
+            query = query.ilike("order_number", `%${search.trim()}%`);
         }
 
         const { data, count, error } = await query

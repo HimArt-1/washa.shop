@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { sendAdminNotification } from "./notifications";
 
 function getClient() {
     return createClient(
@@ -67,10 +68,15 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
 
         // Fallback: If no strict SKU found, decrement from product table (legacy)
         if (!skuId) {
-            const { data: product } = await supabase.from("products").select("stock_quantity").eq("id", item.product_id).single();
+            const { data: product } = await supabase.from("products").select("title, stock_quantity").eq("id", item.product_id).single();
             if (product && product.stock_quantity != null) {
                 const newQty = Math.max(0, product.stock_quantity - item.quantity);
                 await supabase.from("products").update({ stock_quantity: newQty, in_stock: newQty > 0 }).eq("id", item.product_id);
+                
+                // Low stock alert
+                if (newQty <= 5) {
+                    void sendAdminNotification(`⚠️ <b>تنبيه مخزون منخفض:</b> المنتج "${product.title}" أوشك على النفاد. الكمية المتبقية: ${newQty}`);
+                }
             }
             continue; // No SKU, skip the ERP ledger
         }
@@ -116,6 +122,15 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
             status: 'completed',
             notes: `Automated Online Purchase`
         }]);
+
+        // Low stock alert for SKU
+        if (newQuantity <= 5) {
+            const { data: skuDetails } = await supabase.from("product_skus").select("sku, products(title)").eq("id", skuId).single();
+            if (skuDetails && skuDetails.products) {
+                const title = Array.isArray(skuDetails.products) ? (skuDetails.products[0] as any)?.title : (skuDetails.products as any)?.title;
+                void sendAdminNotification(`⚠️ <b>تنبيه مخزون منخفض:</b> المنتج "${title}" (المقاس: ${item.size || '-'}) أوشك على النفاد. المتبقي: ${newQuantity}`);
+            }
+        }
     }
     return { success: true };
 }

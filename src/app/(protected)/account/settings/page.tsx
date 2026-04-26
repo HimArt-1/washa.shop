@@ -2,6 +2,7 @@ import { getProfile } from "@/app/actions/profile";
 import { ProfileForm } from "@/components/forms/ProfileForm";
 import { SettingsThemeSection } from "@/components/account/SettingsThemeSection";
 import { type ProfileFormData } from "@/lib/validations";
+import { type UserRole } from "@/types/database";
 
 export default async function SettingsPage() {
     const profile = await getProfile();
@@ -48,7 +49,7 @@ export default async function SettingsPage() {
 
             <div className="space-y-8">
                 <SettingsThemeSection />
-                <ProfileForm initialData={initialData} userRole={profile.role} />
+                <ProfileForm initialData={initialData} userRole={profile.role as UserRole} />
             </div>
         </div>
     );

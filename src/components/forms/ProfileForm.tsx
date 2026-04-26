@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { profileSchema, type ProfileFormData } from "@/lib/validations";
 import { updateProfile, uploadProfileImage } from "@/app/actions/profile";
+import { type UserRole } from "@/types/database";
 import { useState, useTransition } from "react";
 import { Loader2, Save, AtSign, Globe, Instagram, Twitter, Youtube, Dribbble, ImagePlus, X } from "lucide-react";
 import Image from "next/image";
@@ -11,7 +12,7 @@ import { compressImage } from "@/lib/image-compress";
 
 interface ProfileFormProps {
     initialData?: Partial<ProfileFormData>;
-    userRole?: "admin" | "wushsha" | "subscriber" | "dev";
+    userRole?: UserRole;
 }
 
 export function ProfileForm({ initialData, userRole = "subscriber" }: ProfileFormProps) {

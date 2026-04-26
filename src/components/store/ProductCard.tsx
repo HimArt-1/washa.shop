@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Bookmark, Heart, Share2 } from "lucide-react";
+import { Bookmark, Heart, Share2, ShoppingCart } from "lucide-react";
 import {
     addToWishlist,
     removeFromWishlist,
@@ -15,6 +15,7 @@ import {
 } from "@/app/actions/social";
 import { useRouter } from "next/navigation";
 import { SignedIn } from "@clerk/nextjs";
+import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -29,7 +30,7 @@ interface ProductCardProps {
         store_name?: string;
         artist?: { display_name: string };
         in_stock?: boolean;
-        stock_quantity?: number;
+        stock_quantity?: number | null;
         product_skus?: any[];
     };
 }
@@ -40,6 +41,21 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         backgroundColor: "color-mix(in srgb, var(--wusha-surface) 76%, transparent)",
         borderColor: "color-mix(in srgb, var(--wusha-text) 10%, transparent)",
         color: "color-mix(in srgb, var(--wusha-text) 92%, transparent)",
+    };
+
+    const addToCart = useCartStore((state) => state.addItem);
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        addToCart({
+            id: product.id,
+            title: product.title,
+            price: Number(product.price),
+            image_url: product.image_url,
+            artist_name: product.artist?.display_name || "وشّى",
+            size: null,
+            type: "product"
+        });
     };
 
     // Calculate Stock
@@ -54,7 +70,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         });
         hasErpStock = erpTotalStock > 0;
     } else {
-        hasErpStock = product.in_stock !== false && (product.stock_quantity === undefined || product.stock_quantity > 0);
+        hasErpStock = product.in_stock !== false && (product.stock_quantity === undefined || product.stock_quantity === null || product.stock_quantity > 0);
         erpTotalStock = product.stock_quantity ?? 999;
     }
 
@@ -232,35 +248,47 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                 ) : null}
 
                 {/* Action buttons on hover */}
-                <div className="absolute bottom-2 left-2 right-2 flex justify-center gap-2 opacity-100 transition-all duration-300 sm:translate-y-2 sm:opacity-0 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">
-                    <SignedIn>
+                <div className="absolute bottom-2 left-2 right-2 flex flex-col gap-2 opacity-100 transition-all duration-300 sm:translate-y-4 sm:opacity-0 sm:group-focus-within:translate-y-0 sm:group-focus-within:opacity-100 sm:group-hover:translate-y-0 sm:group-hover:opacity-100">
+                    {isCurrentlyInStock && (
                         <button
-                            onClick={handleWishlist}
-                            className={`flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${inWishlist ? "border-gold/30 bg-gold/20 text-gold" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
-                                }`}
-                            title={inWishlist ? "إزالة من المحفوظات" : "إضافة للمحفوظات"}
+                            onClick={handleAddToCart}
+                            className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-2xl border border-gold/30 bg-[color:var(--wusha-gold)] text-[color:var(--wusha-bg)] backdrop-blur-md transition-all hover:bg-gold-light hover:scale-[1.02] font-bold w-full shadow-lg"
+                            title="أضف للسلة"
                         >
-                            <Bookmark className={`w-4 h-4 ${inWishlist ? "fill-current" : ""}`} />
-                            <span className="text-[10px] font-medium sm:hidden">حفظ</span>
+                            <ShoppingCart className="w-4 h-4" />
+                            <span className="text-[12px]">أضف للسلة</span>
                         </button>
+                    )}
+                    <div className="flex justify-center gap-2">
+                        <SignedIn>
+                            <button
+                                onClick={handleWishlist}
+                                className={`flex min-h-[40px] min-w-[40px] flex-1 items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${inWishlist ? "border-gold/30 bg-gold/20 text-gold" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
+                                    }`}
+                                title={inWishlist ? "إزالة من المحفوظات" : "إضافة للمحفوظات"}
+                            >
+                                <Bookmark className={`w-4 h-4 ${inWishlist ? "fill-current" : ""}`} />
+                                <span className="text-[10px] font-medium sm:hidden">حفظ</span>
+                            </button>
+                            <button
+                                onClick={handleLike}
+                                className={`flex min-h-[40px] min-w-[40px] flex-1 items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${liked ? "border-red-400/20 bg-red-500/20 text-red-400" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-red-400/20 hover:bg-red-500/20 hover:text-red-400"
+                                    }`}
+                                title={liked ? "إلغاء الإعجاب" : "إعجاب"}
+                            >
+                                <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
+                                {likesCount > 0 ? <span className="text-[10px]">{likesCount}</span> : <span className="text-[10px] font-medium sm:hidden">إعجاب</span>}
+                            </button>
+                        </SignedIn>
                         <button
-                            onClick={handleLike}
-                            className={`flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${liked ? "border-red-400/20 bg-red-500/20 text-red-400" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-red-400/20 hover:bg-red-500/20 hover:text-red-400"
-                                }`}
-                            title={liked ? "إلغاء الإعجاب" : "إعجاب"}
+                            onClick={handleShare}
+                            className="flex min-h-[40px] min-w-[40px] flex-1 items-center justify-center gap-1 rounded-2xl border border-white/10 bg-[color:rgba(15,15,15,0.46)] px-2.5 text-on-dark backdrop-blur-md transition-colors hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
+                            title="مشاركة"
                         >
-                            <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />
-                            {likesCount > 0 ? <span className="text-[10px]">{likesCount}</span> : <span className="text-[10px] font-medium sm:hidden">إعجاب</span>}
+                            <Share2 className="w-4 h-4" />
+                            <span className="text-[10px] font-medium sm:hidden">مشاركة</span>
                         </button>
-                    </SignedIn>
-                    <button
-                        onClick={handleShare}
-                        className="flex min-h-[40px] min-w-[40px] items-center justify-center gap-1 rounded-2xl border border-white/10 bg-[color:rgba(15,15,15,0.46)] px-2.5 text-on-dark backdrop-blur-md transition-colors hover:border-gold/20 hover:bg-gold/20 hover:text-gold"
-                        title="مشاركة"
-                    >
-                        <Share2 className="w-4 h-4" />
-                        <span className="text-[10px] font-medium sm:hidden">مشاركة</span>
-                    </button>
+                    </div>
                 </div>
 
                 {shareFeedback === "copied" && (

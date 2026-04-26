@@ -20,7 +20,7 @@ import type {
  * - dev        : حساب تطوير/اختبار داخلي، يتجاوز rate limiter والحصص تماماً —
  *               يُسنَد يدوياً من الإدارة فقط، ولا يظهر للمستخدمين العاديين
  */
-export type UserRole = "admin" | "wushsha" | "subscriber" | "dev";
+export type UserRole = "admin" | "wushsha" | "subscriber" | "dev" | "shipping_manager" | "financial_manager" | "support_agent" | "booth";
 /** مستويات الوشّاي (1–5) */
 export type WushshaLevel = 1 | 2 | 3 | 4 | 5;
 export type ArtworkStatus = "draft" | "pending" | "published" | "rejected" | "archived";

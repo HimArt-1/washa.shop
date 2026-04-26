@@ -16,6 +16,8 @@ import {
     Package,
     ShoppingCart,
     Truck,
+    Search,
+    CheckSquare
 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { updateOrderStatus } from "@/app/actions/admin";
@@ -45,6 +47,7 @@ interface OrdersClientProps {
     totalPages: number;
     currentPage: number;
     currentStatus: string;
+    currentSearch?: string;
     /** من ?focus= — يُوسَّع الصف ويُمرَّر للتمرير */
     initialFocusOrderId?: string;
 }
@@ -143,69 +146,7 @@ function SummaryCard({
     );
 }
 
-function QueueLane({
-    title,
-    subtitle,
-    hrefLabel,
-    onOpen,
-    items,
-    emptyState,
-}: {
-    title: string;
-    subtitle: string;
-    hrefLabel: string;
-    onOpen: () => void;
-    items: any[];
-    emptyState: string;
-}) {
-    return (
-        <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} h-full p-4 sm:p-5`}
-        >
-            <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                    <h3 className="text-lg font-bold text-theme">{title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-theme-subtle">{subtitle}</p>
-                </div>
-                <button onClick={onOpen} className="inline-flex min-h-[38px] items-center text-sm font-medium text-gold hover:text-gold-light">
-                    {hrefLabel}
-                </button>
-            </div>
 
-            <div className="space-y-3">
-                {items.length > 0 ? (
-                    items.map((order) => (
-                        <div key={order.id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="font-mono text-xs font-bold text-gold">#{order.order_number}</p>
-                                    <p className="mt-2 truncate text-sm font-bold text-theme">
-                                        {order.buyer?.display_name || "مشتري غير مسمى"}
-                                    </p>
-                                    {order.buyer?.username ? (
-                                        <p className="mt-1 text-xs text-theme-faint">@{order.buyer.username}</p>
-                                    ) : null}
-                                </div>
-                                <StatusBadge status={order.status} type="order" />
-                            </div>
-                            <div className="mt-4 flex items-center justify-between text-xs text-theme-subtle">
-                                <span>{formatCurrency(Number(order.total) || 0)}</span>
-                                <span>{paymentLabel(order.payment_status)}</span>
-                                <span>{formatShortDate(order.created_at)}</span>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-8 text-center text-sm text-theme-subtle">
-                        {emptyState}
-                    </div>
-                )}
-            </div>
-        </motion.section>
-    );
-}
 
 export function OrdersClient({
     snapshot,
@@ -214,6 +155,7 @@ export function OrdersClient({
     totalPages = 0,
     currentPage = 1,
     currentStatus = "all",
+    currentSearch = "",
     initialFocusOrderId,
 }: OrdersClientProps) {
     const router = useRouter();
@@ -223,11 +165,18 @@ export function OrdersClient({
     const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
     const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    
+    // Bulk Actions & Search
+    const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+    const [searchQuery, setSearchQuery] = useState(currentSearch || "");
+    const [isBulkUpdating, setIsBulkUpdating] = useState(false);
 
     const navigate = (params: Record<string, string>, opts?: { clearFocus?: boolean }) => {
         const sp = new URLSearchParams();
         if (params.status && params.status !== "all") sp.set("status", params.status);
         if (params.page && params.page !== "1") sp.set("page", params.page);
+        if (params.search || (searchQuery && params.search !== "")) sp.set("search", params.search ?? searchQuery);
+        
         if (!opts?.clearFocus) {
             const f = searchParams.get("focus") || initialFocusOrderId;
             if (f) sp.set("focus", f);
@@ -236,6 +185,20 @@ export function OrdersClient({
             const q = sp.toString();
             router.push(q ? `/dashboard/orders?${q}` : "/dashboard/orders");
         });
+    };
+
+    const handleSearchSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        navigate({ page: "1", search: searchQuery });
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) setSelectedOrders(orders.map(o => o.id));
+        else setSelectedOrders([]);
+    };
+
+    const toggleSelection = (id: string) => {
+        setSelectedOrders(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     };
 
     const focusFromUrl = searchParams.get("focus");
@@ -270,6 +233,28 @@ export function OrdersClient({
         }
     };
 
+    const handleBulkStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newStatus = e.target.value;
+        if (!newStatus || selectedOrders.length === 0) return;
+        
+        setIsBulkUpdating(true);
+        setErrorMessage(null);
+        try {
+            // Processing sequentially for safety, but could be Promise.all in production
+            for (const orderId of selectedOrders) {
+                await updateOrderStatus(orderId, newStatus);
+            }
+            setSelectedOrders([]);
+            router.refresh();
+        } catch (error) {
+            console.error("Bulk status update failed", error);
+            setErrorMessage("تعذر إكمال التحديث الجماعي. تحقق من الطلبات.");
+        } finally {
+            setIsBulkUpdating(false);
+            e.target.value = ""; // Reset select
+        }
+    };
+
     const highlightedOrderId = searchParams.get("focus") || initialFocusOrderId || null;
 
     const collectionRate =
@@ -290,193 +275,59 @@ export function OrdersClient({
                 </div>
             ) : null}
 
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
+            {/* Mini Insights Row */}
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+                <button 
+                    onClick={() => navigate({ status: "pending", page: "1" }, { clearFocus: true })}
+                    className="text-right group relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint p-5 transition-all hover:border-gold/30 hover:bg-theme-subtle focus:outline-none focus:ring-2 focus:ring-gold/50"
                 >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.2),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_30%)]" />
-                    <div className="relative space-y-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
-                                Orders Operations Center
-                            </span>
-                            <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                مراجعة، تحصيل، تنفيذ، وشحن
-                            </span>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 group-hover:scale-110 transition-transform">
+                            <ShoppingCart className="w-5 h-5" />
                         </div>
+                        <span className="text-xs font-semibold text-theme-subtle bg-theme-surface border border-theme-subtle px-2 py-1 rounded-lg">تدخل مطلوب</span>
+                    </div>
+                    <p className="text-3xl font-black text-theme">{snapshot.stats.pendingReview}</p>
+                    <p className="mt-1 text-sm font-medium text-theme-subtle">بانتظار التأكيد</p>
+                </button>
 
-                        <div className="max-w-3xl">
-                            <h2 className="text-2xl font-black leading-tight text-theme sm:text-3xl md:text-4xl">
-                                صفحة الطلبات يجب أن تعمل كغرفة تشغيل، لا كجدول فقط.
-                            </h2>
-                            <p className="mt-4 text-sm leading-8 text-theme-subtle md:text-base">
-                                هنا تراقب ما يحتاج تأكيدًا، ما ينتظر التحصيل، ما دخل مرحلة التنفيذ، وما تحرك إلى الشحن
-                                دون أن تغرق في التفاصيل منذ اللحظة الأولى.
-                            </p>
+                <button 
+                    onClick={() => navigate({ status: "processing", page: "1" }, { clearFocus: true })}
+                    className="text-right group relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint p-5 transition-all hover:border-gold/30 hover:bg-theme-subtle focus:outline-none focus:ring-2 focus:ring-gold/50"
+                >
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-500 group-hover:scale-110 transition-transform">
+                            <Package className="w-5 h-5" />
                         </div>
+                        <span className="text-xs font-semibold text-theme-subtle bg-theme-surface border border-theme-subtle px-2 py-1 rounded-lg">طابور العمل</span>
+                    </div>
+                    <p className="text-3xl font-black text-theme">{snapshot.stats.fulfillmentQueue}</p>
+                    <p className="mt-1 text-sm font-medium text-theme-subtle">جاري التنفيذ</p>
+                </button>
 
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">عناصر تحتاج تدخل الآن</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{attentionLoad}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات بانتظار مراجعة أو تحصيل أو نقل للتنفيذ.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">أداء اليوم</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{snapshot.stats.todayOrders}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">{formatCurrency(snapshot.stats.todayRevenue)} إيراد اليوم.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">معدل التحصيل</p>
-                                <p className="mt-2 text-3xl font-black text-theme">{collectionRate.toFixed(1)}%</p>
-                                <p className="mt-2 text-sm text-theme-subtle">نسبة الطلبات المدفوعة من إجمالي الطلبات.</p>
-                            </div>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <button
-                                onClick={() => navigate({ status: "pending", page: "1" }, { clearFocus: true })}
-                                className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
-                            >
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-theme">بانتظار التأكيد</p>
-                                    <p className="text-xs text-theme-subtle">{snapshot.stats.pendingReview} طلب</p>
-                                </div>
-                                <ShoppingCart className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                            </button>
-                            <button
-                                onClick={() => navigate({ status: "processing", page: "1" }, { clearFocus: true })}
-                                className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
-                            >
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-theme">طابور التنفيذ</p>
-                                    <p className="text-xs text-theme-subtle">{snapshot.stats.fulfillmentQueue} طلب</p>
-                                </div>
-                                <Truck className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                            </button>
-                            <button
-                                onClick={() => navigate({ status: "all", page: "1" }, { clearFocus: true })}
-                                className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
-                            >
-                                <div className="text-right">
-                                    <p className="text-sm font-bold text-theme">مدفوعات معلقة</p>
-                                    <p className="text-xs text-theme-subtle">{snapshot.stats.paymentPending} طلب</p>
-                                </div>
-                                <CreditCard className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                            </button>
+                <button 
+                    onClick={() => navigate({ status: "all", page: "1" }, { clearFocus: true })}
+                    className="text-right group relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint p-5 transition-all hover:border-gold/30 hover:bg-theme-subtle focus:outline-none focus:ring-2 focus:ring-gold/50"
+                >
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 rounded-xl bg-red-500/10 text-red-500 group-hover:scale-110 transition-transform">
+                            <CreditCard className="w-5 h-5" />
                         </div>
                     </div>
-                </motion.section>
+                    <p className="text-3xl font-black text-theme">{snapshot.stats.paymentPending}</p>
+                    <p className="mt-1 text-sm font-medium text-theme-subtle">تحصيل معلق</p>
+                </button>
 
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className={`${panelClass} p-5 sm:p-6`}
-                >
-                    <div className="space-y-4">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-medium tracking-[0.2em] text-theme-faint uppercase">Flow Health</p>
-                                <h3 className="mt-2 text-2xl font-black text-theme">صحة مسار الطلبات</h3>
-                                <p className="mt-2 text-sm leading-7 text-theme-subtle">
-                                    قياس سريع للتوازن بين الطلبات الجديدة، التنفيذ، التحصيل، والتسليم.
-                                </p>
-                            </div>
-                            {attentionLoad > 0 ? (
-                                <AlertTriangle className="mt-1 h-5 w-5 text-amber-300" />
-                            ) : (
-                                <CheckCircle2 className="mt-1 h-5 w-5 text-emerald-300" />
-                            )}
+                <div className="relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint p-5">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500">
+                            <Truck className="w-5 h-5" />
                         </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">طلبات مدفوعة</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{snapshot.stats.paidOrders}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">تم تسليمها</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{snapshot.stats.delivered}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">ملغاة أو مسترجعة</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{snapshot.stats.cancelledOrRefunded}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">إجمالي الطلبات</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{snapshot.stats.totalOrders}</p>
-                            </div>
-                        </div>
+                        <span className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg">أداء اليوم</span>
                     </div>
-                </motion.section>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-                <SummaryCard
-                    title="الإيراد المحصل"
-                    value={formatCurrency(snapshot.stats.totalRevenue)}
-                    subtitle="إجمالي الطلبات المدفوعة حتى الآن."
-                    icon={CreditCard}
-                    accent="#d4af37"
-                />
-                <SummaryCard
-                    title="بانتظار المراجعة"
-                    value={String(snapshot.stats.pendingReview)}
-                    subtitle="طلبات تحتاج تأكيدًا أو قرارًا سريعًا."
-                    icon={ShoppingCart}
-                    accent="#f59e0b"
-                />
-                <SummaryCard
-                    title="التحصيل المعلق"
-                    value={String(snapshot.stats.paymentPending)}
-                    subtitle="طلبات ما زالت في منطقة الدفع غير المحسومة."
-                    icon={AlertTriangle}
-                    accent="#ef4444"
-                />
-                <SummaryCard
-                    title="التنفيذ والشحن"
-                    value={String(snapshot.stats.fulfillmentQueue)}
-                    subtitle="طلبات تحركت إلى مرحلة المعالجة أو الشحن."
-                    icon={Truck}
-                    accent="#38bdf8"
-                />
-                <SummaryCard
-                    title="المسار اليومي"
-                    value={String(snapshot.stats.todayOrders)}
-                    subtitle={`${formatCurrency(snapshot.stats.todayRevenue)} إيراد اليوم.`}
-                    icon={Package}
-                    accent="#22c55e"
-                />
-            </div>
-
-            <div className="grid gap-5 xl:grid-cols-3">
-                <QueueLane
-                    title="بانتظار التأكيد"
-                    subtitle="طلبات دخلت المسار وتحتاج قرارًا سريعًا لتحريكها."
-                    hrefLabel="تصفية العرض"
-                    onOpen={() => navigate({ status: "pending", page: "1" }, { clearFocus: true })}
-                    items={snapshot.awaitingConfirmation}
-                    emptyState="لا توجد طلبات تنتظر التأكيد الآن."
-                />
-                <QueueLane
-                    title="مراقبة التحصيل"
-                    subtitle="طلبات معلقة ماليًا وتحتاج متابعة تحصيل أو تحقق."
-                    hrefLabel="فتح القائمة"
-                    onOpen={() => navigate({ status: "all", page: "1" }, { clearFocus: true })}
-                    items={snapshot.paymentWatchlist}
-                    emptyState="لا توجد مدفوعات معلقة تستحق الانتباه الآن."
-                />
-                <QueueLane
-                    title="مكتب الشحن والتنفيذ"
-                    subtitle="طلبات تحركت إلى التنفيذ أو خرجت للشحن وتحتاج متابعة."
-                    hrefLabel="عرض الطابور"
-                    onOpen={() => navigate({ status: "processing", page: "1" }, { clearFocus: true })}
-                    items={snapshot.shippingDesk}
-                    emptyState="طابور التنفيذ والشحن فارغ حاليًا."
-                />
+                    <p className="text-3xl font-black text-theme">{snapshot.stats.todayOrders}</p>
+                    <p className="mt-1 text-sm font-medium text-theme-subtle">{formatCurrency(snapshot.stats.todayRevenue)} إيراد اليوم</p>
+                </div>
             </div>
 
             <div className={`${panelClass} overflow-hidden`}>
@@ -512,12 +363,15 @@ export function OrdersClient({
                     </div>
                 </div>
 
-                <div className="px-5 py-4">
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="px-5 py-4 flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                    <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
                         {statuses.map((s) => (
                             <button
                                 key={s.value}
-                                onClick={() => navigate({ status: s.value, page: "1" }, { clearFocus: true })}
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    navigate({ status: s.value, page: "1", search: "" }, { clearFocus: true });
+                                }}
                                 className={`rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
                                     currentStatus === s.value
                                         ? "bg-gold/10 text-gold ring-1 ring-gold/20"
@@ -528,7 +382,53 @@ export function OrdersClient({
                             </button>
                         ))}
                     </div>
+
+                    <form onSubmit={handleSearchSubmit} className="relative w-full md:w-64">
+                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-theme-subtle" />
+                        <input 
+                            type="text" 
+                            placeholder="بحث برقم الطلب TRD..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full rounded-xl border border-theme-subtle bg-theme-faint py-2 pr-9 pl-4 text-sm text-theme placeholder:text-theme-subtle focus:border-gold/30 focus:outline-none focus:ring-1 focus:ring-gold/30"
+                        />
+                    </form>
                 </div>
+
+                {/* Bulk Actions Toolbar */}
+                <AnimatePresence>
+                    {selectedOrders.length > 0 && (
+                        <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-gold/5 border-y border-gold/20 px-5 py-3 flex items-center justify-between"
+                        >
+                            <span className="text-sm font-bold text-theme">تم تحديد {selectedOrders.length} طلب</span>
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <select 
+                                        onChange={handleBulkStatusChange}
+                                        disabled={isBulkUpdating}
+                                        className="appearance-none rounded-lg bg-theme-surface border border-theme-subtle px-3 pr-8 py-1.5 text-xs font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold focus:outline-none focus:ring-1 focus:ring-gold/30 disabled:opacity-50 cursor-pointer"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>تحديث الحالة ({selectedOrders.length})...</option>
+                                        <option value="confirmed">تأكيد</option>
+                                        <option value="processing">جاري المعالجة</option>
+                                        <option value="shipped">تم الشحن</option>
+                                        <option value="delivered">تم التوصيل</option>
+                                        <option value="cancelled">إلغاء</option>
+                                    </select>
+                                    <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-theme-subtle pointer-events-none" />
+                                </div>
+                                <button className="rounded-lg bg-theme-surface border border-theme-subtle px-3 py-1.5 text-xs font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold flex items-center gap-1.5 opacity-50 cursor-not-allowed" title="قريباً">
+                                    <FileDown className="h-3.5 w-3.5" /> طباعة البوليصات
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <div className="relative">
                     {isPending && (
@@ -541,6 +441,14 @@ export function OrdersClient({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-y border-theme-subtle text-right text-xs text-theme-faint">
+                                    <th className="w-10 px-3 py-4">
+                                        <input 
+                                            type="checkbox" 
+                                            className="rounded border-theme-subtle bg-theme-faint text-gold focus:ring-gold/30"
+                                            checked={orders.length > 0 && selectedOrders.length === orders.length}
+                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                        />
+                                    </th>
                                     <th className="w-10 px-3 py-4"></th>
                                     <th className="px-4 py-4 font-medium">رقم الطلب</th>
                                     <th className="px-4 py-4 font-medium">المشتري</th>
@@ -567,10 +475,18 @@ export function OrdersClient({
                                                     transition={{ delay: index * 0.02 }}
                                                     className={cn(
                                                         "border-b border-theme-faint transition-colors hover:bg-theme-faint",
-                                                        highlightedOrderId === order.id &&
+                                                        (highlightedOrderId === order.id || selectedOrders.includes(order.id)) &&
                                                             "bg-gold/[0.07] ring-1 ring-inset ring-gold/35"
                                                     )}
                                                 >
+                                                    <td className="px-3 py-4">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="rounded border-theme-subtle bg-theme-faint text-gold focus:ring-gold/30"
+                                                            checked={selectedOrders.includes(order.id)}
+                                                            onChange={() => toggleSelection(order.id)}
+                                                        />
+                                                    </td>
                                                     <td className="px-3 py-4">
                                                         {items.length > 0 ? (
                                                             <button

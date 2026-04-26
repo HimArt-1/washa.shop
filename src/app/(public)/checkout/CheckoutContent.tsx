@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useCartStore } from "@/stores/cartStore";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Loader2, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,8 @@ import * as z from "zod";
 import { createOrder } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
+import { Lock } from "lucide-react";
 
 // Schema
 const addressSchema = z.object({
@@ -24,7 +26,7 @@ const addressSchema = z.object({
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
-type PaymentMethod = "cod" | "paylink";
+type PaymentMethod = "cod" | "paylink" | "pos_cash" | "pos_card";
 
 export interface ShippingConfig {
     flat_rate: number;
@@ -68,8 +70,8 @@ async function verifyPaylinkPayment(params: {
 
 // ─── Main Client Component ───────────────────────────────
 
-export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingConfig }) {
-    const { items, clearCart, getSubtotal, getDiscountAmount, coupon } = useCartStore();
+export function CheckoutContent({ shippingConfig, userRole }: { shippingConfig: ShippingConfig; userRole?: string }) {
+    const { items, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
     const searchParams = useSearchParams();
     const verifiedPaymentKeyRef = useRef<string | null>(null);
     const [isClient, setIsClient] = useState(false);
@@ -78,6 +80,9 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [couponCode, setCouponCode] = useState("");
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+    const [couponError, setCouponError] = useState<string | null>(null);
 
     // Auto-verify on return from Paylink
     useEffect(() => {
@@ -238,8 +243,14 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
         });
 
         const address = { ...data, state: "" };
+        
+        let finalPaymentMethod: PaymentMethod = "cod";
+        if (paymentMethod === "paylink") finalPaymentMethod = "paylink";
+        if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
+        if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
+
         const result = await createOrder(orderItems, address, {
-            paymentMethod: paymentMethod === "paylink" ? "paylink" : "cod",
+            paymentMethod: finalPaymentMethod,
             couponId: coupon?.id,
             discountAmount: discount,
         });
@@ -316,36 +327,111 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
         setIsSubmitting(false);
     }
 
+    async function handleApplyCoupon(e: React.FormEvent) {
+        e.preventDefault();
+        if (!couponCode.trim()) return;
+        setIsApplyingCoupon(true);
+        setCouponError(null);
+
+        const result = await validateDiscountCoupon(couponCode.trim());
+        if (!result.success || !result.data) {
+            setCouponError(result.error || "كود غير صالح");
+            setIsApplyingCoupon(false);
+            return;
+        }
+
+        applyCoupon(result.data);
+        setCouponCode("");
+        setIsApplyingCoupon(false);
+    }
+
     if (success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
-                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12 relative overflow-hidden"
+                >
+                    {/* Background Glow */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-green-500/10 blur-3xl rounded-full" />
+                    
                     <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        className="w-24 h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 border border-green-500/30 mx-auto"
+                        transition={{ 
+                            type: "spring", 
+                            stiffness: 300, 
+                            damping: 20, 
+                            delay: 0.2 
+                        }}
+                        className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-6 border border-green-500/20 mx-auto relative z-10"
                     >
-                        <Check className="w-12 h-12" />
+                        <motion.div
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ duration: 0.6, delay: 0.4 }}
+                        >
+                            <Check className="w-12 h-12" />
+                        </motion.div>
                     </motion.div>
-                    <h1 className="text-3xl font-bold mb-2">تم استلام طلبك بنجاح!</h1>
-                    <p className="text-theme-soft mb-2">
-                        رقم الطلب: <span className="font-mono text-gold font-bold">{success}</span>
-                    </p>
-                    <p className="text-theme-subtle mb-8 max-w-md mx-auto">
+
+                    <motion.h1 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-3xl font-bold mb-2 relative z-10"
+                    >
+                        تم استلام طلبك بنجاح!
+                    </motion.h1>
+                    
+                    <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-theme-soft mb-2 relative z-10"
+                    >
+                        رقم الطلب: <span className="font-mono text-gold font-bold bg-gold/10 px-2 py-0.5 rounded-md">{success}</span>
+                    </motion.p>
+                    
+                    <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                        className="text-theme-subtle mb-8 max-w-md mx-auto relative z-10"
+                    >
                         شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً.
-                    </p>
-                    <Link href="/" className="btn-gold px-8 py-3 rounded-xl">
-                        العودة للرئيسية
-                    </Link>
-                </div>
+                    </motion.p>
+                    
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 }}
+                        className="relative z-10"
+                    >
+                        <Link href="/" className="btn-gold px-8 py-3 rounded-xl inline-flex hover:scale-105 transition-transform active:scale-95">
+                            العودة للرئيسية
+                        </Link>
+                    </motion.div>
+                </motion.div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-theme pb-20 pt-28 sm:pt-32">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="min-h-screen bg-theme pb-20 pt-28 sm:pt-32"
+        >
             <div className="container-wusha">
-                <div className="mb-6 theme-surface-panel rounded-[2rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7">
+                <motion.div 
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="mb-6 theme-surface-panel rounded-[2rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7"
+                >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
                             <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">CHECKOUT</p>
@@ -355,11 +441,16 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                             راجع عناصر السلة، أكمل عنوان الشحن، ثم اختر طريقة الدفع الأنسب قبل تثبيت الطلب.
                         </p>
                     </div>
-                </div>
+                </motion.div>
 
                 <div className="grid gap-6 lg:grid-cols-12 lg:gap-10 xl:gap-12">
                     {/* Form Section */}
-                    <div className="space-y-6 lg:col-span-7 sm:space-y-8">
+                    <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
+                        className="space-y-6 lg:col-span-7 sm:space-y-8"
+                    >
                         <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <MapPin className="text-gold w-5 h-5" />
@@ -453,18 +544,29 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
 
                             <div className="space-y-3">
                                 {/* COD */}
-                                <button
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
                                     type="button"
                                     onClick={() => setPaymentMethod("cod")}
-                                    className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "cod"
+                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "cod"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"}`}>
-                                                {paymentMethod === "cod" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                <AnimatePresence>
+                                                    {paymentMethod === "cod" && (
+                                                        <motion.div 
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: 1 }}
+                                                            exit={{ scale: 0 }}
+                                                            className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
+                                                        />
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                             <div>
                                                 <span className="font-bold">الدفع عند الاستلام</span>
@@ -473,41 +575,133 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                                         </div>
                                         <span className="inline-flex w-fit rounded px-2 py-1 text-xs text-gold bg-gold/20">متاح</span>
                                     </div>
-                                </button>
+                                </motion.button>
 
                                 {/* Paylink */}
-                                <button
+                                <motion.button
+                                    whileHover={{ scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
                                     type="button"
                                     onClick={() => setPaymentMethod("paylink")}
-                                    className={`w-full rounded-xl border p-4 text-right transition-all ${paymentMethod === "paylink"
+                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "paylink"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "paylink" ? "border-gold bg-gold" : "border-theme-soft"}`}>
-                                                {paymentMethod === "paylink" && <div className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" />}
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "paylink" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                <AnimatePresence>
+                                                    {paymentMethod === "paylink" && (
+                                                        <motion.div 
+                                                            initial={{ scale: 0 }}
+                                                            animate={{ scale: 1 }}
+                                                            exit={{ scale: 0 }}
+                                                            className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
+                                                        />
+                                                    )}
+                                                </AnimatePresence>
                                             </div>
                                             <div>
-                                                <span className="font-bold">الدفع الإلكتروني</span>
+                                                <span className="font-bold">الدفع الإلكتروني الآمن</span>
                                                 <p className="mt-1 text-xs text-theme-subtle">
-                                                    ادفع بـ Mada، Visa، Apple Pay، STC Pay، Tabby، أو Tamara.
+                                                    دفع مشفّر بـ Mada، Visa، Apple Pay، أو STC Pay.
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="inline-flex items-center gap-1 text-xs text-theme-subtle">
-                                            <Smartphone className="w-3.5 h-3.5" />
-                                            Mada · Visa · STC Pay
+                                        <span className="inline-flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 text-[10px] text-theme-subtle">
+                                            <Lock className="w-3 h-3 text-gold" />
+                                            مشفّر 100%
                                         </span>
                                     </div>
-                                </button>
+                                    <div className="mt-3 mr-7 flex flex-wrap gap-2">
+                                        {/* Mock visual logos for cards */}
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">mada</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">VISA</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Apple Pay</div>
+                                    </div>
+                                </motion.button>
+                                
+                                {/* Booth POS Options */}
+                                {userRole === "booth" && (
+                                    <div className="pt-4 border-t border-theme-soft mt-2 space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">صلاحيات الموظف (نقطة بيع)</span>
+                                            <div className="flex-1 h-px bg-theme-soft"></div>
+                                        </div>
+
+                                        <motion.button
+                                            whileHover={{ scale: 1.01 }}
+                                            whileTap={{ scale: 0.99 }}
+                                            type="button"
+                                            onClick={() => setPaymentMethod("pos_cash")}
+                                            className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "pos_cash"
+                                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                                : "border-theme-soft bg-theme-faint hover:border-emerald-500/20 hover:bg-emerald-500/5"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "pos_cash" ? "border-emerald-500 bg-emerald-500" : "border-theme-soft"}`}>
+                                                    <AnimatePresence>
+                                                        {paymentMethod === "pos_cash" && (
+                                                            <motion.div 
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                exit={{ scale: 0 }}
+                                                                className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
+                                                            />
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold">الدفع الآن (كاش)</span>
+                                                    <p className="mt-1 text-xs text-theme-subtle">استلام المبلغ نقداً من العميل مباشرة</p>
+                                                </div>
+                                            </div>
+                                        </motion.button>
+
+                                        <motion.button
+                                            whileHover={{ scale: 1.01 }}
+                                            whileTap={{ scale: 0.99 }}
+                                            type="button"
+                                            onClick={() => setPaymentMethod("pos_card")}
+                                            className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "pos_card"
+                                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                                : "border-theme-soft bg-theme-faint hover:border-emerald-500/20 hover:bg-emerald-500/5"
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "pos_card" ? "border-emerald-500 bg-emerald-500" : "border-theme-soft"}`}>
+                                                    <AnimatePresence>
+                                                        {paymentMethod === "pos_card" && (
+                                                            <motion.div 
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                exit={{ scale: 0 }}
+                                                                className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
+                                                            />
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold">الدفع الآن (شبكة / POS)</span>
+                                                    <p className="mt-1 text-xs text-theme-subtle">استلام المبلغ عبر جهاز الشبكة المتوفر في البوث</p>
+                                                </div>
+                                            </div>
+                                        </motion.button>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
+                    </motion.div>
 
                     {/* Order Summary */}
-                    <div className="lg:col-span-5">
+                    <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+                        className="lg:col-span-5"
+                    >
                         <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
                             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
@@ -515,7 +709,7 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
                                 <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "paylink" ? "دفع إلكتروني — Paylink" : "دفع عند الاستلام"}
+                                    {paymentMethod === "paylink" ? "دفع إلكتروني — Paylink" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
                                 </span>
                             </div>
 
@@ -549,18 +743,48 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                                     <span>{subtotal.toLocaleString()} ر.س</span>
                                 </div>
                                 {discount > 0 && (
-                                    <div className="flex justify-between text-green-400 text-sm">
-                                        <span>
-                                            الخصم
+                                    <div className="flex justify-between items-center text-green-400 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span>الخصم</span>
                                             {coupon && (
-                                                <span className="font-mono text-xs opacity-70 mr-1">
-                                                    ({coupon.discount_type === "percentage"
-                                                        ? `${coupon.discount_value}%`
-                                                        : `${coupon.discount_value} ر.س`})
-                                                </span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="font-mono text-xs opacity-80 border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 rounded">
+                                                        {coupon.code} ({coupon.discount_type === "percentage"
+                                                            ? `${coupon.discount_value}%`
+                                                            : `${coupon.discount_value} ر.س`})
+                                                    </span>
+                                                    <button 
+                                                        onClick={() => removeCoupon()}
+                                                        className="text-xs text-theme-faint hover:text-red-400 transition-colors"
+                                                        type="button"
+                                                    >
+                                                        إزالة
+                                                    </button>
+                                                </div>
                                             )}
-                                        </span>
-                                        <span>- {discount.toLocaleString()} ر.س</span>
+                                        </div>
+                                        <span className="font-bold">- {discount.toLocaleString()} ر.س</span>
+                                    </div>
+                                )}
+                                {!coupon && (
+                                    <div className="pt-2 pb-1">
+                                        <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                                            <input 
+                                                type="text" 
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value)}
+                                                placeholder="أدخل كود الخصم" 
+                                                className="input-dark w-full rounded-xl px-3 py-2 text-sm"
+                                            />
+                                            <button 
+                                                type="submit" 
+                                                disabled={isApplyingCoupon || !couponCode.trim()}
+                                                className="shrink-0 bg-theme-subtle text-theme hover:bg-gold/20 hover:text-gold transition-colors rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
+                                            >
+                                                {isApplyingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : "تطبيق"}
+                                            </button>
+                                        </form>
+                                        {couponError && <p className="text-red-400 text-[11px] mt-1.5 px-1">{couponError}</p>}
                                     </div>
                                 )}
                                 <div className="flex justify-between text-theme-soft text-sm">
@@ -593,10 +817,12 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                                 </div>
                             )}
 
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.99 }}
                                 type="submit"
+                                disabled={isSubmitting || items.length === 0}
                                 form="checkout-form"
-                                disabled={isSubmitting}
                                 className="mt-8 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold btn-gold disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
@@ -609,16 +835,16 @@ export function CheckoutContent({ shippingConfig }: { shippingConfig: ShippingCo
                                         <ArrowRight className="w-5 h-5" />
                                     </>
                                 )}
-                            </button>
+                            </motion.button>
 
                             <p className="text-center text-theme-faint text-xs mt-4">
                                 بإتمام الطلب، أنت توافق على شروط الاستخدام وسياسة الخصوصية.
                             </p>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 

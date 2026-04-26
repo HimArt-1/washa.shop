@@ -6,13 +6,14 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    searchParams?: { page?: string; status?: string; focus?: string };
+    searchParams?: { page?: string; status?: string; focus?: string; search?: string };
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
     const params = searchParams ?? {};
     const page = Number(params.page) || 1;
     const status = params.status || "all";
+    const search = params.search || "";
     const focusOrderId = typeof params.focus === "string" ? params.focus.trim() : "";
 
     const snapshot = await getOrdersOperationsSnapshot();
@@ -21,7 +22,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
     let count = 0;
     let totalPages = 0;
     try {
-        const result = await getAdminOrders({ page, status });
+        const result = await getAdminOrders({ page, status, search });
         orders = result.data ?? [];
         count = result.count ?? 0;
         totalPages = result.totalPages ?? 0;
@@ -63,6 +64,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps) {
                     totalPages={totalPages}
                     currentPage={page}
                     currentStatus={status}
+                    currentSearch={search}
                     initialFocusOrderId={focusOrderId || undefined}
                 />
             </Suspense>

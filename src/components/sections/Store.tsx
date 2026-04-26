@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { Product } from "@/types/database";
 import { cn } from "@/lib/utils";
+import { ProductCard } from "@/components/store/ProductCard";
 
 type ProductWithArtist = Product & {
   artist: {
@@ -89,82 +90,18 @@ export function Store() {
             {products.map((product, index) => {
               const featured = products.length >= 3 && index === 0;
               return (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className={cn(
-                  "glass-card rounded-2xl overflow-hidden group",
-                  featured && "col-span-2 md:col-span-2 ring-1 ring-gold/15",
-                )}
-              >
-                <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
-                  <Image
-                    src={product.image_url}
-                    alt={product.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  {product.badge && (
-                    <div className="absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full" style={{ background: "linear-gradient(to right, var(--wusha-gold), var(--wusha-gold-light))", color: "var(--wusha-bg)" }}>
-                      {product.badge}
-                    </div>
-                  )}
+                <div key={product.id} className={cn(featured && "col-span-2 md:col-span-2")}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="h-full"
+                  >
+                    <ProductCard product={product} featured={featured} />
+                  </motion.div>
                 </div>
-
-                <div className="p-3 sm:p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-theme-subtle bg-theme-subtle px-3 py-1 rounded-full border border-theme-soft">
-                      {product.type === 'print' ? 'طباعة' : product.type === 'apparel' ? 'ملابس' : product.type}
-                    </span>
-                    <div className="flex items-center gap-1 text-gold text-sm">
-                      <Star className="w-3.5 h-3.5 fill-current" />
-                      <span className="text-xs">{product.rating}</span>
-                    </div>
-                  </div>
-
-                  <h3 className="font-bold text-sm sm:text-base mb-2 sm:mb-3 text-theme-strong truncate">{product.title}</h3>
-                  <div className="flex items-center justify-between mt-auto">
-                    <span className="text-sm sm:text-lg font-bold text-gold">
-                      {product.price} {product.currency}
-                    </span>
-                    <motion.button
-                      onClick={() =>
-                        addToCart({
-                          id: product.id,
-                          title: product.title,
-                          price: Number(product.price),
-                          image_url: product.image_url,
-                          artist_name: product.artist?.display_name || "Wusha Artist",
-                          size: null,
-                          type: "product"
-                        })
-                      }
-                      className="p-2.5 rounded-xl transition-all duration-300 border"
-                      style={{
-                        backgroundColor: "color-mix(in srgb, var(--wusha-gold) 10%, transparent)",
-                        color: "var(--wusha-gold)",
-                        borderColor: "color-mix(in srgb, var(--wusha-gold) 20%, transparent)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--wusha-gold)";
-                        e.currentTarget.style.color = "var(--wusha-bg)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--wusha-gold) 10%, transparent)";
-                        e.currentTarget.style.color = "var(--wusha-gold)";
-                      }}
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                    </motion.button>
-                  </div>
-                </div>
-              </motion.div>
-            );
+              );
             })}
           </div>
         )}

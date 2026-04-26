@@ -19,10 +19,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
     return {
         title: `${product.title} — وشّى`,
-        description: product.description || `منتج بواسطة ${product.artist?.display_name}`,
+        description: product.description || `منتج حصري في متجر وشّى`,
         openGraph: {
-            images: [product.image_url],
+            title: `${product.title} | وشّى`,
+            description: product.description || `تصميم فريد وأزياء عصرية. اكتشف تفاصيل المنتج الآن في وشّى.`,
+            images: [
+                {
+                    url: product.image_url,
+                    width: 1080,
+                    height: 1080,
+                    alt: product.title,
+                }
+            ],
+            type: "website",
         },
+        twitter: {
+            card: "summary_large_image",
+            title: `${product.title} | وشّى`,
+            description: product.description || `اكتشف هذا التصميم الحصري في وشّى.`,
+            images: [product.image_url],
+        }
     };
 }
 

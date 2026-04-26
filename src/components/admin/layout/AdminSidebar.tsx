@@ -11,12 +11,14 @@ import {
     Bell, Ticket, HeadphonesIcon, History, Home, Store,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
+import type { UserRole } from "@/types/database";
 
 interface NavItem {
     icon: any;
     label: string;
     href: string;
     badge?: number;
+    roles?: UserRole[];
 }
 
 interface NavGroup {
@@ -25,10 +27,12 @@ interface NavGroup {
 }
 
 export function AdminSidebar({ 
+    role = "admin",
     pendingApps = 0,
     pendingDesignOrders = 0,
     pendingSupportTickets = 0,
 }: { 
+    role?: UserRole;
     pendingApps?: number;
     pendingDesignOrders?: number;
     pendingSupportTickets?: number;
@@ -59,35 +63,35 @@ export function AdminSidebar({
         {
             title: "الرئيسية",
             items: [
-                { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard" },
-                { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics" },
+                { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
+                { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics", roles: ["admin", "dev", "financial_manager"] },
             ],
         },
         {
             title: "التجارة",
             items: [
-                { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders" },
-                { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory" },
-                { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales" },
-                { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons" },
+                { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
+                { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory", roles: ["admin", "dev", "shipping_manager"] },
+                { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", roles: ["admin", "dev", "financial_manager"] },
+                { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
             ],
         },
         {
             title: "المحتوى والتصميم",
             items: [
-                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders },
-                { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks" },
-                { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs" },
-                { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store" },
+                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders, roles: ["admin", "dev", "shipping_manager"] },
+                { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks", roles: ["admin", "dev"] },
+                { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs", roles: ["admin", "dev"] },
+                { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store", roles: ["admin", "dev"] },
             ],
         },
         {
             title: "الإدارة",
             items: [
-                { icon: Users, label: "المستخدمون", href: "/dashboard/users" },
-                { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets },
-                { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications" },
-                { icon: Settings, label: "الإعدادات", href: "/dashboard/settings" },
+                { icon: Users, label: "المستخدمون", href: "/dashboard/users", roles: ["admin", "dev"] },
+                { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets, roles: ["admin", "dev", "support_agent"] },
+                { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications", roles: ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"] },
+                { icon: Settings, label: "الإعدادات", href: "/dashboard/settings", roles: ["admin", "dev"] },
             ],
         },
     ];
@@ -154,74 +158,79 @@ export function AdminSidebar({
                         </div>
                     </div>
                 )}
-                {navGroups.map((group, gi) => (
-                    <div key={gi} className="space-y-0.5">
-                        {!isCollapsed && (
-                            <div className="px-3 mb-1.5">
-                                <span className="text-[10px] font-bold text-theme-faint uppercase tracking-wider">
-                                    {group.title}
-                                </span>
-                            </div>
-                        )}
-                        {isCollapsed && gi > 0 && (
-                            <div className="w-8 mx-auto my-1 border-t border-theme-subtle" />
-                        )}
-                        {group.items.map((item) => {
-                            const isActive = pathname === item.href ||
-                                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                {navGroups.map((group, gi) => {
+                    const filteredItems = group.items.filter(item => !item.roles || item.roles.includes(role));
+                    if (filteredItems.length === 0) return null;
+                    
+                    return (
+                        <div key={gi} className="space-y-0.5">
+                            {!isCollapsed && (
+                                <div className="px-3 mb-1.5">
+                                    <span className="text-[10px] font-bold text-theme-faint uppercase tracking-wider">
+                                        {group.title}
+                                    </span>
+                                </div>
+                            )}
+                            {isCollapsed && gi > 0 && (
+                                <div className="w-8 mx-auto my-1 border-t border-theme-subtle" />
+                            )}
+                            {filteredItems.map((item) => {
+                                const isActive = pathname === item.href ||
+                                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-                            return (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={() => setIsMobileOpen(false)}
-                                    className={`
-                                        relative flex items-center gap-3 px-3 py-2 rounded-xl
-                                        transition-all duration-300 group
-                                        ${isActive
-                                            ? "bg-gold/10 text-gold"
-                                            : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
-                                        }
-                                    `}
-                                    title={isCollapsed ? item.label : undefined}
-                                >
-                                    <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? "text-gold" : "text-theme-subtle group-hover:text-theme-soft"
-                                        }`} />
+                                return (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => setIsMobileOpen(false)}
+                                        className={`
+                                            relative flex items-center gap-3 px-3 py-2 rounded-xl
+                                            transition-all duration-300 group
+                                            ${isActive
+                                                ? "bg-gold/10 text-gold"
+                                                : "text-theme-subtle hover:text-theme-soft hover:bg-theme-subtle"
+                                            }
+                                        `}
+                                        title={isCollapsed ? item.label : undefined}
+                                    >
+                                        <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? "text-gold" : "text-theme-subtle group-hover:text-theme-soft"
+                                            }`} />
 
-                                    <AnimatePresence>
-                                        {!isCollapsed && (
-                                            <motion.span
-                                                initial={{ opacity: 0, x: -8 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -8 }}
-                                                className="text-[13px] font-medium whitespace-nowrap flex-1"
-                                            >
-                                                {item.label}
-                                            </motion.span>
+                                        <AnimatePresence>
+                                            {!isCollapsed && (
+                                                <motion.span
+                                                    initial={{ opacity: 0, x: -8 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -8 }}
+                                                    className="text-[13px] font-medium whitespace-nowrap flex-1"
+                                                >
+                                                    {item.label}
+                                                </motion.span>
+                                            )}
+                                        </AnimatePresence>
+
+                                        {item.badge && item.badge > 0 && (
+                                            <span className={`
+                                                ${isCollapsed ? "absolute -top-1 -right-1 w-4 h-4 text-[9px]" : "w-5 h-5 text-[10px]"}
+                                                bg-gold text-bg rounded-full flex items-center justify-center font-bold
+                                            `}>
+                                                {item.badge}
+                                            </span>
                                         )}
-                                    </AnimatePresence>
 
-                                    {item.badge && item.badge > 0 && (
-                                        <span className={`
-                                            ${isCollapsed ? "absolute -top-1 -right-1 w-4 h-4 text-[9px]" : "w-5 h-5 text-[10px]"}
-                                            bg-gold text-bg rounded-full flex items-center justify-center font-bold
-                                        `}>
-                                            {item.badge}
-                                        </span>
-                                    )}
-
-                                    {isActive && (
-                                        <motion.div
-                                            layoutId="admin-active-pill"
-                                            className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-gold rounded-l-full"
-                                            transition={{ duration: 0.3 }}
-                                        />
-                                    )}
-                                </Link>
-                            );
-                        })}
-                    </div>
-                ))}
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="admin-active-pill"
+                                                className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-gold rounded-l-full"
+                                                transition={{ duration: 0.3 }}
+                                            />
+                                        )}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    );
+                })}
             </nav>
 
             {/* ─── Footer ─── */}

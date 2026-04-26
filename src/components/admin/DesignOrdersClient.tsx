@@ -23,6 +23,8 @@ import {
     UserCircle2,
     X,
     XCircle,
+    LayoutGrid,
+    List,
 } from "lucide-react";
 import { updateDesignPromptTemplate } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
@@ -93,6 +95,7 @@ export function DesignOrdersClient({
     const [showSettings, setShowSettings] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterAdmin, setFilterAdmin] = useState("all");
+    const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
 
     const navigate = (params: Record<string, string>) => {
         const sp = new URLSearchParams();
@@ -174,6 +177,16 @@ export function DesignOrdersClient({
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-theme-subtle">{count} طلب</span>
+                    
+                    <div className="flex items-center rounded-lg border border-theme-subtle bg-theme-faint overflow-hidden">
+                        <button onClick={() => setViewMode("kanban")} className={`p-1.5 transition-colors ${viewMode === "kanban" ? "bg-theme-subtle text-theme" : "text-theme-soft hover:text-theme"}`} title="Kanban View">
+                            <LayoutGrid className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setViewMode("table")} className={`p-1.5 transition-colors ${viewMode === "table" ? "bg-theme-subtle text-theme" : "text-theme-soft hover:text-theme"}`} title="Table View">
+                            <List className="w-4 h-4" />
+                        </button>
+                    </div>
+
                     <button onClick={() => setShowSettings(true)} className="flex items-center gap-1.5 rounded-lg border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs text-theme-soft transition-colors hover:text-theme">
                         <Settings2 className="w-3.5 h-3.5" /> إعدادات البرومبت
                     </button>
@@ -206,11 +219,101 @@ export function DesignOrdersClient({
                 </select>
             </div>
 
-            {/* ══ Orders Table ══ */}
+            {/* ══ Orders Content ══ */}
             {filteredOrders.length === 0 ? (
                 <div className="text-center py-20 text-theme-faint">
                     <Paintbrush className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p>لا توجد طلبات تصميم {searchTerm ? `تطابق "${searchTerm}"` : currentStatus !== "all" && `بحالة "${FILTER_STATUSES.find(s => s.value === currentStatus)?.label}"`}</p>
+                </div>
+            ) : viewMode === "kanban" ? (
+                <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+                    {FILTER_STATUSES.filter(s => s.value !== "all").map(status => {
+                        const statusOrders = filteredOrders.filter(o => o.status === status.value);
+                        if (currentStatus !== "all" && currentStatus !== status.value) return null;
+                        
+                        return (
+                            <div key={status.value} className="flex-shrink-0 w-[320px] snap-center">
+                                <div className="flex items-center justify-between mb-3 px-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${STATUS_MAP[status.value as CustomDesignOrderStatus]?.color.split(' ')[1]}`} />
+                                        <h3 className="font-bold text-sm text-theme">{status.label}</h3>
+                                    </div>
+                                    <span className="text-xs bg-theme-faint text-theme-subtle px-2 py-0.5 rounded-full font-mono">{statusOrders.length}</span>
+                                </div>
+                                
+                                <div className="space-y-3 min-h-[150px] p-2 rounded-xl bg-theme-faint/30 border border-theme-faint">
+                                    {statusOrders.length === 0 ? (
+                                        <div className="h-full flex items-center justify-center text-xs text-theme-faint py-8 border-2 border-dashed border-theme-faint rounded-lg">لا يوجد طلبات</div>
+                                    ) : (
+                                        statusOrders.map(order => (
+                                            <div 
+                                                key={order.id} 
+                                                onClick={() => router.push(`/dashboard/design-orders/${order.id}`)}
+                                                className={`p-4 rounded-xl border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${order.status === "new" ? "bg-surface border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]" : "bg-surface border-theme-faint hover:border-theme-subtle"}`}
+                                            >
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-md bg-gold/10 text-gold text-[10px] font-bold font-mono">
+                                                        #{order.order_number}
+                                                    </span>
+                                                    <span className="text-[10px] text-theme-faint">{new Date(order.created_at).toLocaleDateString("ar-SA")}</span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    {order.design_method === "studio" && order.dtf_mockup_url ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img src={order.dtf_mockup_url} alt="mockup" className="w-12 h-12 rounded-lg object-cover border border-emerald-500/20" />
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-lg bg-theme-faint flex items-center justify-center">
+                                                            <Paintbrush className="w-5 h-5 text-theme-subtle" />
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-bold text-sm text-theme truncate">{order.garment_name}</h4>
+                                                        <p className="text-[11px] text-theme-soft truncate mt-0.5">{order.customer_name || "عميل غير معروف"}</p>
+                                                        {order.design_method === "studio" && (
+                                                            <span className="inline-flex mt-1 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
+                                                                <Sparkles className="w-2.5 h-2.5" />
+                                                                WASHA AI
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center justify-between pt-3 border-t border-theme-faint mt-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        {getAdminName(order.assigned_to) ? (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] text-theme-soft">
+                                                                <UserCircle2 className="w-3 h-3 text-gold/50" />
+                                                                {getAdminName(order.assigned_to)?.split(' ')[0]}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-theme-faint">غير معيّن</span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    {/* Results Indicators */}
+                                                    <div className="flex gap-1">
+                                                        {order.design_method === "studio" ? (
+                                                            <>
+                                                                <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="موكب AI" />
+                                                                <div className={`w-2 h-2 rounded-full ${order.dtf_extracted_url ? "bg-sky-400" : "bg-theme-faint"}`} title="ملف DTF" />
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                {order.result_design_url && <div className="w-2 h-2 rounded-full bg-emerald-400" title="تصميم" />}
+                                                                {order.result_mockup_url && <div className="w-2 h-2 rounded-full bg-blue-400" title="موكاب" />}
+                                                                {order.result_pdf_url && <div className="w-2 h-2 rounded-full bg-amber-400" title="PDF" />}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="theme-surface-panel overflow-x-auto rounded-2xl">

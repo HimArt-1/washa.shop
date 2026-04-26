@@ -2,12 +2,14 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { getSiteSettings } from "@/app/actions/settings";
+import { getProfile } from "@/app/actions/profile";
 import { CheckoutContent } from "./CheckoutContent";
 
 export const dynamic = "force-dynamic"; // لا cache — دائماً حديث
 
 export default async function CheckoutPage() {
     const settings = await getSiteSettings();
+    const profile = await getProfile();
 
     const shippingConfig = {
         flat_rate: settings.shipping.flat_rate ?? 30,
@@ -23,7 +25,7 @@ export default async function CheckoutPage() {
                 <Loader2 className="w-10 h-10 text-gold animate-spin" />
             </div>
         }>
-            <CheckoutContent shippingConfig={shippingConfig} />
+            <CheckoutContent shippingConfig={shippingConfig} userRole={profile?.role as any} />
         </Suspense>
     );
 }
