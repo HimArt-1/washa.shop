@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
     AlertTriangle,
@@ -619,7 +619,7 @@ export function DashboardClient({
     lastUpdatedLabel,
     dataQuality,
 }: DashboardProps) {
-    const router = useRouter();
+    const [mounted, setMounted] = useState(false);
     const lowStockCount = lowStockList.length;
     const healthScore = calculateHealthScore(controlTower.ops, lowStockCount);
     const healthMeta = getHealthMeta(healthScore);
@@ -866,207 +866,6 @@ export function DashboardClient({
             </div>
             </DashboardSection>
 
-
-
-            <DashboardSection
-                sectionId="dashboard-queues"
-                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
-                eyebrow="الطوابير"
-                title="دعم، تصميم، انضمام"
-                description="عناصر بانتظار الاستجابة — من نفس مصادر البيانات في أعلى الصفحة."
-            >
-            <div className="grid gap-5 xl:grid-cols-3">
-                <QueueCard
-                    title="صف الدعم"
-                    subtitle="أحدث التذاكر التي تحتاج استجابة أو متابعة من الفريق."
-                    href="/dashboard/support"
-                    emptyState="لا توجد تذاكر مفتوحة الآن."
-                    items={controlTower.supportQueue.map((ticket) => {
-                        const priorityMeta = getSupportPriorityMeta(ticket.priority);
-                        return (
-                            <Link
-                                key={ticket.id}
-                                href={`/dashboard/support/${ticket.id}`}
-                                className="block rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-theme-soft hover:bg-theme-subtle"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="truncate text-sm font-bold text-theme">{ticket.subject}</p>
-                                        <p className="mt-1 text-xs text-theme-subtle">
-                                            {ticket.name || ticket.email || "عميل غير مسمى"}
-                                        </p>
-                                    </div>
-                                    <span className={`text-xs font-semibold ${priorityMeta.className}`}>{priorityMeta.label}</span>
-                                </div>
-                                <div className="mt-3 flex items-center justify-between text-xs text-theme-faint">
-                                    <span>{formatShortDate(ticket.created_at)}</span>
-                                    <span>{ticket.status === "in_progress" ? "قيد المتابعة" : "مفتوحة"}</span>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                />
-
-                <QueueCard
-                    title="صف التصميم"
-                    subtitle="الطلبات التي تتطلب بدء تنفيذ أو مراجعة مع العميل."
-                    href="/dashboard/design-orders"
-                    emptyState="لا توجد طلبات تصميم نشطة في الوقت الحالي."
-                    items={controlTower.designQueue.map((order) => (
-                        <Link
-                            key={order.id}
-                            href={`/dashboard/design-orders/${order.id}`}
-                            className="block rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-theme-soft hover:bg-theme-subtle"
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="text-sm font-bold text-theme">
-                                        #{order.order_number} · {order.customer_name || "عميل ضيف"}
-                                    </p>
-                                    <p className="mt-1 truncate text-xs text-theme-subtle">{order.garment_name}</p>
-                                </div>
-                                <span className="text-xs font-semibold text-gold">{getDesignStatusLabel(order.status)}</span>
-                            </div>
-                            <div className="mt-3 text-xs text-theme-faint">{formatShortDate(order.created_at)}</div>
-                        </Link>
-                    ))}
-                />
-
-                <QueueCard
-                    title="طلبات الانضمام"
-                    subtitle="قائمة مختصرة بالمرشحين الذين ينتظرون قرار قبول أو متابعة."
-                    href="/dashboard/applications"
-                    emptyState="لا توجد طلبات انضمام معلقة حاليًا."
-                    items={pendingApplications.map((application) => (
-                        <Link
-                            key={application.id}
-                            href={`/dashboard/applications/${application.id}`}
-                            className="block rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-theme-soft hover:bg-theme-subtle"
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="truncate text-sm font-bold text-theme">{application.full_name}</p>
-                                    <p className="mt-1 text-xs text-theme-subtle">{application.art_style}</p>
-                                </div>
-                                <FileText className="h-4 w-4 shrink-0 text-theme-faint" />
-                            </div>
-                            <div className="mt-3 flex items-center justify-between text-xs text-theme-faint">
-                                <span>{application.email}</span>
-                                <span>{formatShortDate(application.created_at)}</span>
-                            </div>
-                        </Link>
-                    ))}
-                />
-            </div>
-            </DashboardSection>
-
-            <DashboardSection
-                sectionId="dashboard-commerce"
-                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
-                eyebrow="التجارة والمخزون"
-                title="الطلبات الأخيرة والمنتجات"
-                description="آخر المبيعات مع أعلى المنتجات والمخزون المنخفض."
-            >
-            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} overflow-hidden`}
-                >
-                    <div className="border-b border-theme-subtle px-6 py-5">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-semibold text-gold/90">المبيعات</p>
-                                <h3 className="mt-2 text-2xl font-black text-theme">آخر الطلبات</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-theme-subtle">
-                                    انتقال سريع إلى تفاصيل الطلب.
-                                </p>
-                            </div>
-                            <Link href="/dashboard/orders" className="text-sm font-medium text-gold hover:text-gold-light">
-                                إدارة الطلبات
-                            </Link>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-[720px] w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-theme-subtle text-right text-xs text-theme-faint">
-                                    <th className="px-6 py-4 font-medium">رقم الطلب</th>
-                                    <th className="px-4 py-4 font-medium">العميل</th>
-                                    <th className="px-4 py-4 font-medium">المبلغ</th>
-                                    <th className="px-4 py-4 font-medium">الحالة</th>
-                                    <th className="px-4 py-4 font-medium">الدفع</th>
-                                    <th className="px-6 py-4 font-medium">التاريخ</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentOrders.length > 0 ? (
-                                    recentOrders.map((order) => (
-                                        <tr
-                                            key={order.id}
-                                            role="link"
-                                            tabIndex={0}
-                                            title="فتح الطلب في مركز العمليات"
-                                            className="cursor-pointer border-b border-theme-faint transition-colors hover:bg-theme-faint"
-                                            onClick={() =>
-                                                router.push(`/dashboard/orders?focus=${encodeURIComponent(order.id)}`)
-                                            }
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter" || e.key === " ") {
-                                                    e.preventDefault();
-                                                    router.push(`/dashboard/orders?focus=${encodeURIComponent(order.id)}`);
-                                                }
-                                            }}
-                                        >
-                                            <td className="px-6 py-4 font-mono text-xs font-bold text-gold">{order.order_number}</td>
-                                            <td className="px-4 py-4 text-theme-soft">{order.buyer?.display_name || "—"}</td>
-                                            <td className="px-4 py-4 font-bold text-theme">{formatCurrency(Number(order.total) || 0)}</td>
-                                            <td className="px-4 py-4">
-                                                <StatusBadge status={order.status} type="order" />
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span
-                                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
-                                                        order.payment_status === "paid"
-                                                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                                            : order.payment_status === "failed"
-                                                                ? "border-red-500/30 bg-red-500/10 text-red-300"
-                                                                : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                                                    }`}
-                                                >
-                                                    {order.payment_status === "paid"
-                                                        ? "مدفوع"
-                                                        : order.payment_status === "failed"
-                                                            ? "فشل"
-                                                            : "معلق"}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs text-theme-faint">{formatShortDate(order.created_at)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-14 text-center text-sm text-theme-subtle">
-                                            لا توجد طلبات حديثة لعرضها.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </motion.section>
-
-                <div className="space-y-5">
-                    <div className="min-h-[360px]">
-                        <TopProductsList products={topProductsList} />
-                    </div>
-                    <div className="min-h-[360px]">
-                        <LowStockWidget items={lowStockList} />
-                    </div>
-                </div>
-            </div>
-            </DashboardSection>
 
 
         </div>
