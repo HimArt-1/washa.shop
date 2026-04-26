@@ -830,7 +830,7 @@ export async function updateUserRole(userId: string, newRole: string) {
     const { supabase, profile: adminProfile } = await requireAdmin();
 
     const role = (newRole || "").trim();
-    const VALID_ROLES: UserRole[] = ["admin", "wushsha", "subscriber", "dev"];
+    const VALID_ROLES: string[] = ["admin", "wushsha", "subscriber", "dev", "shipping_manager", "financial_manager", "support_agent", "booth", "manager"];
     if (!role || !VALID_ROLES.includes(role as UserRole)) {
         return { success: false, error: `الدور غير صالح. الأدوار المسموح بها: ${VALID_ROLES.join(", ")}` };
     }
