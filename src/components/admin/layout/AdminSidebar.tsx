@@ -8,7 +8,7 @@ import {
     LayoutDashboard, BarChart3, Users, TrendingUp,
     ShoppingCart, Image as ImageIcon, ChevronRight, Shield,
     Menu, X, Package, Mail, Settings, Palette, Wand2, Brush,
-    Bell, Ticket, HeadphonesIcon, History, Home, Store,
+    Bell, Ticket, HeadphonesIcon, History, Home, Store, Truck,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import type { UserRole } from "@/types/database";
@@ -71,6 +71,7 @@ export function AdminSidebar({
             title: "التجارة",
             items: [
                 { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
+                { icon: Truck, label: "إدارة الشحن", href: "/dashboard/shipping", roles: ["admin", "dev", "shipping_manager"] },
                 { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory", roles: ["admin", "dev", "shipping_manager"] },
                 { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", roles: ["admin", "dev", "financial_manager"] },
                 { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
