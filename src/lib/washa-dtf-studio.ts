@@ -1,6 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const WASHA_DTF_MODEL = "gemini-2.5-flash-image";
+/**
+ * WASHA AI (DTF) — توليد/تحرير صور عبر @google/genai.
+ * الافتراضي: Nano Banana 2 = gemini-3.1-flash-image-preview
+ * (تراجع: gemini-2.5-flash-image = الأصل "Nano Banana")
+ * اختياري: WASHA_DTF_GENAI_MODEL=... في .env
+ */
+export const WASHA_DTF_MODEL =
+    (process.env.WASHA_DTF_GENAI_MODEL || "gemini-3.1-flash-image-preview").trim() || "gemini-3.1-flash-image-preview";
 
 export function getWashaDtfGenAiClient() {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;

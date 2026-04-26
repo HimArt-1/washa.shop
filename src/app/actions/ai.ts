@@ -3,18 +3,18 @@
 import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
+import { runGeminiImagenDataUrl, runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
+import {
+    FLUX_IMG2IMG,
+    FLUX_SCHNELL,
+    runReplicatePredictions as runReplicatePredictionsCore,
+    isReplicateTokenConfigured,
+} from "@/lib/replicate-predictions";
 
 // ─── مزوّد التوليد: Nano Banana (Gemini 3), Replicate أو Gemini (Imagen 3) ────────
 // ضبط في .env: IMAGE_PROVIDER=nanobanana | replicate | gemini
 const IMAGE_PROVIDER = (process.env.IMAGE_PROVIDER || "nanobanana").toLowerCase();
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-
-const FLUX_SCHNELL = "black-forest-labs/flux-schnell";
-const FLUX_IMG2IMG = "bxclib2/flux_img2img"; // صورة → صورة
-const REPLICATE_WAIT = 120; // ثواني انتظار أقصى
-const IMAGEN_MODEL = "imagen-3.0-generate-002";
-const NANO_BANANA_MODEL = "gemini-3-flash-preview"; // Nano Banana 2
 
 const AI_ALLOWED_ROLES = new Set(["admin", "wushsha", "subscriber"]);
 const AI_LOG_SOURCE = "ai.generation";
@@ -273,175 +273,30 @@ function isGeminiEnabled(): boolean {
 
 /** هل مزوّد التوليد الحالي هو Replicate؟ */
 function isReplicateEnabled(): boolean {
-    return !!REPLICATE_API_TOKEN;
+    return isReplicateTokenConfigured();
 }
 
-/**
- * توليد/تعديل صورة عبر Nano Banana 2 (Gemini 3 Flash Image).
- */
-async function runNanoBanana(prompt: string, imageBase64?: string | null): Promise<string | null> {
-    if (!GEMINI_API_KEY) return null;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${NANO_BANANA_MODEL}:predict`;
-    const instance: any = { prompt };
-    
-    if (imageBase64) {
-        const match = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (match) {
-            instance.image = {
-                bytesBase64Encoded: match[2],
-                mimeType: `image/${match[1] === "jpg" ? "jpeg" : match[1]}`
-            };
-        }
-    }
-
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "x-goog-api-key": GEMINI_API_KEY,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            instances: [instance],
-            parameters: { 
-                sampleCount: 1,
-                aspectRatio: "1:1",
-                outputMimeType: "image/png"
-            },
-        }),
-    });
-
-    if (!res.ok) {
-        const err = await res.text();
-        console.error("Nano Banana API error:", res.status, err);
-        await reportAiOperationalAlert({
-            dispatchKey: `ai:nanobanana_http_error:${res.status}`,
-            bucketMs: 30 * 60 * 1000,
-            severity: "warning",
-            title: "فشل موفر Nano Banana للتوليد",
-            message: "خدمة Nano Banana (Gemini 3) أعادت استجابة فاشلة.",
-            metadata: { provider: "nanobanana", status: res.status },
-        });
-        return null;
-    }
-
-    const data = await res.json();
-    const pred = data.predictions?.[0];
-    const b64 = pred?.bytesBase64Encoded;
-    if (!b64) return null;
-    const mime = pred?.mimeType || "image/png";
-    return `data:${mime};base64,${b64}`;
-}
-
-/**
- * توليد صورة عبر Gemini (Imagen 3). يرجع data URL للصورة.
- * Imagen نص→صورة فقط (لا يدعم صورة مرجعية).
- */
-async function runGeminiImagen(prompt: string): Promise<string | null> {
-    if (!GEMINI_API_KEY) return null;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGEN_MODEL}:predict`;
-    const res = await fetch(url, {
-        method: "POST",
-        headers: {
-            "x-goog-api-key": GEMINI_API_KEY,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            instances: [{ prompt }],
-            parameters: { sampleCount: 1 },
-        }),
-    });
-
-    if (!res.ok) {
-        const err = await res.text();
-        console.error("Gemini Imagen API error:", res.status, err);
-        await reportAiOperationalAlert({
-            dispatchKey: `ai:gemini_http_error:${res.status}`,
-            bucketMs: 30 * 60 * 1000,
-            severity: "warning",
-            title: "فشل موفر Gemini للتوليد",
-            message: "خدمة Gemini Imagen أعادت استجابة فاشلة أثناء توليد صورة.",
-            metadata: {
-                provider: "gemini",
-                status: res.status,
-            },
-        });
-        return null;
-    }
-
-    const data = (await res.json()) as {
-        predictions?: Array<{
-            bytesBase64Encoded?: string;
-            mimeType?: string;
-        }>;
-    };
-    const pred = data.predictions?.[0];
-    const b64 = pred?.bytesBase64Encoded;
-    if (!b64) return null;
-    const mime = pred?.mimeType || "image/png";
-    return `data:${mime};base64,${b64}`;
-}
-
-/**
- * تشغيل نموذج على Replicate (نص → صورة).
- * يدعم Prefer: wait للانتظار حتى انتهاء التوليد.
- */
 async function runReplicatePredictions(params: {
     version: string;
     input: Record<string, unknown>;
 }): Promise<{ urls?: string[] } | null> {
-    if (!REPLICATE_API_TOKEN) return null;
-
-    const res = await fetch("https://api.replicate.com/v1/predictions", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
-            "Content-Type": "application/json",
-            Prefer: `wait=${REPLICATE_WAIT}`,
+    if (!isReplicateTokenConfigured()) return null;
+    return runReplicatePredictionsCore(params, {
+        onHttpError: async (status, err) => {
+            console.error("Replicate API error:", status, err);
+            await reportAiOperationalAlert({
+                dispatchKey: `ai:replicate_http_error:${status}`,
+                bucketMs: 30 * 60 * 1000,
+                severity: "warning",
+                title: "فشل موفر Replicate للتوليد",
+                message: "خدمة Replicate أعادت استجابة فاشلة أثناء تنفيذ طلب توليد.",
+                metadata: {
+                    provider: "replicate",
+                    status,
+                },
+            });
         },
-        body: JSON.stringify({
-            version: params.version,
-            input: params.input,
-        }),
     });
-
-    if (!res.ok) {
-        const err = await res.text();
-        console.error("Replicate API error:", res.status, err);
-        await reportAiOperationalAlert({
-            dispatchKey: `ai:replicate_http_error:${res.status}`,
-            bucketMs: 30 * 60 * 1000,
-            severity: "warning",
-            title: "فشل موفر Replicate للتوليد",
-            message: "خدمة Replicate أعادت استجابة فاشلة أثناء تنفيذ طلب توليد.",
-            metadata: {
-                provider: "replicate",
-                status: res.status,
-            },
-        });
-        throw new Error(err || "Replicate request failed");
-    }
-
-    const data = (await res.json()) as {
-        status?: string;
-        output?: string | string[];
-        error?: string;
-    };
-
-    if (data.status !== "succeeded") {
-        throw new Error(data.error || "التوليد لم يكتمل");
-    }
-
-    const output = data.output;
-    if (Array.isArray(output)) {
-        const urls = output.filter((value): value is string => typeof value === "string");
-        return { urls };
-    }
-    if (typeof output === "string") {
-        return { urls: [output] };
-    }
-    return null;
 }
 
 /**
@@ -503,7 +358,7 @@ export async function generateImage(prompt: string, style: string): Promise<Gene
 
         if (isNanoBananaEnabled()) {
             provider = "nanobanana";
-            const dataUrl = await runNanoBanana(fullPrompt);
+            const dataUrl = await runNanoBananaDataUrl(fullPrompt);
             if (dataUrl) {
                 await logAiEvent(access.supabase, access.profileId, "info", "AI image generated (Nano Banana)", {
                     action: "generateImage",
@@ -516,7 +371,7 @@ export async function generateImage(prompt: string, style: string): Promise<Gene
 
         if (isGeminiEnabled()) {
             provider = "gemini";
-            const dataUrl = await runGeminiImagen(fullPrompt);
+            const dataUrl = await runGeminiImagenDataUrl(fullPrompt);
             if (dataUrl) {
                 await logAiEvent(access.supabase, access.profileId, "info", "AI image generated (Imagen)", {
                     action: "generateImage",
@@ -640,7 +495,7 @@ export async function generateDesignForPrint(
             // محاولة استخدام Nano Banana أولاً للتعديل (Native)
             if (isNanoBananaEnabled()) {
                 provider = "nanobanana";
-                const dataUrl = await runNanoBanana(fullPrompt, imageCheck.imageBase64);
+                const dataUrl = await runNanoBananaDataUrl(fullPrompt, imageCheck.imageBase64);
                 if (dataUrl) {
                     await logAiEvent(access.supabase, access.profileId, "info", "AI design edited (Nano Banana)", {
                         action: "generateDesignForPrint",
@@ -698,7 +553,7 @@ export async function generateDesignForPrint(
 
         if (isNanoBananaEnabled()) {
             provider = "nanobanana";
-            const dataUrl = await runNanoBanana(fullPrompt);
+            const dataUrl = await runNanoBananaDataUrl(fullPrompt);
             if (dataUrl) {
                 await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated (Nano Banana)", {
                     action: "generateDesignForPrint",
@@ -713,7 +568,7 @@ export async function generateDesignForPrint(
 
         if (isGeminiEnabled()) {
             provider = "gemini";
-            const dataUrl = await runGeminiImagen(fullPrompt);
+            const dataUrl = await runGeminiImagenDataUrl(fullPrompt);
             if (dataUrl) {
                 await logAiEvent(access.supabase, access.profileId, "info", "AI print design generated (Imagen)", {
                     action: "generateDesignForPrint",

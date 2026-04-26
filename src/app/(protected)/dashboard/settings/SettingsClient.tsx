@@ -30,7 +30,6 @@ type VisibilityState = {
     hero_washa_ai_button: boolean;
     hero_join_artist_button: boolean;
     design_piece: boolean;
-    design_piece_ai_switch: boolean;
     design_piece_dtf_studio_switch: boolean;
     design_piece_generation_public: boolean;
 };
@@ -296,7 +295,6 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
         hero_join_artist_button: settings.visibility.hero_join_artist_button ?? false,
         design_piece: settings.visibility.design_piece ?? true,
-        design_piece_ai_switch: settings.visibility.design_piece_ai_switch ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
         design_piece_generation_public: settings.visibility.design_piece_generation_public ?? false,
     });
@@ -519,11 +517,6 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         label="صمم قطعتك (Design Your Piece)"
                         checked={visibility.design_piece ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece: v })}
-                    />
-                    <Toggle
-                        label="اختصار WASHA STUDIO داخل صمم قطعتك"
-                        checked={visibility.design_piece_ai_switch ?? true}
-                        onChange={(v) => setVisibility({ ...visibility, design_piece_ai_switch: v })}
                     />
                     <Toggle
                         label="اختصار WASHA AI داخل صمم قطعتك"

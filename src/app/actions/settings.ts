@@ -51,7 +51,6 @@ export type SiteSettingsType = {
         hero_washa_ai_button?: boolean;
         hero_join_artist_button?: boolean;
         design_piece?: boolean;
-        design_piece_ai_switch?: boolean;
         design_piece_dtf_studio_switch?: boolean;
         design_piece_generation_public?: boolean;
     };
@@ -115,7 +114,6 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         hero_washa_ai_button: true,
         hero_join_artist_button: false,
         design_piece: true,
-        design_piece_ai_switch: true,
         design_piece_dtf_studio_switch: true,
         design_piece_generation_public: false,
     },
@@ -265,7 +263,6 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         hero_washa_ai_button: coerceBooleanSetting(visibility.hero_washa_ai_button, fallback.hero_washa_ai_button ?? true),
         hero_join_artist_button: coerceBooleanSetting(visibility.hero_join_artist_button, fallback.hero_join_artist_button ?? false),
         design_piece: coerceBooleanSetting(visibility.design_piece, fallback.design_piece ?? true),
-        design_piece_ai_switch: coerceBooleanSetting(visibility.design_piece_ai_switch, fallback.design_piece_ai_switch ?? true),
         design_piece_dtf_studio_switch: coerceBooleanSetting(visibility.design_piece_dtf_studio_switch, fallback.design_piece_dtf_studio_switch ?? true),
         design_piece_generation_public: coerceBooleanSetting(
             visibility.design_piece_generation_public,
@@ -856,7 +853,7 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
     revalidatePath("/");
     revalidatePath("/account");
     revalidatePath("/design");
-    revalidatePath("/design/washa-studio");
+    revalidatePath("/design/preorder");
     revalidatePath("/design/washa-ai");
     revalidatePath("/studio");
     if (key === "operational_rules") {
@@ -1261,6 +1258,7 @@ export async function createExclusiveDesign(formData: {
     if (error || !data) return { success: false, error: error?.message || "تعذر إنشاء التصميم" };
     revalidatePath("/dashboard/exclusive-designs");
     revalidatePath("/design");
+    revalidatePath("/design/preorder");
     return { success: true, design: data };
 }
 
@@ -1284,6 +1282,7 @@ export async function updateExclusiveDesign(id: string, formData: Partial<{
     if (error || !data) return { success: false, error: error?.message || "تعذر تحديث التصميم" };
     revalidatePath("/dashboard/exclusive-designs");
     revalidatePath("/design");
+    revalidatePath("/design/preorder");
     return { success: true, design: data };
 }
 
@@ -1296,6 +1295,7 @@ export async function deleteExclusiveDesign(id: string) {
     if (error) return { success: false, error: error.message };
     revalidatePath("/dashboard/exclusive-designs");
     revalidatePath("/design");
+    revalidatePath("/design/preorder");
     return { success: true };
 }
 

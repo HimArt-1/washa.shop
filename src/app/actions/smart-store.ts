@@ -696,6 +696,8 @@ export async function restoreDtfStudioCreativeCatalog() {
         }));
 
         revalidatePath("/dashboard/smart-store");
+        revalidatePath("/design");
+        revalidatePath("/design/preorder");
         revalidatePath("/design/washa-ai");
         revalidatePath("/design/washa-ai/app");
         revalidatePath("/api/washa-dtf-studio/config");

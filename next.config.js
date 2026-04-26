@@ -71,6 +71,15 @@ module.exports = (phase) => {
         },
       ];
     },
+    async redirects() {
+      return [
+        {
+          source: '/design/washa-studio',
+          destination: '/design',
+          permanent: true,
+        },
+      ];
+    },
     async headers() {
       return [
         {

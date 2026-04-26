@@ -131,8 +131,9 @@ interface Props {
     garmentStudioMockups: GarmentStudioMockup[];
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
-    aiModelShortcutEnabled?: boolean;
     dtfStudioShortcutEnabled?: boolean;
+    /** مسار «طلب مسبق» من بوابة /design — نص أوضح وبدون اختصار مكرر لـ WASHA AI */
+    variant?: "default" | "preorder";
 }
 
 function getPresetOverrideLabels(state: WizardState) {
@@ -165,8 +166,8 @@ export function DesignYourPieceWizard({
     garmentStudioMockups,
     presets,
     compatibilities,
-    aiModelShortcutEnabled = false,
     dtfStudioShortcutEnabled = false,
+    variant = "default",
 }: Props) {
     const { isSignedIn } = useAuth();
     const { addItem, toggleCart } = useCartStore();
@@ -604,16 +605,6 @@ export function DesignYourPieceWizard({
                         </span>
                         نموذج تجريبي قيد التطوير (Beta)
                     </div>
-                    {aiModelShortcutEnabled ? (
-                        <Link
-                            href="/design/washa-studio"
-                            className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-200 transition-colors hover:border-emerald-300/35 hover:bg-emerald-500/15"
-                        >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            افتح WASHA STUDIO
-                            <ArrowLeft className="h-3.5 w-3.5" />
-                        </Link>
-                    ) : null}
                     {dtfStudioShortcutEnabled ? (
                         <Link
                             href="/design/washa-ai"
@@ -628,8 +619,13 @@ export function DesignYourPieceWizard({
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
                     صمّم قطعتك بنفسك
                 </h1>
+                {variant === "preorder" ? (
+                    <p className="text-gold/90 mt-2 text-xs font-bold sm:text-sm">مسار طلب مسبق</p>
+                ) : null}
                 <p className="text-theme-subtle mt-3 text-sm sm:text-base max-w-xl mx-auto">
-                    اختر قطعتك ولونها، حدد نمط التصميم، وأرسل طلبك — ننفذه لك بالضبط
+                    {variant === "preorder"
+                        ? "اختر القطعة واللون والمقاس والنمط، ثم أرسل طلبك — يراجعه فريق التصميم ويُحدَّث على شاشة التتبع حتى الاعتماد."
+                        : "اختر قطعتك ولونها، حدد نمط التصميم، وأرسل طلبك — ننفذه لك بالضبط"}
                 </p>
             </motion.div>
 
@@ -1243,11 +1239,10 @@ function StepMethod({
     return (
         <>
             <StepHeader title="طريقة التصميم" desc="كيف تبغى تصمم قطعتك؟" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {[
                     { id: "from_text" as const, label: "من نص", desc: "صف التصميم اللي تبغاه بالكلمات", icon: Type, emoji: "✍️" },
                     { id: "from_image" as const, label: "من صورة", desc: "ارفع صورة مرجعية لتصميمك", icon: ImageIcon, emoji: "🖼️" },
-                    { id: "studio" as const, label: "ستيديو وشّى", desc: "اختر تصميماً جاهزاً ومميزاً", icon: Sparkles, emoji: "✨" },
                 ].map((m) => {
                     const isActive = selected === m.id;
                     return (

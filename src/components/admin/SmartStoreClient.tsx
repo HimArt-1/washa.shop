@@ -122,7 +122,7 @@ const DEFAULT_TAB_BY_WORKSPACE: Record<WorkspaceId, TabId> = {
 // ─── Component ──────────────────────────────────────────
 
 export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
-    const [workspace, setWorkspace] = useState<WorkspaceId>("designPieceLab");
+    const [workspace, setWorkspace] = useState<WorkspaceId>("dtfStudio");
     const [designPieceTab, setDesignPieceTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.designPieceLab);
     const [dtfStudioTab, setDtfStudioTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.dtfStudio);
     const [restoreLoading, setRestoreLoading] = useState(false);
@@ -221,19 +221,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 lg:grid-cols-2">
-                <WorkspaceCard
-                    active={workspace === "designPieceLab"}
-                    icon={Sparkles}
-                    title="WASHA STUDIO"
-                    description="واجهة الطلبات التجريبية التي ترسل التصميم للدعم الفني مع presets وخريطة ذكاء ومرجعيات المنتجات."
-                    stats={[
-                        `${studioItems.length} منتجات مرجعية`,
-                        `${presets.length} presets`,
-                        `${compatibilities.length} قواعد ذكاء`,
-                    ]}
-                    onClick={() => setWorkspace("designPieceLab")}
-                />
+            <div className="grid gap-4 lg:grid-cols-1">
                 <WorkspaceCard
                     active={workspace === "dtfStudio"}
                     icon={Camera}

@@ -52,6 +52,7 @@ export async function customerSendOrderMessage(orderId: string, message: string,
     }
 
     revalidatePath("/design");
+    revalidatePath("/design/preorder");
     revalidatePath(`/design/tracker?order=${orderId}`);
     return { success: true };
 }

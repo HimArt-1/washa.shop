@@ -54,6 +54,14 @@ IMAGE_PROVIDER=gemini
 
 ---
 
+## WASHA AI (مسار DTF / `/design/washa-ai`)
+
+- يدعم نفس **نمط** الاختيار عبر `WASHA_DTF_IMAGE_PROVIDER`، وإن تُرك فارغاً يُستخدَم `IMAGE_PROVIDER`، وإن بقي فارغاً يُلجأ إلى **`genai`** (نموذج `gemini-2.5-flash-image` عبر `@google/genai`).
+- القيم: **`genai`** (افتراضي واضح) | **`replicate`** (Flux) | **`nanobanana`** | **`gemini`**.
+- **الكود:** `src/lib/washa-dtf-image-router.ts` + `src/lib/replicate-predictions.ts` + `src/lib/gemini-rest-image.ts`
+
+---
+
 ## ملخص تقني
 
 - **الكود:** `src/app/actions/ai.ts`
