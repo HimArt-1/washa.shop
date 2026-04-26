@@ -410,9 +410,17 @@ export default function RootLayout({
                     "@id": `${SITE_URL}/#organization`,
                     name: "وشّى | WASHA",
                     url: SITE_URL,
-                    logo: `${SITE_URL}/icon-512.png`,
+                    logo: {
+                      "@type": "ImageObject",
+                      url: `${SITE_URL}/icon-512.png`,
+                      width: 512,
+                      height: 512,
+                    },
                     description: "منصة فنية رقمية للأزياء — فنٌ يرتدى",
-                    sameAs: [],
+                    sameAs: [
+                      "https://instagram.com/washa.shop",
+                      "https://twitter.com/washa_shop",
+                    ],
                   },
                   {
                     "@type": "WebSite",
@@ -423,8 +431,25 @@ export default function RootLayout({
                     inLanguage: "ar",
                     potentialAction: {
                       "@type": "SearchAction",
-                      target: `${SITE_URL}/search?q={search_term_string}`,
+                      target: {
+                        "@type": "EntryPoint",
+                        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+                      },
                       "query-input": "required name=search_term_string",
+                    },
+                  },
+                  {
+                    "@type": "OnlineStore",
+                    "@id": `${SITE_URL}/store/#store`,
+                    name: "متجر وشّى",
+                    url: `${SITE_URL}/store`,
+                    description: "متجر أزياء فنية حصري — تيشرتات، هودي، وملابس مطبوعة بتصاميم فريدة",
+                    currenciesAccepted: "SAR",
+                    paymentAccepted: "Credit Card, Apple Pay",
+                    priceRange: "٪٪",
+                    address: {
+                      "@type": "PostalAddress",
+                      addressCountry: "SA",
                     },
                   },
                 ],

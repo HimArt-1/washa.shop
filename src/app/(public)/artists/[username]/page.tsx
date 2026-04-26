@@ -6,6 +6,7 @@ import { Metadata } from "next";
 import { Globe, ExternalLink } from "lucide-react";
 import { FollowArtistButton } from "@/components/artist/FollowArtistButton";
 import { getArtistFollowersCount } from "@/app/actions/social";
+import { buildPersonSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 
 // ─── Fetch Artist by Username ───────────────────────────────
 
@@ -42,11 +43,28 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     const artist = await getArtistByUsername(username);
     if (!artist) return { title: "غير موجود — وشّى" };
 
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+    const canonical = `${siteUrl}/artists/${username}`;
+    const desc = artist.bio || `اكتشف أعمال الفنان ${artist.display_name} في منصة وشّى`;
+    const ogImage = artist.avatar_url || `${siteUrl}/og-default.jpg`;
+
     return {
         title: `${artist.display_name} — وشّى`,
-        description: artist.bio || `صفحة الفنان ${artist.display_name} على وشّى`,
+        description: desc,
+        alternates: { canonical },
         openGraph: {
-            images: artist.avatar_url ? [artist.avatar_url] : [],
+            title: `${artist.display_name} | وشّى`,
+            description: desc,
+            url: canonical,
+            type: "profile",
+            siteName: "وشّى | WASHA",
+            images: [{ url: ogImage, width: 400, height: 400, alt: artist.display_name }],
+        },
+        twitter: {
+            card: "summary",
+            title: `${artist.display_name} | وشّى`,
+            description: desc,
+            images: [ogImage],
         },
     };
 }
@@ -77,6 +95,21 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
 
     return (
         <div className="min-h-screen bg-bg" dir="rtl">
+            {/* JSON-LD Structured Data */}
+            <JsonLd schema={buildPersonSchema({
+                username: artist.username,
+                display_name: artist.display_name,
+                bio: artist.bio,
+                avatar_url: artist.avatar_url,
+                total_artworks: artworks.length,
+                total_sales: artist.total_sales || 0,
+                social_links: artist.social_links as any,
+            })} />
+            <JsonLd schema={buildBreadcrumbSchema([
+                { name: "الرئيسية", href: "/" },
+                { name: "الفنانون", href: "/artists" },
+                { name: artist.display_name, href: `/artists/${artist.username}` },
+            ])} />
             {/* ─── Hero / Cover ─── */}
             <div className="relative h-52 sm:h-64 md:h-80 bg-gradient-to-b from-gold/[0.05] to-transparent">
                 {artist.cover_url && (

@@ -9,6 +9,7 @@ import { ProductReviews } from "@/components/reviews/ProductReviews";
 import { getSupabaseServerClient } from "@/lib/supabase";
 import { RecentlyViewedTracker } from "@/components/store/RecentlyViewedTracker";
 import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection";
+import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -17,28 +18,35 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const product = await getProductById(id);
     if (!product) return { title: "غير موجود — وشّى" };
 
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+    const canonical = `${siteUrl}/products/${id}`;
+    const desc = product.description || `${product.title} — منتج حصري في متجر وشّى للأزياء الفنية`;
+
     return {
         title: `${product.title} — وشّى`,
-        description: product.description || `منتج حصري في متجر وشّى`,
+        description: desc,
+        alternates: { canonical },
         openGraph: {
             title: `${product.title} | وشّى`,
-            description: product.description || `تصميم فريد وأزياء عصرية. اكتشف تفاصيل المنتج الآن في وشّى.`,
+            description: desc,
+            url: canonical,
+            type: "website",
+            siteName: "وشّى | WASHA",
             images: [
                 {
                     url: product.image_url,
-                    width: 1080,
-                    height: 1080,
+                    width: 1200,
+                    height: 1200,
                     alt: product.title,
                 }
             ],
-            type: "website",
         },
         twitter: {
             card: "summary_large_image",
             title: `${product.title} | وشّى`,
-            description: product.description || `اكتشف هذا التصميم الحصري في وشّى.`,
+            description: desc,
             images: [product.image_url],
-        }
+        },
     };
 }
 
@@ -105,6 +113,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
     return (
         <div className="min-h-[60vh] bg-bg pb-12 pt-5 sm:pb-16 sm:pt-8" dir="rtl">
+            {/* JSON-LD Structured Data */}
+            <JsonLd schema={buildProductSchema({
+                id: product.id,
+                title: product.title,
+                description: product.description,
+                price: product.price,
+                original_price: product.original_price,
+                currency: product.currency,
+                image_url: product.image_url,
+                images: product.images || [],
+                in_stock: isCurrentlyInStock,
+                rating: product.rating,
+                reviews_count: product.reviews_count,
+                badge: product.badge,
+                type: product.type,
+                artist: (product as any).artist ?? null,
+            })} />
+            <JsonLd schema={buildBreadcrumbSchema([
+                { name: "الرئيسية", href: "/" },
+                { name: "المتجر", href: "/store" },
+                { name: product.title, href: `/products/${product.id}` },
+            ])} />
             {/* Track this visit in localStorage */}
             <RecentlyViewedTracker product={{ id: product.id, title: product.title, price: product.price, image_url: product.image_url, type: product.type }} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6">

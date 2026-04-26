@@ -7,6 +7,7 @@ import { Metadata } from "next";
 import { ArtworkActions } from "./ArtworkActions";
 import { ArtworkReviews } from "@/components/reviews/ArtworkReviews";
 import { ChevronLeft, Eye, Sparkles } from "lucide-react";
+import { buildArtworkSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -15,10 +16,27 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const artwork = await getArtworkById(id);
     if (!artwork) return { title: "غير موجود — وشّى" };
 
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+    const canonical = `${siteUrl}/artworks/${id}`;
+    const artistName = (artwork as any).artist?.display_name || "فنان";
+    const desc = artwork.description || `عمل فني حصري بواسطة ${artistName} — اكتشف المعرض في وشّى`;
+
     return {
         title: `${artwork.title} — وشّى`,
-        description: artwork.description || `عمل فني بواسطة ${artwork.artist?.display_name}`,
+        description: desc,
+        alternates: { canonical },
         openGraph: {
+            title: `${artwork.title} | وشّى`,
+            description: desc,
+            url: canonical,
+            type: "website",
+            siteName: "وشّى | WASHA",
+            images: [{ url: artwork.image_url, width: 1200, height: 1200, alt: artwork.title }],
+        },
+        twitter: {
+            card: "summary_large_image",
+            title: `${artwork.title} | وشّى`,
+            description: desc,
             images: [artwork.image_url],
         },
     };
@@ -38,6 +56,24 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
 
     return (
         <div className="min-h-[60vh] bg-theme pt-6 sm:pt-8 pb-16 sm:pb-24" dir="rtl">
+            {/* JSON-LD Structured Data */}
+            <JsonLd schema={buildArtworkSchema({
+                id: artwork.id,
+                title: artwork.title,
+                description: artwork.description,
+                image_url: artwork.image_url,
+                price: artwork.price,
+                currency: artwork.currency,
+                medium: artwork.medium,
+                year: artwork.year,
+                likes_count: artwork.likes_count,
+                artist: (artwork as any).artist ?? null,
+            })} />
+            <JsonLd schema={buildBreadcrumbSchema([
+                { name: "الرئيسية", href: "/" },
+                { name: "المعرض", href: "/gallery" },
+                { name: artwork.title, href: `/artworks/${artwork.id}` },
+            ])} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
                 {/* ─── Breadcrumb ─── */}
