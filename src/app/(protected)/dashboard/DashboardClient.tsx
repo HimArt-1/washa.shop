@@ -8,13 +8,9 @@ import {
     ArrowUpRight,
     Bell,
     Brush,
-    Clock3,
     DollarSign,
     FileText,
     HeadphonesIcon,
-    LayoutList,
-    Mail,
-    Package,
     ShoppingCart,
     TrendingUp,
     Truck,
@@ -284,15 +280,7 @@ function getHealthMeta(score: number) {
     };
 }
 
-const DASHBOARD_QUICK_NAV = [
-    { id: "dashboard-hero", label: "الملخص" },
-    { id: "dashboard-kpi", label: "المؤشرات" },
-    { id: "dashboard-analytics", label: "التحليل" },
-    { id: "dashboard-lanes", label: "المراكز" },
-    { id: "dashboard-queues", label: "الطوابير" },
-    { id: "dashboard-commerce", label: "المبيعات" },
-    { id: "dashboard-community", label: "المجتمع" },
-] as const;
+
 
 type PriorityEntry = {
     key: string;
@@ -387,57 +375,7 @@ function priorityToneClass(tone: PriorityEntry["tone"]) {
     return "border-theme-subtle bg-theme-faint hover:border-theme-soft hover:bg-theme-subtle";
 }
 
-const quickNavLinkClass =
-    "rounded-full border border-transparent bg-theme-faint/80 px-3 py-1.5 text-xs font-semibold text-theme-subtle transition-colors hover:border-gold/25 hover:bg-theme-subtle hover:text-theme";
 
-function DashboardQuickNav() {
-    const primary = DASHBOARD_QUICK_NAV.slice(0, 4);
-    const extra = DASHBOARD_QUICK_NAV.slice(4);
-
-    return (
-        <nav
-            aria-label="انتقال سريع داخل لوحة المؤشرات"
-            className="sticky top-0 z-20 -mx-1 mb-1 rounded-[22px] border border-theme-subtle/55 bg-[color:color-mix(in_srgb,var(--wusha-surface)_90%,transparent)] px-2 py-2.5 shadow-sm backdrop-blur-md sm:-mx-2 sm:px-3"
-        >
-            <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-1.5 text-[11px] font-bold text-theme-faint">
-                    <LayoutList className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    انتقال
-                </span>
-
-                {primary.map((item) => (
-                    <a key={item.id} href={`#${item.id}`} className={quickNavLinkClass}>
-                        {item.label}
-                    </a>
-                ))}
-
-                <details className="group relative sm:hidden">
-                    <summary className="list-none cursor-pointer rounded-full border border-theme-subtle bg-theme-faint/90 px-3 py-1.5 text-xs font-semibold text-gold transition-colors marker:content-none hover:border-gold/30 [&::-webkit-details-marker]:hidden">
-                        المزيد
-                        <span className="mr-1 text-[10px] text-theme-faint group-open:rotate-180">▼</span>
-                    </summary>
-                    <div className="absolute end-0 top-[calc(100%+6px)] z-30 flex min-w-[10rem] flex-col gap-1 rounded-2xl border border-theme-subtle bg-[color:var(--wusha-surface)] p-2 shadow-lg">
-                        {extra.map((item) => (
-                            <a
-                                key={item.id}
-                                href={`#${item.id}`}
-                                className="rounded-xl px-3 py-2 text-sm font-semibold text-theme-subtle transition-colors hover:bg-theme-faint hover:text-theme"
-                            >
-                                {item.label}
-                            </a>
-                        ))}
-                    </div>
-                </details>
-
-                {extra.map((item) => (
-                    <a key={item.id} href={`#${item.id}`} className={cn(quickNavLinkClass, "hidden sm:inline-flex")}>
-                        {item.label}
-                    </a>
-                ))}
-            </div>
-        </nav>
-    );
-}
 
 function PriorityStrip({ entries }: { entries: PriorityEntry[] }) {
     return (
@@ -626,71 +564,7 @@ function RevenueRunway({
     );
 }
 
-function OperationLaneCard({
-    title,
-    description,
-    primaryValue,
-    primaryLabel,
-    secondary,
-    icon: Icon,
-    href,
-    accent,
-}: {
-    title: string;
-    description: string;
-    primaryValue: number;
-    primaryLabel: string;
-    secondary: Array<{ label: string; value: number }>;
-    icon: React.ComponentType<{ className?: string }>;
-    href: string;
-    accent: string;
-}) {
-    return (
-        <Link href={href}>
-            <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${subtlePanelClass} group h-full p-5 transition-all duration-300 hover:-translate-y-1 hover:border-theme-soft`}
-            >
-                <div className="mb-5 flex items-start justify-between gap-4">
-                    <div>
-                        <h3 className="text-lg font-bold text-theme">{title}</h3>
-                        <p className="mt-2 text-sm leading-6 text-theme-subtle">{description}</p>
-                    </div>
-                    <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
-                        style={{
-                            backgroundColor: `${accent}18`,
-                            borderColor: `${accent}33`,
-                            color: accent,
-                        }}
-                    >
-                        <Icon className="h-5 w-5" />
-                    </div>
-                </div>
 
-                <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                    <p className="text-xs text-theme-faint">{primaryLabel}</p>
-                    <p className="mt-2 text-3xl font-black text-theme">{primaryValue}</p>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                    {secondary.map((item) => (
-                        <div key={item.label} className="flex items-center justify-between text-sm">
-                            <span className="text-theme-subtle">{item.label}</span>
-                            <span className="font-bold text-theme">{item.value}</span>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="mt-5 flex items-center justify-between border-t border-theme-subtle pt-4 text-sm text-theme-subtle">
-                    <span>افتح المركز</span>
-                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </div>
-            </motion.div>
-        </Link>
-    );
-}
 
 function QueueCard({
     title,
@@ -769,154 +643,111 @@ export function DashboardClient({
 
     return (
         <div className="space-y-10 sm:space-y-12">
-            <DashboardQuickNav />
-            <div id="dashboard-hero" className="grid scroll-mt-24 gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
-                    aria-labelledby="dashboard-hero-heading"
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_32%)]" />
-                    <div className="relative space-y-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
-                                مركز التشغيل
-                            </span>
-                            <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                تحديث مباشر · {lastUpdatedLabel}
-                            </span>
-                        </div>
-
-                        <div className="max-w-3xl">
-                            <p className="text-xs font-semibold text-gold/90">نظرة تنفيذية</p>
-                            <h2
-                                id="dashboard-hero-heading"
-                                className="mt-2 text-2xl font-black leading-snug text-theme sm:text-3xl md:text-[1.65rem] md:leading-tight"
-                            >
-                                صورة واحدة للإيراد والطوابير والضغط التشغيلي
+            <motion.section
+                id="dashboard-hero"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${panelClass} scroll-mt-24 p-5 sm:p-6 md:p-7`}
+                aria-labelledby="dashboard-hero-heading"
+            >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.18),transparent_38%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.06),transparent_32%)]" />
+                <div className="relative space-y-6">
+                    {/* ─── Header Row: Title + Health Badge ─── */}
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="max-w-2xl">
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                                <span className="rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
+                                    نبض المنصة
+                                </span>
+                                <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
+                                    {lastUpdatedLabel}
+                                </span>
+                            </div>
+                            <h2 id="dashboard-hero-heading" className="text-xl font-black leading-snug text-theme sm:text-2xl">
+                                ملخص التشغيل — ما يحتاج انتباهك الآن
                             </h2>
-                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle md:text-[15px]">
-                                اختصر التنقل بين الصفحات: راقب ما يحتاج تدخلًا الآن، ثم انتقل بالاختصارات أدناه.
-                            </p>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
-                                <p className="text-xs text-theme-faint">يحتاج تدخلًا الآن</p>
-                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{attentionNow}</p>
-                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">حرج، دعم عاجل، مدفوعات، مخزون منخفض</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
-                                <p className="text-xs text-theme-faint">طوابير نشطة</p>
-                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{activeQueues}</p>
-                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">طلبات، تنفيذ، دعم، تصميم</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
-                                <p className="text-xs text-theme-faint">مجتمع المنصة</p>
-                                <p className="mt-2 text-3xl font-black tabular-nums text-theme">{managedCommunity}</p>
-                                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">وشّايون ومشتركون (دون النشرة)</p>
-                            </div>
-                        </div>
-
-                        {dataQuality.degraded ? (
-                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
-                                <div className="flex items-start gap-3">
-                                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                                    <div>
-                                        <p className="text-sm font-bold text-amber-200">بعض بيانات الداشبورد عادت بوضع احتياطي</p>
-                                        <p className="mt-1 text-xs leading-6 text-amber-100/85">
-                                            {dataQuality.issues.join(" ")}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                            {[
-                                { label: "الطلبات", hint: `${controlTower.ops.ordersNeedingReview} تحتاج مراجعة`, href: "/dashboard/orders", icon: ShoppingCart },
-                                { label: "الدعم الفني", hint: `${controlTower.ops.supportOpen} تذكرة مفتوحة`, href: "/dashboard/support", icon: HeadphonesIcon },
-                                { label: "طلبات التصميم", hint: `${controlTower.ops.designNew} جديدة الآن`, href: "/dashboard/design-orders", icon: Brush },
-                                { label: "التنبيهات", hint: `${controlTower.ops.alertsUnread} غير مقروءة`, href: "/dashboard/notifications", icon: Bell },
-                            ].map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_72%,transparent)] text-theme-soft">
-                                            <item.icon className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-theme">{item.label}</p>
-                                            <p className="text-xs text-theme-subtle">{item.hint}</p>
-                                        </div>
-                                    </div>
-                                    <ArrowUpRight className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                </motion.section>
-
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className={`${panelClass} p-5 sm:p-6`}
-                >
-                    <div className="space-y-5">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-semibold text-gold/90">الصحة التشغيلية</p>
-                                <h3 className="mt-2 text-2xl font-black text-theme">مؤشر سلامة التشغيل</h3>
-                                <p className="mt-2 text-sm leading-relaxed text-theme-subtle">{healthMeta.summary}</p>
-                            </div>
-                            <Clock3 className="mt-1 h-5 w-5 shrink-0 text-theme-faint" aria-hidden />
-                        </div>
-
-                        <div className="flex items-center justify-center py-3">
+                        {/* Compact Health Gauge */}
+                        <div className="flex items-center gap-4 rounded-2xl border border-theme-subtle bg-theme-faint/80 px-5 py-4 lg:min-w-[260px]">
                             <div
-                                className="grid h-36 w-36 place-items-center rounded-full p-3 sm:h-44 sm:w-44"
-                                style={{
-                                    background: `conic-gradient(${healthMeta.accent} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)`,
-                                }}
+                                className="grid h-16 w-16 shrink-0 place-items-center rounded-full p-1"
+                                style={{ background: `conic-gradient(${healthMeta.accent} ${healthScore * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}
                                 role="img"
-                                aria-label={`مؤشر سلامة التشغيل ${healthScore} من مئة، الحالة: ${healthMeta.label}`}
+                                aria-label={`سلامة التشغيل ${healthScore}%`}
                             >
-                                <div className="grid h-full w-full place-items-center rounded-full border border-theme-subtle bg-[color:var(--wusha-surface)]">
-                                    <div className="text-center">
-                                        <p className={`text-sm font-semibold ${healthMeta.className}`}>{healthMeta.label}</p>
-                                        <p className="mt-2 text-5xl font-black text-theme">{healthScore}</p>
-                                        <p className="mt-1 text-xs text-theme-faint">من 100</p>
-                                    </div>
+                                <div className="grid h-full w-full place-items-center rounded-full bg-[color:var(--wusha-surface)]">
+                                    <span className="text-lg font-black text-theme">{healthScore}</span>
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">حرج غير مقروء</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{controlTower.ops.alertsCritical}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">مخزون منخفض</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{lowStockCount}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">مدفوعات معلقة</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{controlTower.ops.pendingPayments}</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs text-theme-faint">دعم عاجل</p>
-                                <p className="mt-2 text-2xl font-black text-theme">{controlTower.ops.supportUrgent}</p>
+                            <div>
+                                <p className={`text-sm font-bold ${healthMeta.className}`}>{healthMeta.label}</p>
+                                <p className="mt-1 text-xs leading-relaxed text-theme-subtle">{healthMeta.summary}</p>
                             </div>
                         </div>
                     </div>
-                </motion.section>
-            </div>
+
+                    {/* ─── Key Metrics Row ─── */}
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                            <p className="text-xs text-theme-faint">يحتاج تدخلًا</p>
+                            <p className="mt-1.5 text-2xl font-black tabular-nums text-theme">{attentionNow}</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                            <p className="text-xs text-theme-faint">طوابير نشطة</p>
+                            <p className="mt-1.5 text-2xl font-black tabular-nums text-theme">{activeQueues}</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                            <p className="text-xs text-theme-faint">مجتمع المنصة</p>
+                            <p className="mt-1.5 text-2xl font-black tabular-nums text-theme">{managedCommunity}</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint/80 p-4">
+                            <p className="text-xs text-theme-faint">مدفوعات معلقة</p>
+                            <p className="mt-1.5 text-2xl font-black tabular-nums text-theme">{controlTower.ops.pendingPayments}</p>
+                        </div>
+                    </div>
+
+                    {/* ─── Data Quality Warning ─── */}
+                    {dataQuality.degraded ? (
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+                                <div>
+                                    <p className="text-sm font-bold text-amber-200">بعض البيانات في وضع احتياطي</p>
+                                    <p className="mt-1 text-xs leading-6 text-amber-100/85">{dataQuality.issues.join(" ")}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* ─── Quick Shortcuts ─── */}
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {[
+                            { label: "الطلبات", hint: `${controlTower.ops.ordersNeedingReview} تحتاج مراجعة`, href: "/dashboard/orders", icon: ShoppingCart },
+                            { label: "الدعم الفني", hint: `${controlTower.ops.supportOpen} تذكرة مفتوحة`, href: "/dashboard/support", icon: HeadphonesIcon },
+                            { label: "طلبات التصميم", hint: `${controlTower.ops.designNew} جديدة الآن`, href: "/dashboard/design-orders", icon: Brush },
+                            { label: "التنبيهات", hint: `${controlTower.ops.alertsUnread} غير مقروءة`, href: "/dashboard/notifications", icon: Bell },
+                        ].map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className="group flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 transition-all hover:border-gold/20 hover:bg-theme-subtle"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_72%,transparent)] text-theme-soft">
+                                        <item.icon className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-theme">{item.label}</p>
+                                        <p className="text-xs text-theme-subtle">{item.hint}</p>
+                                    </div>
+                                </div>
+                                <ArrowUpRight className="h-4 w-4 text-theme-faint transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            </motion.section>
 
             <PriorityStrip entries={priorityEntries} />
 
@@ -1035,68 +866,7 @@ export function DashboardClient({
             </div>
             </DashboardSection>
 
-            <DashboardSection
-                sectionId="dashboard-lanes"
-                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
-                eyebrow="المراكز"
-                title="اختصارات التشغيل"
-                description="انتقال سريع إلى صفحة كل محور مع أبرز رقم لكل قسم."
-            >
-            <div className="grid gap-4 xl:grid-cols-4">
-                <OperationLaneCard
-                    title="مركز الطلبات"
-                    description="مراجعة فورية، تنفيذ، ومدفوعات."
-                    primaryValue={controlTower.ops.ordersNeedingReview}
-                    primaryLabel="طلبات بحاجة مراجعة أو تأكيد"
-                    secondary={[
-                        { label: "في طابور التنفيذ", value: controlTower.ops.fulfillmentQueue },
-                        { label: "مدفوعات معلقة", value: controlTower.ops.pendingPayments },
-                    ]}
-                    icon={ShoppingCart}
-                    href="/dashboard/orders"
-                    accent="#d4af37"
-                />
-                <OperationLaneCard
-                    title="مركز الدعم"
-                    description="تذاكر مفتوحة وأولويات وارتباط بالتنبيهات."
-                    primaryValue={controlTower.ops.supportOpen}
-                    primaryLabel="تذاكر مفتوحة أو قيد المتابعة"
-                    secondary={[
-                        { label: "أولوية عالية", value: controlTower.ops.supportUrgent },
-                        { label: "تنبيهات غير مقروءة", value: controlTower.ops.alertsUnread },
-                    ]}
-                    icon={HeadphonesIcon}
-                    href="/dashboard/support"
-                    accent="#22c55e"
-                />
-                <OperationLaneCard
-                    title="مركز التصميم"
-                    description="جديد، مراجعة، وطلبات انضمام مرتبطة."
-                    primaryValue={controlTower.ops.designNew}
-                    primaryLabel="طلبات تصميم جديدة"
-                    secondary={[
-                        { label: "بانتظار المراجعة", value: controlTower.ops.designAwaitingReview },
-                        { label: "طلبات الانضمام", value: stats.pendingApplications },
-                    ]}
-                    icon={Brush}
-                    href="/dashboard/design-orders"
-                    accent="#a78bfa"
-                />
-                <OperationLaneCard
-                    title="مركز المخاطر"
-                    description="تنبيهات حرجة، غير مقروءة، ومخزون منخفض."
-                    primaryValue={controlTower.ops.alertsCritical}
-                    primaryLabel="تنبيهات حرجة"
-                    secondary={[
-                        { label: "غير مقروءة", value: controlTower.ops.alertsUnread },
-                        { label: "مخزون منخفض", value: lowStockCount },
-                    ]}
-                    icon={AlertTriangle}
-                    href="/dashboard/notifications"
-                    accent="#ef4444"
-                />
-            </div>
-            </DashboardSection>
+
 
             <DashboardSection
                 sectionId="dashboard-queues"
@@ -1298,48 +1068,7 @@ export function DashboardClient({
             </div>
             </DashboardSection>
 
-            <DashboardSection
-                sectionId="dashboard-community"
-                className="border-t border-theme-subtle/45 pt-10 sm:pt-12"
-                eyebrow="المجتمع والمحتوى"
-                title="أرقام إضافية"
-                description="مستخدمون، نشرة، أعمال، وتنبيهات — مع روابط للتفاصيل."
-            >
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <Link href="/dashboard/users" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
-                    <div className="flex items-center justify-between">
-                        <Users className="h-5 w-5 text-theme-faint" />
-                        <span className="text-xs text-theme-faint">المستخدمون</span>
-                    </div>
-                    <p className="mt-4 text-2xl font-black text-theme">{stats.totalUsers}</p>
-                    <p className="mt-2 text-sm text-theme-subtle">{stats.totalArtists} وشّايين فاعلين داخل المنصة</p>
-                </Link>
-                <Link href="/dashboard/newsletter" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
-                    <div className="flex items-center justify-between">
-                        <Mail className="h-5 w-5 text-theme-faint" />
-                        <span className="text-xs text-theme-faint">النشرة البريدية</span>
-                    </div>
-                    <p className="mt-4 text-2xl font-black text-theme">{stats.totalNewsletterSubscribers}</p>
-                    <p className="mt-2 text-sm text-theme-subtle">مشتركو النشرة البريدية الذين ينتظرون حملات أدق ومحتوى أفضل.</p>
-                </Link>
-                <Link href="/dashboard/artworks" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
-                    <div className="flex items-center justify-between">
-                        <Package className="h-5 w-5 text-theme-faint" />
-                        <span className="text-xs text-theme-faint">المحتوى الإبداعي</span>
-                    </div>
-                    <p className="mt-4 text-2xl font-black text-theme">{stats.totalArtworks}</p>
-                    <p className="mt-2 text-sm text-theme-subtle">{stats.totalProducts} منتجًا متصلًا بالهوية التجارية.</p>
-                </Link>
-                <Link href="/dashboard/notifications" className={`${subtlePanelClass} p-4 transition-colors hover:border-theme-soft`}>
-                    <div className="flex items-center justify-between">
-                        <Bell className="h-5 w-5 text-theme-faint" />
-                        <span className="text-xs text-theme-faint">نبض التنبيهات</span>
-                    </div>
-                    <p className="mt-4 text-2xl font-black text-theme">{controlTower.ops.alertsUnread}</p>
-                    <p className="mt-2 text-sm text-theme-subtle">{controlTower.ops.alertsCritical} منها في مستوى حرج.</p>
-                </Link>
-            </div>
-            </DashboardSection>
+
         </div>
     );
 }

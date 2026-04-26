@@ -5,11 +5,10 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    LayoutDashboard, BarChart3, Users, Warehouse, TrendingUp, UserCheck,
-    ShoppingCart, FileText, Image as ImageIcon, ChevronRight, Shield, Sparkles,
-    Menu, X, Tag, Package, Mail, Settings, Palette, Wand2, Brush, QrCode,
-    Bell, Activity, ClipboardList, Ticket, CreditCard, Store,
-    HeadphonesIcon, UserCog, History, Megaphone, Home, ShieldCheck,
+    LayoutDashboard, BarChart3, Users, TrendingUp,
+    ShoppingCart, Image as ImageIcon, ChevronRight, Shield,
+    Menu, X, Package, Mail, Settings, Palette, Wand2, Brush,
+    Bell, Ticket, HeadphonesIcon, History, Home, Store,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 
@@ -54,6 +53,8 @@ export function AdminSidebar({
         };
     }, [isMobileOpen]);
 
+    const totalAlerts = pendingApps + pendingDesignOrders + pendingSupportTickets;
+
     const navGroups: NavGroup[] = [
         {
             title: "الرئيسية",
@@ -63,53 +64,30 @@ export function AdminSidebar({
             ],
         },
         {
-            title: "المنتجات والمخزون",
+            title: "التجارة",
             items: [
-                { icon: Package, label: "التنفيذ والمخزون", href: "/dashboard/products-inventory" },
-                { icon: Tag, label: "الفئات", href: "/dashboard/categories" },
+                { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders" },
+                { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory" },
                 { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales" },
-                { icon: Ticket, label: "كوبونات الخصم", href: "/dashboard/coupons" },
+                { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons" },
             ],
         },
         {
-            title: "الطلبات",
+            title: "المحتوى والتصميم",
             items: [
-                { icon: ShoppingCart, label: "إدارة الطلبات", href: "/dashboard/orders" },
-                { icon: Activity, label: "مركز قيادة الطلبات", href: "/dashboard/orders/command-center" },
                 { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders },
-            ],
-        },
-        {
-            title: "العملاء والمستخدمون",
-            items: [
-                { icon: UserCheck, label: "مزامنة الهوية", href: "/dashboard/users-clerk" },
-                { icon: Users, label: "الملفات الشخصية", href: "/dashboard/users" },
-                { icon: UserCog, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps },
-                { icon: ShieldCheck, label: "سجل تغييرات الأدوار", href: "/dashboard/users/audit-log" },
-            ],
-        },
-        {
-            title: "المحتوى والتصاميم",
-            items: [
                 { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks" },
                 { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs" },
                 { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store" },
             ],
         },
         {
-            title: "الإشعارات والتواصل",
+            title: "الإدارة",
             items: [
+                { icon: Users, label: "المستخدمون", href: "/dashboard/users" },
+                { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets },
                 { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications" },
-                { icon: Megaphone, label: "الإعلانات والعروض", href: "/dashboard/announcements" },
-                { icon: HeadphonesIcon, label: "مركز الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets },
-                { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter" },
-            ],
-        },
-        {
-            title: "الإدارة والنظام",
-            items: [
-                { icon: History, label: "سجل العمليات", href: "/dashboard/activity-log" },
-                { icon: Settings, label: "الإعدادات العامة", href: "/dashboard/settings" },
+                { icon: Settings, label: "الإعدادات", href: "/dashboard/settings" },
             ],
         },
     ];
@@ -158,13 +136,9 @@ export function AdminSidebar({
 
             {/* ─── Navigation ─── */}
             <nav className="flex-1 py-3 px-2.5 flex flex-col gap-4 overflow-y-auto styled-scrollbar">
-                {!isCollapsed && (
+                {!isCollapsed && totalAlerts > 0 && (
                     <div className="px-2.5">
                         <div className="grid grid-cols-3 gap-2 rounded-2xl border border-theme-subtle bg-theme-faint/70 p-2">
-                            <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
-                                <p className="text-[10px] text-theme-faint">الانضمام</p>
-                                <p className="mt-1 text-sm font-bold text-gold">{pendingApps}</p>
-                            </div>
                             <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
                                 <p className="text-[10px] text-theme-faint">التصميم</p>
                                 <p className="mt-1 text-sm font-bold text-gold">{pendingDesignOrders}</p>
@@ -172,6 +146,10 @@ export function AdminSidebar({
                             <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
                                 <p className="text-[10px] text-theme-faint">الدعم</p>
                                 <p className="mt-1 text-sm font-bold text-gold">{pendingSupportTickets}</p>
+                            </div>
+                            <div className="rounded-xl border border-theme-subtle bg-theme-subtle px-2 py-2 text-center">
+                                <p className="text-[10px] text-theme-faint">الانضمام</p>
+                                <p className="mt-1 text-sm font-bold text-gold">{pendingApps}</p>
                             </div>
                         </div>
                     </div>
@@ -266,7 +244,7 @@ export function AdminSidebar({
                     </AnimatePresence>
                 </div>
 
-                {/* Quick link back to Studio */}
+                {/* Quick link back to Store */}
                 <AnimatePresence>
                     {!isCollapsed && (
                         <motion.div
