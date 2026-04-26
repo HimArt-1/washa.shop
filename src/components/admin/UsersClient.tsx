@@ -48,12 +48,16 @@ interface UsersClientProps {
 const roles = [
     { value: "all", label: "الكل" },
     { value: "admin", label: "مشرف" },
+    { value: "manager", label: "مدير" },
+    { value: "booth", label: "بوث (نقطة بيع)" },
     { value: "wushsha", label: "وشّاي" },
     { value: "subscriber", label: "مشترك" },
 ];
 
 const roleOptions = [
     { value: "admin", label: "مشرف" },
+    { value: "manager", label: "مدير" },
+    { value: "booth", label: "بوث (نقطة بيع)" },
     { value: "wushsha", label: "وشّاي" },
     { value: "subscriber", label: "مشترك" },
 ];
@@ -819,20 +823,19 @@ function AddUserModal({
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-theme-subtle mb-1.5">الدور</label>
-                        <input
-                            type="text"
+                        <select
                             value={form.role}
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                            list="add-role-list"
-                            placeholder="مثال: subscriber, wushsha, admin..."
-                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
-                        />
-                        <datalist id="add-role-list">
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm cursor-pointer"
+                        >
                             {roleOptions.map((r) => (
-                                <option key={r.value} value={r.value} />
+                                <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
-                        </datalist>
-                        <p className="text-[10px] text-theme-faint mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
+                            {form.role && !ROLE_VALUES.has(form.role) && (
+                                <option value={form.role}>{form.role}</option>
+                            )}
+                        </select>
+                        <p className="text-[10px] text-theme-faint mt-1">اختر الدور الخاص بهذا المستخدم</p>
                     </div>
                     {form.role === "wushsha" && (
                         <div>
@@ -990,20 +993,19 @@ function EditUserModal({
                     </div>
                     <div>
                         <label className="block text-xs font-medium text-theme-subtle mb-1.5">الدور</label>
-                        <input
-                            type="text"
+                        <select
                             value={form.role}
                             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                            list="edit-role-list"
-                            placeholder="مثال: subscriber, wushsha, admin..."
-                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm"
-                        />
-                        <datalist id="edit-role-list">
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm cursor-pointer"
+                        >
                             {roleOptions.map((r) => (
-                                <option key={r.value} value={r.value} />
+                                <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
-                        </datalist>
-                        <p className="text-[10px] text-theme-faint mt-1">أدخل أي دور — أو اختر من القائمة المقترحة</p>
+                            {form.role && !ROLE_VALUES.has(form.role) && (
+                                <option value={form.role}>{form.role}</option>
+                            )}
+                        </select>
+                        <p className="text-[10px] text-theme-faint mt-1">اختر الدور الخاص بهذا المستخدم</p>
                     </div>
                     {form.role === "wushsha" && (
                         <div>

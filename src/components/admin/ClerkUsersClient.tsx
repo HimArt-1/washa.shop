@@ -25,6 +25,8 @@ import { linkClerkUserToProfile, type ClerkUserWithProfile } from "@/app/actions
 
 const ROLE_LABELS: Record<string, string> = {
     admin: "مسؤول",
+    manager: "مدير",
+    booth: "نقطة بيع (بوث)",
     wushsha: "وشّاي",
     artist: "فنان",
     subscriber: "مشترك",
