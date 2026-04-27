@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Search, Loader2, DollarSign, Store, Computer, TrendingUp, ShoppingBag, BarChart2 } from "lucide-react";
-import { recordManualSale } from "@/app/actions/erp/sales";
+import { Plus, Search, Loader2, DollarSign, Store, Computer, TrendingUp, ShoppingBag, BarChart2, CheckCircle2, Receipt, CreditCard, Banknote } from "lucide-react";
+import { recordManualSale, PaymentMethod, PAYMENT_METHOD_LABELS } from "@/app/actions/erp/sales";
 
 type Period = "today" | "week" | "month" | "all";
 
@@ -31,10 +31,12 @@ export default function SalesClient({
     const [selectedWarehouseId, setSelectedWarehouseId] = useState(warehouses[0]?.id || "");
     const [quantity, setQuantity] = useState(1);
     const [totalPrice, setTotalPrice] = useState<number>(0);
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mada");
     const [notes, setNotes] = useState("");
 
     const [isSaving, setIsSaving] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [receiptSale, setReceiptSale] = useState<any | null>(null);
 
     // ── Analytics ──────────────────────────────────────────────
     const filteredByPeriod = useMemo(() => filterByPeriod(sales, period), [sales, period]);
@@ -102,6 +104,7 @@ export default function SalesClient({
                 quantity,
                 totalPrice,
                 selectedWarehouseId,
+                paymentMethod,
                 notes
             );
 
@@ -110,18 +113,17 @@ export default function SalesClient({
                 return;
             }
 
-            const selectedSku = skus.find((sku) => sku.id === selectedSkuId);
-            const createdSale = {
-                ...sale,
-                sku: selectedSku ?? null,
-            };
-
-            setSales((current) => [createdSale, ...current]);
+            // Successfully recorded, prepend to state
+            setSales((current) => [sale, ...current]);
             setIsSelling(false);
+            setReceiptSale(sale); // Open receipt modal
+
+            // Reset form
             setSelectedSkuId("");
             setSelectedWarehouseId(warehouses[0]?.id || "");
             setQuantity(1);
             setTotalPrice(0);
+            setPaymentMethod("mada");
             setNotes("");
         } catch (error) {
             setActionError(error instanceof Error ? error.message : "تعذر تسجيل البيع الآن.");
@@ -144,6 +146,13 @@ export default function SalesClient({
         }
     };
 
+    const getPaymentIcon = (notesStr: string | null) => {
+        if (!notesStr) return null;
+        if (notesStr.includes("نقداً")) return <Banknote className="w-3 h-3 text-emerald-400" />;
+        if (notesStr.includes("طريقة الدفع:")) return <CreditCard className="w-3 h-3 text-blue-400" />;
+        return null;
+    };
+
     const PERIODS: { id: Period; label: string }[] = [
         { id: "today", label: "اليوم" },
         { id: "week", label: "هذا الأسبوع" },
@@ -153,12 +162,6 @@ export default function SalesClient({
 
     return (
         <div className="space-y-6">
-            {actionError && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300 sm:px-5">
-                    {actionError}
-                </div>
-            )}
-
             {/* ── Date Filter ── */}
             <div className="flex flex-wrap gap-2">
                 {PERIODS.map(p => (
@@ -282,11 +285,19 @@ export default function SalesClient({
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
                                         {getMethodIcon(item.sales_method)}
-                                        <span className="text-xs">
-                                            {item.sales_method === 'online_store' ? 'متجر إلكتروني' :
-                                                item.sales_method === 'booth_manual' ? 'يدوي (بوث/معرض)' :
-                                                    item.sales_method === 'custom_design' ? 'تصميم مخصص' : item.sales_method}
-                                        </span>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs">
+                                                {item.sales_method === 'online_store' ? 'متجر إلكتروني' :
+                                                    item.sales_method === 'booth_manual' ? 'يدوي (بوث/معرض)' :
+                                                        item.sales_method === 'custom_design' ? 'تصميم مخصص' : item.sales_method}
+                                            </span>
+                                            {item.notes && item.sales_method !== 'online_store' && (
+                                                <div className="flex items-center gap-1 mt-1 text-[10px] text-theme-subtle" title={item.notes}>
+                                                    {getPaymentIcon(item.notes)}
+                                                    <span className="truncate max-w-[120px]">{item.notes.split('\n')[0].replace('💳 طريقة الدفع: ', '')}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
@@ -330,11 +341,11 @@ export default function SalesClient({
             {/* POS Modal */}
             {isSelling && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--wusha-bg)_80%,transparent)] backdrop-blur-sm">
-                    <div className="theme-surface-panel w-full max-w-lg overflow-hidden rounded-2xl flex flex-col max-h-[90vh]">
+                    <div className="theme-surface-panel w-full max-w-2xl overflow-hidden rounded-2xl flex flex-col max-h-[90vh]">
                         <div className="flex items-center justify-between border-b border-theme-subtle bg-theme-faint p-6">
                             <h2 className="text-xl font-bold flex items-center gap-2">
                                 <Store className="w-5 h-5 text-gold" />
-                                تسجيل بيع يدوي جديد (بدون متجر)
+                                نقطة البيع (POS) — بوث وشّى
                             </h2>
                             <button onClick={() => { setIsSelling(false); setActionError(null); }} className="text-theme-subtle hover:text-theme transition-colors">
                                 إغلاق
@@ -347,76 +358,100 @@ export default function SalesClient({
                                     {actionError}
                                 </div>
                             )}
-                            <form id="sales-form" onSubmit={handleSave} className="space-y-5">
-                                <div className="p-4 bg-gold/5 border border-gold/10 rounded-xl text-sm leading-relaxed text-gold/80">
-                                    هذه الواجهة تستخدم لعمليات البيع المباشرة (نقاط البيع في البوثات/المعارض).
-                                    سيتم تسجيل البيع آلياً و <strong>خصم الكمية من المستودع المختار</strong>.
-                                </div>
+                            <form id="sales-form" onSubmit={handleSave} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Column 1: Product & Inventory */}
+                                    <div className="space-y-5">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-theme-strong">المنتج (الباركود / الـ SKU)</label>
+                                            <select
+                                                required
+                                                className="input-dark w-full rounded-xl p-3 font-mono text-sm"
+                                                value={selectedSkuId}
+                                                onChange={e => handleSkuChange(e.target.value)}
+                                            >
+                                                <option value="">-- يرجى الاختيار --</option>
+                                                {skus.map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.sku} | {s.product?.title?.substring(0, 20)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-theme-strong">المنتج (حدد بالباركود)</label>
-                                    <select
-                                        required
-                                        className="input-dark w-full rounded-xl p-3 font-mono text-sm"
-                                        value={selectedSkuId}
-                                        onChange={e => handleSkuChange(e.target.value)}
-                                    >
-                                        <option value="">-- يرجى الاختيار --</option>
-                                        {skus.map(s => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.sku} | {s.product?.title?.substring(0, 20)}...
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-theme-strong">سحب من مستودع</label>
-                                        <select
-                                            required
-                                            className="input-dark w-full rounded-xl p-3 text-sm"
-                                            value={selectedWarehouseId}
-                                            onChange={e => setSelectedWarehouseId(e.target.value)}
-                                        >
-                                            {warehouses.map(w => (
-                                                <option key={w.id} value={w.id}>{w.name}</option>
-                                            ))}
-                                        </select>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-theme-strong">سحب من مستودع</label>
+                                                <select
+                                                    required
+                                                    className="input-dark w-full rounded-xl p-3 text-sm"
+                                                    value={selectedWarehouseId}
+                                                    onChange={e => setSelectedWarehouseId(e.target.value)}
+                                                >
+                                                    {warehouses.map(w => (
+                                                        <option key={w.id} value={w.id}>{w.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-theme-strong">الكمية المباعة</label>
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="1"
+                                                    className="input-dark w-full rounded-xl p-3 text-center"
+                                                    value={quantity}
+                                                    onChange={e => handleQuantityChange(Number(e.target.value))}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-theme-strong">الكمية المباعة</label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="1"
-                                            className="input-dark w-full rounded-xl p-3 text-center"
-                                            value={quantity}
-                                            onChange={e => handleQuantityChange(Number(e.target.value))}
-                                        />
+
+                                    {/* Column 2: Payment Details */}
+                                    <div className="space-y-5">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-theme-strong">السعر الإجمالي (ر.س)</label>
+                                            <input
+                                                type="number"
+                                                required
+                                                step="0.01"
+                                                min="0"
+                                                className="input-dark w-full rounded-xl border-gold/20 p-3 text-2xl font-bold text-gold focus:border-gold"
+                                                value={totalPrice}
+                                                onChange={e => setTotalPrice(Number(e.target.value))}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-theme-strong">طريقة الدفع</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([val, label]) => (
+                                                    <label
+                                                        key={val}
+                                                        className={`flex items-center justify-center p-3 border rounded-xl cursor-pointer transition-all ${paymentMethod === val ? "bg-gold/10 border-gold text-gold" : "border-theme-subtle bg-theme-faint text-theme-soft hover:bg-[color:var(--surface-elevated)]"}`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="paymentMethod"
+                                                            value={val}
+                                                            checked={paymentMethod === val}
+                                                            onChange={() => setPaymentMethod(val)}
+                                                            className="hidden"
+                                                        />
+                                                        <span className="text-sm font-medium">{label}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-theme-strong">السعر الإجمالي (المدفوع من العميل - ر.س)</label>
-                                    <input
-                                        type="number"
-                                        required
-                                        step="0.01"
-                                        min="0"
-                                        className="input-dark w-full rounded-xl border-gold/20 p-3 text-2xl font-bold text-gold focus:border-gold"
-                                        value={totalPrice}
-                                        onChange={e => setTotalPrice(Number(e.target.value))}
-                                    />
-                                    <p className="text-xs text-theme-subtle">السعر يُحسب تلقائياً حسب تسعيرة المنتج ولكن يمكنك تعديله (في حال وجود خصم).</p>
-                                </div>
-
-                                <div className="space-y-2 text-sm">
-                                    <label className="text-theme-strong font-medium">ملاحظات (اختياري)</label>
+                                <div className="space-y-2 text-sm pt-2 border-t border-theme-subtle/50">
+                                    <label className="text-theme-strong font-medium">ملاحظات إضافية (اختياري)</label>
                                     <textarea
                                         rows={2}
                                         className="input-dark w-full rounded-xl p-3 resize-none"
-                                        placeholder="مثال: بيع من بوث معرض الرياض، الدفع كاش أو شبكة..."
+                                        placeholder="مثال: خصم خاص للعميل، بيع من بوث معرض الرياض..."
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
                                     ></textarea>
@@ -436,10 +471,51 @@ export default function SalesClient({
                                 type="submit"
                                 form="sales-form"
                                 disabled={isSaving || !selectedSkuId || !selectedWarehouseId || quantity <= 0}
-                                className="flex items-center gap-2 rounded-xl bg-gold px-5 py-2.5 font-medium text-[var(--wusha-bg)] transition-colors hover:bg-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex items-center gap-2 rounded-xl bg-gold px-6 py-2.5 font-bold text-[var(--wusha-bg)] transition-colors hover:bg-gold/90 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                                إصدار فاتورة وخصم المخزون
+                                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                                تأكيد الدفع والخصم
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Receipt Modal */}
+            {receiptSale && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--wusha-bg)_80%,transparent)] backdrop-blur-sm">
+                    <div className="theme-surface-panel w-full max-w-sm overflow-hidden rounded-2xl flex flex-col animate-in fade-in zoom-in duration-300">
+                        <div className="p-8 text-center flex flex-col items-center">
+                            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+                                <CheckCircle2 className="w-8 h-8" />
+                            </div>
+                            <h2 className="text-2xl font-bold text-theme mb-2">تمت العملية بنجاح</h2>
+                            <p className="text-theme-soft text-sm mb-6">تم تسجيل البيع وخصم الكمية من المخزون</p>
+
+                            <div className="w-full bg-theme-faint border border-theme-subtle rounded-xl p-4 text-right space-y-3 mb-6">
+                                <div className="flex justify-between border-b border-theme-subtle pb-2">
+                                    <span className="text-theme-soft text-sm">المنتج</span>
+                                    <span className="font-medium truncate max-w-[60%]">{receiptSale.sku?.product?.title || "منتج غير محدد"}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-theme-subtle pb-2">
+                                    <span className="text-theme-soft text-sm">الكمية</span>
+                                    <span className="font-medium">{receiptSale.quantity}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-theme-subtle pb-2">
+                                    <span className="text-theme-soft text-sm">طريقة الدفع</span>
+                                    <span className="font-medium text-blue-400">{receiptSale.payment_label}</span>
+                                </div>
+                                <div className="flex justify-between pt-1">
+                                    <span className="text-theme-soft text-sm">الإجمالي</span>
+                                    <span className="font-bold text-gold text-lg">{receiptSale.total_price} ر.س</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setReceiptSale(null)}
+                                className="w-full py-3 rounded-xl bg-theme-subtle hover:bg-theme-soft/50 text-theme-strong font-medium transition-colors"
+                            >
+                                إغلاق وإكمال البيع
                             </button>
                         </div>
                     </div>
