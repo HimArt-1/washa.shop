@@ -5,16 +5,7 @@ import { Database, SalesMethodType } from "@/types/database";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 
-// ─── Payment Methods ──────────────────────────────────────────
-export type PaymentMethod = "cash" | "card" | "mada" | "apple_pay" | "other";
-
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-    cash: "نقداً",
-    card: "بطاقة ائتمان",
-    mada: "مدى",
-    apple_pay: "Apple Pay",
-    other: "أخرى",
-};
+import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@/lib/sales-constants";
 
 // ─── Supabase Admin Client ────────────────────────────────────
 function getAdminSb() {

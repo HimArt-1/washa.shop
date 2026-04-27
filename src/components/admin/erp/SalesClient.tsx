@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { Plus, Search, Loader2, DollarSign, Store, Computer, TrendingUp, ShoppingBag, BarChart2, CheckCircle2, Receipt, CreditCard, Banknote } from "lucide-react";
-import { recordManualSale, PaymentMethod, PAYMENT_METHOD_LABELS } from "@/app/actions/erp/sales";
+import { recordManualSale } from "@/app/actions/erp/sales";
+import { PaymentMethod, PAYMENT_METHOD_LABELS } from "@/lib/sales-constants";
 
 type Period = "today" | "week" | "month" | "all";
 
