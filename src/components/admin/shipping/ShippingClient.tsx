@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Truck, Package, CheckCircle2, AlertCircle, Search, RefreshCw,
     ExternalLink, Printer, X, ChevronLeft, ChevronRight, Loader2,
-    MapPin, Phone, Clock, TrendingUp, Banknote, Eye,
+    MapPin, Phone, Clock, TrendingUp, Banknote, Eye, BarChart2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -380,6 +380,57 @@ export function ShippingClient({
                 <StatCard icon={Truck}         label="تم الشحن"      value={stats.shipped}        color="text-sky-400"     onClick={() => navigate({ status: "shipped",    page: "1" })} active={currentStatus === "shipped"} />
                 <StatCard icon={CheckCircle2}  label="تم التوصيل"    value={stats.delivered}      color="text-emerald-400" onClick={() => navigate({ status: "delivered",  page: "1" })} active={currentStatus === "delivered"} />
                 <StatCard icon={Banknote}      label="COD معلّق"     value={mounted ? `${stats.totalCodAmount.toLocaleString()} ر.س` : "..."} sub={`${stats.pendingCod} شحنة`} color="text-gold" />
+            </div>
+
+            {/* Advanced Analytics Panel */}
+            <div className="theme-surface-panel rounded-2xl p-5 md:p-6 border border-theme-subtle">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 rounded-xl bg-gold/10 text-gold">
+                        <BarChart2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-theme">تحليلات الشحن والتوصيل</h2>
+                        <p className="text-xs text-theme-soft">معدلات الأداء وإيرادات الدفع عند الاستلام (COD)</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Delivery Rate */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-theme-soft">معدل التسليم (الناجح)</span>
+                            <span className="font-bold text-emerald-400">{stats.deliveryRate}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-theme-faint rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 transition-all duration-1000" style={{ width: `${stats.deliveryRate}%` }} />
+                        </div>
+                        <p className="text-[10px] text-theme-subtle">{stats.delivered} شحنة مستلمة من أصل {stats.shipped + stats.delivered} خرجت للتوصيل</p>
+                    </div>
+
+                    {/* Revenue */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-theme-soft">إيرادات الشحنات المستلمة</span>
+                            <span className="font-bold text-gold">{stats.deliveredRevenue.toLocaleString()} ر.س</span>
+                        </div>
+                        <div className="h-2 w-full bg-theme-faint rounded-full overflow-hidden">
+                            <div className="h-full bg-gold transition-all duration-1000" style={{ width: `100%` }} />
+                        </div>
+                        <p className="text-[10px] text-theme-subtle">تم تحصيلها واكتملت</p>
+                    </div>
+
+                    {/* Pending COD */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-theme-soft">مبالغ COD معلّقة (بالطريق)</span>
+                            <span className="font-bold text-amber-400">{stats.totalCodAmount.toLocaleString()} ر.س</span>
+                        </div>
+                        <div className="h-2 w-full bg-theme-faint rounded-full overflow-hidden">
+                            <div className="h-full bg-amber-400 transition-all duration-1000" style={{ width: `100%` }} />
+                        </div>
+                        <p className="text-[10px] text-theme-subtle">{stats.pendingCod} شحنة الدفع عند الاستلام قيد التوصيل</p>
+                    </div>
+                </div>
             </div>
 
             {/* Toolbar */}

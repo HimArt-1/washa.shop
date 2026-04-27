@@ -51,6 +51,9 @@ export type ShippingStats = {
     delivered: number;
     pendingCod: number;
     totalCodAmount: number;
+    deliveredRevenue: number;
+    totalOrders: number;
+    deliveryRate: number;
 };
 
 // ─── Fetch Shipping Orders ────────────────────────────────────
@@ -133,17 +136,29 @@ export async function getShippingStats(): Promise<ShippingStats> {
         delivered: 0,
         pendingCod: 0,
         totalCodAmount: 0,
+        deliveredRevenue: 0,
+        totalOrders: 0,
+        deliveryRate: 0,
     };
 
     (data || []).forEach((o) => {
+        stats.totalOrders++;
         if (o.status === "processing") stats.readyToShip++;
         if (o.status === "shipped") stats.shipped++;
-        if (o.status === "delivered") stats.delivered++;
+        if (o.status === "delivered") {
+            stats.delivered++;
+            stats.deliveredRevenue += Number(o.total) || 0;
+        }
         if (o.payment_status === "pending" && o.status === "shipped") {
             stats.pendingCod++;
             stats.totalCodAmount += Number(o.total) || 0;
         }
     });
+
+    const outForDelivery = stats.shipped + stats.delivered;
+    if (outForDelivery > 0) {
+        stats.deliveryRate = Math.round((stats.delivered / outForDelivery) * 100);
+    }
 
     return stats;
 }
