@@ -782,7 +782,7 @@ export async function getAdminUsers(
                     if (clerkData) {
                         const email = clerkData.emailAddresses?.find((e) => e.id === clerkData.primaryEmailAddressId)?.emailAddress || clerkData.emailAddresses?.[0]?.emailAddress || null;
                         const phone = clerkData.phoneNumbers?.find((p) => p.id === clerkData.primaryPhoneNumberId)?.phoneNumber || clerkData.phoneNumbers?.[0]?.phoneNumber || null;
-                        
+
                         user.email = email;
                         user.phone = phone;
 
@@ -810,7 +810,7 @@ export async function getAdminUsers(
                 .filter((o: any) => o.payment_status === "paid" && o.status !== "cancelled" && o.status !== "refunded")
                 .reduce((sum: number, o: any) => sum + (Number(o.total) || 0), 0);
         }
-        
+
         return {
             ...user,
             orders: [] as any, // remove full array to save payload
@@ -1705,7 +1705,7 @@ export async function getFulfillmentHubData() {
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
         const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
-        
+
         const [
             { data: paidOrders },
             { data: processingOrders },
@@ -1868,7 +1868,7 @@ export async function bookTorodShipment(orderId: string) {
             .eq("order_id", orderId);
 
         const totalItemsCount = (items || []).reduce((sum, item) => sum + item.quantity, 0);
-        
+
         // Dynamic weight estimation based on item types
         let estimatedWeight = 0;
         (items || []).forEach(item => {
@@ -1924,10 +1924,10 @@ export async function bookTorodShipment(orderId: string) {
         revalidatePath("/dashboard/orders");
         revalidatePath("/dashboard/orders/command-center");
 
-        return { 
-            success: true, 
+        return {
+            success: true,
             tracking_number: result.tracking_number,
-            is_simulation: result.is_simulation 
+            is_simulation: result.is_simulation
         };
 
     } catch (err) {
@@ -2069,7 +2069,7 @@ export async function getFulfillmentCalculation(orderId: string) {
     noStore();
     try {
         const { supabase } = await requireAdmin();
-        
+
         const { data: items, error } = await supabase
             .from("order_items")
             .select("*")
@@ -2085,16 +2085,16 @@ export async function getFulfillmentCalculation(orderId: string) {
             if (item.custom_design_url) {
                 const garmentSlug = item.custom_garment || "premium-tshirt";
                 const positions = item.custom_position ? item.custom_position.split(",").map(p => p.trim()) : [];
-                
+
                 const garmentBase = FULFILLMENT_RATES.garments[garmentSlug as keyof typeof FULFILLMENT_RATES.garments] || 30;
                 let itemPrintingTotal = 0;
-                
+
                 positions.forEach(pos => {
                     itemPrintingTotal += FULFILLMENT_RATES.printing[pos as keyof typeof FULFILLMENT_RATES.printing] || 0;
                 });
 
                 const itemTotal = (garmentBase + itemPrintingTotal + FULFILLMENT_RATES.packaging_unit) * item.quantity;
-                
+
                 totalGarmentCost += garmentBase * item.quantity;
                 totalPrintingCost += itemPrintingTotal * item.quantity;
 
@@ -2108,7 +2108,7 @@ export async function getFulfillmentCalculation(orderId: string) {
                 });
             } else {
                 // Standard product fulfillment (assumed flat for now)
-                const STO_FEE = 15; 
+                const STO_FEE = 15;
                 totalGarmentCost += STO_FEE * item.quantity;
                 breakdownItems.push({
                     title: `Inventory Item: ${item.quantity} units`,
@@ -2173,7 +2173,7 @@ export async function initiateWarehousePayment(orderId: string) {
     try {
         const { supabase, profile: adminProfile } = await requireAdmin();
         const calculation = await getFulfillmentCalculation(orderId);
-        
+
         if (!calculation.success || !calculation.breakdown) {
             return { success: false, error: "Calculation failed" };
         }
@@ -2272,11 +2272,11 @@ export async function confirmWarehousePayment(paymentIdentifier: string, amount?
 export async function markAsPaidToWarehouse(orderId: string) {
     try {
         const { supabase } = await requireAdmin();
-        
+
         // 1. Update order status to processing
         const { error: statusError } = await supabase
             .from("orders")
-            .update({ 
+            .update({
                 status: "processing"
             })
             .eq("id", orderId);
@@ -2340,9 +2340,9 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
                 event_type: "fulfillment_bulk_initiated",
                 channel: "warehouse_payment",
                 status: "processing",
-                metadata: { 
-                    order_ids: orderIds, 
-                    amount: calculation.grandTotal 
+                metadata: {
+                    order_ids: orderIds,
+                    amount: calculation.grandTotal
                 }
             });
 
@@ -2363,18 +2363,18 @@ export async function markBatchAsPaidToWarehouse(orderIds: string[]) {
         const updatePromises = orderIds.map(async (id) => {
             const { error } = await supabase
                 .from("orders")
-                .update({ 
+                .update({
                     status: "processing"
                 })
                 .eq("id", id);
-            
+
             if (!error) {
                 await decrementStockForOrder(id);
             }
         });
 
         await Promise.all(updatePromises);
-        
+
         revalidatePath("/dashboard/orders");
         return { success: true };
     } catch (err) {
@@ -2580,10 +2580,10 @@ function enrichApplicationsWithPriority(applications: any[]) {
             priorityScore >= 65
                 ? "critical"
                 : priorityScore >= 45
-                  ? "high"
-                  : priorityScore >= 25
-                    ? "medium"
-                    : "low";
+                    ? "high"
+                    : priorityScore >= 25
+                        ? "medium"
+                        : "low";
 
         return {
             ...app,
@@ -2746,18 +2746,18 @@ export async function getApplicationWorkspaceContext(id: string) {
             previous:
                 currentIndex > 0
                     ? {
-                          id: ranked[currentIndex - 1].id,
-                          full_name: ranked[currentIndex - 1].full_name,
-                          status: ranked[currentIndex - 1].status,
-                      }
+                        id: ranked[currentIndex - 1].id,
+                        full_name: ranked[currentIndex - 1].full_name,
+                        status: ranked[currentIndex - 1].status,
+                    }
                     : null,
             next:
                 currentIndex >= 0 && currentIndex < ranked.length - 1
                     ? {
-                          id: ranked[currentIndex + 1].id,
-                          full_name: ranked[currentIndex + 1].full_name,
-                          status: ranked[currentIndex + 1].status,
-                      }
+                        id: ranked[currentIndex + 1].id,
+                        full_name: ranked[currentIndex + 1].full_name,
+                        status: ranked[currentIndex + 1].status,
+                    }
                     : null,
         },
         queue: {
@@ -2929,10 +2929,10 @@ export async function getApplicationsOperationsSnapshot() {
             age < 18
                 ? "under_18"
                 : age <= 24
-                  ? "age_18_24"
-                  : age <= 34
-                    ? "age_25_34"
-                    : "age_35_plus";
+                    ? "age_18_24"
+                    : age <= 34
+                        ? "age_25_34"
+                        : "age_35_plus";
 
         acc[band] = (acc[band] ?? 0) + 1;
         return acc;
@@ -3219,10 +3219,10 @@ export async function bulkProvisionAcceptedApplications(
             roleStrategy === "wushsha"
                 ? "wushsha"
                 : roleStrategy === "subscriber"
-                  ? "subscriber"
-                  : app.join_type === "customer"
                     ? "subscriber"
-                    : "wushsha";
+                    : app.join_type === "customer"
+                        ? "subscriber"
+                        : "wushsha";
 
         const result = await acceptApplicationAndCreateUser(app.id, {
             role: resolvedRole,
@@ -3616,16 +3616,16 @@ export async function getAuditLog(params: {
 
     const filtered = params.search?.trim()
         ? entries.filter((e) => {
-              const q = params.search!.toLowerCase();
-              return (
-                  e.target?.display_name?.toLowerCase().includes(q) ||
-                  e.target?.username?.toLowerCase().includes(q) ||
-                  e.target?.email?.toLowerCase().includes(q) ||
-                  e.changed_by?.display_name?.toLowerCase().includes(q) ||
-                  e.new_role.includes(q) ||
-                  (e.old_role ?? "").includes(q)
-              );
-          })
+            const q = params.search!.toLowerCase();
+            return (
+                e.target?.display_name?.toLowerCase().includes(q) ||
+                e.target?.username?.toLowerCase().includes(q) ||
+                e.target?.email?.toLowerCase().includes(q) ||
+                e.changed_by?.display_name?.toLowerCase().includes(q) ||
+                e.new_role.includes(q) ||
+                (e.old_role ?? "").includes(q)
+            );
+        })
         : entries;
 
     const total = params.search?.trim() ? filtered.length : (count ?? 0);

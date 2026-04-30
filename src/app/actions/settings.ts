@@ -992,6 +992,7 @@ export async function updateProduct(id: string, updates: Partial<{
     type: string;
     price: number;
     image_url: string;
+    images: string[];
     artist_id: string;
     in_stock: boolean;
     is_featured: boolean;
@@ -1042,6 +1043,7 @@ export async function createProductAdmin(data: {
     type: string;
     price: number;
     image_url: string;
+    images?: string[];
     sizes?: string[];
     in_stock?: boolean;
     stock_quantity?: number;
@@ -1064,6 +1066,7 @@ export async function createProductAdmin(data: {
             type: data.type,
             price: Number(data.price),
             image_url: data.image_url.trim(),
+            images: data.images && data.images.length > 0 ? data.images : [],
             sizes: data.sizes && data.sizes.length > 0 ? data.sizes : null,
             in_stock: data.in_stock ?? true,
             stock_quantity: data.stock_quantity ?? null,

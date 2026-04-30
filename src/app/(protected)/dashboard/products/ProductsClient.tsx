@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Package, Star, StarOff, CheckCircle, XCircle, Loader2, Plus, Pencil, Trash2,
     X, Upload, Search, ArrowUpDown, ArrowUp, ArrowDown, Download, QrCode,
-    Printer, CheckSquare, Square, MoreHorizontal, Filter, Tags,
+    Printer, CheckSquare, Square, MoreHorizontal, Filter, Tags, GripVertical, ImagePlus,
 } from "lucide-react";
 import {
     updateProduct, deleteProduct, createProductAdmin, uploadProductImage,
@@ -966,9 +966,14 @@ function ProductFormModal({
     onClose: () => void; onSuccess: () => void; onError: (msg: string) => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const extraFileInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(false);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    // ─── Multi-image state
+    const [extraFiles, setExtraFiles] = useState<File[]>([]);
+    const [extraPreviews, setExtraPreviews] = useState<string[]>([]);
+    const [existingImages, setExistingImages] = useState<string[]>([]);
     const [form, setForm] = useState({
         artist_id: "", title: "", description: "", type: "print", price: "",
         image_url: "", in_stock: true, stock_quantity: "", store_name: "", sizes: "",
@@ -978,6 +983,8 @@ function ProductFormModal({
         if (!open) return;
         setUploadFile(null);
         setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+        setExtraFiles([]);
+        setExtraPreviews((prev) => { prev.forEach((u) => URL.revokeObjectURL(u)); return []; });
         if (mode === "edit" && product) {
             setForm({
                 artist_id: product.artist_id || "", title: product.title || "",
@@ -988,12 +995,14 @@ function ProductFormModal({
                 store_name: product.store_name || "",
                 sizes: product.sizes ? product.sizes.join(", ") : "",
             });
+            setExistingImages(product.images || []);
         } else if (mode === "add") {
             setForm({
                 artist_id: artists[0]?.id || "", title: "", description: "", type: "print",
                 price: "", image_url: "", in_stock: true, stock_quantity: "",
                 store_name: "WASHA.STOR", sizes: "",
             });
+            setExistingImages([]);
         }
     }, [open, mode, product?.id, artists]);
 
@@ -1008,6 +1017,27 @@ function ProductFormModal({
             queueMicrotask(() => onError("الملف غير مدعوم أو أكبر من 5 ميجابايت"));
         }
         e.target.value = "";
+    };
+
+    const handleExtraFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        const maxExtra = 8 - existingImages.length - extraFiles.length;
+        const valid = files.filter((f) => f.size <= 5 * 1024 * 1024 && /^image\/(jpeg|png|webp|gif)$/.test(f.type)).slice(0, Math.max(0, maxExtra));
+        if (valid.length < files.length) queueMicrotask(() => onError("بعض الملفات تم تجاهلها (حد 8 صور إضافية، أو حجم أكبر من 5MB)"));
+        if (valid.length > 0) {
+            setExtraFiles((prev) => [...prev, ...valid]);
+            setExtraPreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
+        }
+        e.target.value = "";
+    };
+
+    const removeExtraFile = (idx: number) => {
+        setExtraFiles((prev) => prev.filter((_, i) => i !== idx));
+        setExtraPreviews((prev) => { URL.revokeObjectURL(prev[idx]); return prev.filter((_, i) => i !== idx); });
+    };
+
+    const removeExistingImage = (idx: number) => {
+        setExistingImages((prev) => prev.filter((_, i) => i !== idx));
     };
 
     if (!open) return null;
@@ -1036,10 +1066,19 @@ function ProductFormModal({
 
         if (mode === "add" && !imageUrl) { setLoading(false); onError("ارفع صورة أو أدخل رابط الصورة"); return; }
 
+        // Upload extra images
+        const allImages = [...existingImages];
+        for (const ef of extraFiles) {
+            const fd = new FormData();
+            fd.append("file", ef);
+            const r = await uploadProductImage(fd);
+            if (r.success) allImages.push(r.url);
+        }
+
         if (mode === "add") {
             const result = await createProductAdmin({
                 artist_id: form.artist_id, title, description: form.description || undefined,
-                type: form.type, price, image_url: imageUrl, in_stock: form.in_stock,
+                type: form.type, price, image_url: imageUrl, images: allImages, in_stock: form.in_stock,
                 stock_quantity: form.stock_quantity ? parseInt(form.stock_quantity, 10) : undefined,
                 store_name: form.store_name.trim() || undefined, sizes: parsedSizes,
             });
@@ -1048,7 +1087,7 @@ function ProductFormModal({
         } else {
             const result = await updateProduct(product.id, {
                 title, description: form.description || null, type: form.type, price,
-                image_url: imageUrl || product.image_url, artist_id: form.artist_id,
+                image_url: imageUrl || product.image_url, images: allImages, artist_id: form.artist_id,
                 in_stock: form.in_stock,
                 store_name: form.store_name.trim() || null,
             });
@@ -1158,6 +1197,45 @@ function ProductFormModal({
                                 placeholder="https://..."
                                 className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>
+                    </div>
+
+                    {/* ─── Extra Images Gallery ─── */}
+                    <div>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">
+                            <span className="flex items-center gap-1.5"><ImagePlus className="w-3.5 h-3.5 text-gold" /> صور إضافية للمنتج</span>
+                        </label>
+                        <p className="text-[10px] text-theme-faint mb-2">أضف حتى 8 صور إضافية لعرضها كمعرض في صفحة المنتج</p>
+                        {(existingImages.length > 0 || extraPreviews.length > 0) && (
+                            <div className="grid grid-cols-4 gap-2 mb-2">
+                                {existingImages.map((url, idx) => (
+                                    <div key={`ex-${idx}`} className="relative group aspect-square rounded-lg overflow-hidden bg-theme-subtle border border-theme-subtle">
+                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                        <button type="button" onClick={() => removeExistingImage(idx)}
+                                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                                {extraPreviews.map((url, idx) => (
+                                    <div key={`new-${idx}`} className="relative group aspect-square rounded-lg overflow-hidden bg-theme-subtle border border-dashed border-gold/20">
+                                        <img src={url} alt="" className="w-full h-full object-cover" />
+                                        <button type="button" onClick={() => removeExtraFile(idx)}
+                                            className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500/90 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                        <span className="absolute bottom-0.5 left-0.5 text-[8px] bg-emerald-500/80 text-white px-1 rounded font-bold">جديد</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {existingImages.length + extraFiles.length < 8 && (
+                            <button type="button" onClick={() => extraFileInputRef.current?.click()}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-theme-soft text-theme-subtle hover:text-gold hover:border-gold/30 hover:bg-gold/5 transition-all text-xs">
+                                <ImagePlus className="w-4 h-4" />
+                                إضافة صور ({existingImages.length + extraFiles.length}/8)
+                            </button>
+                        )}
+                        <input ref={extraFileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={handleExtraFilesSelect} className="hidden" />
                     </div>
 
                     {/* Description */}

@@ -10,6 +10,7 @@ import { getSupabaseServerClient } from "@/lib/supabase";
 import { RecentlyViewedTracker } from "@/components/store/RecentlyViewedTracker";
 import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection";
 import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
+import { ProductImageGallery } from "@/components/store/ProductImageGallery";
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -150,21 +151,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
                     {/* Image */}
-                    <div className="theme-surface-panel rounded-[2rem] p-3 sm:p-4 xl:sticky xl:top-28 xl:self-start">
-                        <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle">
-                            <Image
-                                src={product.image_url}
-                                alt={product.title}
-                                fill
-                                className="object-cover"
-                                sizes="(max-width: 1024px) 100vw, 50vw"
-                                priority
-                            />
-                            <span className="absolute top-4 right-4 text-xs bg-[color:rgba(15,15,15,0.42)] backdrop-blur-md text-on-dark px-3 py-1 rounded-full">
-                                {product.type}
-                            </span>
-                        </div>
-                    </div>
+                    <ProductImageGallery
+                        mainImage={product.image_url}
+                        images={product.images || []}
+                        title={product.title}
+                        type={product.type}
+                    />
 
                     {/* Info */}
                     <div className="theme-surface-panel flex flex-col justify-center rounded-[2rem] p-5 sm:p-8 lg:p-10">
