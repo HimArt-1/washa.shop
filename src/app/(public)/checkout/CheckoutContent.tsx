@@ -77,7 +77,9 @@ export function CheckoutContent({ shippingConfig, userRole }: { shippingConfig: 
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+        (userRole === "wushsha" || userRole === "subscriber") ? "paylink" : "cod"
+    );
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState("");
@@ -544,38 +546,40 @@ export function CheckoutContent({ shippingConfig, userRole }: { shippingConfig: 
 
                             <div className="space-y-3">
                                 {/* COD */}
-                                <motion.button
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.99 }}
-                                    type="button"
-                                    onClick={() => setPaymentMethod("cod")}
-                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "cod"
-                                        ? "border-gold/40 bg-gold/10"
-                                        : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"}`}>
-                                                <AnimatePresence>
-                                                    {paymentMethod === "cod" && (
-                                                        <motion.div 
-                                                            initial={{ scale: 0 }}
-                                                            animate={{ scale: 1 }}
-                                                            exit={{ scale: 0 }}
-                                                            className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
-                                                        />
-                                                    )}
-                                                </AnimatePresence>
+                                {userRole !== "wushsha" && userRole !== "subscriber" && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.01 }}
+                                        whileTap={{ scale: 0.99 }}
+                                        type="button"
+                                        onClick={() => setPaymentMethod("cod")}
+                                        className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "cod"
+                                            ? "border-gold/40 bg-gold/10"
+                                            : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "cod" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                    <AnimatePresence>
+                                                        {paymentMethod === "cod" && (
+                                                            <motion.div 
+                                                                initial={{ scale: 0 }}
+                                                                animate={{ scale: 1 }}
+                                                                exit={{ scale: 0 }}
+                                                                className="w-1.5 h-1.5 rounded-full bg-[var(--wusha-bg)]" 
+                                                            />
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                                <div>
+                                                    <span className="font-bold">الدفع عند الاستلام</span>
+                                                    <p className="mt-1 text-xs text-theme-subtle">ادفع عند استلام الطلب داخل المملكة.</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <span className="font-bold">الدفع عند الاستلام</span>
-                                                <p className="mt-1 text-xs text-theme-subtle">ادفع عند استلام الطلب داخل المملكة.</p>
-                                            </div>
+                                            <span className="inline-flex w-fit rounded px-2 py-1 text-xs text-gold bg-gold/20">متاح</span>
                                         </div>
-                                        <span className="inline-flex w-fit rounded px-2 py-1 text-xs text-gold bg-gold/20">متاح</span>
-                                    </div>
-                                </motion.button>
+                                    </motion.button>
+                                )}
 
                                 {/* Paylink */}
                                 <motion.button
