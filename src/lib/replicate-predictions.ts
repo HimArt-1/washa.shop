@@ -4,7 +4,7 @@
  */
 
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-export const REPLICATE_WAIT_SECONDS = 120;
+export const REPLICATE_WAIT_SECONDS = 60;
 
 export const FLUX_SCHNELL = "black-forest-labs/flux-schnell";
 export const FLUX_IMG2IMG = "bxclib2/flux_img2img";

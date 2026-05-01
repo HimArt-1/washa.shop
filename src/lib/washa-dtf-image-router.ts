@@ -124,6 +124,61 @@ function referenceToDataUrl(ref: { base64: string; mimeType: string }): string {
     return `data:${ref.mimeType};base64,${ref.base64}`;
 }
 
+function isDtfProviderFallbackEnabled() {
+    return process.env.WASHA_DTF_PROVIDER_FALLBACK !== "false";
+}
+
+async function runReplicateMockup(
+    prompt: string,
+    referenceImage: { base64: string; mimeType: string } | null | undefined
+) {
+    if (!isReplicateTokenConfigured()) {
+        throw new Error(
+            "ضُبط WASHA_DTF_IMAGE_PROVIDER أو IMAGE_PROVIDER على replicate لكن REPLICATE_API_TOKEN غير مضبوط."
+        );
+    }
+
+    const out = referenceImage?.base64
+        ? await runReplicatePredictions(
+            { version: FLUX_IMG2IMG, input: { prompt, image: referenceToDataUrl(referenceImage) } },
+            { onHttpError: () => {} }
+        )
+        : await runReplicatePredictions(
+            { version: FLUX_SCHNELL, input: { prompt } },
+            { onHttpError: () => {} }
+        );
+
+    if (out?.urls?.[0]) return out.urls[0];
+    throw new Error("فشل توليد الصورة عبر Replicate");
+}
+
+async function runReplicateMockupFallback(
+    originalError: unknown,
+    prompt: string,
+    referenceImage: { base64: string; mimeType: string } | null | undefined,
+    traceId: string,
+    fromProvider: string
+) {
+    if (!isDtfProviderFallbackEnabled() || !isReplicateTokenConfigured()) {
+        throw originalError;
+    }
+
+    logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate", {
+        from: fromProvider,
+        reason: originalError instanceof Error ? originalError.message : String(originalError ?? ""),
+    });
+
+    try {
+        return await runReplicateMockup(prompt, referenceImage);
+    } catch (fallbackError) {
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate_failed", {
+            from: fromProvider,
+            error_message: fallbackError instanceof Error ? fallbackError.message : String(fallbackError ?? ""),
+        });
+        throw originalError;
+    }
+}
+
 /**
  * توليد موكب — باستخدام المزوّد المُعرَّف.
  */
@@ -147,59 +202,52 @@ export async function washDtfRoutedGenerateMockup(
         p === "gemini-2.5-flash-image-preview" ||
         p === "gemini-3.1-flash-image-preview"
     ) {
-        return runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+        try {
+            return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+        } catch (error) {
+            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+        }
     }
 
     if (p === "replicate") {
-        if (!isReplicateTokenConfigured()) {
-            throw new Error(
-                "ضُبط WASHA_DTF_IMAGE_PROVIDER أو IMAGE_PROVIDER على replicate لكن REPLICATE_API_TOKEN غير مضبوط."
-            );
-        }
-        if (referenceImage?.base64) {
-            const out = await runReplicatePredictions(
-                { version: FLUX_IMG2IMG, input: { prompt, image: referenceToDataUrl(referenceImage) } },
-                { onHttpError: () => {} }
-            );
-            if (out?.urls?.[0]) return out.urls[0];
-        } else {
-            const out = await runReplicatePredictions(
-                { version: FLUX_SCHNELL, input: { prompt } },
-                { onHttpError: () => {} }
-            );
-            if (out?.urls?.[0]) return out.urls[0];
-        }
-        throw new Error("فشل توليد الصورة عبر Replicate");
+        return runReplicateMockup(prompt, referenceImage);
     }
 
     if (p === "nanobanana" && isGeminiKeyConfigured()) {
-        const u = await runNanoBananaDataUrl(prompt, referenceImage ? referenceToDataUrl(referenceImage) : null, {
-            throwOnError: true,
-        });
-        if (u) return u;
+        try {
+            const u = await runNanoBananaDataUrl(prompt, referenceImage ? referenceToDataUrl(referenceImage) : null, {
+                throwOnError: true,
+            });
+            if (u) return u;
+            throw new Error("لم يرجع مزود Nano Banana صورة صالحة.");
+        } catch (error) {
+            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+        }
     }
 
     if (p === "gemini" && isGeminiKeyConfigured()) {
         const refUrl = referenceImage ? referenceToDataUrl(referenceImage) : null;
-        const n = await runNanoBananaDataUrl(prompt, refUrl);
-        if (n) return n;
-        if (!referenceImage) {
-            const im = await runGeminiImagenDataUrl(prompt);
-            if (im) return im;
-        }
-        if (referenceImage && isReplicateTokenConfigured()) {
-            const out = await runReplicatePredictions(
-                { version: FLUX_IMG2IMG, input: { prompt, image: referenceToDataUrl(referenceImage) } },
-                { onHttpError: () => {} }
-            );
-            if (out?.urls?.[0]) return out.urls[0];
+        try {
+            const n = await runNanoBananaDataUrl(prompt, refUrl, { throwOnError: true });
+            if (n) return n;
+            if (!referenceImage) {
+                const im = await runGeminiImagenDataUrl(prompt);
+                if (im) return im;
+            }
+            throw new Error("لم يرجع مزود Gemini صورة صالحة.");
+        } catch (error) {
+            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
         }
     }
 
     // غير مُعرَّف أو فشل المسارات أعلاه — Google GenAI الافتراضي إن وُجد مفتاح
     if (isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_genai", { from: p });
-        return runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+        try {
+            return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+        } catch (error) {
+            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, "genai");
+        }
     }
 
     throw new Error("لم يُهيأ أي مزوّد توليد صالح لـ WASHA AI. راجع WASHA_DTF_IMAGE_PROVIDER والمفاتيح (GEMINI / REPLICATE).");
