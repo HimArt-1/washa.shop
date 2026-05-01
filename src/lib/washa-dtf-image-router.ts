@@ -173,7 +173,9 @@ export async function washDtfRoutedGenerateMockup(
     }
 
     if (p === "nanobanana" && isGeminiKeyConfigured()) {
-        const u = await runNanoBananaDataUrl(prompt, referenceImage ? referenceToDataUrl(referenceImage) : null);
+        const u = await runNanoBananaDataUrl(prompt, referenceImage ? referenceToDataUrl(referenceImage) : null, {
+            throwOnError: true,
+        });
         if (u) return u;
     }
 

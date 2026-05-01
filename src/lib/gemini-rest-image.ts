@@ -10,8 +10,21 @@ const IMAGEN_MODEL = "imagen-4.0-ultra-generate-001";
 const NANO_BANANA_MODEL =
     (process.env.NANO_BANANA_PREDICT_MODEL || "imagen-4.0-ultra-generate-001").trim() || "imagen-4.0-ultra-generate-001";
 
+type GeminiRestImageOptions = {
+    throwOnError?: boolean;
+};
+
 export function isGeminiKeyConfigured() {
     return Boolean(GEMINI_API_KEY);
+}
+
+function getProviderErrorMessage(rawBody: string) {
+    try {
+        const parsed = JSON.parse(rawBody) as { error?: { message?: unknown } };
+        return typeof parsed.error?.message === "string" ? parsed.error.message : rawBody;
+    } catch {
+        return rawBody;
+    }
 }
 
 /**
@@ -19,7 +32,8 @@ export function isGeminiKeyConfigured() {
  */
 export async function runNanoBananaDataUrl(
     prompt: string,
-    imageDataUrl?: string | null
+    imageDataUrl?: string | null,
+    options: GeminiRestImageOptions = {}
 ): Promise<string | null> {
     if (!GEMINI_API_KEY) return null;
 
@@ -55,6 +69,7 @@ export async function runNanoBananaDataUrl(
 
     if (!res.ok) {
         const err = await res.text();
+        const providerMessage = getProviderErrorMessage(err);
         console.error("Nano Banana API error:", res.status, err);
         await reportAdminOperationalAlert({
             dispatchKey: `ai:nanobanana_http_error:${res.status}`,
@@ -65,8 +80,11 @@ export async function runNanoBananaDataUrl(
             message: "خدمة Nano Banana (Gemini 3) أعادت استجابة فاشلة.",
             link: "/dashboard/notifications",
             source: "ai.generation",
-            metadata: { provider: "nanobanana", status: res.status },
+            metadata: { provider: "nanobanana", status: res.status, providerMessage },
         });
+        if (options.throwOnError) {
+            throw new Error(err || `Nano Banana API failed with status ${res.status}`);
+        }
         return null;
     }
 
@@ -99,6 +117,7 @@ export async function runGeminiImagenDataUrl(prompt: string): Promise<string | n
 
     if (!res.ok) {
         const err = await res.text();
+        const providerMessage = getProviderErrorMessage(err);
         console.error("Gemini Imagen API error:", res.status, err);
         await reportAdminOperationalAlert({
             dispatchKey: `ai:gemini_http_error:${res.status}`,
@@ -109,7 +128,7 @@ export async function runGeminiImagenDataUrl(prompt: string): Promise<string | n
             message: "خدمة Gemini Imagen أعادت استجابة فاشلة أثناء توليد صورة.",
             link: "/dashboard/notifications",
             source: "ai.generation",
-            metadata: { provider: "gemini", status: res.status },
+            metadata: { provider: "gemini", status: res.status, providerMessage },
         });
         return null;
     }

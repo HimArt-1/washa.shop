@@ -63,6 +63,19 @@ export function getWashaDtfErrorDetails(error: unknown): {
     }
 
     if (
+        providerStatus === "PERMISSION_DENIED" &&
+        (
+            normalizedProviderMessage.includes("project has been denied access") ||
+            normalizedProviderMessage.includes("denied access")
+        )
+    ) {
+        return {
+            message: "مشروع Google المرتبط بـ Washa AI لا يملك صلاحية الوصول لنموذج الصور الحالي. فعّل صلاحية النموذج/الفوترة أو غيّر مزود WASHA AI.",
+            status: 503,
+        };
+    }
+
+    if (
         /reported as leaked/i.test(providerMessage) ||
         providerStatus === "PERMISSION_DENIED" ||
         normalizedProviderMessage.includes("api key expired") ||
@@ -81,6 +94,16 @@ export function getWashaDtfErrorDetails(error: unknown): {
         /quota/i.test(providerMessage) ||
         /rate.?limit/i.test(providerMessage)
     ) {
+        if (
+            normalizedProviderMessage.includes("check your plan and billing") ||
+            /free_tier[\s\S]*limit:\s*0/i.test(providerMessage)
+        ) {
+            return {
+                message: "حصة Google المرتبطة بـ Washa AI غير مفعّلة أو نفدت لهذا النموذج. راجع الفوترة والحدود في Google AI Studio أو استخدم مزودًا آخر.",
+                status: 429,
+            };
+        }
+
         return {
             message: "تم تجاوز حصة Washa AI الحالية. يرجى المحاولة بعد قليل أو التواصل مع الدعم.",
             status: 429,

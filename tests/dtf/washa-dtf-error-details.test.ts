@@ -27,4 +27,38 @@ describe("getWashaDtfErrorDetails", () => {
             status: 503,
         });
     });
+
+    it("normalizes denied Google image model access to an actionable 503", () => {
+        const error = new Error(JSON.stringify({
+            error: {
+                code: 403,
+                status: "PERMISSION_DENIED",
+                message: "Your project has been denied access. Please contact support.",
+            },
+        }));
+
+        const result = getWashaDtfErrorDetails(error);
+
+        expect(result).toEqual({
+            message: "مشروع Google المرتبط بـ Washa AI لا يملك صلاحية الوصول لنموذج الصور الحالي. فعّل صلاحية النموذج/الفوترة أو غيّر مزود WASHA AI.",
+            status: 503,
+        });
+    });
+
+    it("normalizes Google free-tier zero quota to a billing/quota message", () => {
+        const error = new Error(JSON.stringify({
+            error: {
+                code: 429,
+                status: "RESOURCE_EXHAUSTED",
+                message: "You exceeded your current quota, please check your plan and billing details. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-3.1-flash-image",
+            },
+        }));
+
+        const result = getWashaDtfErrorDetails(error);
+
+        expect(result).toEqual({
+            message: "حصة Google المرتبطة بـ Washa AI غير مفعّلة أو نفدت لهذا النموذج. راجع الفوترة والحدود في Google AI Studio أو استخدم مزودًا آخر.",
+            status: 429,
+        });
+    });
 });
