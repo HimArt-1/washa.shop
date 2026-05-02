@@ -52,11 +52,11 @@ async function withDtfProviderTimeout<T>(operation: (signal: AbortSignal) => Pro
  * يُجرَّب النموذج الأساسي أولاً ثم البدائل عند فشل الحصة.
  */
 const GENAI_FALLBACK_MODELS = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.0-flash-exp",
+    "gemini-2.5-flash-image",
+    "gemini-3-pro-image-preview",
 ];
 
-function isQuotaError(error: unknown): boolean {
+function isQuotaOrUnavailableError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
     const msg = error.message.toLowerCase();
     return (
@@ -64,7 +64,10 @@ function isQuotaError(error: unknown): boolean {
         msg.includes("quota") ||
         msg.includes("rate") ||
         msg.includes("429") ||
-        msg.includes("free_tier")
+        msg.includes("free_tier") ||
+        msg.includes("is not found") ||
+        msg.includes("not supported") ||
+        msg.includes("404")
     );
 }
 
@@ -112,11 +115,11 @@ async function runGenaiSdkMockup(
             lastError = error;
             logDtfTrace("dtf.ai.router", traceId, "genai_model_failed", {
                 model,
-                is_quota: isQuotaError(error),
+                is_quota: isQuotaOrUnavailableError(error),
                 error_message: error instanceof Error ? error.message.slice(0, 200) : String(error),
             });
             // إذا كان الخطأ حصة — جرّب النموذج التالي
-            if (isQuotaError(error)) continue;
+            if (isQuotaOrUnavailableError(error)) continue;
             // أخطاء أخرى (مفتاح خاطئ، شبكة) — لا فائدة من المحاولة مع نموذج آخر
             throw error;
         }
