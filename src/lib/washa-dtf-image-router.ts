@@ -47,6 +47,27 @@ async function withDtfProviderTimeout<T>(operation: (signal: AbortSignal) => Pro
     }
 }
 
+/**
+ * نماذج احتياطية — كل نموذج عنده حصة مستقلة في الطبقة المجانية.
+ * يُجرَّب النموذج الأساسي أولاً ثم البدائل عند فشل الحصة.
+ */
+const GENAI_FALLBACK_MODELS = [
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.0-flash-exp",
+];
+
+function isQuotaError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    const msg = error.message.toLowerCase();
+    return (
+        msg.includes("resource_exhausted") ||
+        msg.includes("quota") ||
+        msg.includes("rate") ||
+        msg.includes("429") ||
+        msg.includes("free_tier")
+    );
+}
+
 async function runGenaiSdkMockup(
     prompt: string,
     referenceImage: { base64: string; mimeType: string } | null | undefined,
@@ -66,21 +87,45 @@ async function runGenaiSdkMockup(
         httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
     } as any;
 
-    const response = await withDtfProviderTimeout(
-        (abortSignal) =>
-            client.models.generateContent({
-                model: WASHA_DTF_MODEL,
-                contents: { role: "user", parts },
-                config: { ...config, abortSignal },
-            }),
-        timeoutMs
-    );
-    const imageUrl = extractGeneratedImageDataUrl(response);
-    if (!imageUrl) {
-        logDtfTrace("dtf.ai.router", traceId, "genai_empty_image", {});
-        throw new Error("لم يتم توليد صورة من Washa AI");
+    // جرّب النموذج الأساسي أولاً
+    const modelsToTry = [WASHA_DTF_MODEL, ...GENAI_FALLBACK_MODELS];
+    let lastError: unknown = null;
+
+    for (const model of modelsToTry) {
+        try {
+            logDtfTrace("dtf.ai.router", traceId, "genai_trying_model", { model });
+            const response = await withDtfProviderTimeout(
+                (abortSignal) =>
+                    client.models.generateContent({
+                        model,
+                        contents: { role: "user", parts },
+                        config: { ...config, abortSignal },
+                    }),
+                timeoutMs
+            );
+            const imageUrl = extractGeneratedImageDataUrl(response);
+            if (imageUrl) {
+                logDtfTrace("dtf.ai.router", traceId, "genai_model_success", { model });
+                return imageUrl;
+            }
+        } catch (error) {
+            lastError = error;
+            logDtfTrace("dtf.ai.router", traceId, "genai_model_failed", {
+                model,
+                is_quota: isQuotaError(error),
+                error_message: error instanceof Error ? error.message.slice(0, 200) : String(error),
+            });
+            // إذا كان الخطأ حصة — جرّب النموذج التالي
+            if (isQuotaError(error)) continue;
+            // أخطاء أخرى (مفتاح خاطئ، شبكة) — لا فائدة من المحاولة مع نموذج آخر
+            throw error;
+        }
     }
-    return imageUrl;
+
+    // كل النماذج فشلت
+    if (lastError) throw lastError;
+    logDtfTrace("dtf.ai.router", traceId, "genai_empty_image", {});
+    throw new Error("لم يتم توليد صورة من Washa AI");
 }
 
 async function runGenaiSdkExtract(
