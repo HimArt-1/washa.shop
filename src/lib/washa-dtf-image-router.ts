@@ -173,7 +173,9 @@ async function runReplicateMockupFallback(
     });
 
     try {
-        return await runReplicateMockup(prompt, referenceImage);
+        const result = await runReplicateMockup(prompt, referenceImage);
+        if (result) return result;
+        throw originalError;
     } catch (fallbackError) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate_failed", {
             from: fromProvider,
