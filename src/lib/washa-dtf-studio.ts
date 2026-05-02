@@ -89,6 +89,17 @@ export function getWashaDtfErrorDetails(error: unknown): {
     }
 
     if (
+        /insufficient credit/i.test(providerMessage) ||
+        (providerCode === 402) ||
+        (normalizedProviderMessage.includes("purchase credit"))
+    ) {
+        return {
+            message: "رصيد مزوّد الصور (Replicate) نفد. يستخدم Washa AI الآن مزوّداً بديلاً — أعد المحاولة.",
+            status: 503,
+        };
+    }
+
+    if (
         providerCode === 429 ||
         providerStatus === "RESOURCE_EXHAUSTED" ||
         /quota/i.test(providerMessage) ||

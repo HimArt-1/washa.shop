@@ -133,9 +133,7 @@ async function runReplicateMockup(
     referenceImage: { base64: string; mimeType: string } | null | undefined
 ) {
     if (!isReplicateTokenConfigured()) {
-        throw new Error(
-            "ضُبط WASHA_DTF_IMAGE_PROVIDER أو IMAGE_PROVIDER على replicate لكن REPLICATE_API_TOKEN غير مضبوط."
-        );
+        return null;
     }
 
     const out = referenceImage?.base64
@@ -163,9 +161,15 @@ async function runReplicateMockupFallback(
         throw originalError;
     }
 
+    // لا تحاول Replicate إذا كان الخطأ الأصلي بسبب نفاد رصيده
+    const errMsg = originalError instanceof Error ? originalError.message : String(originalError ?? "");
+    if (/insufficient credit/i.test(errMsg) || /purchase credit/i.test(errMsg)) {
+        throw originalError;
+    }
+
     logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate", {
         from: fromProvider,
-        reason: originalError instanceof Error ? originalError.message : String(originalError ?? ""),
+        reason: errMsg,
     });
 
     try {
@@ -210,7 +214,16 @@ export async function washDtfRoutedGenerateMockup(
     }
 
     if (p === "replicate") {
-        return runReplicateMockup(prompt, referenceImage);
+        if (isReplicateTokenConfigured()) {
+            const result = await runReplicateMockup(prompt, referenceImage);
+            if (result) return result;
+            // Replicate فشل — نحاول Gemini
+        }
+        // توكن Replicate غير مضبوط أو فشل — تراجع تلقائي إلى Gemini
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "replicate_no_token_fallback_genai", {});
+        if (isGeminiKeyConfigured()) {
+            return runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+        }
     }
 
     if (p === "nanobanana" && isGeminiKeyConfigured()) {
@@ -279,18 +292,20 @@ export async function washDtfRoutedExtractDesign(
     }
 
     if (p === "replicate") {
-        if (!isReplicateTokenConfigured()) {
-            throw new Error(
-                "ضُبط WASHA_DTF_IMAGE_PROVIDER أو IMAGE_PROVIDER على replicate لكن REPLICATE_API_TOKEN غير مضبوط."
+        if (isReplicateTokenConfigured()) {
+            const dataUrl = `data:${mimeType};base64,${mockupImage}`;
+            const out = await runReplicatePredictions(
+                { version: FLUX_IMG2IMG, input: { prompt, image: dataUrl } },
+                { onHttpError: () => {} }
             );
+            if (out?.urls?.[0]) return out.urls[0];
+            throw new Error("فشل استخراج التصميم عبر Replicate");
         }
-        const dataUrl = `data:${mimeType};base64,${mockupImage}`;
-        const out = await runReplicatePredictions(
-            { version: FLUX_IMG2IMG, input: { prompt, image: dataUrl } },
-            { onHttpError: () => {} }
-        );
-        if (out?.urls?.[0]) return out.urls[0];
-        throw new Error("فشل استخراج التصميم عبر Replicate");
+        // توكن Replicate غير مضبوط — تراجع تلقائي إلى Gemini
+        logDtfTrace("dtf.ai.extract-design", traceId, "replicate_no_token_fallback_genai", {});
+        if (isGeminiKeyConfigured()) {
+            return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        }
     }
 
     if ((p === "nanobanana" || p === "gemini") && isGeminiKeyConfigured()) {
