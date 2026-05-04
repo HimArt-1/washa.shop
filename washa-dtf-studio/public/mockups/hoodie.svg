@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 360" fill="none">
+  <defs>
+    <linearGradient id="hoodie-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a2a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#151515;stop-opacity:1" />
+    </linearGradient>
+    <filter id="hoodie-shadow" x="-20%" y="-10%" width="140%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <!-- ,3E 'DGH/J -->
+  <path
+    d="M140 5 L175 45 L195 95 L195 310 Q195 335 140 350 Q85 335 85 310 L85 95 L105 45 Z"
+    fill="url(#hoodie-grad)"
+    stroke="rgba(255,255,255,0.06)"
+    stroke-width="1"
+    filter="url(#hoodie-shadow)"
+  />
+  <!-- C'( 'DGH/J (BH3) -->
+  <path d="M118 45 Q140 0 162 45" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" stroke-linecap="round"/>
+  <!-- ,J( 'DC'F:1H -->
+  <path d="M100 165 L180 165 L180 235 L100 235 Z" fill="#111" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+</svg>

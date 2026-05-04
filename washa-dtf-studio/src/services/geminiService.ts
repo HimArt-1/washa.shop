@@ -79,7 +79,7 @@ export async function generateMockup(
 
   let sceneDirectives = '';
   if (isPocket) {
-    const wearerSide = preferences.designPosition === 'logo_left' ? "wearer's left chest (over the heart, which appears on the right side of the image)" : "wearer's right chest (which appears on the left side of the image)";
+    const wearerSide = preferences.designPosition === 'logo_right' ? "wearer's left chest (over the heart, which appears on the right side of the image)" : "wearer's right chest (which appears on the left side of the image)";
     
     sceneDirectives = compactPrompt([
       `Medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,

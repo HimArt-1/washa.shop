@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 345" fill="none">
+  <defs>
+    <linearGradient id="sweat-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#2d2d2d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#181818;stop-opacity:1" />
+    </linearGradient>
+    <filter id="sweat-shadow" x="-20%" y="-10%" width="140%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <!-- ,3E 'D3HJ* *J4J1* -->
+  <path
+    d="M140 22 L178 58 L198 118 L198 302 Q198 322 140 332 Q82 322 82 302 L82 118 L102 58 Z"
+    fill="url(#sweat-grad)"
+    stroke="rgba(255,255,255,0.06)"
+    stroke-width="1"
+    filter="url(#sweat-shadow)"
+  />
+  <!-- 1B() /'&1J) -->
+  <circle cx="140" cy="48" r="20" fill="#080808" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+</svg>

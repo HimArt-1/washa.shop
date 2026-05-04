@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { LIGHT_GARMENT_COLORS } from '../../types';
+import { siteAsset } from '../../lib/assets';
 
 export default function StepGarment() {
   const {
@@ -32,7 +33,7 @@ export default function StepGarment() {
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
-          الخطوة ١ من ٧
+          الخطوة ١ من ٦
         </div>
       </div>
 
@@ -76,56 +77,84 @@ export default function StepGarment() {
                 نوع القطعة
               </label>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {garmentOptions.map((garment, index) => (
-                <motion.button
-                  key={garment.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.12 + index * 0.05, duration: 0.35 }}
-                  onClick={() => {
-                    const nextColor = garment.colors[0] || null;
-                    const nextSize =
-                      garment.sizes.find((item) => item.colorId === nextColor?.id) ||
-                      garment.sizes.find((item) => item.colorId === null) ||
-                      garment.sizes[0] ||
-                      null;
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {garmentOptions.map((garment, index) => {
+                const isSelected = state.garmentId === garment.id;
+                return (
+                  <motion.button
+                    key={garment.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + index * 0.05, duration: 0.35 }}
+                    onClick={() => {
+                      const nextColor = garment.colors[0] || null;
+                      const nextSize =
+                        garment.sizes.find((item) => item.colorId === nextColor?.id) ||
+                        garment.sizes.find((item) => item.colorId === null) ||
+                        garment.sizes[0] ||
+                        null;
 
-                    updateState({
-                      garmentId: garment.id,
-                      garmentType: garment.name,
-                      garmentColorId: nextColor?.id || null,
-                      garmentColor: nextColor?.name || '',
-                      garmentColorHex: nextColor?.hexCode || '#111111',
-                      garmentSizeId: nextSize?.id || null,
-                      garmentSize: nextSize?.name || '',
-                    });
-                  }}
-                  className={cn(
-                    'relative overflow-hidden rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
-                    state.garmentId === garment.id
-                      ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
-                      : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    {garment.imageUrl ? (
-                      <img src={garment.imageUrl} alt={garment.name} className="h-14 w-14 rounded-xl object-cover border border-white/10" />
-                    ) : (
-                      <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                        <Shirt className="h-6 w-6" />
-                      </span>
+                      updateState({
+                        garmentId: garment.id,
+                        garmentType: garment.name,
+                        garmentColorId: nextColor?.id || null,
+                        garmentColor: nextColor?.name || '',
+                        garmentColorHex: nextColor?.hexCode || '#111111',
+                        garmentSizeId: nextSize?.id || null,
+                        garmentSize: nextSize?.name || '',
+                      });
+                    }}
+                    className={cn(
+                      'group relative h-64 overflow-hidden rounded-3xl border transition-all duration-500',
+                      isSelected
+                        ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_40px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
+                        : 'border-white/10 bg-white/[0.02] hover:border-washa-gold/30 hover:bg-white/[0.05]'
                     )}
-                    <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold text-washa-text-sec">
-                      {garment.colors.length} لون
-                    </span>
-                  </div>
-                  <div className="mt-5 space-y-1">
-                    <p className="text-base font-bold">{garment.name}</p>
-                    <p className="text-xs text-washa-text-faint">{garment.sizes.length} مقاس متاح</p>
-                  </div>
-                </motion.button>
-              ))}
+                  >
+                    {/* Garment Image */}
+                    <div className="absolute inset-0 z-0">
+                      {garment.imageUrl ? (
+                        <img 
+                          src={siteAsset(garment.imageUrl)} 
+                          alt={garment.name} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full w-full bg-washa-surface/20">
+                          <Shirt className="w-16 h-16 text-white/5" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Gradient Overlay for Text Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-washa-bg/60 to-transparent z-10 opacity-90" />
+
+                    {/* Content */}
+                    <div className="absolute inset-x-0 bottom-0 z-20 p-5 space-y-2 text-right">
+                      <div className="flex items-center justify-between">
+                        {isSelected && (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg">
+                            <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
+                          </div>
+                        )}
+                        <p className={cn(
+                          "text-xl font-bold transition-colors w-full",
+                          isSelected ? "text-washa-gold" : "text-white group-hover:text-washa-gold/80"
+                        )}>{garment.name}</p>
+                      </div>
+                      <div className="flex items-center justify-end gap-3 text-xs text-washa-text-faint/80">
+                        <span className="bg-black/40 px-2 py-1 rounded-md backdrop-blur-md">{garment.colors.length} ألوان</span>
+                        <span className="bg-black/40 px-2 py-1 rounded-md backdrop-blur-md">{garment.sizes.length} مقاسات</span>
+                      </div>
+                    </div>
+
+                    {/* Subtle bottom accent for selected state */}
+                    {isSelected && (
+                      <div className="absolute bottom-0 inset-x-0 h-1 bg-washa-gold shadow-[0_-4px_10px_rgba(201,168,106,0.5)] z-20" />
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           </div>
 

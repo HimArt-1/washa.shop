@@ -210,7 +210,7 @@ export default function SplashScreen() {
                 transition={{ duration: 0.8, delay: 0.28, ease: BRUSH_EASE }}
               >
                 <img
-                  src={siteAsset('logo.png')}
+                  src={siteAsset('washa-logo.png')}
                   alt="وشّى"
                   draggable={false}
                   style={{

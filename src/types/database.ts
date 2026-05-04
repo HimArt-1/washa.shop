@@ -427,6 +427,17 @@ export type CustomDesignStudioItem = {
     updated_at: string;
 }
 
+export type CustomDesignPosition = {
+    id: string;
+    name: string;
+    description: string | null;
+    image_url: string | null;
+    sort_order: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export type GarmentStudioMockup = {
     id: string;
     garment_id: string;
@@ -718,6 +729,12 @@ export type Database = {
                 Row: CustomDesignArtStyle;
                 Insert: Omit<CustomDesignArtStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
                 Update: Partial<Omit<CustomDesignArtStyle, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            custom_design_positions: {
+                Row: CustomDesignPosition;
+                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Update: Partial<Omit<CustomDesignPosition, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_color_packages: {

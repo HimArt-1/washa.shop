@@ -204,6 +204,15 @@ a {
   100% { transform: translateX(100%); }
 }
 
+@keyframes slow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-slow-spin {
+  animation: slow-spin 8s linear infinite;
+}
+
 .btn-shimmer-effect {
   position: relative;
   overflow: hidden;

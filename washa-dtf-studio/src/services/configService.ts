@@ -12,7 +12,8 @@ function isDtfStudioConfig(value: unknown): value is DtfStudioConfig {
     Array.isArray(config.garments) &&
     Array.isArray(config.styles) &&
     Array.isArray(config.techniques) &&
-    Array.isArray(config.palettes)
+    Array.isArray(config.palettes) &&
+    Array.isArray(config.positions)
   );
 }
 
@@ -22,6 +23,7 @@ function hydrateConfigWithFallback(config: DtfStudioConfig): DtfStudioConfig {
     styles: config.styles.length > 0 ? config.styles : FALLBACK_DTF_CONFIG.styles,
     techniques: config.techniques.length > 0 ? config.techniques : FALLBACK_DTF_CONFIG.techniques,
     palettes: config.palettes.length > 0 ? config.palettes : FALLBACK_DTF_CONFIG.palettes,
+    positions: config.positions.length > 0 ? config.positions : FALLBACK_DTF_CONFIG.positions,
   };
 }
 

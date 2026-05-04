@@ -62,8 +62,17 @@ export interface DtfStudioPaletteOption extends DtfStudioCreativeOption {
   colors: DtfStudioColorToken[];
 }
 
+export interface DtfStudioPositionOption {
+  id: string;
+  name: string;
+  description: string | null;
+  imageUrl: string | null;
+  sortOrder: number;
+}
+
 export interface DtfStudioConfig {
   garments: DtfStudioGarmentOption[];
+  positions: DtfStudioPositionOption[];
   styles: DtfStudioCreativeOption[];
   techniques: DtfStudioCreativeOption[];
   palettes: DtfStudioPaletteOption[];
@@ -135,11 +144,12 @@ export const FALLBACK_PALETTE_PROMPTS: Record<string, string> = {
 
 export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
   garments: [
+
     {
       id: 'garment-tshirt',
-      name: 'تيشيرت',
+      name: 'تي شيرت',
       slug: 'tshirt',
-      imageUrl: null,
+      imageUrl: '/mockups/tshirt-front.png',
       sortOrder: 0,
       basePrice: 0,
       pricing: {
@@ -179,7 +189,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       id: 'garment-hoodie',
       name: 'هودي',
       slug: 'hoodie',
-      imageUrl: null,
+      imageUrl: '/mockups/hoodie-front.png',
       sortOrder: 1,
       basePrice: 0,
       pricing: {
@@ -201,7 +211,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       id: 'garment-sweatshirt',
       name: 'سويت شيرت',
       slug: 'sweatshirt',
-      imageUrl: null,
+      imageUrl: '/mockups/pullover-back.png',
       sortOrder: 2,
       basePrice: 0,
       pricing: {
@@ -219,10 +229,10 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       ],
     },
     {
-      id: 'garment-jacket',
-      name: 'جاكيت',
-      slug: 'jacket',
-      imageUrl: null,
+      id: 'garment-pullover',
+      name: 'بلوفر',
+      slug: 'pullover',
+      imageUrl: '/mockups/pullover-front.png',
       sortOrder: 3,
       basePrice: 0,
       pricing: {
@@ -235,8 +245,8 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       },
       colors: [],
       sizes: [
-        { id: 'jacket-l', garmentId: 'garment-jacket', colorId: null, name: 'L', imageFrontUrl: null, imageBackUrl: null },
-        { id: 'jacket-xl', garmentId: 'garment-jacket', colorId: null, name: 'XL', imageFrontUrl: null, imageBackUrl: null },
+        { id: 'pullover-l', garmentId: 'garment-pullover', colorId: null, name: 'L', imageFrontUrl: null, imageBackUrl: null },
+        { id: 'pullover-xl', garmentId: 'garment-pullover', colorId: null, name: 'XL', imageFrontUrl: null, imageBackUrl: null },
       ],
     },
   ],
@@ -269,20 +279,23 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       prompt,
       metadata: null,
       colors:
-        name === 'نيون ساطع (Neon)'
-          ? [{ hex: '#00FFFF', name: 'Cyan' }, { hex: '#FF00FF', name: 'Magenta' }, { hex: '#00FF00', name: 'Lime' }]
-          : name === 'باستيل هادئ (Pastel)'
-            ? [{ hex: '#FFB6C1', name: 'Pastel Pink' }, { hex: '#ADD8E6', name: 'Baby Blue' }, { hex: '#98FB98', name: 'Mint' }]
-            : name === 'أحادي اللون (Monochrome)'
-              ? [{ hex: '#FFFFFF', name: 'White' }, { hex: '#888888', name: 'Gray' }, { hex: '#000000', name: 'Black' }]
-              : name === 'ألوان ترابية (Earth)'
-                ? [{ hex: '#8B4513', name: 'Brown' }, { hex: '#CD853F', name: 'Terracotta' }, { hex: '#556B2F', name: 'Olive' }]
-                : name === 'ريترو 80s (Retro)'
-                  ? [{ hex: '#FF69B4', name: 'Hot Pink' }, { hex: '#FF8C00', name: 'Orange' }, { hex: '#8A2BE2', name: 'Purple' }]
-                  : name === 'فيبورويف (Vaporwave)'
-                    ? [{ hex: '#00D4FF', name: 'Turquoise' }, { hex: '#FF00C1', name: 'Pink' }, { hex: '#9D00FF', name: 'Purple' }]
-                    : [{ hex: '#CCCCCC', name: 'Auto 1' }, { hex: '#999999', name: 'Auto 2' }, { hex: '#666666', name: 'Auto 3' }],
+        name === 'تلقائي (Auto)'
+          ? [{ hex: '#C9A86C', name: 'ذهب وشّى' }, { hex: '#111111', name: 'أسود داكن' }, { hex: '#FFFFFF', name: 'أبيض ناصع' }]
+          : name === 'نيون ساطع (Neon)'
+            ? [{ hex: '#00FFFF', name: 'Cyan' }, { hex: '#FF00FF', name: 'Magenta' }, { hex: '#00FF00', name: 'Lime' }]
+            : name === 'باستيل هادئ (Pastel)'
+              ? [{ hex: '#FFB6C1', name: 'Pastel Pink' }, { hex: '#ADD8E6', name: 'Baby Blue' }, { hex: '#98FB98', name: 'Mint' }]
+              : name === 'أحادي اللون (Monochrome)'
+                ? [{ hex: '#FFFFFF', name: 'White' }, { hex: '#888888', name: 'Gray' }, { hex: '#000000', name: 'Black' }]
+                : name === 'ألوان ترابية (Earth)'
+                  ? [{ hex: '#8B4513', name: 'Brown' }, { hex: '#CD853F', name: 'Terracotta' }, { hex: '#556B2F', name: 'Olive' }]
+                  : name === 'ريترو 80s (Retro)'
+                    ? [{ hex: '#FF69B4', name: 'Hot Pink' }, { hex: '#FF8C00', name: 'Orange' }, { hex: '#8A2BE2', name: 'Purple' }]
+                    : name === 'فيبورويف (Vaporwave)'
+                      ? [{ hex: '#00D4FF', name: 'Turquoise' }, { hex: '#FF00C1', name: 'Pink' }, { hex: '#9D00FF', name: 'Purple' }]
+                      : [{ hex: '#FF3366', name: 'Vibrant Red' }, { hex: '#33CCFF', name: 'Vibrant Blue' }, { hex: '#FFCC00', name: 'Vibrant Yellow' }, { hex: '#33FF99', name: 'Vibrant Green' }],
     })),
+  positions: [],
 };
 
 export const LIGHT_GARMENT_COLORS = ['أبيض', 'بيج', 'خردلي', 'وردي مغبر', 'أزرق سماوي'];

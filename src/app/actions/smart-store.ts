@@ -17,6 +17,7 @@ import type {
     CustomDesignColorPackage,
     CustomDesignGarment,
     CustomDesignOptionCompatibility,
+    CustomDesignPosition,
     CustomDesignOrder,
     CustomDesignOrderStatus,
     CustomDesignPreset,
@@ -83,6 +84,7 @@ import {
     smartStoreUpsertColorSchema,
     smartStoreUpsertDesignPresetSchema,
     smartStoreUpsertGarmentSchema,
+    smartStoreUpsertPositionSchema,
     smartStoreUpsertSizeSchema,
     smartStoreUpsertStudioItemSchema,
     smartStoreUpsertStyleSchema,
@@ -339,6 +341,12 @@ export async function getAllArtStyles(): Promise<CustomDesignArtStyle[]> {
     return ((data as CustomDesignArtStyle[]) ?? []).map(normalizeArtStyleRow);
 }
 
+export async function getAllPositions(): Promise<CustomDesignPosition[]> {
+    const { sb } = await requireSmartStoreAdmin();
+    const { data } = await sb.from("custom_design_positions").select("*").order("sort_order");
+    return (data as CustomDesignPosition[]) ?? [];
+}
+
 export async function getAllColorPackages(): Promise<CustomDesignColorPackage[]> {
     const { sb } = await requireSmartStoreAdmin();
     const { data } = await sb.from("custom_design_color_packages").select("*").order("sort_order");
@@ -573,6 +581,40 @@ export async function upsertArtStyle(formData: FormData) {
         if (error) return { error: error.message };
     } else {
         const { error } = await sb.from("custom_design_art_styles").insert(payload);
+        if (error) return { error: error.message };
+    }
+    return { success: true };
+}
+
+export async function upsertPosition(formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const validated = smartStoreUpsertPositionSchema.safeParse({
+        id: formData.get("id"),
+        name: formData.get("name"),
+        description: formData.get("description"),
+        image_url: formData.get("image_url"),
+        sort_order: formData.get("sort_order"),
+        is_active: formData.get("is_active"),
+    });
+    if (!validated.success) {
+        return { error: getFirstValidationError(validated.error) };
+    }
+
+    const data = validated.data;
+
+    const payload = {
+        name: data.name,
+        description: data.description ?? null,
+        image_url: data.image_url ?? null,
+        sort_order: data.sort_order,
+        is_active: data.is_active,
+    };
+
+    if (data.id) {
+        const { error } = await sb.from("custom_design_positions").update(payload).eq("id", data.id);
+        if (error) return { error: error.message };
+    } else {
+        const { error } = await sb.from("custom_design_positions").insert(payload);
         if (error) return { error: error.message };
     }
     return { success: true };
@@ -892,6 +934,13 @@ export async function deleteStyle(id: string) {
 export async function deleteArtStyle(id: string) {
     const { sb } = await requireSmartStoreAdmin();
     const { error } = await sb.from("custom_design_art_styles").delete().eq("id", id);
+    if (error) return { error: error.message };
+    return { success: true };
+}
+
+export async function deletePosition(id: string) {
+    const { sb } = await requireSmartStoreAdmin();
+    const { error } = await sb.from("custom_design_positions").delete().eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
 }

@@ -6,8 +6,7 @@ import Header from './components/Header';
 import StepGarment from './components/steps/StepGarment';
 import StepIdea from './components/steps/StepIdea';
 import StepPosition from './components/steps/StepPosition';
-import StepStyle from './components/steps/StepStyle';
-import StepTechnique from './components/steps/StepTechnique';
+import StepArtStyle from './components/steps/StepArtStyle';
 import StepPalette from './components/steps/StepPalette';
 import StepResult from './components/steps/StepResult';
 
@@ -90,10 +89,9 @@ function AppContent() {
             {step === 1 && <StepGarment key="step-garment" />}
             {step === 2 && <StepIdea key="step-idea" />}
             {step === 3 && <StepPosition key="step-position" />}
-            {step === 4 && <StepStyle key="step-style" />}
-            {step === 5 && <StepTechnique key="step-technique" />}
-            {step === 6 && <StepPalette key="step-palette" />}
-            {step === 7 && <StepResult key="step-result" />}
+            {step === 4 && <StepArtStyle key="step-artstyle" />}
+            {step === 5 && <StepPalette key="step-palette" />}
+            {step === 6 && <StepResult key="step-result" />}
           </AnimatePresence>
         </div>
       </main>

@@ -54,7 +54,7 @@ export default function StepIdea() {
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
-          الخطوة ٢ من ٧
+          الخطوة ٢ من ٦
         </div>
       </div>
 
@@ -86,21 +86,31 @@ export default function StepIdea() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="flex gap-2 p-1.5 bg-washa-bg/60 rounded-xl border border-washa-border/50 w-fit mx-auto backdrop-blur-sm"
+          className="flex flex-wrap gap-2 p-2 bg-washa-bg/40 rounded-2xl border border-washa-border/30 w-fit mx-auto backdrop-blur-md"
         >
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => updateState({ designMethod: id })}
               className={cn(
-                'px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-500 flex items-center gap-2',
+                'px-6 py-3 rounded-xl text-sm font-bold transition-all duration-500 flex items-center gap-3 relative overflow-hidden group/tab',
                 state.designMethod === id
-                  ? 'bg-washa-gold/15 text-washa-gold shadow-[0_0_20px_rgba(201,168,106,0.1)] border border-washa-gold/20'
-                  : 'text-washa-text-sec hover:text-washa-text hover:bg-washa-surface/50'
+                  ? 'text-washa-bg'
+                  : 'text-washa-text-sec hover:text-white hover:bg-white/5'
               )}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              {state.designMethod === id && (
+                <motion.div
+                  layoutId="active-tab"
+                  className="absolute inset-0 bg-washa-gold shadow-[0_0_20px_rgba(201,168,106,0.3)]"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <Icon className={cn(
+                "w-4 h-4 relative z-10 transition-transform duration-500",
+                state.designMethod === id ? "scale-110" : "group-hover/tab:scale-110"
+              )} />
+              <span className="relative z-10">{label}</span>
             </button>
           ))}
         </motion.div>
@@ -116,12 +126,20 @@ export default function StepIdea() {
               transition={{ duration: 0.35 }}
               className="space-y-5"
             >
-              <Textarea
-                placeholder="صف فكرتك بدقة... مثال: ذئب هندسي بخطوط حادة، يرمز للقوة"
-                className="min-h-[160px] text-base resize-none rounded-xl bg-washa-bg/50 border-washa-border/40 focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(201,168,106,0.08)] transition-shadow"
-                value={state.prompt}
-                onChange={e => updateState({ prompt: e.target.value })}
-              />
+              <div className="relative group/input">
+                {/* AI Radar Background Effect */}
+                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                  <div className="absolute inset-0 bg-washa-gold/[0.02] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
+                  <div className="absolute -inset-[100%] group-focus-within/input:animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(201,168,106,0.1)_360deg)] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
+                </div>
+
+                <Textarea
+                  placeholder="صف فكرتك بدقة... مثال: ذئب هندسي بخطوط حادة، يرمز للقوة"
+                  className="min-h-[180px] text-lg leading-relaxed p-6 resize-none rounded-2xl bg-washa-bg/40 border-washa-border/30 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(201,168,106,0.1)] transition-all duration-500 relative z-10"
+                  value={state.prompt}
+                  onChange={e => updateState({ prompt: e.target.value })}
+                />
+              </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 justify-end text-xs text-washa-text-faint">
                   <span>أفكار ملهمة</span>

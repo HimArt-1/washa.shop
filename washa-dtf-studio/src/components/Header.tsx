@@ -16,9 +16,8 @@ export default function Header({ onOpenGallery }: HeaderProps) {
     { num: 2, label: 'الفكرة', icon: '💡' },
     { num: 3, label: 'المكان', icon: '🎯' },
     { num: 4, label: 'الأسلوب', icon: '🎨' },
-    { num: 5, label: 'التقنية', icon: '🖌️' },
-    { num: 6, label: 'الألوان', icon: '🌈' },
-    { num: 7, label: 'النتيجة', icon: '✨' },
+    { num: 5, label: 'الألوان', icon: '🌈' },
+    { num: 6, label: 'النتيجة', icon: '✨' },
   ];
 
   return (
@@ -27,7 +26,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-washa-gold/15 bg-[radial-gradient(circle_at_35%_35%,rgba(201,168,106,0.18),rgba(11,11,12,0.95)_72%)] shadow-[0_0_20px_rgba(201,168,106,0.3)] animate-glow-pulse">
-            <img src={siteAsset('logo.png')} alt="وشّى" className="w-full h-full object-contain p-1.5" />
+            <img src={siteAsset('washa-logo.png')} alt="وشّى" className="w-full h-full object-contain p-1.5" />
           </div>
           <div className="hidden sm:block">
             <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>

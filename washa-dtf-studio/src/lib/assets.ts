@@ -3,5 +3,5 @@ export function studioAsset(path: string) {
 }
 
 export function siteAsset(path: string) {
-  return `/${path.replace(/^\/+/, '')}`;
+  return `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 }

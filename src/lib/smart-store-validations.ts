@@ -381,6 +381,15 @@ export const smartStoreUpsertArtStyleSchema = z.object({
     is_active: booleanFromUnknown(false),
 }).extend(metadataFieldsSchema.shape);
 
+export const smartStoreUpsertPositionSchema = z.object({
+    id: optionalUuid("معرّف المكان"),
+    name: requiredText("اسم المكان", 120),
+    description: optionalText("وصف المكان", 2000),
+    image_url: optionalSafeUrl("صورة المكان"),
+    sort_order: numberFromUnknown("ترتيب المكان", { integer: true, min: 0, defaultValue: 0 }),
+    is_active: booleanFromUnknown(false),
+});
+
 export const smartStoreUpsertColorPackageSchema = z.object({
     id: optionalUuid("معرّف باقة الألوان"),
     name: requiredText("اسم باقة الألوان", 120),

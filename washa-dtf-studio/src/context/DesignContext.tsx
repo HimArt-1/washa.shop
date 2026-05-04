@@ -13,6 +13,7 @@ import {
   type DtfStudioCreativeOption,
   type DtfStudioGarmentOption,
   type DtfStudioPaletteOption,
+  type DtfStudioPositionOption,
   type DtfStudioSizeOption,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
@@ -56,6 +57,7 @@ interface DesignContextType {
   styleOptions: DtfStudioCreativeOption[];
   techniqueOptions: DtfStudioCreativeOption[];
   paletteOptions: DtfStudioPaletteOption[];
+  positionOptions: DtfStudioPositionOption[];
   selectedGarment: DtfStudioGarmentOption | null;
   selectedColor: DtfStudioColorOption | null;
   selectedSize: DtfStudioSizeOption | null;
@@ -249,6 +251,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const styleOptions = useMemo(() => config?.styles ?? [], [config]);
   const techniqueOptions = useMemo(() => config?.techniques ?? [], [config]);
   const paletteOptions = useMemo(() => config?.palettes ?? [], [config]);
+  const positionOptions = useMemo(() => config?.positions ?? [], [config]);
 
   const selectedGarment = useMemo(
     () => garmentOptions.find((item) => item.id === state.garmentId) || garmentOptions[0] || null,
@@ -332,7 +335,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, ...updates }));
   };
 
-  const nextStep = () => setStep((value) => Math.min(7, value + 1));
+  const nextStep = () => setStep((value) => Math.min(6, value + 1));
   const prevStep = () => setStep((value) => Math.max(1, value - 1));
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -392,7 +395,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setMockupImage(null);
     setExtractedImage(null);
-    setStep(7);
+    setStep(6);
 
     const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
       ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
@@ -671,6 +674,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         garmentOptions,
         colorOptions,
         sizeOptions,
+        positionOptions,
         styleOptions,
         techniqueOptions,
         paletteOptions,

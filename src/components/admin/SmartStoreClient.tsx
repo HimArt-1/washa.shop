@@ -21,6 +21,7 @@ import {
     Camera,
     ImagePlus,
     Layers,
+    LayoutDashboard,
     Search,
 } from "lucide-react";
 import {
@@ -54,6 +55,7 @@ import type {
     CustomDesignSize,
     CustomDesignStyle,
     CustomDesignArtStyle,
+    CustomDesignPosition,
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
@@ -75,7 +77,7 @@ import { DTF_STUDIO_CATALOG_COUNTS } from "@/lib/dtf-studio-catalog";
 
 // ─── Types ──────────────────────────────────────────────
 
-type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "colorPackages" | "studioItems" | "mockups" | "presets" | "intelligence";
+type TabId = "garments" | "colors" | "sizes" | "styles" | "artStyles" | "positions" | "colorPackages" | "studioItems" | "mockups" | "presets" | "intelligence";
 type WorkspaceId = "designPieceLab" | "dtfStudio";
 
 interface Props {
@@ -84,6 +86,7 @@ interface Props {
     sizes: CustomDesignSize[];
     styles: CustomDesignStyle[];
     artStyles: CustomDesignArtStyle[];
+    positions: CustomDesignPosition[];
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
@@ -110,6 +113,7 @@ const DTF_STUDIO_TABS: { id: TabId; label: string; icon: any }[] = [
     { id: "sizes", label: "المقاسات", icon: Ruler },
     { id: "styles", label: "ستايلات التصميم", icon: Sparkles },
     { id: "artStyles", label: "تقنيات الإخراج", icon: Paintbrush },
+    { id: "positions", label: "أماكن الطباعة", icon: LayoutDashboard },
     { id: "colorPackages", label: "لوحات الألوان", icon: SwatchBook },
     { id: "mockups", label: "موكبات المقاسات", icon: ImagePlus },
 ];
@@ -121,7 +125,7 @@ const DEFAULT_TAB_BY_WORKSPACE: Record<WorkspaceId, TabId> = {
 
 // ─── Component ──────────────────────────────────────────
 
-export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
+export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
     const [workspace, setWorkspace] = useState<WorkspaceId>("dtfStudio");
     const [designPieceTab, setDesignPieceTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.designPieceLab);
     const [dtfStudioTab, setDtfStudioTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.dtfStudio);
@@ -173,6 +177,9 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
         if (tab === "artStyles") {
             const scopedItems = workspace === "designPieceLab" ? designPieceArtStyles : dtfArtStyles;
             return <ArtStylesTab items={scopedItems} onRefresh={() => router.refresh()} catalogScope={getCatalogScopeValue(workspace)} />;
+        }
+        if (tab === "positions") {
+            return <PositionsTab items={positions} onRefresh={() => router.refresh()} />;
         }
         if (tab === "colorPackages") {
             const scopedItems = workspace === "designPieceLab" ? designPieceColorPackages : dtfColorPackages;
@@ -243,6 +250,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, c
                 sizes={sizes}
                 styles={workspace === "designPieceLab" ? designPieceStyles : dtfStyles}
                 artStyles={workspace === "designPieceLab" ? designPieceArtStyles : dtfArtStyles}
+                positions={positions}
                 colorPackages={workspace === "designPieceLab" ? designPieceColorPackages : dtfColorPackages}
                 studioItems={studioItems}
                 garmentStudioMockups={garmentStudioMockups}
@@ -338,6 +346,7 @@ function WorkspaceOverview({
     sizes,
     styles,
     artStyles,
+    positions,
     colorPackages,
     studioItems,
     garmentStudioMockups,
@@ -350,6 +359,7 @@ function WorkspaceOverview({
     sizes: CustomDesignSize[];
     styles: CustomDesignStyle[];
     artStyles: CustomDesignArtStyle[];
+    positions: CustomDesignPosition[];
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
@@ -1436,6 +1446,137 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                 title="حذف المقاس"
                 description="سيتم حذف هذا المقاس من القطعة الحالية."
                 confirmLabel="حذف المقاس"
+                loading={deleteLoading}
+                onClose={() => setPendingDeleteId(null)}
+                onConfirm={handleDelete}
+            />
+        </SectionCard>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Positions Tab
+// ═══════════════════════════════════════════════════════════
+
+function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onRefresh: () => void }) {
+    const [editing, setEditing] = useState<CustomDesignPosition | null>(null);
+    const [isAdding, setIsAdding] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [imageUrl, setImageUrl] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+    const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
+    const openEdit = (p: CustomDesignPosition) => { setEditing(p); setImageUrl(p.image_url ?? ""); setError(null); };
+    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
+
+    const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            const fd = new FormData(e.currentTarget);
+            if (editing) fd.set("id", editing.id);
+            fd.set("image_url", imageUrl);
+            // Dynamic import of action since it's not at top level
+            const { upsertPosition } = await import("@/app/actions/smart-store");
+            const result = await upsertPosition(fd);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            closeModal();
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حفظ المكان الآن.");
+        } finally {
+            setLoading(false);
+        }
+    }, [editing, onRefresh, imageUrl]);
+
+    const handleDelete = useCallback(async () => {
+        if (!pendingDeleteId) return;
+        const id = pendingDeleteId;
+        setDeleteLoading(true);
+        setError(null);
+        try {
+            const { deletePosition } = await import("@/app/actions/smart-store");
+            const result = await deletePosition(id);
+            const actionError = getActionError(result);
+            if (actionError) {
+                setError(actionError);
+                return;
+            }
+            onRefresh();
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "تعذر حذف المكان الآن.");
+        } finally {
+            setDeleteLoading(false);
+            setPendingDeleteId(null);
+        }
+    }, [onRefresh, pendingDeleteId]);
+
+    const form = (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <InlineError message={error} />
+            <FormField label="اسم المكان">
+                <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: الصدر الأمامي" />
+            </FormField>
+            <FormField label="الوصف">
+                <textarea name="description" defaultValue={editing?.description ?? ""} className={inputCls} rows={2} />
+            </FormField>
+            <FormField label="صورة المكان (Mockup)">
+                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="positions" fieldName="image_url" />
+            </FormField>
+            <FormField label="الترتيب">
+                <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
+            </FormField>
+            <FormField label="الحالة">
+                <select name="is_active" defaultValue={editing?.is_active !== false ? "true" : "false"} className={inputCls}>
+                    <option value="true">نشط</option>
+                    <option value="false">غير نشط</option>
+                </select>
+            </FormField>
+            <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "جاري الحفظ..." : "حفظ"}</button>
+                <button type="button" onClick={closeModal} className={btnSecondary}>إلغاء</button>
+            </div>
+        </form>
+    );
+
+    return (
+        <SectionCard title="أماكن الطباعة" onAdd={openAdd}>
+            <InlineError message={!isAdding && !editing ? error : null} />
+            {items.length === 0 ? <EmptyState text="لا توجد أماكن طباعة بعد." /> : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((p) => (
+                        <div key={p.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group flex flex-col h-full">
+                            {p.image_url && <img src={p.image_url} alt={p.name} className="w-full aspect-[4/3] object-cover rounded-lg mb-4 border border-theme-subtle" />}
+                            <div className="flex-1">
+                                <p className="font-medium text-theme mb-1">{p.name}</p>
+                                {p.description && <p className="text-xs text-theme-subtle line-clamp-2 mb-3">{p.description}</p>}
+                            </div>
+                            <div className="flex items-center justify-between mt-auto">
+                                <span className={`text-xs px-2 py-1 rounded-full ${p.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                    {p.is_active ? "نشط" : "معطل"}
+                                </span>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => openEdit(p)} className="p-1.5 hover:bg-theme-subtle rounded-lg"><Pencil className="w-3.5 h-3.5 text-theme-subtle" /></button>
+                                    <button onClick={() => setPendingDeleteId(p.id)} className="p-1.5 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-3.5 h-3.5 text-red-400/60" /></button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            <Modal open={isAdding || !!editing} onClose={closeModal} title={editing ? "تعديل المكان" : "إضافة مكان جديد"}>{form}</Modal>
+            <ConfirmDialog
+                open={!!pendingDeleteId}
+                title="حذف المكان"
+                description="سيتم حذف هذا المكان ولن يظهر في خيارات التصميم."
+                confirmLabel="حذف المكان"
                 loading={deleteLoading}
                 onClose={() => setPendingDeleteId(null)}
                 onConfirm={handleDelete}

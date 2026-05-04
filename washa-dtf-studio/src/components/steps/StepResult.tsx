@@ -301,36 +301,67 @@ export default function StepResult() {
         {/* ===== GENERATING STATE ===== */}
         {isGenerating && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass-card-strong p-10 sm:p-16 flex flex-col items-center justify-center text-center space-y-8 min-h-[500px]"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card-strong p-10 sm:p-20 flex flex-col items-center justify-center text-center space-y-10 min-h-[550px] relative overflow-hidden"
           >
-            <div className="relative w-32 h-32">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-washa-gold/20 flex items-center justify-center backdrop-blur-sm border border-washa-gold/30">
-                  <Wand2 className="w-7 h-7 text-washa-gold animate-pulse" />
+            {/* AI Radar Background Effect - Center Focused */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(201,168,106,0.15)_360deg)] opacity-60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-transparent to-transparent" />
+            </div>
+
+            <div className="relative">
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                {/* Core Icon */}
+                <div className="relative z-20 w-20 h-20 rounded-full bg-washa-gold flex items-center justify-center shadow-[0_0_50px_rgba(201,168,106,0.4)] border border-white/20">
+                  <Wand2 className="w-10 h-10 text-washa-bg animate-pulse" />
                 </div>
+                
+                {/* Orbital Rings */}
+                <div className="absolute inset-0 rounded-full border border-washa-gold/20 animate-slow-spin" style={{ animationDuration: '8s' }} />
+                <div className="absolute inset-4 rounded-full border border-dashed border-washa-gold/10 animate-slow-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }} />
+                
+                {/* Floating Particles */}
+                {[...Array(6)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      rotate: 360,
+                      scale: [1, 1.2, 1],
+                    }}
+                    transition={{
+                      rotate: { duration: 3 + i, repeat: Infinity, ease: "linear" },
+                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                    }}
+                    className="absolute w-2 h-2 rounded-full bg-washa-gold/40 shadow-[0_0_10px_rgba(201,168,106,0.5)]"
+                    style={{
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-4px',
+                      marginLeft: '-4px',
+                      transform: `rotate(${i * 60}deg) translateX(${60 + i * 5}px)`
+                    }}
+                  />
+                ))}
               </div>
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="orbit-particle absolute top-1/2 left-1/2 w-2.5 h-2.5 -mt-1.25 -ml-1.25 rounded-full bg-washa-gold shadow-[0_0_10px_rgba(201,168,106,0.6)]"
-                  style={{ animationDelay: `${-i * 0.5}s` }}
-                />
-              ))}
-              <div className="absolute inset-0 rounded-full border border-washa-gold/10 animate-spin" style={{ animationDuration: '8s' }} />
-              <div className="absolute inset-[-10px] rounded-full border border-dashed border-washa-gold/5 animate-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }} />
             </div>
-            <div className="space-y-3">
-              <h3 className="text-2xl font-serif text-washa-gold animate-pulse">جاري تصميم الموكب...</h3>
-              <p className="text-sm text-washa-text-faint">الذكاء الاصطناعي يعمل على إبداع تصميمك الفريد</p>
+
+            <div className="space-y-4 relative z-10">
+              <h3 className="text-3xl font-serif text-washa-gold tracking-wide animate-pulse">
+                يتم الآن نسج إبداعك...
+              </h3>
+              <p className="text-washa-text-sec text-lg max-w-sm mx-auto leading-relaxed">
+                ذكاء وشّى الاصطناعي يعمل على تحويل فكرتك إلى تصميم فريد يليق بك
+              </p>
             </div>
-            <div className="w-48 h-1 bg-washa-surface rounded-full overflow-hidden">
+
+            <div className="w-64 h-1.5 bg-white/5 rounded-full overflow-hidden relative z-10 border border-white/5">
               <motion.div
                 initial={{ x: '-100%' }}
                 animate={{ x: '100%' }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent"
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent shadow-[0_0_15px_rgba(201,168,106,0.5)]"
               />
             </div>
           </motion.div>
@@ -376,7 +407,7 @@ export default function StepResult() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="step-badge border-washa-gold/30 bg-washa-gold/10 text-washa-gold">
                 <Sparkles className="w-3 h-3 text-washa-gold" />
-                الخطوة ٧ من ٧: النتيجة النهائية
+                الخطوة ٦ من ٦: النتيجة النهائية
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-washa-surface/50 border border-washa-border/25 text-xs text-washa-text-sec">
                 <span

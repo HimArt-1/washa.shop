@@ -20,6 +20,7 @@ import type {
     CustomDesignGarment,
     CustomDesignSize,
     CustomDesignStyle,
+    CustomDesignPosition,
 } from "@/types/database";
 
 export type WashaDtfStudioConfig = {
@@ -58,6 +59,13 @@ export type WashaDtfStudioConfig = {
     styles: Array<WashaDtfStudioCreativeOption>;
     techniques: Array<WashaDtfStudioCreativeOption>;
     palettes: Array<WashaDtfStudioPaletteOption>;
+    positions: Array<{
+        id: string;
+        name: string;
+        description: string | null;
+        imageUrl: string | null;
+        sortOrder: number;
+    }>;
 };
 
 export type WashaDtfStudioCreativeOption = {
@@ -178,13 +186,14 @@ function mapPaletteOption(row: CustomDesignColorPackage): WashaDtfStudioPaletteO
 export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     const sb = getSupabaseAdminClient();
 
-    const [garmentsRes, colorsRes, sizesRes, stylesResScoped, artStylesResScoped, colorPackagesResScoped] = await Promise.all([
+    const [garmentsRes, colorsRes, sizesRes, stylesResScoped, artStylesResScoped, colorPackagesResScoped, positionsRes] = await Promise.all([
         sb.from("custom_design_garments").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_colors").select("*").eq("is_active", true).order("sort_order"),
         sb.from("custom_design_sizes").select("*").eq("is_active", true).order("name"),
         sb.from("custom_design_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
         sb.from("custom_design_art_styles").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
         sb.from("custom_design_color_packages").select("*").in("catalog_scope", ["dtf_studio", "shared"]).eq("is_active", true).order("sort_order"),
+        sb.from("custom_design_positions").select("*").eq("is_active", true).order("sort_order"),
     ]);
 
     // If catalog_scope column doesn't exist yet (migration not applied), fall back to unfiltered queries
@@ -209,6 +218,7 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     assertQuerySucceeded("custom_design_styles", stylesRes.error);
     assertQuerySucceeded("custom_design_art_styles", artStylesRes.error);
     assertQuerySucceeded("custom_design_color_packages", colorPackagesRes.error);
+    assertQuerySucceeded("custom_design_positions", positionsRes.error);
 
     const garments = (garmentsRes.data as CustomDesignGarment[] | null) ?? [];
     const colors = (colorsRes.data as CustomDesignColor[] | null) ?? [];
@@ -216,6 +226,7 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     const styles = ((stylesRes.data as CustomDesignStyle[] | null) ?? []).map(normalizeStyleRow);
     const artStyles = ((artStylesRes.data as CustomDesignArtStyle[] | null) ?? []).map(normalizeArtStyleRow);
     const colorPackages = ((colorPackagesRes.data as CustomDesignColorPackage[] | null) ?? []).map(normalizeColorPackageRow);
+    const positions = (positionsRes.data as CustomDesignPosition[] | null) ?? [];
 
     return {
         garments: garments.map((garment) => ({
@@ -257,5 +268,12 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
         styles: styles.map(mapCreativeOption),
         techniques: artStyles.map(mapCreativeOption),
         palettes: colorPackages.map(mapPaletteOption),
+        positions: positions.map((pos) => ({
+            id: pos.id,
+            name: pos.name,
+            description: pos.description,
+            imageUrl: pos.image_url,
+            sortOrder: pos.sort_order,
+        })),
     };
 }
