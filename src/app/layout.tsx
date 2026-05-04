@@ -275,7 +275,7 @@ const displayFont = Playfair_Display({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "وشّى | WUSHA — فنٌ يرتدى",
+    default: "وشّى | WASHA — فنٌ يرتدى",
     template: "%s | وشّى",
   },
   description: "منصة فنية رقمية للأزياء. صمّم قطعتك الفريدة، تصفح متجرنا، واكتشف أزياء عصرية مصممة بالذكاء الاصطناعي.",
@@ -298,7 +298,7 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
   },
   openGraph: {
-    title: "وشّى | WUSHA — فنٌ يرتدى",
+    title: "وشّى | WASHA — فنٌ يرتدى",
     description: "منصة فنية رقمية للأزياء. صمّم قطعتك الفريدة، تصفح متجرنا، واكتشف أزياء عصرية مصممة بالذكاء الاصطناعي.",
     type: "website",
     locale: "ar_SA",
