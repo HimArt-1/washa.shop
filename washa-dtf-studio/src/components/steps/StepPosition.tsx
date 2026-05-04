@@ -21,15 +21,15 @@ export default function StepPosition() {
       icon: <FileImage className="h-6 w-6" />,
     },
     {
-      id: 'logo_left',
-      title: 'تصميم شعار بسيط (يسار)',
-      description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).',
-      icon: <Search className="h-6 w-6" />,
-    },
-    {
       id: 'logo_right',
       title: 'تصميم شعار بسيط (يمين)',
       description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.',
+      icon: <Search className="h-6 w-6" />,
+    },
+    {
+      id: 'logo_left',
+      title: 'تصميم شعار بسيط (يسار)',
+      description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).',
       icon: <Search className="h-6 w-6" />,
     },
   ];

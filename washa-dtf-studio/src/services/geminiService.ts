@@ -80,10 +80,10 @@ export async function generateMockup(
   let sceneDirectives = '';
   if (isPocket) {
     sceneDirectives = compactPrompt([
-      `Close-up macro photography of the upper ${pocketSide} chest area of a ${color} ${garmentType}.`,
-      `A single small pocket-sized DTF logo print (approximately 7–10 cm) is placed on the ${pocketSide} chest, like a brand emblem.`,
-      `Camera framing: upper body only, from mid-chest to collar, slightly angled toward the ${pocketSide} side.`,
-      `The logo must be small and proportional — NOT large or centered. It sits where a polo brand logo would be.`,
+      `Medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
+      `A single small pocket-sized DTF logo print (approx 7-10 cm) is placed on the ${pocketSide} chest of the ${color} ${garmentType}.`,
+      `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
+      `The logo must be small and proportional on the ${pocketSide} side — NOT large or centered. It sits where a brand emblem would be.`,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);
   } else {
