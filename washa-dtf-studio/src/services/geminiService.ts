@@ -74,14 +74,26 @@ export async function generateMockup(
       : null,
   ];
 
-  const positionMapping: Record<string, string> = {
-    'front_large': 'large and centered on the chest/front',
-    'back_large': 'large and centered on the back',
-    'pocket_left': 'small like a pocket logo on the left chest',
-    'pocket_right': 'small like a pocket logo on the right chest',
-  };
-  const placement = preferences.designPosition ? (positionMapping[preferences.designPosition] || 'centered') : 'centered';
-  const sceneDirectives = `Studio mockup of a ${color} ${garmentType} with one DTF print placed ${placement}.`;
+  const isPocket = preferences.designPosition === 'logo_left' || preferences.designPosition === 'logo_right';
+  const pocketSide = preferences.designPosition === 'logo_left' ? 'left' : 'right';
+
+  let sceneDirectives = '';
+  if (isPocket) {
+    sceneDirectives = compactPrompt([
+      `Close-up macro photography of the upper ${pocketSide} chest area of a ${color} ${garmentType}.`,
+      `A single small pocket-sized DTF logo print (approximately 7–10 cm) is placed on the ${pocketSide} chest, like a brand emblem.`,
+      `Camera framing: upper body only, from mid-chest to collar, slightly angled toward the ${pocketSide} side.`,
+      `The logo must be small and proportional — NOT large or centered. It sits where a polo brand logo would be.`,
+      `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
+    ]);
+  } else {
+    const positionMapping: Record<string, string> = {
+      'front_large': 'large and centered on the chest/front, filling roughly 60-70% of the torso width',
+      'back_large': 'large and centered on the back, filling roughly 60-70% of the upper back',
+    };
+    const placement = preferences.designPosition ? (positionMapping[preferences.designPosition] || 'centered') : 'centered';
+    sceneDirectives = `Studio mockup of a full ${color} ${garmentType} with one DTF print placed ${placement}. Full garment visible, clean studio background.`;
+  }
   const prompt = isCalligraphy
     ? compactPrompt([
         sceneDirectives,
