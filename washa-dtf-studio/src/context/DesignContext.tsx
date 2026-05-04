@@ -83,6 +83,7 @@ const EMPTY_STATE: DesignState = {
   garmentSizeId: null,
   garmentSize: '',
   designMethod: 'text',
+  designPosition: 'front_large',
   prompt: '',
   calligraphyText: '',
   referenceImage: null,
@@ -331,7 +332,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, ...updates }));
   };
 
-  const nextStep = () => setStep((value) => Math.min(4, value + 1));
+  const nextStep = () => setStep((value) => Math.min(7, value + 1));
   const prevStep = () => setStep((value) => Math.max(1, value - 1));
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -391,7 +392,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     setMockupImage(null);
     setExtractedImage(null);
-    setStep(4);
+    setStep(7);
 
     const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
       ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
@@ -412,6 +413,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       {
         removeBackground: state.removeBackground,
         avoidHardEdges: state.avoidHardEdges,
+        designPosition: state.designPosition,
       }
     );
 

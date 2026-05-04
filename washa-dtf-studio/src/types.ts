@@ -78,6 +78,7 @@ export interface DesignState {
   garmentSizeId: string | null;
   garmentSize: GarmentSize;
   designMethod: DesignMethod;
+  designPosition: 'front_large' | 'back_large' | 'logo_left' | 'logo_right';
   prompt: string;
   calligraphyText: string;
   referenceImage: string | null;

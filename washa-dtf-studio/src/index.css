@@ -1,6 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Alnaseeb';
+  src: url('/fonts/Alnaseeb-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   --color-washa-bg: #0B0B0C;
   --color-washa-surface: #151515;
@@ -17,6 +25,7 @@
 
   --font-sans: 'Tajawal', system-ui, sans-serif;
   --font-serif: 'Playfair Display', serif;
+  --font-alnaseeb: 'Alnaseeb', system-ui, sans-serif;
 }
 
 /* ————— Base ————— */
@@ -24,6 +33,10 @@ html {
   /* Prevent iOS auto-zoom on inputs */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+h2, h3, h4, h5, h6 {
+  font-family: var(--font-alnaseeb);
 }
 
 body {

@@ -32,7 +32,7 @@ export default function StepGarment() {
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
-          الخطوة ١ من ٤
+          الخطوة ١ من ٧
         </div>
       </div>
 

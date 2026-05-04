@@ -175,7 +175,7 @@ export function Hero({
             <AnimatePresence>
               {backgroundReady && (
                 <motion.span
-                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em]"
+                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-alnaseeb"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
@@ -269,7 +269,7 @@ export function Hero({
           animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 0.5 }}
         >
-          <p className="text-3xl sm:text-4xl md:text-5xl font-display italic text-glow-gold"
+          <p className="text-3xl sm:text-4xl md:text-5xl font-alnaseeb italic text-glow-gold"
             style={{ color: heroTokens.subtitle, letterSpacing: "0.04em" }}>
             فنٌ يرتدى
           </p>

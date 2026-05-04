@@ -14,8 +14,11 @@ export default function Header({ onOpenGallery }: HeaderProps) {
   const steps = [
     { num: 1, label: 'القطعة', icon: '👕' },
     { num: 2, label: 'الفكرة', icon: '💡' },
-    { num: 3, label: 'الأسلوب', icon: '🎨' },
-    { num: 4, label: 'النتيجة', icon: '✨' },
+    { num: 3, label: 'المكان', icon: '🎯' },
+    { num: 4, label: 'الأسلوب', icon: '🎨' },
+    { num: 5, label: 'التقنية', icon: '🖌️' },
+    { num: 6, label: 'الألوان', icon: '🌈' },
+    { num: 7, label: 'النتيجة', icon: '✨' },
   ];
 
   return (

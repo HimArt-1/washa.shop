@@ -14,7 +14,7 @@ export default function PreviewPanel() {
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-washa-gold/5 rounded-full blur-[100px] pointer-events-none transition-opacity duration-700 opacity-50 group-hover:opacity-100" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-washa-gold-deep/10 rounded-full blur-[100px] pointer-events-none transition-opacity duration-700 opacity-50 group-hover:opacity-100" />
 
-        {step < 4 ? (
+        {step < 7 ? (
           <motion.div
             key="preview-placeholder"
             initial={{ opacity: 0 }}

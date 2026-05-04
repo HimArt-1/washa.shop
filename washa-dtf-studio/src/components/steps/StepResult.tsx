@@ -311,7 +311,7 @@ export default function StepResult() {
               <p className="text-sm text-washa-text-sec max-w-md">{error}</p>
             </div>
             <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => setStep(3)} className="gap-2 rounded-xl">
+              <Button variant="ghost" onClick={() => setStep(6)} className="gap-2 rounded-xl">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
               <Button variant="gold" onClick={resetDesign} className="gap-2 rounded-xl">
@@ -333,11 +333,10 @@ export default function StepResult() {
         {/* ===== RESULT STATE ===== */}
         {mockupImage && !isGenerating && !orderResult && (
           <>
-            {/* Step Badge + Garment Info */}
             <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="step-badge">
+              <div className="step-badge border-washa-gold/30 bg-washa-gold/10 text-washa-gold">
                 <Sparkles className="w-3 h-3 text-washa-gold" />
-                النتيجة النهائية
+                الخطوة ٧ من ٧: النتيجة النهائية
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-washa-surface/50 border border-washa-border/25 text-xs text-washa-text-sec">
                 <span
@@ -431,7 +430,7 @@ export default function StepResult() {
 
             {/* ── Footer navigation ── */}
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={() => setStep(3)} className="gap-2 rounded-xl hover:bg-washa-gold/5">
+              <Button variant="ghost" onClick={() => setStep(6)} className="gap-2 rounded-xl hover:bg-washa-gold/5">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
               <Button variant="outline" onClick={resetDesign} className="gap-2 rounded-xl">

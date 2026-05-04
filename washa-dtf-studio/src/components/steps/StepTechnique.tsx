@@ -1,10 +1,10 @@
 import { motion } from 'motion/react';
-import { Sparkles, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { BrushCleaning, ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 
-export default function StepStyle() {
+export default function StepTechnique() {
   const {
     state,
     updateState,
@@ -12,12 +12,12 @@ export default function StepStyle() {
     prevStep,
     configLoading,
     configError,
-    styleOptions,
+    techniqueOptions,
   } = useDesign();
 
   return (
     <motion.div
-      key="step-style"
+      key="step-technique"
       initial={{ opacity: 0, y: 40, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -30, scale: 0.97 }}
@@ -27,7 +27,7 @@ export default function StepStyle() {
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
-          الخطوة ٤ من ٧
+          الخطوة ٥ من ٧
         </div>
       </div>
 
@@ -38,7 +38,7 @@ export default function StepStyle() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="text-4xl font-serif bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
-          الأسلوب الفني
+          التقنية الفنية
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
@@ -46,14 +46,14 @@ export default function StepStyle() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="text-washa-text-sec text-lg"
         >
-          اختر الطابع والاتجاه البصري الذي ترغب بأن يظهر به تصميمك
+          حدد تقنية التنفيذ والتعبير المرئي المخصصة للطباعة
         </motion.p>
       </div>
 
       {configLoading ? (
         <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
-          <p className="mt-4 text-sm text-washa-text-sec">جاري تحميل الأساليب المتاحة...</p>
+          <p className="mt-4 text-sm text-washa-text-sec">جاري تحميل التقنيات المتاحة...</p>
         </div>
       ) : (
         <div className="space-y-10">
@@ -65,41 +65,41 @@ export default function StepStyle() {
 
           <section className="space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{styleOptions.length} ستايلات متاحة</span>
+              <span className="text-xs text-washa-gold/60">{techniqueOptions.length} تقنيات متاحة</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {styleOptions.map((style, index) => (
+              {techniqueOptions.map((technique, index) => (
                 <motion.button
-                  key={style.id}
+                  key={technique.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + index * 0.04, duration: 0.35 }}
-                  onClick={() => updateState({ styleId: style.id, style: style.name })}
+                  transition={{ delay: 0.08 + index * 0.04, duration: 0.35 }}
+                  onClick={() => updateState({ techniqueId: technique.id, technique: technique.name })}
                   className={cn(
                     'rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
-                    state.styleId === style.id
+                    state.techniqueId === technique.id
                       ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
                       : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    {style.imageUrl ? (
-                      <img src={style.imageUrl} alt={style.name} className="h-14 w-14 rounded-xl object-cover border border-white/10" />
+                    {technique.imageUrl ? (
+                      <img src={technique.imageUrl} alt={technique.name} className="h-14 w-14 rounded-xl object-cover border border-white/10" />
                     ) : (
                       <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                        <Sparkles className="h-6 w-6" />
+                        <BrushCleaning className="h-6 w-6" />
                       </span>
                     )}
-                    {state.styleId === style.id ? (
+                    {state.techniqueId === technique.id ? (
                       <span className="rounded-full border border-washa-gold/30 bg-washa-gold/10 px-2.5 py-1 text-[10px] font-semibold text-washa-gold">
-                        مختار
+                        نشط
                       </span>
                     ) : null}
                   </div>
                   <div className="mt-5 space-y-1.5">
-                    <p className="text-base font-bold">{style.name}</p>
+                    <p className="text-base font-bold">{technique.name}</p>
                     <p className="text-xs leading-6 text-washa-text-faint line-clamp-2">
-                      {style.description || 'اتجاه بصري يحدد شخصية القطعة وشكلها النهائي.'}
+                      {technique.description || 'تقنية تنفيذ وتعبير مرئي مخصصة للطباعة DTF.'}
                     </p>
                   </div>
                 </motion.button>
@@ -117,7 +117,7 @@ export default function StepStyle() {
           variant="gold"
           size="lg"
           onClick={nextStep}
-          disabled={!state.styleId || configLoading}
+          disabled={!state.techniqueId || configLoading}
           className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
         >
           التالي <ArrowLeft className="w-5 h-5" />

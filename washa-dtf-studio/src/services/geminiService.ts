@@ -4,6 +4,7 @@ const API_BASE_URL = '/api/washa-dtf-studio';
 interface GenerationPreferences {
   removeBackground?: boolean;
   avoidHardEdges?: boolean;
+  designPosition?: string;
 }
 
 function compactPrompt(parts: Array<string | null | undefined>) {
@@ -73,7 +74,14 @@ export async function generateMockup(
       : null,
   ];
 
-  const sceneDirectives = `Studio mockup of a ${color} ${garmentType} with one centered DTF print.`;
+  const positionMapping: Record<string, string> = {
+    'front_large': 'large and centered on the chest/front',
+    'back_large': 'large and centered on the back',
+    'pocket_left': 'small like a pocket logo on the left chest',
+    'pocket_right': 'small like a pocket logo on the right chest',
+  };
+  const placement = preferences.designPosition ? (positionMapping[preferences.designPosition] || 'centered') : 'centered';
+  const sceneDirectives = `Studio mockup of a ${color} ${garmentType} with one DTF print placed ${placement}.`;
   const prompt = isCalligraphy
     ? compactPrompt([
         sceneDirectives,

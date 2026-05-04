@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Alnaseeb';
+  src: url('/fonts/Alnaseeb-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ═══════════════════════════════════════════════════════════
    وشّى | WASHA - Premium Design System
    Glassmorphism · Neon Glow · Cyber Aesthetic · Heritage Gold
@@ -9,6 +17,7 @@
 
 :root {
   --font-body: var(--font-tajawal), var(--font-arabic), system-ui, sans-serif;
+  --font-alnaseeb: 'Alnaseeb', system-ui, sans-serif;
   /* الألوان الأساسية — Light Heritage (الافتراضي) */
   --wusha-bg: #f4ede3;
   --wusha-surface: #fffdfa;
@@ -397,7 +406,13 @@ main#main-content {
   letter-spacing: 0.02em;
 }
 
-h1,
+h1 {
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--wusha-text);
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
 h2,
 h3,
 h4,
@@ -406,6 +421,7 @@ h6 {
   font-weight: 700;
   line-height: 1.2;
   color: var(--wusha-text);
+  font-family: var(--font-alnaseeb), system-ui, sans-serif;
 }
 
 /* عناوين أوضح — توازن الأسطر وتقليل الأرامل حيث يدعم المتصفح */

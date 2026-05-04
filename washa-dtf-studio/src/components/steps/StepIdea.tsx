@@ -54,7 +54,7 @@ export default function StepIdea() {
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
-          الخطوة ٢ من ٤
+          الخطوة ٢ من ٧
         </div>
       </div>
 
