@@ -1,6 +1,6 @@
 /**
  * يوجّه توليد/استخراج صور WASHA AI DTF حسب WASHA_DTF_IMAGE_PROVIDER أو IMAGE_PROVIDER.
- * القيم: genai (افتراضي) | replicate | nanobanana | gemini
+ * القيم: genai (افتراضي) | replicate | nanobanana | gemini | openai | dall-e
  *   — تُوافق مفاتيح أداة التصميم في src/app/actions/ai.ts
  */
 
@@ -16,6 +16,7 @@ import {
     runReplicatePredictions,
 } from "@/lib/replicate-predictions";
 import { isGeminiKeyConfigured, runGeminiImagenDataUrl, runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
+import { isOpenAIKeyConfigured, runOpenAIGenerateDataUrl, runOpenAIEditDataUrl } from "@/lib/openai-image";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
 
 export function getWashaDtfResolvedImageProvider(): string {
@@ -263,6 +264,40 @@ export async function washDtfRoutedGenerateMockup(
         }
     }
 
+    // ─── OpenAI (gpt-image-1 / dall-e-3) ─────────────────────
+    if ((p === "openai" || p === "dall-e" || p === "dalle" || p === "gpt-image") && isOpenAIKeyConfigured()) {
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_start", { model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1" });
+        try {
+            let result: string | null = null;
+            if (referenceImage?.base64 && referenceImage?.mimeType) {
+                // تعديل صورة (gpt-image-1 يدعم edit)
+                result = await runOpenAIEditDataUrl(
+                    prompt,
+                    referenceToDataUrl(referenceImage),
+                    { throwOnError: true }
+                );
+            }
+            if (!result) {
+                // توليد من نص
+                result = await runOpenAIGenerateDataUrl(prompt, { throwOnError: true });
+            }
+            if (result) return result;
+            throw new Error("لم يرجع مزود OpenAI صورة صالحة.");
+        } catch (error) {
+            // تراجع إلى Gemini أو Replicate
+            if (isDtfProviderFallbackEnabled()) {
+                if (isGeminiKeyConfigured()) {
+                    logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_fallback_genai", {});
+                    try {
+                        return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+                    } catch { /* تجاهل — سنرمي الخطأ الأصلي */ }
+                }
+                return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+            }
+            throw error;
+        }
+    }
+
     if (p === "replicate") {
         if (isReplicateTokenConfigured()) {
             const result = await runReplicateMockup(prompt, referenceImage);
@@ -303,7 +338,15 @@ export async function washDtfRoutedGenerateMockup(
         }
     }
 
-    // غير مُعرَّف أو فشل المسارات أعلاه — Google GenAI الافتراضي إن وُجد مفتاح
+    // غير مُعرَّف أو فشل المسارات أعلاه — جرّب OpenAI ثم Google GenAI الافتراضي
+    if (isOpenAIKeyConfigured()) {
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai", { from: p });
+        try {
+            const result = await runOpenAIGenerateDataUrl(prompt, { throwOnError: true });
+            if (result) return result;
+        } catch { /* تراجع إلى الخيار التالي */ }
+    }
+
     if (isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_genai", { from: p });
         try {
@@ -313,7 +356,7 @@ export async function washDtfRoutedGenerateMockup(
         }
     }
 
-    throw new Error("لم يُهيأ أي مزوّد توليد صالح لـ WASHA AI. راجع WASHA_DTF_IMAGE_PROVIDER والمفاتيح (GEMINI / REPLICATE).");
+    throw new Error("لم يُهيأ أي مزوّد توليد صالح لـ WASHA AI. راجع WASHA_DTF_IMAGE_PROVIDER والمفاتيح (OPENAI / GEMINI / REPLICATE).");
 }
 
 /**
@@ -341,6 +384,19 @@ export async function washDtfRoutedExtractDesign(
         return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
     }
 
+    // ─── OpenAI extract ──────────────────────────────────────
+    if ((p === "openai" || p === "dall-e" || p === "dalle" || p === "gpt-image") && isOpenAIKeyConfigured()) {
+        const dataUrl = `data:${mimeType};base64,${mockupImage}`;
+        const result = await runOpenAIEditDataUrl(prompt, dataUrl, { throwOnError: true });
+        if (result) return result;
+        // تراجع
+        if (isGeminiKeyConfigured()) {
+            logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai", {});
+            return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        }
+        throw new Error("فشل استخراج التصميم عبر OpenAI ولا يوجد مزوّد بديل.");
+    }
+
     if (p === "replicate") {
         if (isReplicateTokenConfigured()) {
             const dataUrl = `data:${mimeType};base64,${mockupImage}`;
@@ -363,10 +419,18 @@ export async function washDtfRoutedExtractDesign(
         if (n) return n;
     }
 
+    // تراجع عام — OpenAI ثم GenAI
+    if (isOpenAIKeyConfigured()) {
+        logDtfTrace("dtf.ai.extract-design", traceId, "router_fallback_openai", { from: p });
+        const dataUrl = `data:${mimeType};base64,${mockupImage}`;
+        const result = await runOpenAIEditDataUrl(prompt, dataUrl);
+        if (result) return result;
+    }
+
     if (isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.extract-design", traceId, "router_fallback_genai", { from: p });
         return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
     }
 
-    throw new Error("لم يُهيأ مزوّد مناسب لاستخراج التصميم. استخدم genai أو أضف مفاتيح Google / Replicate.");
+    throw new Error("لم يُهيأ مزوّد مناسب لاستخراج التصميم. استخدم openai أو genai أو أضف مفاتيح OpenAI / Google / Replicate.");
 }

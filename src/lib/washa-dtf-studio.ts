@@ -55,9 +55,9 @@ export function getWashaDtfErrorDetails(error: unknown): {
     const providerCode = parsed?.error?.code;
     const normalizedProviderMessage = providerMessage.toLowerCase();
 
-    if (/gemini_api_key is not configured/i.test(providerMessage)) {
+    if (/gemini_api_key is not configured/i.test(providerMessage) || /openai_api_key is not configured/i.test(providerMessage) || /invalid api key/i.test(providerMessage)) {
         return {
-            message: "إعدادات Washa AI غير مكتملة على الخادم. أضف المفتاح الصحيح ثم أعد المحاولة.",
+            message: "إعدادات Washa AI غير مكتملة أو المفتاح غير صالح. أضف المفتاح الصحيح في إعدادات الخادم ثم أعد المحاولة.",
             status: 503,
         };
     }
