@@ -79,11 +79,13 @@ export async function generateMockup(
 
   let sceneDirectives = '';
   if (isPocket) {
+    const wearerSide = preferences.designPosition === 'logo_left' ? "wearer's left chest (over the heart, which appears on the right side of the image)" : "wearer's right chest (which appears on the left side of the image)";
+    
     sceneDirectives = compactPrompt([
       `Medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
-      `A single small pocket-sized DTF logo print (approx 7-10 cm) is placed on the ${pocketSide} chest of the ${color} ${garmentType}.`,
+      `A single small pocket-sized DTF logo print (approx 7-10 cm) is placed strictly on the ${wearerSide} of the ${color} ${garmentType}.`,
       `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `The logo must be small and proportional on the ${pocketSide} side — NOT large or centered. It sits where a brand emblem would be.`,
+      `The logo must be small and proportional — NOT large or centered. It must be unmistakably placed on the ${wearerSide}.`,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);
   } else {
