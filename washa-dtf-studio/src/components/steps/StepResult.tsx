@@ -225,6 +225,7 @@ export default function StepResult() {
   } = useDesign();
 
   const [showTerms, setShowTerms] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Derived garment color for ambient preview
   const garmentHex   = state.garmentColorHex || '#111111';
@@ -247,6 +248,45 @@ export default function StepResult() {
             onClose={() => !isSubmittingOrder && setShowTerms(false)}
             isSubmitting={isSubmittingOrder}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Lightbox Modal ── */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md cursor-zoom-out"
+            onClick={() => setLightboxImage(null)}
+          >
+            <motion.img
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              src={lightboxImage}
+              alt="Full view"
+              className="max-w-[92vw] max-h-[90vh] object-contain rounded-xl shadow-2xl cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/10 backdrop-blur-md text-white flex items-center justify-center hover:bg-white/20 transition-colors border border-white/15"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-5 flex gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDownload(lightboxImage, 'washa-mockup.png'); }}
+                className="px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 transition-colors flex items-center gap-2 border border-white/15"
+              >
+                <Download className="w-4 h-4" /> تحميل
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -376,7 +416,7 @@ export default function StepResult() {
                 {/* Hover zoom hint */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center p-6">
                   <button
-                    onClick={() => window.open(mockupImage, '_blank')}
+                    onClick={() => setLightboxImage(mockupImage)}
                     className="px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 transition-colors flex items-center gap-2 border border-white/15"
                   >
                     <ZoomIn className="w-4 h-4" /> عرض بالحجم الكامل
