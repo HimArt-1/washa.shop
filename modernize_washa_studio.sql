@@ -31,15 +31,18 @@ SET colors = '[{"hex": "#C9A86C", "name": "ذهب وشّى"}, {"hex": "#111111",
 WHERE name = 'تلقائي (Auto)' OR name = 'تلقائي';
 
 -- ٥. إضافة وتحديث بيانات أماكن الطباعة الافتراضية
-UPDATE custom_design_positions SET image_url = '/generated/washa_pos_front.png' WHERE name = 'تصميم أمامي';
-UPDATE custom_design_positions SET image_url = '/generated/washa_pos_back.png' WHERE name = 'تصميم خلفي';
-UPDATE custom_design_positions SET image_url = '/generated/washa_pos_front.png' WHERE name = 'شعار يمين';
-UPDATE custom_design_positions SET image_url = '/generated/washa_pos_front.png' WHERE name = 'شعار يسار';
+-- تنظيف الجدول أولاً لضمان عدم وجود تكرار من التشغيل السابق
+DELETE FROM custom_design_positions;
 
 INSERT INTO custom_design_positions (id, name, description, image_url, sort_order)
 VALUES 
-(gen_random_uuid(), 'تصميم أمامي', 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.', '/generated/washa_pos_front.png', 0),
-(gen_random_uuid(), 'تصميم خلفي', 'يظهر في الظهر بشكل كبير، مثالي للتصاميم المعقدة والملفتة.', '/generated/washa_pos_back.png', 1),
-(gen_random_uuid(), 'شعار يمين', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.', '/generated/washa_pos_front.png', 2),
-(gen_random_uuid(), 'شعار يسار', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).', '/generated/washa_pos_front.png', 3)
-ON CONFLICT (id) DO NOTHING;
+('d1111111-1111-1111-1111-111111111111', 'تصميم أمامي', 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.', '/generated/washa_pos_front.png', 0),
+('d2222222-2222-2222-2222-222222222222', 'تصميم خلفي', 'يظهر في الظهر بشكل كبير، مثالي للتصاميم المعقدة والملفتة.', '/generated/washa_pos_back.png', 1),
+('d3333333-3333-3333-3333-333333333333', 'شعار يمين', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.', '/generated/washa_pos_front.png', 2),
+('d4444444-4444-4444-4444-444444444444', 'شعار يسار', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).', '/generated/washa_pos_front.png', 3)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    image_url = EXCLUDED.image_url,
+    sort_order = EXCLUDED.sort_order;
+
