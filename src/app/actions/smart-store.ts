@@ -1220,6 +1220,8 @@ export async function submitDesignOrder(orderData: {
         print_position: printPosition,
         print_size: printSize,
         pricing_snapshot: pricingSnapshot,
+        dtf_mockup_url: input.dtf_mockup_url ?? null,
+        dtf_extracted_url: input.dtf_extracted_url ?? null,
     };
 
     const { data, error } = await insertDesignOrderWithSchemaFallback(sb, payload);

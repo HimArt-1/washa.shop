@@ -250,6 +250,8 @@ export const smartStoreSubmitDesignOrderSchema = z
         customer_phone: optionalPhone,
         print_position: printPositionSchema,
         print_size: printSizeSchema,
+        dtf_mockup_url: optionalSafeUrl("رابط الموكاب"),
+        dtf_extracted_url: optionalSafeUrl("رابط التصميم المفرغ"),
     })
     .superRefine((data, ctx) => {
         if (!data.garment_id && !data.garment_name) {

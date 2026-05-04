@@ -522,6 +522,19 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       let submitMockupBg = mockupImage;
       let submitExtractedBg = extractedImage;
 
+      if (!submitExtractedBg) {
+        showToast('جاري تجهيز التصميم للطباعة عالية الجودة...', 'info');
+        try {
+          const parts = parseDataUrlParts(mockupImage);
+          if (parts) {
+            submitExtractedBg = await extractDesign(parts.base64, parts.mimeType);
+            if (submitExtractedBg) setExtractedImage(submitExtractedBg);
+          }
+        } catch (err) {
+          console.warn('Could not extract design automatically', err);
+        }
+      }
+
       try {
         // Compress the images to WebP before sending to prevent 413 Content Too Large from Serverless Functions
         const compressedMockup = await resizeDataUrl(mockupImage, {
