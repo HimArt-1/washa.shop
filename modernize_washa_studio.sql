@@ -45,11 +45,11 @@ DELETE FROM custom_design_styles;
 
 INSERT INTO custom_design_styles (id, name, description, image_url, sort_order)
 VALUES 
-('s1111111-1111-1111-1111-111111111111', 'سينمائي (Cinematic)', 'إضاءة درامية وتفاصيل عميقة.', '/thumbnails/style-cinematic.webp', 0),
-('s2222222-2222-2222-2222-222222222222', 'تراثي (Heritage)', 'عناصر تراثية بلمسة عصرية فخمة.', '/thumbnails/style-heritage.webp', 1),
-('s3333333-3333-3333-3333-333333333333', 'بسيط (Minimalist)', 'خطوط نظيفة ومساحات هادئة.', '/thumbnails/style-minimalist.webp', 2),
-('s4444444-4444-4444-4444-444444444444', 'أنمي (Anime)', 'أسلوب الرسوم اليابانية الحيوية.', '/thumbnails/style-anime.webp', 3),
-('s5555555-5555-5555-5555-555555555555', 'سايبر بانك (Cyberpunk)', 'ألوان نيون وطابع مستقبلي.', '/thumbnails/style-cyberpunk.webp', 4);
+('e1111111-1111-1111-1111-111111111111', 'سينمائي (Cinematic)', 'إضاءة درامية وتفاصيل عميقة.', '/thumbnails/style-cinematic.webp', 0),
+('e2222222-2222-2222-2222-222222222222', 'تراثي (Heritage)', 'عناصر تراثية بلمسة عصرية فخمة.', '/thumbnails/style-heritage.webp', 1),
+('e3333333-3333-3333-3333-333333333333', 'بسيط (Minimalist)', 'خطوط نظيفة ومساحات هادئة.', '/thumbnails/style-minimalist.webp', 2),
+('e4444444-4444-4444-4444-444444444444', 'أنمي (Anime)', 'أسلوب الرسوم اليابانية الحيوية.', '/thumbnails/style-anime.webp', 3),
+('e5555555-5555-5555-5555-555555555555', 'سايبر بانك (Cyberpunk)', 'ألوان نيون وطابع مستقبلي.', '/thumbnails/style-cyberpunk.webp', 4);
 
 -- ٧. إعادة ضبط التقنيات الفنية (Art Techniques)
 DELETE FROM custom_design_art_styles;
