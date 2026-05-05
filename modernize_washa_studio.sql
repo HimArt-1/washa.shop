@@ -38,11 +38,34 @@ INSERT INTO custom_design_positions (id, name, description, image_url, sort_orde
 VALUES 
 ('d1111111-1111-1111-1111-111111111111', 'تصميم أمامي', 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.', '/generated/washa_pos_front.png', 0),
 ('d2222222-2222-2222-2222-222222222222', 'تصميم خلفي', 'يظهر في الظهر بشكل كبير، مثالي للتصاميم المعقدة والملفتة.', '/generated/washa_pos_back.png', 1),
-('d3333333-3333-3333-3333-333333333333', 'شعار يمين', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.', '/generated/washa_pos_front.png', 2),
-('d4444444-4444-4444-4444-444444444444', 'شعار يسار', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).', '/generated/washa_pos_front.png', 3)
+('d3333333-3333-3333-3333-333333333333', 'شعار يمين', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.', '/generated/washa_pos_right.png', 2),
+('d4444444-4444-4444-4444-444444444444', 'شعار يسار', 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).', '/generated/washa_pos_left.png', 3)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     image_url = EXCLUDED.image_url,
     sort_order = EXCLUDED.sort_order;
+
+-- ٦. تحديث صور بطاقات الأساليب الفنية (Styles)
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/sticker.png' WHERE name = 'ملصق (Sticker)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/anime.png' WHERE name = 'أنمي/مانغا (Anime/Manga)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/pop_art.png' WHERE name = 'بوب آرت (Pop Art)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/graffiti.png' WHERE name = 'جرافيتي (Graffiti)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/line_art.png' WHERE name = 'فن الخطوط (Line Art)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/geometric.png' WHERE name = 'هندسي (Geometric)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/pixel_art.png' WHERE name = 'بكسل آرت (Pixel Art)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/vintage.png' WHERE name = 'فينتيج (Vintage)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/cyberpunk.png' WHERE name = 'سايبر بانك (Cyberpunk)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/minimalist.png' WHERE name = 'بسيط (Minimalist)';
+UPDATE custom_design_styles SET image_url = '/thumbnails/styles/3d.png' WHERE name = 'ثلاثي الأبعاد (3D)';
+
+-- ٧. تحديث صور بطاقات التقنيات الفنية (Art Techniques)
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/digital.png' WHERE name = 'رسم رقمي (Digital)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/watercolor.png' WHERE name = 'ألوان مائية (Watercolor)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/oil.png' WHERE name = 'ألوان زيتية (Oil)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/pen.png' WHERE name = 'رسم بالقلم (Pen)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/airbrush.png' WHERE name = 'ايربراش (Airbrush)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/ink.png' WHERE name = 'حبر (Ink)';
+UPDATE custom_design_art_styles SET image_url = '/thumbnails/techniques/risograph.png' WHERE name = 'طباعة ريزوغراف (Risograph)';
+
 
