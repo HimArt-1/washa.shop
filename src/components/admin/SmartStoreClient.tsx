@@ -737,16 +737,25 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
         setError(null);
 
         try {
+            // Client-side validation
+            const MAX_SIZE = 8 * 1024 * 1024; // 8MB
+            if (file.size > MAX_SIZE) {
+                setPreview(value);
+                setError("حجم الملف كبير جداً (الحد الأقصى 8 ميجابايت). يرجى ضغط الصورة أو اختيار صورة أخرى.");
+                setUploading(false);
+                return;
+            }
+
             const formData = new FormData();
             formData.append("file", file);
             const result = await uploadSmartStoreImage(folder, formData);
 
-            if (result.success) {
+            if (result && result.success) {
                 setPreview(result.url);
                 onChange(result.url);
             } else {
                 setPreview(value);
-                setError(result.error || "فشل رفع الصورة");
+                setError(result?.error || "فشل رفع الصورة");
             }
         } catch (error) {
             console.error("Smart-store image upload failed", error);
