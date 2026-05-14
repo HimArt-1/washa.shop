@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import {
     AlertTriangle,
     CheckCircle2,
@@ -498,14 +499,38 @@ export function OrdersClient({
                                                         ) : null}
                                                     </td>
                                                     <td className="px-4 py-4 font-mono text-xs font-bold text-gold">{order.order_number}</td>
-                                                    <td className="px-4 py-4">
-                                                        <div>
-                                                            <span className="text-sm font-medium text-theme">{order.buyer?.display_name || "—"}</span>
-                                                            {order.buyer?.username ? (
-                                                                <span className="block text-xs text-theme-faint">@{order.buyer.username}</span>
-                                                            ) : null}
-                                                        </div>
-                                                    </td>
+                                                     <td className="px-4 py-4">
+                                                         <div className="flex items-center gap-3">
+                                                             <div className="h-9 w-9 overflow-hidden rounded-full border border-theme-subtle bg-theme-faint">
+                                                                 {order.buyer?.avatar_url ? (
+                                                                     <Image src={order.buyer.avatar_url} alt="" width={36} height={36} className="h-full w-full object-cover" />
+                                                                 ) : (
+                                                                     <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-theme-faint uppercase">
+                                                                         {(order.buyer?.display_name || "U")[0]}
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                             <div className="min-w-0">
+                                                                 <Link
+                                                                     href={`/dashboard/users/${order.buyer?.id}`}
+                                                                     className="group flex items-center gap-1.5"
+                                                                 >
+                                                                     <span className="text-sm font-bold text-theme transition-colors group-hover:text-gold truncate max-w-[120px] block">
+                                                                         {order.buyer?.display_name || "—"}
+                                                                     </span>
+                                                                     {order.buyer?.role === "wushsha" && (
+                                                                         <span className="shrink-0 rounded-md bg-gold/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-gold">فنان</span>
+                                                                     )}
+                                                                     {order.buyer?.role === "admin" && (
+                                                                         <span className="shrink-0 rounded-md bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase text-purple-400">مسؤول</span>
+                                                                     )}
+                                                                 </Link>
+                                                                 {order.buyer?.username ? (
+                                                                     <span className="block text-[10px] text-theme-faint">@{order.buyer.username}</span>
+                                                                 ) : null}
+                                                             </div>
+                                                         </div>
+                                                     </td>
                                                     <td className="px-4 py-4 font-bold text-theme">
                                                         {order.discount_amount > 0 ? (
                                                             <div className="flex flex-col items-start gap-1">
@@ -588,50 +613,107 @@ export function OrdersClient({
                                                         exit={{ opacity: 0, height: 0 }}
                                                         className="border-b border-theme-faint bg-[color:color-mix(in_srgb,var(--wusha-surface)_70%,transparent)]"
                                                     >
-                                                        <td colSpan={8} className="px-6 py-5">
-                                                            <div className="space-y-3">
-                                                                <p className="text-xs font-bold text-theme-faint">عناصر الطلب</p>
-                                                                <div className="flex flex-wrap gap-4">
-                                                                    {items.map((item: any) => {
-                                                                        const isCustom = !!item.custom_design_url;
-                                                                        const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
-                                                                        const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
-                                                                        const subtitle = isCustom
-                                                                            ? `${item.custom_garment || "قطعة مخصصة"} · مقاس ${item.size || "—"}`
-                                                                            : item.size
-                                                                                ? `مقاس ${item.size}`
-                                                                                : "منتج بدون مقاس";
+                                                        <td colSpan={9} className="px-6 py-8">
+                                                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                                                                <div className="space-y-4">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <p className="text-xs font-bold text-theme-faint tracking-widest uppercase">عناصر الطلب</p>
+                                                                        <span className="rounded-full bg-gold/10 px-2 py-0.5 text-[10px] font-bold text-gold">{items.length} منتجات</span>
+                                                                    </div>
+                                                                    <div className="space-y-3">
+                                                                        {items.map((item: any) => {
+                                                                            const isCustom = !!item.custom_design_url;
+                                                                            const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
+                                                                            const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
+                                                                            const subtitle = isCustom
+                                                                                ? `${item.custom_garment || "قطعة مخصصة"} · مقاس ${item.size || "—"}`
+                                                                                : item.size
+                                                                                    ? `مقاس ${item.size}`
+                                                                                    : "منتج بدون مقاس";
 
-                                                                        return (
-                                                                            <div key={item.id} className="flex min-w-[290px] items-center gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3">
-                                                                                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[color:color-mix(in_srgb,var(--wusha-surface)_74%,transparent)]">
-                                                                                    {imageUrl ? (
-                                                                                        <Image
-                                                                                            src={imageUrl}
-                                                                                            alt={title}
-                                                                                            width={56}
-                                                                                            height={56}
-                                                                                            className="h-full w-full object-cover"
-                                                                                        />
-                                                                                    ) : (
-                                                                                        <div className="flex h-full w-full items-center justify-center">
-                                                                                            <Package className="h-5 w-5 text-theme-faint" />
+                                                                            return (
+                                                                                <div key={item.id} className="flex items-center gap-4 rounded-2xl border border-theme-subtle bg-theme-faint/50 p-3.5 transition-all hover:bg-theme-faint">
+                                                                                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-theme-surface border border-theme-subtle shadow-sm">
+                                                                                        {imageUrl ? (
+                                                                                            <Image
+                                                                                                src={imageUrl}
+                                                                                                alt={title}
+                                                                                                width={64}
+                                                                                                height={64}
+                                                                                                className="h-full w-full object-cover"
+                                                                                            />
+                                                                                        ) : (
+                                                                                            <div className="flex h-full w-full items-center justify-center">
+                                                                                                <Package className="h-6 w-6 text-theme-faint" />
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div className="min-w-0 flex-1">
+                                                                                        <p className="truncate text-sm font-bold text-theme">{title}</p>
+                                                                                        <p className="mt-1 text-xs text-theme-subtle">{subtitle}</p>
+                                                                                        <div className="mt-2 flex items-center gap-2">
+                                                                                            <span className="rounded-md bg-theme-subtle px-1.5 py-0.5 text-[10px] font-medium text-theme-faint">{item.quantity} × {formatCurrency(Number(item.unit_price) || 0)}</span>
                                                                                         </div>
-                                                                                    )}
+                                                                                    </div>
+                                                                                    <span className="text-sm font-black text-gold">
+                                                                                        {formatCurrency(Number(item.total_price) || 0)}
+                                                                                    </span>
                                                                                 </div>
-                                                                                <div className="min-w-0 flex-1">
-                                                                                    <p className="truncate text-sm font-medium text-theme">{title}</p>
-                                                                                    <p className="mt-1 text-xs text-theme-subtle">{subtitle}</p>
-                                                                                    <p className="mt-1 text-xs text-theme-faint">
-                                                                                        {item.quantity} × {formatCurrency(Number(item.unit_price) || 0)}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <span className="text-sm font-bold text-gold">
-                                                                                    {formatCurrency(Number(item.total_price) || 0)}
-                                                                                </span>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="space-y-6">
+                                                                    <div className="rounded-[24px] border border-theme-subtle bg-theme-faint/30 p-6">
+                                                                        <div className="mb-6 flex items-center justify-between border-b border-theme-subtle pb-4">
+                                                                            <h4 className="text-sm font-bold text-theme tracking-tight">تفاصيل الشحن والعميل</h4>
+                                                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-theme-subtle text-theme-faint">
+                                                                                <Truck className="h-4 w-4" />
                                                                             </div>
-                                                                        );
-                                                                    })}
+                                                                        </div>
+                                                                        
+                                                                        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                                                                            <div>
+                                                                                <p className="text-[10px] font-bold text-theme-faint uppercase tracking-wider mb-2">الاسم في الشحن</p>
+                                                                                <p className="text-sm font-bold text-theme">{order.shipping_address?.name || order.buyer?.display_name || "—"}</p>
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="text-[10px] font-bold text-theme-faint uppercase tracking-wider mb-2">رقم التواصل</p>
+                                                                                <p className="text-sm font-bold text-theme dir-ltr text-right">{order.shipping_address?.phone || "—"}</p>
+                                                                            </div>
+                                                                            <div className="col-span-2">
+                                                                                <p className="text-[10px] font-bold text-theme-faint uppercase tracking-wider mb-2">العنوان بالتفصيل</p>
+                                                                                <p className="text-sm leading-relaxed text-theme-subtle">
+                                                                                    {order.shipping_address?.line1}
+                                                                                    {order.shipping_address?.line2 ? `، ${order.shipping_address.line2}` : ""}
+                                                                                    <br />
+                                                                                    {order.shipping_address?.city}، {order.shipping_address?.state} {order.shipping_address?.postal_code}
+                                                                                </p>
+                                                                            </div>
+                                                                            {order.notes && (
+                                                                                <div className="col-span-2 rounded-xl bg-amber-500/5 border border-amber-500/10 p-3">
+                                                                                    <p className="text-[10px] font-bold text-amber-500/70 uppercase tracking-wider mb-1.5">ملاحظات الطلب</p>
+                                                                                    <p className="text-xs text-amber-200/80 leading-relaxed">{order.notes}</p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="mt-8 flex gap-3">
+                                                                            <Link 
+                                                                                href={`/dashboard/users/${order.buyer?.id}`}
+                                                                                className="flex-1 rounded-xl bg-theme-surface border border-theme-subtle px-4 py-3 text-center text-xs font-bold text-theme transition-all hover:border-gold/30 hover:text-gold"
+                                                                            >
+                                                                                عرض الملف الكامل
+                                                                            </Link>
+                                                                            <button 
+                                                                                onClick={() => setInvoiceOrder(order)}
+                                                                                className="flex-1 rounded-xl bg-gold px-4 py-3 text-center text-xs font-bold text-bg transition-all hover:bg-gold-light shadow-lg shadow-gold/10"
+                                                                            >
+                                                                                طباعة الفاتورة
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </td>

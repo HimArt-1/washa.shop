@@ -287,6 +287,10 @@ export function ShippingClient({
     const [mounted, setMounted] = useState(false);
     const [isPending, startTransition] = useTransition();
 
+    const totalExpectedRevenue = stats.deliveredRevenue + stats.totalCodAmount;
+    const revenuePercent = totalExpectedRevenue > 0 ? (stats.deliveredRevenue / totalExpectedRevenue) * 100 : 0;
+    const pendingCodPercent = totalExpectedRevenue > 0 ? (stats.totalCodAmount / totalExpectedRevenue) * 100 : 0;
+
     useEffect(() => { setMounted(true); }, []);
 
     const showToast = (type: "success" | "error", message: string) => {
@@ -414,7 +418,7 @@ export function ShippingClient({
                             <span className="font-bold text-gold">{stats.deliveredRevenue.toLocaleString()} ر.س</span>
                         </div>
                         <div className="h-2 w-full bg-theme-faint rounded-full overflow-hidden">
-                            <div className="h-full bg-gold transition-all duration-1000" style={{ width: `100%` }} />
+                            <div className="h-full bg-gold transition-all duration-1000" style={{ width: `${revenuePercent}%` }} />
                         </div>
                         <p className="text-[10px] text-theme-subtle">تم تحصيلها واكتملت</p>
                     </div>
@@ -426,7 +430,7 @@ export function ShippingClient({
                             <span className="font-bold text-amber-400">{stats.totalCodAmount.toLocaleString()} ر.س</span>
                         </div>
                         <div className="h-2 w-full bg-theme-faint rounded-full overflow-hidden">
-                            <div className="h-full bg-amber-400 transition-all duration-1000" style={{ width: `100%` }} />
+                            <div className="h-full bg-amber-400 transition-all duration-1000" style={{ width: `${pendingCodPercent}%` }} />
                         </div>
                         <p className="text-[10px] text-theme-subtle">{stats.pendingCod} شحنة الدفع عند الاستلام قيد التوصيل</p>
                     </div>
@@ -464,7 +468,7 @@ export function ShippingClient({
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="بحث برقم الطلب أو التتبع..."
-                        className="input-dark rounded-xl py-2 pl-4 pr-10 text-sm w-64"
+                        className="input-theme rounded-xl py-2 pl-4 pr-10 text-sm w-64"
                     />
                 </form>
                 <button

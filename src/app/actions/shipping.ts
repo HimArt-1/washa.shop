@@ -100,15 +100,18 @@ export async function getShippingOrders(params: {
 
     // Fetch item counts separately
     const orderIds = (data || []).map((o) => o.id);
-    const { data: itemCounts } = await supabase
-        .from("order_items")
-        .select("order_id, quantity")
-        .in("order_id", orderIds);
-
     const countMap: Record<string, number> = {};
-    (itemCounts || []).forEach((item) => {
-        countMap[item.order_id] = (countMap[item.order_id] || 0) + item.quantity;
-    });
+    
+    if (orderIds.length > 0) {
+        const { data: itemCounts } = await supabase
+            .from("order_items")
+            .select("order_id, quantity")
+            .in("order_id", orderIds);
+
+        (itemCounts || []).forEach((item) => {
+            countMap[item.order_id] = (countMap[item.order_id] || 0) + item.quantity;
+        });
+    }
 
     const orders: ShippingOrder[] = (data || []).map((o) => ({
         ...o,

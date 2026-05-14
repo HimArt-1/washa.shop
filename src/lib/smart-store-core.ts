@@ -70,9 +70,9 @@ export type ResolvedDesignCreativeSelections = {
 
 const DESIGN_RESULT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const DESIGN_RESULT_PDF_TYPES = ["application/pdf"];
-export const DESIGN_RESULT_MAX_SIZE = 8 * 1024 * 1024;
+export const DESIGN_RESULT_MAX_SIZE = 4 * 1024 * 1024;
 export const SMART_STORE_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-export const SMART_STORE_IMAGE_MAX_SIZE = 8 * 1024 * 1024;
+export const SMART_STORE_IMAGE_MAX_SIZE = 4 * 1024 * 1024;
 
 const DESIGN_ORDER_STATUS_TRANSITIONS: Record<CustomDesignOrderStatus, CustomDesignOrderStatus[]> = {
     new: ["in_progress", "cancelled"],

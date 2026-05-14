@@ -17,24 +17,20 @@ export default async function DesignDtfStudioEntryPage() {
         redirect("/design");
     }
 
-    if (showWizard) {
-        redirect("/design/washa-ai/app");
-    }
-
     const variant = getDesignPieceDeniedVariant(access.reason);
 
-    // Full immersive landing for unauthenticated visitors
-    if (variant === "auth") {
-        return <WashaAiEntryGate redirectUrl="/design/washa-ai" />;
+    // Show error state for service / identity issues
+    if (variant === "service_unavailable" || variant === "identity_conflict") {
+        return (
+            <div className="min-h-[100dvh] px-4 py-10 sm:px-6" style={{ background: "linear-gradient(180deg, #FDFBF7, #FAF7F0)" }}>
+                <DesignPieceAccessDenied
+                    redirectUrl="/design/washa-ai"
+                    variant={variant}
+                />
+            </div>
+        );
     }
 
-    // Simple error state for service / identity issues
-    return (
-        <div className="min-h-[100dvh] bg-[#050505] px-4 py-10 text-theme sm:px-6">
-            <DesignPieceAccessDenied
-                redirectUrl="/design/washa-ai"
-                variant={variant}
-            />
-        </div>
-    );
+    // Always show the immersive landing page
+    return <WashaAiEntryGate showWizard={showWizard} redirectUrl="/design/washa-ai/app" />;
 }

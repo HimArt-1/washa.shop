@@ -7,8 +7,8 @@ import {
   Tajawal,
 } from "next/font/google";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { FloatingJoinButton } from "@/components/ui/FloatingJoinButton";
-import { FloatingChatButton } from "@/components/ui/FloatingChatButton";
+import { FloatingWhatsAppButton } from "@/components/ui/FloatingWhatsAppButton";
+import { FloatingSupportButton } from "@/components/ui/FloatingSupportButton";
 import { VisitLogger } from "@/components/ops/VisitLogger";
 import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
@@ -17,6 +17,7 @@ import { CartSyncProvider } from "@/components/store/CartSyncProvider";
 import { ProfileBootstrapper } from "@/components/auth/ProfileBootstrapper";
 import { ReamazeLoader } from "@/components/support/ReamazeLoader";
 import { Suspense } from "react";
+import { getSiteSettings } from "@/app/actions/settings";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -363,11 +364,14 @@ const clerkAppearance = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const settings = await getSiteSettings();
+  const whatsappNumber = settings.brand_assets?.social_whatsapp || "+966532235005";
+
   return (
     <ClerkProvider
       localization={arSA}
@@ -492,10 +496,10 @@ export default function RootLayout({
 
           {/* Service Worker للـ PWA و Web Push */}
           <ServiceWorkerRegister />
-          {/* Floating Join Button */}
-          <FloatingJoinButton />
-          {/* Custom Floating Chat Button */}
-          <FloatingChatButton />
+          
+          {/* Floating UI Elements */}
+          <FloatingWhatsAppButton phoneNumber={whatsappNumber} />
+          <FloatingSupportButton />
 
           {/* Re:amaze — دعم فني */}
           <ReamazeLoader />

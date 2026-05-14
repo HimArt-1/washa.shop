@@ -738,10 +738,10 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
 
         try {
             // Client-side validation
-            const MAX_SIZE = 8 * 1024 * 1024; // 8MB
+            const MAX_SIZE = 4 * 1024 * 1024; // 4MB
             if (file.size > MAX_SIZE) {
                 setPreview(value);
-                setError("حجم الملف كبير جداً (الحد الأقصى 8 ميجابايت). يرجى ضغط الصورة أو اختيار صورة أخرى.");
+                setError("حجم الملف كبير جداً (الحد الأقصى 4 ميجابايت). يرجى ضغط الصورة أو اختيار صورة أخرى.");
                 setUploading(false);
                 return;
             }

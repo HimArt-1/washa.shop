@@ -25,7 +25,11 @@ export default async function CheckoutPage() {
                 <Loader2 className="w-10 h-10 text-gold animate-spin" />
             </div>
         }>
-            <CheckoutContent shippingConfig={shippingConfig} userRole={profile?.role as any} />
+            <CheckoutContent 
+                shippingConfig={shippingConfig} 
+                userRole={profile?.role as any} 
+                isLoggedIn={!!profile}
+            />
         </Suspense>
     );
 }

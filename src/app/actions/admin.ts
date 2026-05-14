@@ -1777,7 +1777,7 @@ export async function getAdminOrders({ page = 1, status = "all", search = "" }: 
         // استعلام مبسّط — تجنّب فشل الـ join المعقّد
         const selectQuery = `
             *,
-            buyer:profiles(id, display_name, username, avatar_url),
+            buyer:profiles(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title,
@@ -1828,7 +1828,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
         const { supabase } = await requireAdmin();
         const selectQuery = `
             *,
-            buyer:profiles(id, display_name, username, avatar_url),
+            buyer:profiles(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title,

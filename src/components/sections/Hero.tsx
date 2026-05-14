@@ -349,60 +349,137 @@ export function Hero({
               </div>
             </SignedIn>
             <SignedOut>
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-                  <Link
-                    href="/sign-up"
-                    className="group flex items-center justify-center gap-2.5 px-8 py-4 font-bold rounded-2xl transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] w-full sm:w-auto min-w-[160px]"
+              <div className="flex flex-col items-center gap-8">
+                {/* ═══ Outer Radiant Halo ═══ */}
+                <div className="relative">
+                  <motion.div
+                    className="absolute -inset-6 sm:-inset-8 rounded-[3.5rem] pointer-events-none"
                     style={{
-                      background: "linear-gradient(to right, var(--wusha-earth), var(--wusha-gold), var(--wusha-earth))",
-                      color: "var(--wusha-bg)",
-                      boxShadow: "0 4px 24px var(--neon-gold)",
+                      background: "radial-gradient(ellipse at center, rgba(206, 174, 127, 0.12) 0%, rgba(206, 174, 127, 0.04) 50%, transparent 70%)",
                     }}
-                  >
-                    <UserPlus className="w-4 h-4 opacity-80" />
-                    إنشاء حساب
-                  </Link>
-                  <Link
-                    href="/sign-in"
-                    className="flex items-center justify-center gap-2.5 px-8 py-4 font-medium rounded-2xl border backdrop-blur-md transition-all duration-300 w-full sm:w-auto min-w-[160px]"
-                    style={{
-                      borderColor: heroTokens.secondaryBorder,
-                      backgroundColor: heroTokens.secondaryBg,
-                      color: heroTokens.secondaryText,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = heroTokens.secondaryBorderHover;
-                      e.currentTarget.style.backgroundColor = heroTokens.secondaryBgHover;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = heroTokens.secondaryBorder;
-                      e.currentTarget.style.backgroundColor = heroTokens.secondaryBg;
-                    }}
-                  >
-                    <LogIn className="w-4 h-4 opacity-70" />
-                    تسجيل الدخول
-                  </Link>
-                </div>
-                {showJoinArtistButton && (
-                  <button
+                    animate={{ opacity: [0.5, 1, 0.5], scale: [0.97, 1.02, 0.97] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  />
+
+                  <motion.button
                     type="button"
-                    onClick={() => setJoinOpen(true)}
-                    className="text-sm font-medium transition-colors underline-offset-4 hover:underline"
+                    className="group relative px-10 sm:px-14 py-8 sm:py-10 font-bold rounded-[2.5rem] overflow-hidden transition-all duration-700 hover:scale-[1.04] active:scale-[0.98] w-full sm:w-[420px]"
                     style={{
-                      color: heroTokens.linkMuted,
+                      background: "linear-gradient(145deg, rgba(255, 253, 248, 0.92) 0%, rgba(250, 245, 235, 0.88) 40%, rgba(245, 238, 225, 0.85) 100%)",
+                      backdropFilter: "blur(20px) saturate(1.8)",
+                      border: "1.5px solid rgba(206, 174, 127, 0.35)",
+                      boxShadow: "0 8px 40px rgba(206, 174, 127, 0.18), 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7)",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "var(--wusha-gold)";
+                    whileHover={{
+                      boxShadow: "0 20px 60px rgba(206, 174, 127, 0.3), 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+                      borderColor: "rgba(206, 174, 127, 0.6)",
                     }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = heroTokens.linkMuted;
-                    }}
+                    onClick={() => router.push("/design/washa-ai")}
                     suppressHydrationWarning
                   >
-                    انضم كفنان إلى المنصة
-                  </button>
-                )}
+                    {/* Subtle warm gradient overlay */}
+                    <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/40 via-transparent to-amber-50/30 opacity-60" />
+
+                    {/* Golden shimmer sweep */}
+                    <motion.div
+                      className="absolute -inset-[100%] bg-gradient-to-r from-transparent via-amber-200/25 to-transparent skew-x-[-20deg]"
+                      animate={{ left: ["-100%", "200%"] }}
+                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+                    />
+
+                    {/* Light noise texture for depth */}
+                    <div className="absolute inset-0 rounded-[2.5rem] opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")" }} />
+
+                    <div className="relative z-10 flex flex-col items-center gap-5">
+                      {/* AI Icon + Brand */}
+                      <div className="flex items-center gap-3">
+                        <motion.div
+                          className="flex h-11 w-11 items-center justify-center rounded-2xl"
+                          style={{
+                            background: "linear-gradient(135deg, rgba(206, 174, 127, 0.2) 0%, rgba(180, 140, 80, 0.15) 100%)",
+                            border: "1px solid rgba(206, 174, 127, 0.3)",
+                            boxShadow: "0 2px 8px rgba(206, 174, 127, 0.12)",
+                          }}
+                          animate={{ boxShadow: ["0 2px 8px rgba(206,174,127,0.12)", "0 4px 16px rgba(206,174,127,0.25)", "0 2px 8px rgba(206,174,127,0.12)"] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                          <Sparkles className="w-5 h-5" style={{ color: "#9a7b3d" }} />
+                        </motion.div>
+                        <span
+                          className="text-3xl sm:text-4xl font-alnaseeb italic tracking-widest"
+                          style={{
+                            background: "linear-gradient(135deg, #6b5426 0%, #9a7b3d 45%, #c9a84c 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            filter: "drop-shadow(0 1px 2px rgba(154, 123, 61, 0.15))",
+                          }}
+                        >
+                          WASHA AI
+                        </span>
+                      </div>
+
+                      {/* Elegant divider */}
+                      <div className="flex items-center gap-3 w-full max-w-[200px]">
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-amber-700/20" />
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: "linear-gradient(135deg, #c9a84c, #9a7b3d)" }} />
+                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-amber-700/20" />
+                      </div>
+
+                      {/* CTA Text */}
+                      <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.08em]" style={{ color: "#6b5c3e" }}>
+                        <span>صمّم خيالك في ثوانٍ</span>
+                        <motion.span
+                          animate={{ x: [0, 5, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          style={{ color: "#9a7b3d" }}
+                        >
+                          ←
+                        </motion.span>
+                      </div>
+
+                      {/* Micro badge */}
+                      <div
+                        className="flex items-center gap-1.5 rounded-full px-3 py-1"
+                        style={{
+                          background: "rgba(206, 174, 127, 0.1)",
+                          border: "1px solid rgba(206, 174, 127, 0.2)",
+                        }}
+                      >
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: "#8b7542" }}>
+                          متاح الآن
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Corner Ornaments — warm gold on light */}
+                    <div className="absolute top-4 left-4 w-4 h-4 border-t-[1.5px] border-l-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
+                    <div className="absolute top-4 right-4 w-4 h-4 border-t-[1.5px] border-r-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
+                    <div className="absolute bottom-4 left-4 w-4 h-4 border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
+                    <div className="absolute bottom-4 right-4 w-4 h-4 border-b-[1.5px] border-r-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
+                  </motion.button>
+                </div>
+
+                {/* Auth Links — subtle and elegant */}
+                <div className="flex items-center gap-5">
+                  <Link
+                    href="/sign-in"
+                    className="group flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.25em] uppercase transition-all duration-400"
+                    style={{ color: "rgba(250, 243, 230, 0.45)" }}
+                  >
+                    <LogIn className="w-3 h-3 opacity-60 transition-opacity group-hover:opacity-100" />
+                    <span className="transition-colors group-hover:text-gold">الدخول</span>
+                  </Link>
+                  <div className="h-3 w-px bg-gradient-to-b from-transparent via-gold/20 to-transparent" />
+                  <Link
+                    href="/sign-up"
+                    className="group flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.25em] uppercase transition-all duration-400"
+                    style={{ color: "rgba(250, 243, 230, 0.45)" }}
+                  >
+                    <UserPlus className="w-3 h-3 opacity-60 transition-opacity group-hover:opacity-100" />
+                    <span className="transition-colors group-hover:text-gold">حساب جديد</span>
+                  </Link>
+                </div>
               </div>
             </SignedOut>
           </motion.div>

@@ -11,7 +11,6 @@ import StepPalette from './components/steps/StepPalette';
 import StepResult from './components/steps/StepResult';
 
 // ... other imports
-import SplashScreen from './components/SplashScreen';
 import Toast from './components/ui/Toast';
 import DesignGallery from './components/DesignGallery';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -112,7 +111,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <DesignProvider>
-        <SplashScreen />
         <AppContent />
       </DesignProvider>
     </ErrorBoundary>

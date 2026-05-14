@@ -1465,7 +1465,7 @@ export async function uploadSmartStoreImage(folder: string, formData: FormData) 
     }
 
     if (file.size > SMART_STORE_IMAGE_MAX_SIZE) {
-        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 8 ميجابايت" };
+        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 4 ميجابايت" };
     }
 
     if (!SMART_STORE_IMAGE_TYPES.includes(file.type)) {
@@ -1493,7 +1493,7 @@ export async function uploadDesignReferenceImage(formData: FormData) {
     }
 
     if (file.size > SMART_STORE_IMAGE_MAX_SIZE) {
-        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 8 ميجابايت" };
+        return { success: false as const, error: "حجم الملف يجب أن لا يتجاوز 4 ميجابايت" };
     }
 
     if (!SMART_STORE_IMAGE_TYPES.includes(file.type)) {

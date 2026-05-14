@@ -30,6 +30,7 @@ export function ReamazeLoader() {
                 _support['ui']['widget'] = {
                   allowBotProcessing: 'false',
                   slug: 'wshw-fnun-yrtd',
+                  display: 'none',
                   label: {
                     text: 'حياك الله في وشّى ..',
                     mode: 'notification',

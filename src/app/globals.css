@@ -881,6 +881,21 @@ h3 {
 .input-dark::placeholder {
   color: color-mix(in srgb, var(--wusha-text) 50%, transparent);
 }
+
+.input-theme {
+  @apply w-full px-4 py-3 rounded-xl outline-none transition-all;
+  background-color: var(--glass-bg);
+  border: 1px solid var(--wusha-border);
+  color: var(--wusha-text);
+}
+.input-theme:focus {
+  border-color: var(--wusha-gold);
+  background-color: var(--glass-bg-hover);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--wusha-gold) 30%, transparent);
+}
+.input-theme::placeholder {
+  color: color-mix(in srgb, var(--wusha-text) 50%, transparent);
+}
 }
 
 /* ═══════════════════════════════════════════════════════════
