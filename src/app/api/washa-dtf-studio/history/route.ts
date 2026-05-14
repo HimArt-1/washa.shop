@@ -16,6 +16,10 @@ export async function GET() {
         return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    if (!access.authenticated) {
+        return NextResponse.json({ items: [] }, { headers: { "Cache-Control": "no-store" } });
+    }
+
     try {
         const items = await listDtfHistory(access.supabase, access.profileId);
         return NextResponse.json({ items }, { headers: { "Cache-Control": "no-store" } });
@@ -29,6 +33,10 @@ export async function POST(request: NextRequest) {
     const access = await requireWashaDtfHistoryAccess();
     if (!access.ok) {
         return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
+    if (!access.authenticated) {
+        return NextResponse.json({ error: "يجب تسجيل الدخول لحفظ التصميم في السجل" }, { status: 401 });
     }
 
     let payload: unknown;
@@ -58,6 +66,10 @@ export async function DELETE() {
         return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    if (!access.authenticated) {
+        return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
     try {
         await clearDtfHistory(access.supabase, access.profileId);
         return NextResponse.json({ ok: true });
@@ -66,3 +78,4 @@ export async function DELETE() {
         return NextResponse.json({ error: "تعذر مسح سجل التصاميم" }, { status: 500 });
     }
 }
+

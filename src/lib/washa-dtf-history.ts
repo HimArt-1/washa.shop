@@ -123,13 +123,15 @@ export function sanitizeDtfHistoryCreateInput(payload: RawCreateInput): CreateIn
     };
 }
 
-export async function requireWashaDtfHistoryAccess(): Promise<
-    | { ok: true; supabase: SupabaseClient<Database>; profileId: string; clerkId: string }
-    | { ok: false; status: number; error: string }
-> {
+export type DtfHistoryAccess =
+    | { ok: true; authenticated: true; supabase: SupabaseClient<Database>; profileId: string; clerkId: string }
+    | { ok: true; authenticated: false }
+    | { ok: false; status: number; error: string };
+
+export async function requireWashaDtfHistoryAccess(): Promise<DtfHistoryAccess> {
     const { userId } = await auth();
     if (!userId) {
-        return { ok: false, status: 401, error: "يجب تسجيل الدخول لاستخدام WASHA AI" };
+        return { ok: true, authenticated: false };
     }
 
     let supabase: SupabaseClient<Database>;
