@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, LayoutDashboard, Search, FileImage, CheckCircle2
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
+import { studioAsset } from '../../lib/assets';
 
 export default function StepPosition() {
   const { state, updateState, nextStep, prevStep, positionOptions } = useDesign();
@@ -148,9 +149,9 @@ export default function StepPosition() {
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
                 
-                {'imageUrl' in pos && pos.imageUrl ? (
+                {('imageUrl' in pos && pos.imageUrl) ? (
                   <img 
-                    src={pos.imageUrl} 
+                    src={studioAsset(pos.imageUrl as string)} 
                     alt={pos.title} 
                     className={cn(
                       "absolute inset-0 w-full h-full object-cover transition-transform duration-700",

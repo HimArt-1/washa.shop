@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Trash2, Clock, Image as ImageIcon } from 'lucide-react';
 import { Button } from './ui/Button';
 import { DesignHistoryItem } from '../types';
+import { studioAsset } from '../lib/assets';
 
 interface DesignGalleryProps {
   isOpen: boolean;
@@ -95,7 +96,7 @@ export default function DesignGallery({
                     {item.thumbnail && (
                       <div className="aspect-video w-full overflow-hidden">
                         <img
-                          src={item.thumbnail}
+                          src={studioAsset(item.thumbnail)}
                           alt={item.prompt || 'تصميم'}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                         />

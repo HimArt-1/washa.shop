@@ -58,7 +58,7 @@ export default function StepArtStyle() {
     ...styleOptions.map((s) => ({
       ...s,
       kind: 'style' as const,
-      bgImage: s.imageUrl || studioAsset(STYLE_THUMBNAILS[s.name] || ''),
+      bgImage: (s.imageUrl ? studioAsset(s.imageUrl) : studioAsset(STYLE_THUMBNAILS[s.name] || '')),
       gradient: STYLE_GRADIENT,
       badge: 'أسلوب',
       badgeIcon: <Palette className="w-3 h-3" />,
@@ -66,7 +66,7 @@ export default function StepArtStyle() {
     ...techniqueOptions.map((t) => ({
       ...t,
       kind: 'technique' as const,
-      bgImage: t.imageUrl || studioAsset(TECHNIQUE_THUMBNAILS[t.name] || ''),
+      bgImage: (t.imageUrl ? studioAsset(t.imageUrl) : studioAsset(TECHNIQUE_THUMBNAILS[t.name] || '')),
       gradient: TECHNIQUE_GRADIENT,
       badge: 'تقنية',
       badgeIcon: <Brush className="w-3 h-3" />,

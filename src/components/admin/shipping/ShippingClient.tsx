@@ -300,10 +300,18 @@ export function ShippingClient({
 
     const navigate = (params: Record<string, string>) => {
         const sp = new URLSearchParams();
-        if (params.status && params.status !== "all") sp.set("status", params.status);
-        if (params.search) sp.set("search", params.search);
-        if (params.page && params.page !== "1") sp.set("page", params.page);
-        startTransition(() => router.push(`/dashboard/shipping?${sp.toString()}`));
+        Object.entries(params).forEach(([key, value]) => {
+            if (value && value !== "all") {
+                sp.set(key, value);
+            }
+        });
+        
+        const queryString = sp.toString();
+        const url = `/dashboard/shipping${queryString ? `?${queryString}` : ""}`;
+        
+        startTransition(() => {
+            router.push(url);
+        });
     };
 
     const handleBook = async (id: string) => {
