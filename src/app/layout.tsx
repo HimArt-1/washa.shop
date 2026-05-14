@@ -6,9 +6,10 @@ import {
   Playfair_Display,
   Tajawal,
 } from "next/font/google";
+import dynamic from "next/dynamic";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { FloatingWhatsAppButton } from "@/components/ui/FloatingWhatsAppButton";
-import { FloatingSupportButton } from "@/components/ui/FloatingSupportButton";
+const FloatingWhatsAppButton = dynamic(() => import("@/components/ui/FloatingWhatsAppButton").then(m => m.FloatingWhatsAppButton), { ssr: false });
+const FloatingSupportButton = dynamic(() => import("@/components/ui/FloatingSupportButton").then(m => m.FloatingSupportButton), { ssr: false });
 import { VisitLogger } from "@/components/ops/VisitLogger";
 import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
