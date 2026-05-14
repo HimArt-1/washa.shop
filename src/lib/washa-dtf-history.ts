@@ -154,7 +154,7 @@ export async function requireWashaDtfHistoryAccess(): Promise<DtfHistoryAccess> 
     }
 
     if (existingProfile) {
-        return { ok: true, supabase, profileId: existingProfile.id, clerkId: userId };
+        return { ok: true, authenticated: true, supabase, profileId: existingProfile.id, clerkId: userId };
     }
 
     // Slow path: first-time user — auto-create profile via ensureProfile().
@@ -170,7 +170,7 @@ export async function requireWashaDtfHistoryAccess(): Promise<DtfHistoryAccess> 
     }
     const created = ensured.profile;
 
-    return { ok: true, supabase, profileId: created.id, clerkId: userId };
+    return { ok: true, authenticated: true, supabase, profileId: created.id, clerkId: userId };
 }
 
 export function mapDtfHistoryRow(row: DtfHistoryProjection): DtfHistoryItem {
