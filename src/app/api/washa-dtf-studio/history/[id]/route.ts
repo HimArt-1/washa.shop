@@ -13,6 +13,10 @@ export async function DELETE(
         return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
+    if (!access.authenticated) {
+        return NextResponse.json({ error: "يجب تسجيل الدخول لحذف التصميم" }, { status: 401 });
+    }
+
     try {
         await deleteDtfHistoryItem(access.supabase, access.profileId, context.params.id);
         return NextResponse.json({ ok: true });
