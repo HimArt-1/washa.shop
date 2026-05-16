@@ -284,6 +284,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                     size: item.size || null,
                     unit_price: item.price,
                     custom_design_url: item.customDesignUrl ?? undefined,
+                    custom_design_order_id: item.customDesignOrderId ?? undefined,
                     custom_garment: item.customGarment ?? undefined,
                     custom_title: item.title,
                     custom_position: item.customPosition ?? undefined,

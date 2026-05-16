@@ -106,6 +106,7 @@ export function DesignResultsPopup({
             type: "custom_design",
             maxQuantity: 1,
             customDesignUrl: order.result_design_url ?? undefined,
+            customDesignOrderId: order.id,
             customGarment: order.garment_name,
             customPosition: order.is_sent_to_customer
                 ? "حسب المواصفات المعتمدة"

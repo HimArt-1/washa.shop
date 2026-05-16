@@ -283,7 +283,7 @@ export function OrdersClient({
                                 {order.items && order.items.length > 0 && (
                                     <div className="mt-4 space-y-3">
                                         {order.items.map((item: any) => {
-                                            const isCustom = !!item.custom_design_url;
+                                            const isCustom = !!(item.custom_design_url || item.custom_design_order_id || item.custom_title);
                                             const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                             return (

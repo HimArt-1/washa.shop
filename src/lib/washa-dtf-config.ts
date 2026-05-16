@@ -9,6 +9,11 @@ import {
     normalizeColorPackageRow,
     normalizeStyleRow,
 } from "@/lib/smart-store-core";
+import {
+    getSmartStoreAvailableQuantity,
+    getSmartStoreStockStatus,
+    type SmartStoreStockStatus,
+} from "@/lib/smart-store-inventory";
 import type {
     DesignColorToken,
     DesignIntelligenceMetadata,
@@ -54,6 +59,11 @@ export type WashaDtfStudioConfig = {
             name: string;
             imageFrontUrl: string | null;
             imageBackUrl: string | null;
+            trackInventory: boolean;
+            stockQuantity: number;
+            reservedQuantity: number;
+            availableQuantity: number | null;
+            stockStatus: SmartStoreStockStatus;
         }>;
     }>;
     styles: Array<WashaDtfStudioCreativeOption>;
@@ -263,6 +273,11 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
                     name: size.name,
                     imageFrontUrl: size.image_front_url,
                     imageBackUrl: size.image_back_url,
+                    trackInventory: size.track_inventory,
+                    stockQuantity: size.stock_quantity,
+                    reservedQuantity: size.reserved_quantity,
+                    availableQuantity: getSmartStoreAvailableQuantity(size),
+                    stockStatus: getSmartStoreStockStatus(size),
                 })),
         })),
         styles: styles.map(mapCreativeOption),

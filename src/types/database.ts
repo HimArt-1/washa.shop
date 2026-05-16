@@ -197,10 +197,11 @@ export type OrderItem = {
     size: ApparelSize | null;
     unit_price: number;
     total_price: number;
-    custom_design_url?: string;
+    custom_design_url?: string | null;
     custom_garment?: string | null;
     custom_title?: string | null;
     custom_position?: string | null;
+    custom_design_order_id?: string | null;
 }
 
 // ─── Admin Notifications ───────────────────────────────────
@@ -368,6 +369,11 @@ export type CustomDesignSize = {
     name: string;
     image_front_url: string | null;
     image_back_url: string | null;
+    track_inventory: boolean;
+    stock_quantity: number;
+    reserved_quantity: number;
+    low_stock_threshold: number;
+    sku_id: string | null;
     is_active: boolean;
     created_at: string;
     updated_at: string;
@@ -646,13 +652,14 @@ export type Database = {
             };
             order_items: {
                 Row: OrderItem;
-                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "custom_design_url" | "custom_garment" | "custom_title" | "custom_position"> & {
+                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "custom_design_url" | "custom_garment" | "custom_title" | "custom_position" | "custom_design_order_id"> & {
                     quantity?: number;
                     size: string | null;
-                    custom_design_url?: string;
+                    custom_design_url?: string | null;
                     custom_garment?: string | null;
                     custom_title?: string | null;
                     custom_position?: string | null;
+                    custom_design_order_id?: string | null;
                 };
                 Update: Partial<Omit<OrderItem, "id" | "order_id">>;
                 Relationships: [
@@ -715,7 +722,14 @@ export type Database = {
             };
             custom_design_sizes: {
                 Row: CustomDesignSize;
-                Insert: Omit<CustomDesignSize, "id" | "created_at" | "updated_at" | "is_active"> & { is_active?: boolean };
+                Insert: Omit<CustomDesignSize, "id" | "created_at" | "updated_at" | "is_active" | "track_inventory" | "stock_quantity" | "reserved_quantity" | "low_stock_threshold" | "sku_id"> & {
+                    is_active?: boolean;
+                    track_inventory?: boolean;
+                    stock_quantity?: number;
+                    reserved_quantity?: number;
+                    low_stock_threshold?: number;
+                    sku_id?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignSize, "id" | "created_at">>;
                 Relationships: any[];
             };

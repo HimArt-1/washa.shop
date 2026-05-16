@@ -463,13 +463,15 @@ export function OrdersClient({
                             <tbody>
                                 {orders.length > 0 ? (
                                     orders.map((order, index) => {
+                                        const orderKey = order.id || order.order_number || `order-${index}`;
                                         const isExpanded = expandedOrder === order.id;
                                         const available = nextStatuses[order.status] || [];
                                         const items = order.order_items || [];
 
                                         return (
-                                            <AnimatePresence key={order.id} initial={false}>
+                                            <AnimatePresence key={orderKey} initial={false}>
                                                 <motion.tr
+                                                    key={`row-${orderKey}`}
                                                     id={`admin-order-row-${order.id}`}
                                                     initial={{ opacity: 0 }}
                                                     animate={{ opacity: 1 }}
@@ -608,6 +610,7 @@ export function OrdersClient({
 
                                                 {isExpanded && items.length > 0 ? (
                                                     <motion.tr
+                                                        key={`details-${orderKey}`}
                                                         initial={{ opacity: 0, height: 0 }}
                                                         animate={{ opacity: 1, height: "auto" }}
                                                         exit={{ opacity: 0, height: 0 }}
@@ -622,7 +625,7 @@ export function OrdersClient({
                                                                     </div>
                                                                     <div className="space-y-3">
                                                                         {items.map((item: any) => {
-                                                                            const isCustom = !!item.custom_design_url;
+                                                                            const isCustom = !!(item.custom_design_url || item.custom_design_order_id || item.custom_title);
                                                                             const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
                                                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                                                             const subtitle = isCustom

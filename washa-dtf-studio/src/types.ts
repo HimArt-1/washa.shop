@@ -27,6 +27,11 @@ export interface DtfStudioSizeOption {
   name: string;
   imageFrontUrl: string | null;
   imageBackUrl: string | null;
+  trackInventory?: boolean;
+  stockQuantity?: number;
+  reservedQuantity?: number;
+  availableQuantity?: number | null;
+  stockStatus?: 'untracked' | 'available' | 'low' | 'out';
 }
 
 export interface DtfStudioGarmentOption {

@@ -358,6 +358,9 @@ export const smartStoreUpsertSizeSchema = z.object({
     name: requiredText("اسم المقاس", 80),
     image_front_url: optionalSafeUrl("صورة المقاس الأمامية"),
     image_back_url: optionalSafeUrl("صورة المقاس الخلفية"),
+    track_inventory: booleanFromUnknown(false),
+    stock_quantity: numberFromUnknown("كمية المخزون", { integer: true, min: 0, defaultValue: 0 }),
+    low_stock_threshold: numberFromUnknown("حد المخزون المنخفض", { integer: true, min: 0, defaultValue: 3 }),
     is_active: booleanFromUnknown(false),
 });
 

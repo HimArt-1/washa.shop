@@ -189,6 +189,14 @@ export default function StepArtStyle() {
                       : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
                   )}
                 >
+                  {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
+                    {option.kind === 'style'
+                      ? <Palette className="h-12 w-12 text-white/10" />
+                      : <Brush className="h-12 w-12 text-white/10" />
+                    }
+                  </div>
+
                   {/* Background Image */}
                   {option.bgImage ? (
                     <img
@@ -201,14 +209,6 @@ export default function StepArtStyle() {
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                   ) : null}
-
-                  {/* Fallback pattern when no image */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
-                    {option.kind === 'style' 
-                      ? <Palette className="h-12 w-12 text-white/10" />
-                      : <Brush className="h-12 w-12 text-white/10" />
-                    }
-                  </div>
 
                   {/* Gradient Overlay */}
                   <div className={cn(

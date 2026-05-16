@@ -135,7 +135,12 @@ async function parseApiPayload(response: Response) {
 
 function resolveDefaultSize(garment: DtfStudioGarmentOption | null, colorId?: string | null) {
   if (!garment) return null;
-  return garment.sizes.find((size) => size.colorId === colorId) || garment.sizes.find((size) => size.colorId === null) || garment.sizes[0] || null;
+  const orderableSizes = garment.sizes.filter((size) => size.stockStatus !== 'out');
+  return orderableSizes.find((size) => size.colorId === colorId) || orderableSizes.find((size) => size.colorId === null) || orderableSizes[0] || garment.sizes[0] || null;
+}
+
+function isSizeOrderable(size: DtfStudioSizeOption | null | undefined) {
+  return Boolean(size && size.stockStatus !== 'out');
 }
 
 function buildInitialState(config: DtfStudioConfig): DesignState {
@@ -275,7 +280,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [selectedColor?.id, selectedGarment]);
 
   const selectedSize = useMemo(
-    () => sizeOptions.find((item) => item.id === state.garmentSizeId) || sizeOptions[0] || null,
+    () => {
+      const current = sizeOptions.find((item) => item.id === state.garmentSizeId);
+      if (isSizeOrderable(current)) return current || null;
+      return sizeOptions.find((item) => item.stockStatus !== 'out') || current || sizeOptions[0] || null;
+    },
     [sizeOptions, state.garmentSizeId]
   );
 
@@ -298,7 +307,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (!selectedGarment) return;
     setState((current) => {
       const nextColor = colorOptions.find((item) => item.id === current.garmentColorId) || colorOptions[0] || null;
-      const nextSize = sizeOptions.find((item) => item.id === current.garmentSizeId) || resolveDefaultSize(selectedGarment, nextColor?.id || null);
+      const currentSize = sizeOptions.find((item) => item.id === current.garmentSizeId);
+      const nextSize = isSizeOrderable(currentSize) ? currentSize : resolveDefaultSize(selectedGarment, nextColor?.id || null);
 
       return {
         ...current,
@@ -382,6 +392,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (!state.garmentType || !state.garmentColor || !state.garmentSize || !state.style || !state.technique || !state.paletteId) {
       setError('إعدادات القطعة أو النمط غير مكتملة.');
       showToast('أكمل القطعة واللون والمقاس والأسلوب قبل التوليد', 'error');
+      return;
+    }
+
+    if (selectedSize?.stockStatus === 'out') {
+      setError('المقاس المحدد غير متوفر حالياً.');
+      showToast('اختر مقاساً متوفراً قبل المتابعة', 'error');
       return;
     }
 

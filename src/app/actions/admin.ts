@@ -1780,7 +1780,7 @@ export async function getAdminOrders({ page = 1, status = "all", search = "" }: 
             buyer:profiles(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
-                custom_design_url, custom_garment, custom_title,
+                custom_design_url, custom_garment, custom_title, custom_design_order_id,
                 product:products(id, title, image_url)
             ),
             coupon:discount_coupons(code)
@@ -1831,7 +1831,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
             buyer:profiles(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
-                custom_design_url, custom_garment, custom_title,
+                custom_design_url, custom_garment, custom_title, custom_design_order_id,
                 product:products(id, title, image_url)
             ),
             coupon:discount_coupons(code)
@@ -2082,7 +2082,7 @@ export async function getFulfillmentCalculation(orderId: string) {
         const breakdownItems = [];
 
         for (const item of items) {
-            if (item.custom_design_url) {
+            if (item.custom_design_url || item.custom_design_order_id || item.custom_title) {
                 const garmentSlug = item.custom_garment || "premium-tshirt";
                 const positions = item.custom_position ? item.custom_position.split(",").map(p => p.trim()) : [];
 

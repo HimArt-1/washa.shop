@@ -19,7 +19,8 @@ export default function StepGarment() {
     sizeOptions,
   } = useDesign();
 
-  const canProceed = Boolean(state.garmentId && state.garmentColorId && state.garmentSizeId);
+  const selectedSize = sizeOptions.find((size) => size.id === state.garmentSizeId);
+  const canProceed = Boolean(state.garmentId && state.garmentColorId && state.garmentSizeId && selectedSize && selectedSize.stockStatus !== 'out');
 
   return (
     <motion.div
@@ -172,10 +173,12 @@ export default function StepGarment() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.22 + index * 0.03, duration: 0.25 }}
                     onClick={() => {
+                      const orderableSizes = selectedGarment?.sizes.filter((item) => item.stockStatus !== 'out') || [];
                       const nextSize =
+                        orderableSizes.find((item) => item.colorId === color.id) ||
+                        orderableSizes.find((item) => item.colorId === null) ||
+                        orderableSizes[0] ||
                         selectedGarment?.sizes.find((item) => item.colorId === color.id) ||
-                        selectedGarment?.sizes.find((item) => item.colorId === null) ||
-                        selectedGarment?.sizes[0] ||
                         null;
 
                       updateState({
@@ -228,23 +231,37 @@ export default function StepGarment() {
             </div>
             {sizeOptions.length > 0 ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {sizeOptions.map((size, index) => (
-                  <motion.button
-                    key={size.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.32 + index * 0.03, duration: 0.25 }}
-                    onClick={() => updateState({ garmentSizeId: size.id, garmentSize: size.name })}
-                    className={cn(
-                      'rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300',
-                      state.garmentSizeId === size.id
-                        ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
-                        : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
-                    )}
-                  >
-                    {size.name}
-                  </motion.button>
-                ))}
+                {sizeOptions.map((size, index) => {
+                  const isOut = size.stockStatus === 'out';
+                  const isLow = size.stockStatus === 'low';
+                  return (
+                    <motion.button
+                      key={size.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.32 + index * 0.03, duration: 0.25 }}
+                      onClick={() => {
+                        if (!isOut) updateState({ garmentSizeId: size.id, garmentSize: size.name });
+                      }}
+                      disabled={isOut}
+                      className={cn(
+                        'rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
+                        state.garmentSizeId === size.id
+                          ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
+                          : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]',
+                        isOut && 'border-red-500/30 bg-red-500/5 text-red-200',
+                        isLow && 'border-amber-400/30 bg-amber-400/5'
+                      )}
+                    >
+                      <span>{size.name}</span>
+                      {size.stockStatus && size.stockStatus !== 'untracked' && (
+                        <span className="mt-1 block text-[10px] font-medium text-washa-text-faint">
+                          {isOut ? 'نفد' : `متبقي ${size.availableQuantity ?? 0}`}
+                        </span>
+                      )}
+                    </motion.button>
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">

@@ -13,6 +13,7 @@ export interface CheckoutItem {
   description?: string;
   // Custom design fields (if applicable)
   custom_design_url?: string;
+  custom_design_order_id?: string;
   custom_garment?: string;
 }
 
@@ -188,10 +189,13 @@ export async function createCheckoutSession(items: CheckoutItem[], successUrl: s
       size: null, 
       unit_price: item.price,
       total_price: item.price * item.quantity,
-      ...(item.custom_design_url && {
-          custom_design_url: item.custom_design_url,
+      ...((item.custom_design_url || item.custom_design_order_id) && {
+          custom_design_url: item.custom_design_url ?? null,
           custom_garment: item.custom_garment,
           custom_title: item.name,
+      }),
+      ...(item.custom_design_order_id && {
+          custom_design_order_id: item.custom_design_order_id,
       }),
     })) as any;
 

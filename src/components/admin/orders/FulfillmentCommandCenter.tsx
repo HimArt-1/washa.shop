@@ -51,6 +51,7 @@ interface OrderItem {
     size: string | null;
     custom_title: string | null;
     custom_design_url?: string;
+    custom_design_order_id?: string | null;
     custom_garment?: string;
     product?: {
         title: string;
@@ -508,7 +509,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                             {/* Items Carousel-like grid */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7">
                                                 {order.order_items.map((item) => {
-                                                    const isCustom = !!item.custom_design_url;
+                                                    const isCustom = !!(item.custom_design_url || item.custom_design_order_id || item.custom_title);
                                                     const imageUrl = isCustom ? item.custom_design_url : item.product?.image_url;
                                                     const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                                     
@@ -864,5 +865,3 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
         </div>
     );
 }
-
-

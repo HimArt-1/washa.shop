@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { forwardRef, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -60,14 +60,23 @@ function StatCard({ icon: Icon, label, value, sub, color, onClick, active }: {
 
 // ─── Order Row ────────────────────────────────────────────────
 
-function OrderRow({ order, onBook, onCancel, onDeliver, onTrack, loading }: {
+type OrderRowProps = {
     order: ShippingOrder;
     onBook: (id: string) => void;
     onCancel: (id: string) => void;
     onDeliver: (id: string) => void;
     onTrack: (order: ShippingOrder) => void;
     loading: string | null;
-}) {
+};
+
+const OrderRow = forwardRef<HTMLTableRowElement, OrderRowProps>(function OrderRow({
+    order,
+    onBook,
+    onCancel,
+    onDeliver,
+    onTrack,
+    loading,
+}, ref) {
     const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.processing;
     const StatusIcon = cfg.icon;
     const addr = order.shipping_address;
@@ -75,6 +84,7 @@ function OrderRow({ order, onBook, onCancel, onDeliver, onTrack, loading }: {
 
     return (
         <motion.tr
+            ref={ref}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="border-b border-theme-faint hover:bg-theme-faint/50 transition-colors"
@@ -184,7 +194,7 @@ function OrderRow({ order, onBook, onCancel, onDeliver, onTrack, loading }: {
             </td>
         </motion.tr>
     );
-}
+});
 
 // ─── Track Modal ──────────────────────────────────────────────
 

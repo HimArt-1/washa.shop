@@ -8,6 +8,10 @@ import {
     calculatePlacementPrice,
     type GarmentPricing,
 } from "@/lib/smart-store-core";
+import {
+    releaseSmartStoreSizeReservation,
+    reserveSmartStoreSizeStock,
+} from "@/lib/smart-store-inventory";
 import type { PrintPosition, PrintSize } from "@/lib/design-intelligence";
 import { logDtfTrace } from "../utils/trace";
 
@@ -150,6 +154,7 @@ export class DtfOrderService {
     ): Promise<{ error?: string; status?: number; data?: any }> {
         const traceId = options?.traceId ?? crypto.randomUUID();
         const serviceStartedAt = Date.now();
+        let reservedSizeId: string | null = null;
         try {
             const {
                 garmentId, garmentType, colorId, garmentColor, colorHex,
@@ -279,6 +284,12 @@ export class DtfOrderService {
                 return { error: "لم يتم تحديد لوحة الألوان للتصميم", status: 400 };
             }
 
+            const reservedStock = await reserveSmartStoreSizeStock(sb, sizeRow?.id ?? null, 1);
+            if ("error" in reservedStock) {
+                return { error: reservedStock.error, status: 409 };
+            }
+            reservedSizeId = reservedStock.tracked ? (sizeRow?.id ?? null) : null;
+
             const slug = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
             const mockupUploadStartedAt = Date.now();
@@ -294,6 +305,7 @@ export class DtfOrderService {
 
             if ("error" in mockupResult) {
                 logDiagnosticWarning("dtf-cart-mockup-upload", mockupResult.error);
+                if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
                 return { error: mockupResult.error, status: mockupResult.status };
             }
 
@@ -439,6 +451,7 @@ export class DtfOrderService {
 
             if (insertOrderError) {
                 logDiagnosticWarning("dtf-design-order-insert", insertOrderError);
+                if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
                 return DtfOrderService.resolveServerErrorMessage(insertOrderError);
             }
 
@@ -449,7 +462,10 @@ export class DtfOrderService {
             return {
                 status: 200,
                 data: {
-                    cartItem,
+                    cartItem: {
+                        ...cartItem,
+                        customDesignOrderId: insertedOrder?.id ?? undefined,
+                    },
                     orderId: insertedOrder?.id ?? null,
                     orderNumber: insertedOrder?.order_number ?? null,
                     trackerToken: insertedOrder?.tracker_token ?? null,
@@ -483,6 +499,9 @@ export class DtfOrderService {
                 }
             };
         } catch (error) {
+            if (reservedSizeId) {
+                await releaseSmartStoreSizeReservation(getSupabaseAdminClient(), reservedSizeId, 1);
+            }
             logDiagnosticWarning("dtf-cart-unhandled", error);
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_failed", {
                 total_duration_ms: Date.now() - serviceStartedAt,

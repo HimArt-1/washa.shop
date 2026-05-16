@@ -73,6 +73,10 @@ import {
     type PrintSize,
     type RankedDesignCandidate,
 } from "@/lib/design-intelligence";
+import {
+    getSmartStoreAvailableQuantity,
+    getSmartStoreStockStatus,
+} from "@/lib/smart-store-inventory";
 import { DTF_STUDIO_CATALOG_COUNTS } from "@/lib/dtf-studio-catalog";
 
 // ─── Types ──────────────────────────────────────────────
@@ -366,6 +370,14 @@ function WorkspaceOverview({
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
 }) {
+    const trackedSizes = sizes.filter((size) => size.track_inventory);
+    const availableUnits = trackedSizes.reduce((sum, size) => sum + (getSmartStoreAvailableQuantity(size) ?? 0), 0);
+    const reservedUnits = trackedSizes.reduce((sum, size) => sum + Number(size.reserved_quantity || 0), 0);
+    const lowOrOutCount = trackedSizes.filter((size) => {
+        const status = getSmartStoreStockStatus(size);
+        return status === "low" || status === "out";
+    }).length;
+
     const items = workspace === "designPieceLab"
         ? [
             { label: "منتجات مرجعية", value: studioItems.length, note: "لعرض المنتجات المستهدفة داخل النموذج التجريبي" },
@@ -375,7 +387,7 @@ function WorkspaceOverview({
         ]
         : [
             { label: "القطع النشطة", value: garments.length, note: "تظهر مباشرة في واجهة /design/washa-ai" },
-            { label: "ألوان ومقاسات", value: colors.length + sizes.length, note: "تحدد ما يراه العميل فعليًا أثناء التصميم" },
+            { label: "مخزون متاح", value: availableUnits, note: trackedSizes.length > 0 ? `${reservedUnits} محجوز / ${lowOrOutCount} منخفض أو نافد` : "فعّل تتبع المخزون من تبويب المقاسات" },
             { label: "خيارات الإبداع", value: styles.length + artStyles.length + colorPackages.length, note: "ستايلات وتقنيات وباليت للتوليد" },
             { label: "موكبات التشغيل", value: garmentStudioMockups.length, note: "مرجع العرض البصري للمقاسات والمنتجات" },
         ];
@@ -1403,6 +1415,26 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
             <FormField label="صورة خلف">
                 <ImageUploader value={backUrl} onChange={setBackUrl} folder="sizes" label="صورة خلف" fieldName="image_back_url" />
             </FormField>
+            <div className="grid gap-3 sm:grid-cols-3">
+                <FormField label="تتبع المخزون">
+                    <select name="track_inventory" defaultValue={editing?.track_inventory ? "true" : "false"} className={inputCls}>
+                        <option value="false">بدون تتبع</option>
+                        <option value="true">تتبع الكمية</option>
+                    </select>
+                </FormField>
+                <FormField label="كمية المخزون">
+                    <input name="stock_quantity" type="number" min="0" defaultValue={editing?.stock_quantity ?? 0} className={inputCls} />
+                </FormField>
+                <FormField label="حد التنبيه">
+                    <input name="low_stock_threshold" type="number" min="0" defaultValue={editing?.low_stock_threshold ?? 3} className={inputCls} />
+                </FormField>
+            </div>
+            {editing?.track_inventory ? (
+                <div className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs text-theme-subtle">
+                    المحجوز حاليًا: <span className="font-bold text-theme">{editing.reserved_quantity ?? 0}</span>، المتاح:
+                    <span className="font-bold text-gold"> {getSmartStoreAvailableQuantity(editing) ?? 0}</span>
+                </div>
+            ) : null}
             <FormField label="الحالة">
                 <select name="is_active" defaultValue={editing?.is_active !== false ? "true" : "false"} className={inputCls}>
                     <option value="true">نشط</option>
@@ -1430,17 +1462,41 @@ function SizesTab({ items, garments, colors, onRefresh }: { items: CustomDesignS
                     {filtered.map((s) => {
                         const garmentName = garments.find(g => g.id === s.garment_id)?.name ?? "—";
                         const colorName = s.color_id ? colors.find(c => c.id === s.color_id)?.name : null;
+                        const stockStatus = getSmartStoreStockStatus(s);
+                        const availableQuantity = getSmartStoreAvailableQuantity(s);
                         return (
-                            <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
+                            <div key={s.id} className="flex flex-col gap-3 p-4 rounded-xl bg-theme-faint border border-theme-subtle group sm:flex-row sm:items-center">
                                 <div className="w-10 h-10 rounded-lg bg-theme-subtle flex items-center justify-center font-bold text-gold text-sm">{s.name}</div>
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-theme truncate">{garmentName} — {s.name}</p>
                                     {colorName && <p className="text-xs text-theme-subtle">لون: {colorName}</p>}
+                                    {s.track_inventory ? (
+                                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-theme-subtle">
+                                            <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-1">المخزون: {s.stock_quantity}</span>
+                                            <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-1">محجوز: {s.reserved_quantity}</span>
+                                            <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-1">متاح: {availableQuantity}</span>
+                                        </div>
+                                    ) : null}
                                 </div>
-                                <span className={`text-xs px-2 py-1 rounded-full ${s.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                                    {s.is_active ? "نشط" : "معطل"}
-                                </span>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {s.track_inventory ? (
+                                        <span className={`text-xs px-2 py-1 rounded-full ${
+                                            stockStatus === "out"
+                                                ? "bg-red-500/10 text-red-300"
+                                                : stockStatus === "low"
+                                                    ? "bg-amber-400/10 text-amber-200"
+                                                    : "bg-emerald-500/10 text-emerald-300"
+                                        }`}>
+                                            {stockStatus === "out" ? "نافد" : stockStatus === "low" ? "منخفض" : "متوفر"}
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs px-2 py-1 rounded-full bg-theme-subtle text-theme-subtle">بدون تتبع</span>
+                                    )}
+                                    <span className={`text-xs px-2 py-1 rounded-full ${s.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
+                                        {s.is_active ? "نشط" : "معطل"}
+                                    </span>
+                                </div>
+                                <div className="flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                                     <button onClick={() => openEdit(s)} className="p-2 hover:bg-theme-subtle rounded-lg"><Pencil className="w-4 h-4 text-theme-subtle" /></button>
                                     <button onClick={() => setPendingDeleteId(s.id)} className="p-2 hover:bg-red-500/10 rounded-lg"><Trash2 className="w-4 h-4 text-red-400/60" /></button>
                                 </div>

@@ -21,10 +21,11 @@ interface OrderItemInput {
     quantity: number;
     size: string | null;
     unit_price: number;
-    custom_design_url?: string;
+    custom_design_url?: string | null;
     custom_garment?: string;
     custom_title?: string;
     custom_position?: string;
+    custom_design_order_id?: string | null;
 }
 
 interface ShippingAddressInput {
@@ -573,11 +574,12 @@ export async function createOrder(
         size: item.size,
         unit_price: item.unit_price,
         total_price: item.unit_price * item.quantity,
-        ...(item.product_id == null && item.custom_design_url && {
-            custom_design_url: item.custom_design_url,
+        ...(item.product_id == null && {
+            custom_design_url: item.custom_design_url ?? null,
             custom_garment: item.custom_garment ?? null,
             custom_title: item.custom_title ?? null,
             custom_position: item.custom_position ?? null,
+            custom_design_order_id: item.custom_design_order_id ?? null,
         }),
     }));
 

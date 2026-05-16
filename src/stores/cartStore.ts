@@ -16,6 +16,7 @@ export interface CartItem {
     maxQuantity?: number; // Stock limit
     // للتصاميم المخصصة فقط
     customDesignUrl?: string;
+    customDesignOrderId?: string;
     customGarment?: string;
     customPosition?: string;
 }

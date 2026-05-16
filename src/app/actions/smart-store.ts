@@ -90,6 +90,10 @@ import {
     smartStoreUpsertStyleSchema,
     smartStoreSubmitDesignOrderSchema,
 } from "@/lib/smart-store-validations";
+import {
+    releaseSmartStoreSizeReservation,
+    reserveSmartStoreSizeStock,
+} from "@/lib/smart-store-inventory";
 
 
 function getSmartStoreSb() {
@@ -483,6 +487,9 @@ export async function upsertSize(formData: FormData) {
         name: formData.get("name"),
         image_front_url: formData.get("image_front_url"),
         image_back_url: formData.get("image_back_url"),
+        track_inventory: formData.get("track_inventory"),
+        stock_quantity: formData.get("stock_quantity"),
+        low_stock_threshold: formData.get("low_stock_threshold"),
         is_active: formData.get("is_active"),
     });
     if (!validated.success) {
@@ -490,6 +497,18 @@ export async function upsertSize(formData: FormData) {
     }
 
     const data = validated.data;
+    if (data.id) {
+        const { data: currentSize, error: currentError } = await sb
+            .from("custom_design_sizes")
+            .select("reserved_quantity")
+            .eq("id", data.id)
+            .single();
+        if (currentError) return { error: currentError.message };
+        const reservedQuantity = Number((currentSize as Pick<CustomDesignSize, "reserved_quantity"> | null)?.reserved_quantity || 0);
+        if (data.track_inventory && data.stock_quantity < reservedQuantity) {
+            return { error: `لا يمكن جعل المخزون أقل من الكمية المحجوزة حالياً (${reservedQuantity}).` };
+        }
+    }
 
     const payload = {
         garment_id: data.garment_id,
@@ -497,6 +516,9 @@ export async function upsertSize(formData: FormData) {
         name: data.name,
         image_front_url: data.image_front_url ?? null,
         image_back_url: data.image_back_url ?? null,
+        track_inventory: data.track_inventory,
+        stock_quantity: data.stock_quantity,
+        low_stock_threshold: data.low_stock_threshold,
         is_active: data.is_active,
     };
 
@@ -1158,6 +1180,12 @@ export async function submitDesignOrder(orderData: {
         sizeName,
         pricingSnapshot,
     } = resolvedSelections;
+
+    const reservedStock = await reserveSmartStoreSizeStock(sb, sizeId, 1);
+    if ("error" in reservedStock) {
+        return { error: reservedStock.error };
+    }
+
     const {
         styleId,
         styleName,
@@ -1275,7 +1303,10 @@ export async function submitDesignOrder(orderData: {
 
     const { data, error } = await insertDesignOrderWithSchemaFallback(sb, payload);
 
-    if (error || !data) return { error: error?.message || "فشل إنشاء الطلب" };
+    if (error || !data) {
+        await releaseSmartStoreSizeReservation(sb, sizeId, 1);
+        return { error: error?.message || "فشل إنشاء الطلب" };
+    }
 
     // Notify all admins about the new design order via in-app notification
     await createAdminNotification({
@@ -1348,12 +1379,12 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
     const { sb } = await requireSmartStoreAdmin();
     const { data: currentOrder } = await sb
         .from("custom_design_orders")
-        .select("id, status, user_id, order_number, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
+        .select("id, status, user_id, order_number, size_id, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
         .eq("id", id)
         .single();
     const order = currentOrder as Pick<
         CustomDesignOrder,
-        "id" | "status" | "user_id" | "order_number" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
+        "id" | "status" | "user_id" | "order_number" | "size_id" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
 
@@ -1373,6 +1404,10 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
         .select("user_id, order_number")
         .single();
     if (error || !updatedOrder) return { error: error?.message || "فشل تحديث الحالة" };
+
+    if (status === "cancelled") {
+        await releaseSmartStoreSizeReservation(sb, order.size_id, 1);
+    }
 
     // If awaiting_review and there's a user, notify them
     if (status === "awaiting_review" && updatedOrder.user_id) {
@@ -1637,12 +1672,15 @@ export async function rejectDesignOrder(id: string, reason: string) {
     const text = (reason || "").trim();
     if (!text) return { error: "يجب ذكر سبب الرفض" };
 
-    const { error } = await sb
+    const { error, data: order } = await sb
         .from("custom_design_orders")
         .update({ status: "cancelled", admin_notes: `رفض — السبب: ${text}` })
         .eq("id", id)
-        .eq("status", "new");
+        .eq("status", "new")
+        .select("size_id")
+        .maybeSingle();
     if (error) return { error: error.message };
+    await releaseSmartStoreSizeReservation(sb, (order as Pick<CustomDesignOrder, "size_id"> | null)?.size_id, 1);
     return { success: true };
 }
 
@@ -1657,11 +1695,12 @@ export async function cancelDesignOrderByCustomer(id: string) {
         .eq("id", id)
         .eq("user_id", profileId)
         .in("status", ["new", "in_progress", "awaiting_review"])
-        .select("user_id, order_number")
+        .select("user_id, order_number, size_id")
         .single();
     if (error) return { error: error.message };
 
     if (order) {
+        await releaseSmartStoreSizeReservation(sb, (order as Pick<CustomDesignOrder, "size_id">).size_id, 1);
         await createAdminNotification({
             title: "إلغاء تصميم مخصص ❌",
             message: `قام العميل بإلغاء طلب التصميم المخصص #${order.order_number}.`,

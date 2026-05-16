@@ -2,6 +2,10 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { sendAdminNotification } from "./notifications";
+import {
+    consumeSmartStoreReservationForOrder,
+    restoreSmartStoreStockForOrder,
+} from "./smart-store-inventory";
 
 function getClient() {
     return createClient(
@@ -45,17 +49,36 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
 
     const { data: items } = await supabase
         .from("order_items")
-        .select("product_id, quantity, size, unit_price, total_price")
+        .select("product_id, quantity, size, unit_price, total_price, custom_design_order_id")
         .eq("order_id", orderId);
 
     if (!items?.length) return { success: true };
 
-    // Get the main warehouse (fallback to first available)
-    const { data: defaultWh } = await supabase.from("warehouses").select("id").limit(1).single();
-    if (!defaultWh) return { success: false, error: "لا يوجد مستودع مسجل" };
+    const hasProductItems = items.some((item) => item.product_id);
+    const { data: defaultWh } = hasProductItems
+        ? await supabase.from("warehouses").select("id").limit(1).single()
+        : { data: null };
+    if (hasProductItems && !defaultWh) return { success: false, error: "لا يوجد مستودع مسجل" };
 
     for (const item of items) {
+        if (!item.product_id && item.custom_design_order_id) {
+            const result = await consumeSmartStoreReservationForOrder(supabase, item.custom_design_order_id, item.quantity);
+            if ("error" in result) return { success: false, error: result.error };
+            await supabase.from("sales_records").insert([{
+                sales_method: 'custom_design',
+                order_id: orderId,
+                sku_id: null,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total_price: item.total_price,
+                status: 'completed',
+                notes: `Smart Store custom design #${item.custom_design_order_id}`
+            }]);
+            continue;
+        }
+
         if (!item.product_id) continue;
+        if (!defaultWh) return { success: false, error: "لا يوجد مستودع مسجل" };
 
         // Find matching SKU based on size
         let skuQuery = supabase.from("product_skus").select("id").eq("product_id", item.product_id);
@@ -140,16 +163,29 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
     const supabase = getClient();
     const { data: items } = await supabase
         .from("order_items")
-        .select("product_id, quantity, size")
+        .select("product_id, quantity, size, custom_design_order_id")
         .eq("order_id", orderId);
 
     if (!items?.length) return { success: true };
 
-    const { data: defaultWh } = await supabase.from("warehouses").select("id").limit(1).single();
-    if (!defaultWh) return { success: true }; // Cannot restore to ERP if no warehouse
+    const hasProductItems = items.some((item) => item.product_id);
+    const { data: defaultWh } = hasProductItems
+        ? await supabase.from("warehouses").select("id").limit(1).single()
+        : { data: null };
 
     for (const item of items) {
+        if (!item.product_id && item.custom_design_order_id) {
+            const result = await restoreSmartStoreStockForOrder(supabase, item.custom_design_order_id, item.quantity);
+            if ("error" in result) return { success: false, error: result.error };
+            await supabase.from("sales_records")
+                .update({ status: 'refunded', updated_at: new Date().toISOString() })
+                .eq("order_id", orderId)
+                .is("sku_id", null);
+            continue;
+        }
+
         if (!item.product_id) continue;
+        if (!defaultWh) continue; // Cannot restore to ERP if no warehouse
 
         let skuQuery = supabase.from("product_skus").select("id").eq("product_id", item.product_id);
         if (item.size) {

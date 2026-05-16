@@ -59,6 +59,11 @@ import {
     type PrintSize,
     type RankedDesignCandidate,
 } from "@/lib/design-intelligence";
+import {
+    getSmartStoreAvailableQuantity,
+    getSmartStoreStockStatus,
+    isSmartStoreSizeOrderable,
+} from "@/lib/smart-store-inventory";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -357,6 +362,7 @@ export function DesignYourPieceWizard({
         // 0. Studio Cart Injection
         if (state.method === "studio" && state.studioItem) {
             let finalPrice = state.studioItem.price || 0;
+            let studioOrderId: string | undefined;
             if (state.garment) {
                 try {
                     const { getGarmentPricing } = await import("@/app/actions/smart-store");
@@ -399,6 +405,15 @@ export function DesignYourPieceWizard({
                     }));
                     return;
                 }
+                if (!result.orderId) {
+                    setState((s) => ({
+                        ...s,
+                        isSending: false,
+                        submissionError: "تعذر إنشاء طلب الاستوديو الآن."
+                    }));
+                    return;
+                }
+                studioOrderId = result.orderId;
             } catch (err) {
                 console.error("submitDesignOrder (studio) failed:", err);
                 setState((s) => ({
@@ -419,6 +434,7 @@ export function DesignYourPieceWizard({
                 image_url: cartMockup?.mockup_front_url || state.studioItem.main_image_url || state.garment?.image_url || "",
                 artist_name: "ستيديو وشّى",
                 type: "custom_design",
+                customDesignOrderId: studioOrderId,
                 customGarment: `${state.garment?.name} (${state.color?.name})`,
                 customPosition: `${state.printPosition === "chest" ? "الصدر" : state.printPosition === "back" ? "الظهر" : "أخرى"} - ${state.size?.name || state.printSize}`,
             });
@@ -1176,25 +1192,43 @@ function StepSize({ sizes, loading, selected, onSelect, onBack, onNext }: {
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                     {sizes.map((sz) => {
                         const isSelected = selected?.id === sz.id;
+                        const stockStatus = getSmartStoreStockStatus(sz);
+                        const available = getSmartStoreAvailableQuantity(sz);
+                        const isDisabled = !isSmartStoreSizeOrderable(sz);
                         return (
                             <motion.button
                                 key={sz.id}
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => onSelect(sz)}
+                                onClick={() => {
+                                    if (!isDisabled) onSelect(sz);
+                                }}
+                                disabled={isDisabled}
                                 className={`
-                  flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all
+                  flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all disabled:cursor-not-allowed disabled:opacity-45
                   ${isSelected ? "border-gold bg-gold/10 shadow-lg shadow-gold/10" : "border-theme-subtle hover:border-white/20"}
+                  ${stockStatus === "out" ? "border-red-500/30 bg-red-500/5" : stockStatus === "low" ? "border-amber-400/30 bg-amber-400/5" : ""}
                 `}
                             >
                                 <span className={`text-xl font-bold ${isSelected ? "text-gold" : "text-theme-soft"}`}>{sz.name}</span>
+                                {stockStatus !== "untracked" && (
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                        stockStatus === "out"
+                                            ? "bg-red-500/10 text-red-300"
+                                            : stockStatus === "low"
+                                                ? "bg-amber-400/10 text-amber-200"
+                                                : "bg-emerald-500/10 text-emerald-300"
+                                    }`}>
+                                        {stockStatus === "out" ? "نفد" : `متبقي ${available}`}
+                                    </span>
+                                )}
                                 {isSelected && <Check className="w-4 h-4 text-gold" />}
                             </motion.button>
                         );
                     })}
                 </div>
             )}
-            <NavButtons onBack={onBack} onNext={onNext} nextDisabled={!selected} />
+            <NavButtons onBack={onBack} onNext={onNext} nextDisabled={!selected || !isSmartStoreSizeOrderable(selected)} />
         </>
     );
 }
