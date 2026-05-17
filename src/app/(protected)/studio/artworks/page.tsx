@@ -14,7 +14,7 @@ export default async function StudioArtworksPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-ink">أعمالي الفنية</h1>
                     <p className="text-ink/60 mt-2">
-                        إدارة معرضك الرقمي وتحويل أعمالك لمنتجات
+                        إدارة معرضك الرقمي وتحويل الأعمال المعتمدة إلى منتجات
                     </p>
                 </div>
                 <Link
@@ -42,7 +42,7 @@ export default async function StudioArtworksPage() {
                         <div>
                             <h3 className="text-xl font-bold text-ink">المعرض فارغ حالياً</h3>
                             <p className="text-ink/50 mt-2 max-w-md mx-auto">
-                                ابدأ رحلتك الفنية برفع أول عمل لك، وحوله إلى منتجات يرتديها الجميع.
+                                ابدأ رحلتك الفنية برفع أول عمل لك وإرساله للاعتماد.
                             </p>
                         </div>
                         <Link

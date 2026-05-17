@@ -64,8 +64,8 @@ export default async function StudioDashboard() {
 
                 <div className="rounded-2xl bg-gradient-to-br from-gold/10 to-surface border border-gold/10 p-6 sm:p-8 flex flex-col justify-between">
                     <div>
-                        <h3 className="text-xl font-bold text-theme mb-2">ابدأ البيع الآن</h3>
-                        <p className="text-theme-subtle text-sm">لديك أفكار جديدة؟ حولها إلى منتجات في دقائق.</p>
+                        <h3 className="text-xl font-bold text-theme mb-2">أرسل عملاً جديداً</h3>
+                        <p className="text-theme-subtle text-sm">ارفع عملك للمراجعة، وبعد اعتماده يمكنك تحويله إلى منتج.</p>
                     </div>
                     <Link href="/studio/artworks/upload" className="btn-gold w-full py-3 text-center mt-6 block rounded-xl">
                         رفع عمل جديد

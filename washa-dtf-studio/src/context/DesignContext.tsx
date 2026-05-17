@@ -143,6 +143,10 @@ function isSizeOrderable(size: DtfStudioSizeOption | null | undefined) {
   return Boolean(size && size.stockStatus !== 'out');
 }
 
+function isUuid(value: string | null | undefined) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
 function buildInitialState(config: DtfStudioConfig): DesignState {
   const garment = config.garments[0] || null;
   const color = garment?.colors[0] || null;
@@ -591,11 +595,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           designMethod: state.designMethod,
           prompt: state.prompt,
           calligraphyText: state.calligraphyText || undefined,
-          styleId: state.styleId,
+          styleId: isUuid(state.styleId) ? state.styleId : null,
           style: state.style,
-          techniqueId: state.techniqueId,
+          techniqueId: isUuid(state.techniqueId) ? state.techniqueId : null,
           technique: state.technique,
-          paletteId: state.paletteId,
+          paletteId: state.paletteId === CUSTOM_PALETTE_ID || isUuid(state.paletteId) ? state.paletteId : null,
           palette: state.palette,
           customPalette: state.paletteId === CUSTOM_PALETTE_ID ? state.customPalette || null : null,
           mockupDataUrl: submitMockupBg,

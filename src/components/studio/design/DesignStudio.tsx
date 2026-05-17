@@ -95,7 +95,7 @@ export function DesignStudio({ artworks }: { artworks: Artwork[] }) {
                             ))}
                             {artworks.length === 0 && (
                                 <div className="col-span-2 text-center py-8 text-theme-faint text-sm">
-                                    لا توجد أعمال فنية. <a href="/studio/artworks/upload" className="underline text-gold">ارفع عمل جديد</a>
+                                    لا توجد أعمال منشورة. <a href="/studio/artworks/upload" className="underline text-gold">ارفع عمل جديد</a>
                                 </div>
                             )}
                         </div>

@@ -2,8 +2,7 @@ import { Sidebar } from "@/components/studio/layout/Sidebar";
 import { StudioAccessDenied } from "@/components/studio/StudioAccessDenied";
 import { ensureProfile } from "@/lib/ensure-profile";
 import { getPublicVisibility } from "@/app/actions/settings";
-
-const STUDIO_ROLES = ["admin", "wushsha"];
+import { isStudioRole } from "@/lib/studio-access";
 
 export default async function StudioLayout({ children }: { children: React.ReactNode }) {
     const [profile, visibility] = await Promise.all([
@@ -11,7 +10,7 @@ export default async function StudioLayout({ children }: { children: React.React
         getPublicVisibility(),
     ]);
 
-    if (!profile || !STUDIO_ROLES.includes(profile.role)) {
+    if (!profile || !isStudioRole(profile.role)) {
         return <StudioAccessDenied showJoinArtist={visibility.join_artist} />;
     }
 

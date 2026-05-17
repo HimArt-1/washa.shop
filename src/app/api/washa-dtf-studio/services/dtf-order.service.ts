@@ -236,13 +236,13 @@ export class DtfOrderService {
             if (sizeId && !sizeRow) {
                 return { error: "المقاس المحدد غير متاح أو غير مفعل", status: 400 };
             }
-            if (styleId && !styleRow) {
+            if (styleId && !styleRow && !style?.trim()) {
                 return { error: "أسلوب التصميم المحدد غير متاح أو غير مفعل", status: 400 };
             }
-            if (techniqueId && !artStyleRow) {
+            if (techniqueId && !artStyleRow && !technique?.trim()) {
                 return { error: "التقنية المحددة غير متاحة أو غير مفعلة", status: 400 };
             }
-            if (paletteId && paletteId !== CUSTOM_PALETTE_ID && !colorPackageRow) {
+            if (paletteId && paletteId !== CUSTOM_PALETTE_ID && !colorPackageRow && !palette?.trim()) {
                 return { error: "لوحة الألوان المحددة غير متاحة أو غير مفعلة", status: 400 };
             }
             if (paletteId === CUSTOM_PALETTE_ID && !customPalette?.trim()) {

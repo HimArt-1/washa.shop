@@ -16,12 +16,22 @@ interface Artwork {
     created_at: string;
 }
 
+const artworkStatusMap: Record<string, { label: string; className: string }> = {
+    draft: { label: "مسودة", className: "bg-gray-500/90 text-theme" },
+    pending: { label: "قيد المراجعة", className: "bg-amber-500/90 text-theme" },
+    published: { label: "منشور", className: "bg-green-500/90 text-theme" },
+    rejected: { label: "مرفوض", className: "bg-red-500/90 text-white" },
+    archived: { label: "مؤرشف", className: "bg-gray-700/90 text-white" },
+};
+
 export function ArtworkCard({ artwork }: { artwork: Artwork }) {
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const statusMeta = artworkStatusMap[artwork.status] ?? artworkStatusMap.draft;
+    const canDesignProduct = artwork.status === "published";
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -68,22 +78,25 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
 
                 {/* Overlay Actions */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                    <Link
-                        href={`/studio/design?artworkId=${artwork.id}`}
-                        className="btn-gold w-full text-sm py-2.5 flex items-center justify-center gap-2 mb-2 scale-95 hover:scale-100 transition-transform"
-                    >
-                        <ShoppingBag className="w-4 h-4" />
-                        تصميم منتج
-                    </Link>
+                    {canDesignProduct ? (
+                        <Link
+                            href={`/studio/design?artworkId=${artwork.id}`}
+                            className="btn-gold w-full text-sm py-2.5 flex items-center justify-center gap-2 mb-2 scale-95 hover:scale-100 transition-transform"
+                        >
+                            <ShoppingBag className="w-4 h-4" />
+                            تصميم منتج
+                        </Link>
+                    ) : (
+                        <div className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-2.5 text-center text-sm font-bold text-white/85 backdrop-blur-sm">
+                            بانتظار الاعتماد
+                        </div>
+                    )}
                 </div>
 
                 {/* Status Badge */}
                 <div className="absolute top-3 right-3">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${artwork.status === 'published'
-                            ? 'bg-green-500/90 text-theme'
-                            : 'bg-yellow-500/90 text-theme'
-                        }`}>
-                        {artwork.status === 'published' ? 'منشور' : 'مسودة'}
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusMeta.className}`}>
+                        {statusMeta.label}
                     </span>
                 </div>
 

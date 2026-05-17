@@ -5,11 +5,11 @@
 
 "use server";
 
-import { Database, ProductType, ApparelSize } from "@/types/database";
-import { getSupabaseServerClient } from "@/lib/supabase";
+import type { ProductType, ApparelSize } from "@/types/database";
+import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import { resolveStudioAccess } from "@/lib/studio-access";
 
 export type SortOption = "newest" | "oldest" | "price_asc" | "price_desc" | "rating";
 
@@ -97,24 +97,36 @@ interface CreateProductInput {
 }
 
 export async function createProduct(input: CreateProductInput) {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "Unauthorized" };
+    const access = await resolveStudioAccess();
+    if (!access.ok) return { success: false, error: access.error };
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
-    // Get profile id
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
+    const { data: artwork, error: artworkError } = await supabase
+        .from("artworks")
+        .select("id, artist_id, status")
+        .eq("id", input.artwork_id)
+        .maybeSingle();
 
-    const profileData = profile;
+    if (artworkError) {
+        console.error("Error verifying artwork before product creation:", artworkError);
+        return { success: false, error: artworkError.message };
+    }
 
-    if (!profileData) return { success: false, error: "Profile not found" };
+    if (!artwork) {
+        return { success: false, error: "العمل الفني غير موجود" };
+    }
+
+    if (artwork.artist_id !== access.profile.id) {
+        return { success: false, error: "لا يمكنك نشر منتج من عمل لا تملكه" };
+    }
+
+    if (artwork.status !== "published") {
+        return { success: false, error: "لا يمكن نشر منتج من عمل غير منشور" };
+    }
 
     const { error } = await supabase.from("products").insert({
-        artist_id: profileData.id,
+        artist_id: access.profile.id,
         artwork_id: input.artwork_id,
         title: input.title,
         description: input.description,

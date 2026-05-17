@@ -7,7 +7,7 @@
 
 import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { resolveStudioAccess } from "@/lib/studio-access";
 
 const MAX_ARTWORK_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_ARTWORK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -109,19 +109,11 @@ export async function getArtworkById(id: string) {
 
 export async function getArtistArtworks(page = 1) {
     noStore();
-    const user = await currentUser();
-    if (!user) return { data: [], count: 0 };
+    const access = await resolveStudioAccess();
+    if (!access.ok) return { data: [], count: 0 };
 
-    const supabase = getSupabaseServerClient();
-
-    // Get profile id first
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
-
-    if (!profile) return { data: [], count: 0 };
+    const supabase = getSupabaseAdminClient();
+    const profileId = access.profile.id;
 
     const itemsPerPage = 12;
     const from = (page - 1) * itemsPerPage;
@@ -130,7 +122,7 @@ export async function getArtistArtworks(page = 1) {
     const { data, count, error } = await supabase
         .from("artworks")
         .select("*", { count: "exact" })
-        .eq("artist_id", profile.id)
+        .eq("artist_id", profileId)
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -145,17 +137,8 @@ export async function getArtistArtworks(page = 1) {
 // ─── UPLOAD ARTWORK IMAGE (Server-side, bypasses RLS) ────────
 
 export async function uploadArtworkImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "يجب تسجيل الدخول أولاً" };
-
-    const supabaseServer = getSupabaseServerClient();
-    const { data: profile } = await supabaseServer
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
-
-    if (!profile) return { success: false, error: "الملف الشخصي غير موجود" };
+    const access = await resolveStudioAccess();
+    if (!access.ok) return { success: false, error: access.error };
 
     const file = formData.get("file") as File | null;
     if (!file || !(file instanceof File)) {
@@ -170,7 +153,7 @@ export async function uploadArtworkImage(formData: FormData): Promise<{ success:
 
     const adminSupabase = getSupabaseAdminClient();
     const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const fileName = `uploads/${access.profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -195,29 +178,19 @@ export async function uploadArtworkImage(formData: FormData): Promise<{ success:
 // ─── WRITE ACTIONS ───────────────────────────────────────────
 
 export async function createArtwork(formData: any) {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "Unauthorized" };
+    const access = await resolveStudioAccess();
+    if (!access.ok) return { success: false, error: access.error };
 
-    const supabase = getSupabaseServerClient();
     const adminSupabase = getSupabaseAdminClient();
-
-    // Get profile id
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
-
-    if (!profile) return { success: false, error: "Profile not found" };
 
     // Insert artwork (admin client bypasses RLS — we've verified user via Clerk)
     const { error } = await adminSupabase.from("artworks").insert({
-        artist_id: profile.id,
+        artist_id: access.profile.id,
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
         image_url: formData.image_url,
-        status: "published", // Auto-publish for now
+        status: "pending",
         tags: formData.tags || [],
         currency: "SAR",
     });
@@ -233,14 +206,13 @@ export async function createArtwork(formData: any) {
 }
 
 export async function deleteArtwork(id: string, imageUrl: string) {
-    const user = await currentUser();
-    if (!user) return { success: false, error: "Unauthorized" };
+    const access = await resolveStudioAccess();
+    if (!access.ok) return { success: false, error: access.error };
 
-    const supabase = getSupabaseServerClient();
     const adminSupabase = getSupabaseAdminClient();
 
     // Verify ownership
-    const { data: artwork } = await supabase
+    const { data: artwork } = await adminSupabase
         .from("artworks")
         .select("artist_id")
         .eq("id", id)
@@ -248,13 +220,7 @@ export async function deleteArtwork(id: string, imageUrl: string) {
 
     if (!artwork) return { success: false, error: "Unauthorized" };
 
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
-
-    if (!profile || artwork.artist_id !== profile.id) {
+    if (artwork.artist_id !== access.profile.id) {
         return { success: false, error: "Unauthorized" };
     }
 

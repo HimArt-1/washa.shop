@@ -234,15 +234,18 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                     {isUploading ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            جاري الرفع والنشر...
+                            جاري الرفع والإرسال...
                         </>
                     ) : (
                         <>
                             <Upload className="w-5 h-5" />
-                            نشر العمل الفني
+                            إرسال العمل للمراجعة
                         </>
                     )}
                 </button>
+                <p className="px-2 text-center text-xs text-theme-faint">
+                    سيظهر العمل في المتجر بعد اعتماد الإدارة.
+                </p>
             </div>
         </form>
     );

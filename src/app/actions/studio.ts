@@ -1,30 +1,22 @@
 "use server";
 
-import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { resolveStudioAccess } from "@/lib/studio-access";
 
 export async function getArtistStats() {
     noStore();
-    const user = await currentUser();
-    if (!user) return null;
+    const access = await resolveStudioAccess();
+    if (!access.ok) return null;
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
+    const profileId = access.profile.id;
 
-    // 1. Get Profile ID
-    const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .single();
-
-    if (!profile) return null;
-
-    // 2. Get Artworks Stats (Views & Likes)
-    const { data: artworks, error: artworksError } = await supabase
+    // Get Artworks Stats (Views & Likes)
+    const { data: artworks } = await supabase
         .from("artworks")
         .select("views_count, likes_count")
-        .eq("artist_id", profile.id);
+        .eq("artist_id", profileId);
 
     let totalViews = 0;
     let totalLikes = 0;
@@ -34,17 +26,14 @@ export async function getArtistStats() {
         totalLikes = artworks.reduce((sum, art) => sum + (art.likes_count || 0), 0);
     }
 
-    // 3. Get Sales Stats
-    // We need to join order_items -> products -> artist_id
-
-    // Get all product IDs for this artist
+    // Get Sales Stats via order_items -> products -> artist_id
     const { data: products } = await supabase
         .from("products")
         .select("id")
-        .eq("artist_id", profile.id);
+        .eq("artist_id", profileId);
 
     let totalSales = 0;
-    let totalRevenue = 0; // Number of items sold
+    let totalRevenue = 0;
 
     if (products && products.length > 0) {
         const productIds = products.map(p => p.id);

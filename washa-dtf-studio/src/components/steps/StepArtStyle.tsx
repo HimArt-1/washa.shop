@@ -50,9 +50,6 @@ export default function StepArtStyle() {
 
   const [tab, setTab] = useState<TabFilter>('all');
 
-  // The selected ID might be from either list
-  const selectedId = state.styleId || state.techniqueId;
-
   // Build a unified list — first styles, then techniques
   const allOptions = [
     ...styleOptions.map((s) => ({
@@ -84,15 +81,11 @@ export default function StepArtStyle() {
       updateState({
         styleId: option.id,
         style: option.name,
-        techniqueId: option.id,   // mirror into technique for prompt
-        technique: option.name,
       });
     } else {
       updateState({
         techniqueId: option.id,
         technique: option.name,
-        styleId: option.id,       // mirror into style for prompt
-        style: option.name,
       });
     }
   };
@@ -173,7 +166,9 @@ export default function StepArtStyle() {
           {/* ── Card Grid ── */}
           <div className="grid gap-5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((option, index) => {
-              const isSelected = selectedId === option.id;
+              const isSelected = option.kind === 'style'
+                ? state.styleId === option.id
+                : state.techniqueId === option.id;
 
               return (
                 <motion.button
@@ -261,7 +256,7 @@ export default function StepArtStyle() {
           variant="gold"
           size="lg"
           onClick={nextStep}
-          disabled={!selectedId || configLoading}
+          disabled={(!state.styleId && !state.techniqueId) || configLoading}
           className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
         >
           التالي <ArrowLeft className="w-5 h-5" />
