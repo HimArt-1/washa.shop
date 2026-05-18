@@ -244,6 +244,10 @@ function isPrintPosition(value: unknown): value is PrintPosition {
     return value === "chest" || value === "back" || value === "shoulder_right" || value === "shoulder_left";
 }
 
+function isPrintSize(value: unknown): value is PrintSize {
+    return value === "large" || value === "small";
+}
+
 function normalizePositionPricingMap(value: unknown): Partial<Record<PrintPosition, PositionPrintPricing>> {
     if (!value || typeof value !== "object") return {};
     const source = value as Record<string, unknown>;
@@ -277,16 +281,26 @@ export function normalizeGarmentPricing(value: Partial<GarmentPricing> | null | 
 
 export function applyPositionPricing(
     pricing: Partial<GarmentPricing> | null | undefined,
-    positionsRows: Array<Pick<CustomDesignPosition, "print_position" | "price_large" | "price_small">>
+    positionsRows: Array<Pick<CustomDesignPosition, "print_position" | "print_size" | "price" | "price_large" | "price_small">>
 ): GarmentPricing {
     const normalized = normalizeGarmentPricing(pricing);
     const positions: Partial<Record<PrintPosition, PositionPrintPricing>> = { ...(normalized.positions ?? {}) };
 
     for (const row of positionsRows) {
         if (!isPrintPosition(row.print_position)) continue;
+        const current = positions[row.print_position] ?? { price_large: 0, price_small: 0 };
+
+        if (isPrintSize(row.print_size)) {
+            const price = parseNumberish(row.price, 0);
+            positions[row.print_position] = row.print_size === "large"
+                ? { ...current, price_large: price }
+                : { ...current, price_small: price };
+            continue;
+        }
+
         positions[row.print_position] = {
-            price_large: parseNumberish(row.price_large, 0),
-            price_small: parseNumberish(row.price_small, 0),
+            price_large: parseNumberish(row.price_large, current.price_large),
+            price_small: parseNumberish(row.price_small, current.price_small),
         };
     }
 
@@ -379,7 +393,7 @@ export async function getGarmentPricingRecord(
 async function hydratePositionPricing(sb: SmartStoreSb, pricing: GarmentPricing): Promise<GarmentPricing> {
     const { data, error } = await sb
         .from("custom_design_positions")
-        .select("print_position, price_large, price_small")
+        .select("print_position, print_size, price, price_large, price_small")
         .eq("is_active", true)
         .order("sort_order");
 
@@ -390,7 +404,7 @@ async function hydratePositionPricing(sb: SmartStoreSb, pricing: GarmentPricing)
 
     return applyPositionPricing(
         pricing,
-        ((data as Array<Pick<CustomDesignPosition, "print_position" | "price_large" | "price_small">> | null) ?? [])
+        ((data as Array<Pick<CustomDesignPosition, "print_position" | "print_size" | "price" | "price_large" | "price_small">> | null) ?? [])
     );
 }
 

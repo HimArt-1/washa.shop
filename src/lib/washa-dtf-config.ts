@@ -19,6 +19,7 @@ import type {
     DesignColorToken,
     DesignIntelligenceMetadata,
     PrintPosition,
+    PrintSize,
 } from "@/lib/design-intelligence";
 import type {
     CustomDesignArtStyle,
@@ -78,6 +79,8 @@ export type WashaDtfStudioConfig = {
         description: string | null;
         imageUrl: string | null;
         printPosition: PrintPosition | null;
+        printSize: PrintSize | null;
+        price: number;
         priceLarge: number;
         priceSmall: number;
         sortOrder: number;
@@ -308,6 +311,8 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
             description: pos.description,
             imageUrl: pos.image_url,
             printPosition: pos.print_position,
+            printSize: pos.print_size,
+            price: pos.price,
             priceLarge: pos.price_large,
             priceSmall: pos.price_small,
             sortOrder: pos.sort_order,

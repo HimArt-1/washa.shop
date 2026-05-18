@@ -546,6 +546,11 @@ const PRINT_POSITION_OPTIONS: { id: PrintPosition; label: string }[] = [
     { id: "shoulder_left", label: "الكتف الأيسر" },
 ];
 
+const PRINT_SIZE_OPTIONS: { id: PrintSize; label: string }[] = [
+    { id: "large", label: "كبير" },
+    { id: "small", label: "صغير" },
+];
+
 function getPrintSizeLabel(size: PrintSize | "") {
     if (size === "large") return "كبير";
     if (size === "small") return "صغير";
@@ -1591,11 +1596,16 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
                 </select>
             </FormField>
             <div className="grid gap-3 rounded-xl border border-theme-subtle bg-theme-faint p-3 sm:grid-cols-2">
-                <FormField label="سعر الطباعة الكبير — ر.س">
-                    <input name="price_large" type="number" step="0.01" min="0" defaultValue={editing?.price_large ?? 0} className={inputCls} />
+                <FormField label="حجم الطباعة في هذه البطاقة">
+                    <select name="print_size" defaultValue={editing?.print_size ?? ""} className={inputCls}>
+                        <option value="">غير محدد</option>
+                        {PRINT_SIZE_OPTIONS.map((option) => (
+                            <option key={option.id} value={option.id}>{option.label}</option>
+                        ))}
+                    </select>
                 </FormField>
-                <FormField label="سعر الطباعة الصغير — ر.س">
-                    <input name="price_small" type="number" step="0.01" min="0" defaultValue={editing?.price_small ?? 0} className={inputCls} />
+                <FormField label="سعر هذه البطاقة — ر.س">
+                    <input name="price" type="number" step="0.01" min="0" defaultValue={editing?.price ?? 0} className={inputCls} />
                 </FormField>
             </div>
             <FormField label="الترتيب">
@@ -1625,7 +1635,7 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
                             <div className="flex-1">
                                 <p className="font-medium text-theme mb-1">{p.name}</p>
                                 <p className="text-xs text-gold mb-2">
-                                    {getPrintPositionLabel(p.print_position ?? "")} · كبير {p.price_large ?? 0} ر.س · صغير {p.price_small ?? 0} ر.س
+                                    {getPrintPositionLabel(p.print_position ?? "")} · {getPrintSizeLabel(p.print_size ?? "")} · {p.price ?? 0} ر.س
                                 </p>
                                 {p.description && <p className="text-xs text-theme-subtle line-clamp-2 mb-3">{p.description}</p>}
                             </div>

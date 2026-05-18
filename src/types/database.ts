@@ -4,6 +4,7 @@ import type {
     DesignOptionCompatibility,
     DesignPreset,
     PrintPosition,
+    PrintSize,
 } from "@/lib/design-intelligence";
 
 // ═══════════════════════════════════════════════════════════
@@ -440,6 +441,8 @@ export type CustomDesignPosition = {
     description: string | null;
     image_url: string | null;
     print_position: PrintPosition | null;
+    print_size: PrintSize | null;
+    price: number;
     price_large: number;
     price_small: number;
     sort_order: number;
@@ -760,10 +763,12 @@ export type Database = {
             };
             custom_design_positions: {
                 Row: CustomDesignPosition;
-                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "print_position" | "price_large" | "price_small"> & {
+                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "print_position" | "print_size" | "price" | "price_large" | "price_small"> & {
                     sort_order?: number;
                     is_active?: boolean;
                     print_position?: PrintPosition | null;
+                    print_size?: PrintSize | null;
+                    price?: number;
                     price_large?: number;
                     price_small?: number;
                 };
