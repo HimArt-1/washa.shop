@@ -11,6 +11,7 @@ const COMPLEXITY_LEVELS = ["minimal", "balanced", "bold"] as const;
 const LUXURY_TIERS = ["core", "signature", "editorial"] as const;
 const CATALOG_SCOPES = ["design_piece", "dtf_studio", "shared"] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const SAFE_RECORD_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/;
 
 function trimToUndefined(value: unknown) {
     if (value === null || value === undefined) return undefined;
@@ -35,6 +36,15 @@ const optionalUuid = (label: string) =>
     z.preprocess(
         trimToUndefined,
         z.string().uuid(`${label} غير صالح`).optional()
+    );
+
+const optionalSafeRecordId = (label: string) =>
+    z.preprocess(
+        trimToUndefined,
+        z
+            .string()
+            .regex(SAFE_RECORD_ID_REGEX, `${label} غير صالح`)
+            .optional()
     );
 
 const requiredUuid = (label: string) =>
@@ -385,7 +395,7 @@ export const smartStoreUpsertArtStyleSchema = z.object({
 }).extend(metadataFieldsSchema.shape);
 
 export const smartStoreUpsertPositionSchema = z.object({
-    id: optionalUuid("معرّف المكان"),
+    id: optionalSafeRecordId("معرّف المكان"),
     name: requiredText("اسم المكان", 120),
     description: optionalText("وصف المكان", 2000),
     image_url: optionalSafeUrl("صورة المكان"),
