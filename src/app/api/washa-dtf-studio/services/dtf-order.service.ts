@@ -6,7 +6,7 @@ import { CUSTOM_PALETTE_ID, submitOrderSchema } from "../validators/submit-order
 import {
     calculateFinalDesignPrice,
     calculatePlacementPrice,
-    type GarmentPricing,
+    getGarmentPricingRecord,
 } from "@/lib/smart-store-core";
 import {
     releaseSmartStoreSizeReservation,
@@ -73,18 +73,6 @@ export class DtfOrderService {
         return {
             error: rawMessage || "تعذر إكمال طلب استوديو DTF على الخادم",
             status: 500,
-        };
-    }
-
-    private static getGarmentPricing(garment: CustomDesignGarment | null): GarmentPricing {
-        return {
-            base_price: garment?.base_price ?? 0,
-            price_chest_large: garment?.price_chest_large ?? 0,
-            price_chest_small: garment?.price_chest_small ?? 0,
-            price_back_large: garment?.price_back_large ?? 0,
-            price_back_small: garment?.price_back_small ?? 0,
-            price_shoulder_large: garment?.price_shoulder_large ?? 0,
-            price_shoulder_small: garment?.price_shoulder_small ?? 0,
         };
     }
 
@@ -330,7 +318,7 @@ export class DtfOrderService {
             }
 
             const pricingStartedAt = Date.now();
-            const pricing = DtfOrderService.getGarmentPricing(garmentRow);
+            const pricing = await getGarmentPricingRecord(sb, resolvedGarmentName, garmentRow?.id ?? null);
             const designPrice = calculatePlacementPrice(
                 pricing,
                 DEFAULT_DTF_PRINT_POSITION,

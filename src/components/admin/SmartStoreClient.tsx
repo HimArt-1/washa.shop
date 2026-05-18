@@ -539,6 +539,13 @@ function getPrintPositionLabel(position: PrintPosition | "") {
     return "غير محدد";
 }
 
+const PRINT_POSITION_OPTIONS: { id: PrintPosition; label: string }[] = [
+    { id: "chest", label: "الصدر" },
+    { id: "back", label: "الظهر" },
+    { id: "shoulder_right", label: "الكتف الأيمن" },
+    { id: "shoulder_left", label: "الكتف الأيسر" },
+];
+
 function getPrintSizeLabel(size: PrintSize | "") {
     if (size === "large") return "كبير";
     if (size === "small") return "صغير";
@@ -930,32 +937,12 @@ function GarmentsTab({
                 </select>
             </FormField>
 
-            {/* السعر الأساسي + أسعار الطباعة */}
+            {/* السعر الأساسي فقط. أسعار الطباعة تدار من نافذة أماكن الطباعة. */}
             <div className="pt-2 border-t border-theme-subtle">
                 <FormField label="سعر القطعة الأساسي (بدون الطباعة) — ر.س">
                     <input name="base_price" type="number" step="0.01" min="0" defaultValue={(editing as any)?.base_price ?? 0} className={inputCls} />
                 </FormField>
-                <p className="text-sm font-bold text-gold mb-3 mt-3">💰 أسعار التصاميم (الطباعة) — ر.س</p>
-                <div className="grid grid-cols-2 gap-3">
-                    <FormField label="الصدر — كبير">
-                        <input name="price_chest_large" type="number" step="0.01" min="0" defaultValue={editing?.price_chest_large ?? 0} className={inputCls} />
-                    </FormField>
-                    <FormField label="الصدر — صغير">
-                        <input name="price_chest_small" type="number" step="0.01" min="0" defaultValue={editing?.price_chest_small ?? 0} className={inputCls} />
-                    </FormField>
-                    <FormField label="الظهر — كبير">
-                        <input name="price_back_large" type="number" step="0.01" min="0" defaultValue={editing?.price_back_large ?? 0} className={inputCls} />
-                    </FormField>
-                    <FormField label="الظهر — صغير">
-                        <input name="price_back_small" type="number" step="0.01" min="0" defaultValue={editing?.price_back_small ?? 0} className={inputCls} />
-                    </FormField>
-                    <FormField label="الكتف — كبير">
-                        <input name="price_shoulder_large" type="number" step="0.01" min="0" defaultValue={editing?.price_shoulder_large ?? 0} className={inputCls} />
-                    </FormField>
-                    <FormField label="الكتف — صغير">
-                        <input name="price_shoulder_small" type="number" step="0.01" min="0" defaultValue={editing?.price_shoulder_small ?? 0} className={inputCls} />
-                    </FormField>
-                </div>
+                <p className="mt-2 text-xs text-theme-subtle">أسعار الطباعة مرتبطة الآن بأماكن الطباعة، وتطبق على كل القطع.</p>
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -1595,6 +1582,22 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
             <FormField label="صورة المكان (Mockup)">
                 <ImageUploader value={imageUrl} onChange={setImageUrl} folder="positions" fieldName="image_url" />
             </FormField>
+            <FormField label="موضع الطباعة المرتبط">
+                <select name="print_position" defaultValue={editing?.print_position ?? ""} className={inputCls}>
+                    <option value="">غير محدد</option>
+                    {PRINT_POSITION_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                </select>
+            </FormField>
+            <div className="grid gap-3 rounded-xl border border-theme-subtle bg-theme-faint p-3 sm:grid-cols-2">
+                <FormField label="سعر الطباعة الكبير — ر.س">
+                    <input name="price_large" type="number" step="0.01" min="0" defaultValue={editing?.price_large ?? 0} className={inputCls} />
+                </FormField>
+                <FormField label="سعر الطباعة الصغير — ر.س">
+                    <input name="price_small" type="number" step="0.01" min="0" defaultValue={editing?.price_small ?? 0} className={inputCls} />
+                </FormField>
+            </div>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
             </FormField>
@@ -1621,6 +1624,9 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
                             {p.image_url && <img src={p.image_url} alt={p.name} className="w-full aspect-[4/3] object-cover rounded-lg mb-4 border border-theme-subtle" />}
                             <div className="flex-1">
                                 <p className="font-medium text-theme mb-1">{p.name}</p>
+                                <p className="text-xs text-gold mb-2">
+                                    {getPrintPositionLabel(p.print_position ?? "")} · كبير {p.price_large ?? 0} ر.س · صغير {p.price_small ?? 0} ر.س
+                                </p>
                                 {p.description && <p className="text-xs text-theme-subtle line-clamp-2 mb-3">{p.description}</p>}
                             </div>
                             <div className="flex items-center justify-between mt-auto">

@@ -3,6 +3,7 @@ import type {
     DesignIntelligenceMetadata,
     DesignOptionCompatibility,
     DesignPreset,
+    PrintPosition,
 } from "@/lib/design-intelligence";
 
 // ═══════════════════════════════════════════════════════════
@@ -438,6 +439,9 @@ export type CustomDesignPosition = {
     name: string;
     description: string | null;
     image_url: string | null;
+    print_position: PrintPosition | null;
+    price_large: number;
+    price_small: number;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -710,7 +714,16 @@ export type Database = {
             };
             custom_design_garments: {
                 Row: CustomDesignGarment;
-                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "price_chest_large" | "price_chest_small" | "price_back_large" | "price_back_small" | "price_shoulder_large" | "price_shoulder_small"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    price_chest_large?: number;
+                    price_chest_small?: number;
+                    price_back_large?: number;
+                    price_back_small?: number;
+                    price_shoulder_large?: number;
+                    price_shoulder_small?: number;
+                };
                 Update: Partial<Omit<CustomDesignGarment, "id" | "created_at">>;
                 Relationships: any[];
             };
@@ -747,7 +760,13 @@ export type Database = {
             };
             custom_design_positions: {
                 Row: CustomDesignPosition;
-                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "print_position" | "price_large" | "price_small"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    print_position?: PrintPosition | null;
+                    price_large?: number;
+                    price_small?: number;
+                };
                 Update: Partial<Omit<CustomDesignPosition, "id" | "created_at">>;
                 Relationships: any[];
             };
@@ -1052,6 +1071,7 @@ export type DesignPricingSnapshotClassic = {
     price_back_small: number;
     price_shoulder_large: number;
     price_shoulder_small: number;
+    positions?: Partial<Record<PrintPosition, { price_large: number; price_small: number }>>;
 };
 
 /** لقطة تسعير طلبات WASHA AI / DTF Studio (مخزّنة في JSON). */

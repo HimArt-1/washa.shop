@@ -367,10 +367,9 @@ export function DesignYourPieceWizard({
                 try {
                     const { getGarmentPricing } = await import("@/app/actions/smart-store");
                     const pricing = await getGarmentPricing(state.garment.name, state.garment.id);
-                    let printP = pricing.base_price;
-                    if (state.printPosition === "chest") printP = state.printSize === "large" ? pricing.price_chest_large : pricing.price_chest_small;
-                    else if (state.printPosition === "back") printP = state.printSize === "large" ? pricing.price_back_large : pricing.price_back_small;
-                    else if (state.printPosition?.startsWith("shoulder")) printP = state.printSize === "large" ? pricing.price_shoulder_large : pricing.price_shoulder_small;
+                    const printP = state.printPosition && state.printSize
+                        ? pricing.base_price + getPrintPrice(pricing, state.printPosition, state.printSize)
+                        : pricing.base_price;
                     finalPrice += printP;
                 } catch (e) {
                     console.error("Failed to fetch accurate pricing for Studio add to cart", e);
@@ -1878,6 +1877,10 @@ const PRINT_SIZES: { id: PrintSize; label: string; desc: string; icon: any }[] =
 
 function getPrintPrice(pricing: any, pos: PrintPosition, sz: PrintSize): number {
     if (!pricing) return 0;
+    const positionPricing = pricing.positions?.[pos];
+    if (positionPricing) {
+        return sz === "large" ? (positionPricing.price_large ?? 0) : (positionPricing.price_small ?? 0);
+    }
     if (pos === "shoulder_right" || pos === "shoulder_left") {
         return sz === "large" ? (pricing.price_shoulder_large ?? 0) : (pricing.price_shoulder_small ?? 0);
     }

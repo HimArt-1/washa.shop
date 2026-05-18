@@ -5,6 +5,7 @@ import {
     DTF_TECHNIQUE_PROMPT_OVERRIDES,
 } from "@/lib/dtf-studio-catalog";
 import {
+    applyPositionPricing,
     normalizeArtStyleRow,
     normalizeColorPackageRow,
     normalizeStyleRow,
@@ -17,6 +18,7 @@ import {
 import type {
     DesignColorToken,
     DesignIntelligenceMetadata,
+    PrintPosition,
 } from "@/lib/design-intelligence";
 import type {
     CustomDesignArtStyle,
@@ -43,6 +45,7 @@ export type WashaDtfStudioConfig = {
             backSmall: number;
             shoulderLarge: number;
             shoulderSmall: number;
+            positions?: Partial<Record<PrintPosition, { price_large: number; price_small: number }>>;
         };
         colors: Array<{
             id: string;
@@ -74,6 +77,9 @@ export type WashaDtfStudioConfig = {
         name: string;
         description: string | null;
         imageUrl: string | null;
+        printPosition: PrintPosition | null;
+        priceLarge: number;
+        priceSmall: number;
         sortOrder: number;
     }>;
 };
@@ -239,22 +245,34 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     const positions = (positionsRes.data as CustomDesignPosition[] | null) ?? [];
 
     return {
-        garments: garments.map((garment) => ({
-            id: garment.id,
-            name: garment.name,
-            slug: garment.slug,
-            imageUrl: garment.image_url,
-            sortOrder: garment.sort_order,
-            basePrice: garment.base_price,
-            pricing: {
-                chestLarge: garment.price_chest_large,
-                chestSmall: garment.price_chest_small,
-                backLarge: garment.price_back_large,
-                backSmall: garment.price_back_small,
-                shoulderLarge: garment.price_shoulder_large,
-                shoulderSmall: garment.price_shoulder_small,
-            },
-            colors: colors
+        garments: garments.map((garment) => {
+            const pricing = applyPositionPricing({
+                base_price: garment.base_price,
+                price_chest_large: garment.price_chest_large,
+                price_chest_small: garment.price_chest_small,
+                price_back_large: garment.price_back_large,
+                price_back_small: garment.price_back_small,
+                price_shoulder_large: garment.price_shoulder_large,
+                price_shoulder_small: garment.price_shoulder_small,
+            }, positions);
+
+            return {
+                id: garment.id,
+                name: garment.name,
+                slug: garment.slug,
+                imageUrl: garment.image_url,
+                sortOrder: garment.sort_order,
+                basePrice: garment.base_price,
+                pricing: {
+                    chestLarge: pricing.price_chest_large,
+                    chestSmall: pricing.price_chest_small,
+                    backLarge: pricing.price_back_large,
+                    backSmall: pricing.price_back_small,
+                    shoulderLarge: pricing.price_shoulder_large,
+                    shoulderSmall: pricing.price_shoulder_small,
+                    positions: pricing.positions,
+                },
+                colors: colors
                 .filter((color) => color.garment_id === garment.id)
                 .map((color) => ({
                     id: color.id,
@@ -279,7 +297,8 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
                     availableQuantity: getSmartStoreAvailableQuantity(size),
                     stockStatus: getSmartStoreStockStatus(size),
                 })),
-        })),
+            };
+        }),
         styles: styles.map(mapCreativeOption),
         techniques: artStyles.map(mapCreativeOption),
         palettes: colorPackages.map(mapPaletteOption),
@@ -288,6 +307,9 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
             name: pos.name,
             description: pos.description,
             imageUrl: pos.image_url,
+            printPosition: pos.print_position,
+            priceLarge: pos.price_large,
+            priceSmall: pos.price_small,
             sortOrder: pos.sort_order,
         })),
     };

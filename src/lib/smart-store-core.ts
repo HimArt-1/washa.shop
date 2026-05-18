@@ -8,6 +8,7 @@ import type {
     CustomDesignOrder,
     CustomDesignOrderStatus,
     CustomDesignPreset,
+    CustomDesignPosition,
     CustomDesignSize,
     CustomDesignStudioItem,
     CustomDesignStyle,
@@ -39,6 +40,12 @@ export type GarmentPricing = {
     price_back_small: number;
     price_shoulder_large: number;
     price_shoulder_small: number;
+    positions?: Partial<Record<PrintPosition, PositionPrintPricing>>;
+};
+
+export type PositionPrintPricing = {
+    price_large: number;
+    price_small: number;
 };
 
 export type ResolvedDesignOrderSelections = {
@@ -91,6 +98,7 @@ export const EMPTY_GARMENT_PRICING: GarmentPricing = {
     price_back_small: 0,
     price_shoulder_large: 0,
     price_shoulder_small: 0,
+    positions: {},
 };
 
 export function getDesignResultAllowedTypes(field: DesignResultField) {
@@ -212,6 +220,11 @@ export function getDesignStatusTransitionError(
 }
 
 export function calculatePlacementPrice(pricing: GarmentPricing, position: PrintPosition, size: PrintSize) {
+    const positionPricing = pricing.positions?.[position];
+    if (positionPricing) {
+        return size === "large" ? positionPricing.price_large : positionPricing.price_small;
+    }
+
     if (position === "shoulder_right" || position === "shoulder_left") {
         return size === "large" ? pricing.price_shoulder_large : pricing.price_shoulder_small;
     }
@@ -227,6 +240,28 @@ export function calculateFinalDesignPrice(pricing: GarmentPricing, position: Pri
     return Math.round((pricing.base_price + calculatePlacementPrice(pricing, position, size)) * 100) / 100;
 }
 
+function isPrintPosition(value: unknown): value is PrintPosition {
+    return value === "chest" || value === "back" || value === "shoulder_right" || value === "shoulder_left";
+}
+
+function normalizePositionPricingMap(value: unknown): Partial<Record<PrintPosition, PositionPrintPricing>> {
+    if (!value || typeof value !== "object") return {};
+    const source = value as Record<string, unknown>;
+    const positions: Partial<Record<PrintPosition, PositionPrintPricing>> = {};
+
+    for (const key of ["chest", "back", "shoulder_right", "shoulder_left"] as const) {
+        const raw = source[key];
+        if (!raw || typeof raw !== "object") continue;
+        const row = raw as Record<string, unknown>;
+        positions[key] = {
+            price_large: parseNumberish(row.price_large, 0),
+            price_small: parseNumberish(row.price_small, 0),
+        };
+    }
+
+    return positions;
+}
+
 export function normalizeGarmentPricing(value: Partial<GarmentPricing> | null | undefined): GarmentPricing {
     return {
         base_price: parseNumberish(value?.base_price, 0),
@@ -236,6 +271,34 @@ export function normalizeGarmentPricing(value: Partial<GarmentPricing> | null | 
         price_back_small: parseNumberish(value?.price_back_small, 0),
         price_shoulder_large: parseNumberish(value?.price_shoulder_large, 0),
         price_shoulder_small: parseNumberish(value?.price_shoulder_small, 0),
+        positions: normalizePositionPricingMap(value?.positions),
+    };
+}
+
+export function applyPositionPricing(
+    pricing: Partial<GarmentPricing> | null | undefined,
+    positionsRows: Array<Pick<CustomDesignPosition, "print_position" | "price_large" | "price_small">>
+): GarmentPricing {
+    const normalized = normalizeGarmentPricing(pricing);
+    const positions: Partial<Record<PrintPosition, PositionPrintPricing>> = { ...(normalized.positions ?? {}) };
+
+    for (const row of positionsRows) {
+        if (!isPrintPosition(row.print_position)) continue;
+        positions[row.print_position] = {
+            price_large: parseNumberish(row.price_large, 0),
+            price_small: parseNumberish(row.price_small, 0),
+        };
+    }
+
+    return {
+        ...normalized,
+        price_chest_large: positions.chest?.price_large ?? normalized.price_chest_large,
+        price_chest_small: positions.chest?.price_small ?? normalized.price_chest_small,
+        price_back_large: positions.back?.price_large ?? normalized.price_back_large,
+        price_back_small: positions.back?.price_small ?? normalized.price_back_small,
+        price_shoulder_large: positions.shoulder_right?.price_large ?? positions.shoulder_left?.price_large ?? normalized.price_shoulder_large,
+        price_shoulder_small: positions.shoulder_right?.price_small ?? positions.shoulder_left?.price_small ?? normalized.price_shoulder_small,
+        positions,
     };
 }
 
@@ -286,7 +349,7 @@ export async function getGarmentPricingRecord(
             .eq("id", safeGarmentId)
             .single();
         if (data) {
-            return normalizeGarmentPricing(data);
+            return hydratePositionPricing(sb, normalizeGarmentPricing(data));
         }
         if (error) {
             console.error("[getGarmentPricingRecord:id]", error);
@@ -294,7 +357,7 @@ export async function getGarmentPricingRecord(
     }
 
     if (!safeGarmentName) {
-        return EMPTY_GARMENT_PRICING;
+        return hydratePositionPricing(sb, EMPTY_GARMENT_PRICING);
     }
 
     const { data, error } = await sb
@@ -307,10 +370,28 @@ export async function getGarmentPricingRecord(
         if (error) {
             console.error("[getGarmentPricingRecord:name]", error);
         }
-        return EMPTY_GARMENT_PRICING;
+        return hydratePositionPricing(sb, EMPTY_GARMENT_PRICING);
     }
 
-    return normalizeGarmentPricing(data);
+    return hydratePositionPricing(sb, normalizeGarmentPricing(data));
+}
+
+async function hydratePositionPricing(sb: SmartStoreSb, pricing: GarmentPricing): Promise<GarmentPricing> {
+    const { data, error } = await sb
+        .from("custom_design_positions")
+        .select("print_position, price_large, price_small")
+        .eq("is_active", true)
+        .order("sort_order");
+
+    if (error) {
+        console.error("[hydratePositionPricing]", error);
+        return pricing;
+    }
+
+    return applyPositionPricing(
+        pricing,
+        ((data as Array<Pick<CustomDesignPosition, "print_position" | "price_large" | "price_small">> | null) ?? [])
+    );
 }
 
 export async function getGarmentRecordById(

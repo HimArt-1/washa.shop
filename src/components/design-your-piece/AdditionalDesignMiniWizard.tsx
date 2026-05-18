@@ -23,6 +23,10 @@ const SIZE_LABELS: Record<PrintSize, { label: string; desc: string }> = {
 };
 
 function getPrice(pricing: any, position: PrintPosition, size: PrintSize): number {
+    const positionPricing = pricing?.positions?.[position];
+    if (positionPricing) {
+        return size === "large" ? (positionPricing.price_large ?? 0) : (positionPricing.price_small ?? 0);
+    }
     if (position === "shoulder_right" || position === "shoulder_left") {
         return size === "large" ? (pricing?.price_shoulder_large ?? 0) : (pricing?.price_shoulder_small ?? 0);
     }

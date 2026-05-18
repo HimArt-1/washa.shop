@@ -389,6 +389,9 @@ export const smartStoreUpsertPositionSchema = z.object({
     name: requiredText("اسم المكان", 120),
     description: optionalText("وصف المكان", 2000),
     image_url: optionalSafeUrl("صورة المكان"),
+    print_position: z.preprocess(trimToUndefined, z.enum(PRINT_POSITIONS, { error: "موضع الطباعة غير صالح" }).nullable().optional()),
+    price_large: numberFromUnknown("سعر الطباعة الكبير", { min: 0, defaultValue: 0 }),
+    price_small: numberFromUnknown("سعر الطباعة الصغير", { min: 0, defaultValue: 0 }),
     sort_order: numberFromUnknown("ترتيب المكان", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
 });

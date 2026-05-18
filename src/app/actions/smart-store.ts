@@ -394,12 +394,6 @@ export async function upsertGarment(formData: FormData) {
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
         base_price: formData.get("base_price"),
-        price_chest_large: formData.get("price_chest_large"),
-        price_chest_small: formData.get("price_chest_small"),
-        price_back_large: formData.get("price_back_large"),
-        price_back_small: formData.get("price_back_small"),
-        price_shoulder_large: formData.get("price_shoulder_large"),
-        price_shoulder_small: formData.get("price_shoulder_small"),
     });
     if (!validated.success) {
         return { error: getFirstValidationError(validated.error) };
@@ -414,12 +408,6 @@ export async function upsertGarment(formData: FormData) {
         sort_order: data.sort_order,
         is_active: data.is_active,
         base_price: data.base_price,
-        price_chest_large: data.price_chest_large,
-        price_chest_small: data.price_chest_small,
-        price_back_large: data.price_back_large,
-        price_back_small: data.price_back_small,
-        price_shoulder_large: data.price_shoulder_large,
-        price_shoulder_small: data.price_shoulder_small,
     };
 
     if (data.id) {
@@ -445,6 +433,9 @@ export async function upsertColor(formData: FormData) {
         name: formData.get("name"),
         hex_code: formData.get("hex_code"),
         image_url: formData.get("image_url"),
+        print_position: formData.get("print_position"),
+        price_large: formData.get("price_large"),
+        price_small: formData.get("price_small"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
     });
@@ -628,6 +619,9 @@ export async function upsertPosition(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        print_position: data.print_position ?? null,
+        price_large: data.price_large,
+        price_small: data.price_small,
         sort_order: data.sort_order,
         is_active: data.is_active,
     };
