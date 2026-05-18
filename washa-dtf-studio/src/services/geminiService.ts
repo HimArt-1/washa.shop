@@ -5,6 +5,9 @@ interface GenerationPreferences {
   removeBackground?: boolean;
   avoidHardEdges?: boolean;
   designPosition?: string;
+  printPosition?: 'chest' | 'back' | 'shoulder_right' | 'shoulder_left' | null;
+  printSize?: 'large' | 'small' | null;
+  printPositionLabel?: string | null;
 }
 
 function compactPrompt(parts: Array<string | null | undefined>) {
@@ -74,27 +77,46 @@ export async function generateMockup(
       : null,
   ];
 
-  const isPocket = preferences.designPosition === 'logo_left' || preferences.designPosition === 'logo_right';
-  const pocketSide = preferences.designPosition === 'logo_left' ? 'left' : 'right';
+  const effectivePrintPosition =
+    preferences.printPosition ||
+    (preferences.designPosition?.startsWith('back') ? 'back' :
+      preferences.designPosition === 'logo_right' ? 'shoulder_right' :
+        preferences.designPosition === 'logo_left' ? 'shoulder_left' :
+          'chest');
+  const effectivePrintSize =
+    preferences.printSize ||
+    (preferences.designPosition?.includes('small') || preferences.designPosition?.startsWith('logo_') ? 'small' : 'large');
 
   let sceneDirectives = '';
-  if (isPocket) {
-    const wearerSide = preferences.designPosition === 'logo_right' ? "wearer's left chest (over the heart, which appears on the right side of the image)" : "wearer's right chest (which appears on the left side of the image)";
-    
+  if (effectivePrintPosition === 'shoulder_right' || effectivePrintPosition === 'shoulder_left') {
+    const wearerSide = effectivePrintPosition === 'shoulder_right'
+      ? "wearer's right shoulder / right upper chest area"
+      : "wearer's left shoulder / left upper chest area";
+
     sceneDirectives = compactPrompt([
       `Medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
-      `A single small pocket-sized DTF logo print (approx 7-10 cm) is placed strictly on the ${wearerSide} of the ${color} ${garmentType}.`,
+      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo print is placed strictly on the ${wearerSide} of the ${color} ${garmentType}.`,
       `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `The logo must be small and proportional — NOT large or centered. It must be unmistakably placed on the ${wearerSide}.`,
+      `The print must be proportional and unmistakably placed on the ${wearerSide}; do not center it on the chest or back.`,
+      preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);
   } else {
-    const positionMapping: Record<string, string> = {
-      'front_large': 'large and centered on the chest/front, filling roughly 60-70% of the torso width',
-      'back_large': 'large and centered on the back, filling roughly 60-70% of the upper back',
-    };
-    const placement = preferences.designPosition ? (positionMapping[preferences.designPosition] || 'centered') : 'centered';
-    sceneDirectives = `Studio mockup of a full ${color} ${garmentType} with one DTF print placed ${placement}. Full garment visible, clean studio background.`;
+    const side = effectivePrintPosition === 'back' ? 'back' : 'chest/front';
+    const scale = effectivePrintSize === 'large'
+      ? 'large and centered, filling roughly 60-70% of the printable area'
+      : 'small and neatly placed, filling roughly 20-30% of the printable area';
+    const backInstruction = effectivePrintPosition === 'back'
+      ? 'Show the back side of the garment clearly; do not place the artwork on the chest/front.'
+      : 'Show the front side of the garment clearly; do not place the artwork on the back.';
+
+    sceneDirectives = compactPrompt([
+      `Studio mockup of a full ${color} ${garmentType} with one DTF print placed on the ${side}.`,
+      `Placement: ${scale}.`,
+      backInstruction,
+      preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
+      `Full garment visible, clean studio background.`,
+    ]);
   }
   const prompt = isCalligraphy
     ? compactPrompt([

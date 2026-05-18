@@ -20,6 +20,10 @@ export const submitOrderSchema = z.object({
   paletteId: z.string().trim().nullable().optional(),
   palette: z.string().trim().optional(),
   customPalette: z.string().trim().nullable().optional(),
+  printOptionId: z.string().trim().nullable().optional(),
+  printPosition: z.enum(["chest", "back", "shoulder_right", "shoulder_left"]).nullable().optional(),
+  printSize: z.enum(["large", "small"]).nullable().optional(),
+  printPositionLabel: z.string().trim().nullable().optional(),
   // For Base64 images, a string pattern check can ensure it's minimally formatted as data URIs
   mockupDataUrl: z.string().trim().min(1, "رابط التصميم (الموكب) مطلوب").refine(
       (val) => val.startsWith("data:image/"), 

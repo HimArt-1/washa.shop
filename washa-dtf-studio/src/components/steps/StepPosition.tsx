@@ -1,9 +1,32 @@
 import { motion } from 'motion/react';
 import { ArrowLeft, ArrowRight, LayoutDashboard, Search, FileImage, CheckCircle2 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
+import type { PrintPosition, PrintSize } from '../../types';
+
+type PositionCard = {
+  id: string;
+  title: string;
+  description: string | null;
+  imageUrl?: string | null;
+  designPosition: string;
+  printPosition: PrintPosition;
+  printSize: PrintSize;
+  price?: number;
+  icon: ReactNode;
+  visual?: (isSelected: boolean) => ReactNode;
+};
+
+function resolveDesignPosition(position: PrintPosition | null | undefined, size: PrintSize | null | undefined) {
+  if (position === 'back') return size === 'small' ? 'back_small' : 'back_large';
+  if (position === 'shoulder_right') return 'logo_right';
+  if (position === 'shoulder_left') return 'logo_left';
+  if (position === 'chest') return size === 'small' ? 'front_small' : 'front_large';
+  return 'front_large';
+}
 
 export default function StepPosition() {
   const { state, updateState, nextStep, prevStep, positionOptions } = useDesign();
@@ -51,11 +74,14 @@ export default function StepPosition() {
     </div>
   );
 
-  const defaultPositions = [
+  const defaultPositions: PositionCard[] = [
     {
       id: 'front_large',
       title: 'تصميم أمامي',
       description: 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.',
+      designPosition: 'front_large',
+      printPosition: 'chest',
+      printSize: 'large',
       icon: <LayoutDashboard className="h-6 w-6" />,
       visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 42, w: 50, h: 55 }} isSelected={isSelected} />
     },
@@ -63,6 +89,9 @@ export default function StepPosition() {
       id: 'back_large',
       title: 'تصميم خلفي',
       description: 'يظهر في الظهر بشكل كبير، مثالي للتصاميم المعقدة والملفتة.',
+      designPosition: 'back_large',
+      printPosition: 'back',
+      printSize: 'large',
       icon: <FileImage className="h-6 w-6" />,
       visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 33, y: 48, w: 54, h: 60 }} isSelected={isSelected} />
     },
@@ -70,6 +99,9 @@ export default function StepPosition() {
       id: 'logo_right',
       title: 'تصميم شعار بسيط (يمين)',
       description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.',
+      designPosition: 'logo_right',
+      printPosition: 'shoulder_right',
+      printSize: 'small',
       icon: <Search className="h-6 w-6" />,
       visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
@@ -77,17 +109,24 @@ export default function StepPosition() {
       id: 'logo_left',
       title: 'تصميم شعار بسيط (يسار)',
       description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).',
+      designPosition: 'logo_left',
+      printPosition: 'shoulder_left',
+      printSize: 'small',
       icon: <Search className="h-6 w-6" />,
       visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
   ];
 
-  const displayPositions = positionOptions.length > 0 
+  const displayPositions: PositionCard[] = positionOptions.length > 0
     ? positionOptions.map(p => ({
         id: p.id,
         title: p.name,
         description: p.description,
         imageUrl: p.imageUrl,
+        designPosition: resolveDesignPosition(p.printPosition, p.printSize),
+        printPosition: p.printPosition ?? 'chest',
+        printSize: p.printSize ?? 'large',
+        price: p.price,
         icon: <LayoutDashboard className="h-5 w-5" />
       }))
     : defaultPositions;
@@ -129,14 +168,20 @@ export default function StepPosition() {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {displayPositions.map((pos, index) => {
-          const isSelected = state.designPosition === pos.id;
+          const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
           return (
             <motion.button
               key={pos.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 + index * 0.05, duration: 0.35 }}
-              onClick={() => updateState({ designPosition: pos.id as any })}
+              onClick={() => updateState({
+                designPosition: pos.designPosition,
+                printOptionId: pos.id,
+                printPosition: pos.printPosition,
+                printSize: pos.printSize,
+                printPositionLabel: pos.title,
+              })}
               className={cn(
                 'group relative flex flex-col overflow-hidden rounded-3xl border transition-all duration-500',
                 isSelected
@@ -188,6 +233,11 @@ export default function StepPosition() {
                 <p className="text-xs leading-relaxed text-washa-text-faint group-hover:text-washa-text-sec transition-colors">
                   {pos.description}
                 </p>
+                {typeof pos.price === 'number' && (
+                  <p className="text-xs font-bold text-washa-gold">
+                    {pos.price > 0 ? `${pos.price} ر.س` : 'مجاني'}
+                  </p>
+                )}
               </div>
             </motion.button>
           );

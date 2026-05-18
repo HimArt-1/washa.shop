@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
         has_mockup_data_url: Boolean(bodyResult.data.mockupDataUrl),
         has_extracted_data_url: Boolean(bodyResult.data.extractedDataUrl),
         design_method: bodyResult.data.designMethod,
+        print_option_id: bodyResult.data.printOptionId ?? null,
+        print_position: bodyResult.data.printPosition ?? null,
+        print_size: bodyResult.data.printSize ?? null,
     });
 
     let userProfile = null;

@@ -7,6 +7,8 @@ import {
     calculateFinalDesignPrice,
     calculatePlacementPrice,
     getGarmentPricingRecord,
+    parsePrintPositionValue,
+    parsePrintSizeValue,
 } from "@/lib/smart-store-core";
 import {
     releaseSmartStoreSizeReservation,
@@ -32,6 +34,18 @@ type CustomDesignOrderInsert = Database["public"]["Tables"]["custom_design_order
 
 const DEFAULT_DTF_PRINT_POSITION: PrintPosition = "chest";
 const DEFAULT_DTF_PRINT_SIZE: PrintSize = "large";
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function getPrintPositionLabel(position: PrintPosition) {
+    if (position === "back") return "الظهر";
+    if (position === "shoulder_right") return "الكتف الأيمن";
+    if (position === "shoulder_left") return "الكتف الأيسر";
+    return "الصدر";
+}
+
+function getPrintSizeLabel(size: PrintSize) {
+    return size === "small" ? "مقاس صغير" : "مقاس كبير";
+}
 
 export class DtfOrderService {
     private static resolveServerErrorMessage(error: unknown): { error: string; status: number } {
@@ -114,6 +128,7 @@ export class DtfOrderService {
         mockupUrl: string;
         extractedUrl: string | null;
         finalPrice: number;
+        printPositionLabel: string;
     }) {
         return {
             id: `dtf-${params.id}`,
@@ -127,7 +142,7 @@ export class DtfOrderService {
             maxQuantity: 1,
             customDesignUrl: params.extractedUrl || params.mockupUrl,
             customGarment: `${params.garmentName} (${params.colorName})`,
-            customPosition: "الصدر — مقاس كبير",
+            customPosition: params.printPositionLabel,
         };
     }
 
@@ -148,6 +163,7 @@ export class DtfOrderService {
                 garmentId, garmentType, colorId, garmentColor, colorHex,
                 sizeId, garmentSize, styleId, style, techniqueId, technique,
                 paletteId, palette, customPalette, prompt, calligraphyText,
+                printOptionId, printPosition, printSize, printPositionLabel,
                 mockupDataUrl, extractedDataUrl
             } = payload;
 
@@ -164,6 +180,7 @@ export class DtfOrderService {
             });
 
             const sb = getSupabaseAdminClient();
+            const safePrintOptionId = printOptionId && UUID_REGEX.test(printOptionId) ? printOptionId : null;
 
             const optionFetchStartedAt = Date.now();
             const [
@@ -173,6 +190,7 @@ export class DtfOrderService {
                 styleRes,
                 techniqueRes,
                 paletteRes,
+                positionRes,
             ] = await Promise.all([
                 garmentId
                     ? sb.from("custom_design_garments").select("*").eq("id", garmentId).eq("is_active", true).maybeSingle()
@@ -192,11 +210,14 @@ export class DtfOrderService {
                 paletteId && paletteId !== CUSTOM_PALETTE_ID
                     ? sb.from("custom_design_color_packages").select("*").eq("id", paletteId).eq("is_active", true).in("catalog_scope", ["dtf_studio", "shared"]).maybeSingle()
                     : Promise.resolve({ data: null, error: null }),
+                safePrintOptionId
+                    ? sb.from("custom_design_positions").select("id, name, print_position, print_size").eq("id", safePrintOptionId).eq("is_active", true).maybeSingle()
+                    : Promise.resolve({ data: null, error: null }),
             ]);
 
             const optionFetchError =
                 garmentRes.error || colorRes.error || sizeRes.error ||
-                styleRes.error || techniqueRes.error || paletteRes.error;
+                styleRes.error || techniqueRes.error || paletteRes.error || positionRes.error;
 
             logDtfTrace("dtf.submit-order.service", traceId, "options_fetched", {
                 duration_ms: Date.now() - optionFetchStartedAt,
@@ -214,6 +235,18 @@ export class DtfOrderService {
             const styleRow = (styleRes.data as CustomDesignStyle | null) ?? null;
             const artStyleRow = (techniqueRes.data as CustomDesignArtStyle | null) ?? null;
             const colorPackageRow = (paletteRes.data as CustomDesignColorPackage | null) ?? null;
+            const positionRow = positionRes.data as { name?: string | null; print_position?: string | null; print_size?: string | null } | null;
+            const selectedPrintPosition =
+                parsePrintPositionValue(positionRow?.print_position ?? null) ??
+                parsePrintPositionValue(printPosition ?? null) ??
+                DEFAULT_DTF_PRINT_POSITION;
+            const selectedPrintSize =
+                parsePrintSizeValue(positionRow?.print_size ?? null) ??
+                parsePrintSizeValue(printSize ?? null) ??
+                DEFAULT_DTF_PRINT_SIZE;
+            const selectedPrintPositionLabel =
+                (positionRow?.name?.trim() || printPositionLabel?.trim()) ||
+                `${getPrintPositionLabel(selectedPrintPosition)} — ${getPrintSizeLabel(selectedPrintSize)}`;
 
             if (garmentId && !garmentRow) {
                 return { error: "القطعة المحددة غير متاحة أو غير مفعلة", status: 400 };
@@ -321,13 +354,13 @@ export class DtfOrderService {
             const pricing = await getGarmentPricingRecord(sb, resolvedGarmentName, garmentRow?.id ?? null);
             const designPrice = calculatePlacementPrice(
                 pricing,
-                DEFAULT_DTF_PRINT_POSITION,
-                DEFAULT_DTF_PRINT_SIZE
+                selectedPrintPosition,
+                selectedPrintSize
             );
             const finalPrice = calculateFinalDesignPrice(
                 pricing,
-                DEFAULT_DTF_PRINT_POSITION,
-                DEFAULT_DTF_PRINT_SIZE
+                selectedPrintPosition,
+                selectedPrintSize
             );
             const cartItem = DtfOrderService.buildCartItem({
                 id: slug,
@@ -337,6 +370,7 @@ export class DtfOrderService {
                 mockupUrl: mockupResult.url,
                 extractedUrl,
                 finalPrice,
+                printPositionLabel: selectedPrintPositionLabel,
             });
             logDtfTrace("dtf.submit-order.service", traceId, "cart_item_built", {
                 duration_ms: Date.now() - pricingStartedAt,
@@ -417,8 +451,8 @@ export class DtfOrderService {
                 customer_name: customerName,
                 customer_email: customerEmail,
                 customer_phone: customerPhone,
-                print_position: DEFAULT_DTF_PRINT_POSITION,
-                print_size: DEFAULT_DTF_PRINT_SIZE,
+                print_position: selectedPrintPosition,
+                print_size: selectedPrintSize,
                 pricing_snapshot: dtfPricingSnapshot,
                 dtf_mockup_url: mockupResult.url,
                 dtf_extracted_url: extractedUrl,
@@ -463,8 +497,9 @@ export class DtfOrderService {
                         basePrice: pricing.base_price,
                         designPrice,
                         finalPrice,
-                        printPosition: DEFAULT_DTF_PRINT_POSITION,
-                        printSize: DEFAULT_DTF_PRINT_SIZE,
+                        printPosition: selectedPrintPosition,
+                        printSize: selectedPrintSize,
+                        printPositionLabel: selectedPrintPositionLabel,
                     },
                     metadata: {
                         garmentId: garmentRow?.id ?? null,

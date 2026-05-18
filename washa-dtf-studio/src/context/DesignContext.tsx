@@ -15,6 +15,8 @@ import {
   type DtfStudioPaletteOption,
   type DtfStudioPositionOption,
   type DtfStudioSizeOption,
+  type PrintPosition,
+  type PrintSize,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { fetchDtfStudioConfig } from '../services/configService';
@@ -86,6 +88,10 @@ const EMPTY_STATE: DesignState = {
   garmentSize: '',
   designMethod: 'text',
   designPosition: 'front_large',
+  printOptionId: null,
+  printPosition: 'chest',
+  printSize: 'large',
+  printPositionLabel: 'تصميم أمامي كبير',
   prompt: '',
   calligraphyText: '',
   referenceImage: null,
@@ -147,6 +153,26 @@ function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
+function resolveDesignPosition(position: PrintPosition | null | undefined, size: PrintSize | null | undefined) {
+  if (position === 'back') return size === 'small' ? 'back_small' : 'back_large';
+  if (position === 'shoulder_right') return 'logo_right';
+  if (position === 'shoulder_left') return 'logo_left';
+  if (position === 'chest') return size === 'small' ? 'front_small' : 'front_large';
+  return 'front_large';
+}
+
+function resolvePrintPositionFromDesignPosition(designPosition: string): PrintPosition {
+  if (designPosition.startsWith('back')) return 'back';
+  if (designPosition === 'logo_right') return 'shoulder_right';
+  if (designPosition === 'logo_left') return 'shoulder_left';
+  return 'chest';
+}
+
+function resolvePrintSizeFromDesignPosition(designPosition: string): PrintSize {
+  if (designPosition.includes('small') || designPosition.startsWith('logo_')) return 'small';
+  return 'large';
+}
+
 function buildInitialState(config: DtfStudioConfig): DesignState {
   const garment = config.garments[0] || null;
   const color = garment?.colors[0] || null;
@@ -154,6 +180,9 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
   const style = config.styles[0] || null;
   const technique = config.techniques[0] || null;
   const palette = config.palettes[0] || null;
+  const printOption = config.positions[0] || null;
+  const printPosition = printOption?.printPosition ?? 'chest';
+  const printSize = printOption?.printSize ?? 'large';
 
   return {
     ...EMPTY_STATE,
@@ -170,6 +199,11 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
     technique: technique?.name || '',
     paletteId: palette?.id || null,
     palette: palette?.name || '',
+    designPosition: resolveDesignPosition(printPosition, printSize),
+    printOptionId: printOption?.id ?? null,
+    printPosition,
+    printSize,
+    printPositionLabel: printOption?.name ?? 'تصميم أمامي كبير',
   };
 }
 
@@ -218,8 +252,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
             inList(current.garmentId, loadedConfig.garments) &&
             inList(current.styleId, loadedConfig.styles) &&
             inList(current.techniqueId, loadedConfig.techniques) &&
-            inList(current.paletteId, loadedConfig.palettes);
-          if (selectionsAreValid && (current.garmentId || current.styleId || current.techniqueId || current.paletteId)) {
+            inList(current.paletteId, loadedConfig.palettes) &&
+            inList(current.printOptionId, loadedConfig.positions);
+          if (selectionsAreValid && (current.garmentId || current.styleId || current.techniqueId || current.paletteId || current.printOptionId)) {
             return current;
           }
           return buildInitialState(loadedConfig);
@@ -437,6 +472,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         removeBackground: state.removeBackground,
         avoidHardEdges: state.avoidHardEdges,
         designPosition: state.designPosition,
+        printPosition: state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition),
+        printSize: state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition),
+        printPositionLabel: state.printPositionLabel ?? undefined,
       }
     );
 
@@ -602,6 +640,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           paletteId: state.paletteId === CUSTOM_PALETTE_ID || isUuid(state.paletteId) ? state.paletteId : null,
           palette: state.palette,
           customPalette: state.paletteId === CUSTOM_PALETTE_ID ? state.customPalette || null : null,
+          printOptionId: state.printOptionId,
+          printPosition: state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition),
+          printSize: state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition),
+          printPositionLabel: state.printPositionLabel,
           mockupDataUrl: submitMockupBg,
           extractedDataUrl: submitExtractedBg || null,
         }),

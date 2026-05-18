@@ -5,6 +5,8 @@ export type ArtisticStyle = string;
 export type Technique = string;
 export type ColorPalette = string;
 export type DesignMethod = 'text' | 'image' | 'calligraphy';
+export type PrintPosition = 'chest' | 'back' | 'shoulder_right' | 'shoulder_left';
+export type PrintSize = 'large' | 'small';
 
 export interface DtfStudioColorToken {
   hex: string;
@@ -48,6 +50,7 @@ export interface DtfStudioGarmentOption {
     backSmall: number;
     shoulderLarge: number;
     shoulderSmall: number;
+    positions?: Partial<Record<PrintPosition, { price_large: number; price_small: number }>>;
   };
   colors: DtfStudioColorOption[];
   sizes: DtfStudioSizeOption[];
@@ -72,6 +75,11 @@ export interface DtfStudioPositionOption {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  printPosition: PrintPosition | null;
+  printSize: PrintSize | null;
+  price: number;
+  priceLarge?: number;
+  priceSmall?: number;
   sortOrder: number;
 }
 
@@ -92,7 +100,11 @@ export interface DesignState {
   garmentSizeId: string | null;
   garmentSize: GarmentSize;
   designMethod: DesignMethod;
-  designPosition: 'front_large' | 'back_large' | 'logo_left' | 'logo_right';
+  designPosition: string;
+  printOptionId: string | null;
+  printPosition: PrintPosition | null;
+  printSize: PrintSize | null;
+  printPositionLabel: string | null;
   prompt: string;
   calligraphyText: string;
   referenceImage: string | null;
