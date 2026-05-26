@@ -7,7 +7,7 @@
 
 import { stripe, STRIPE_ENABLED } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 
 
 function buildInternalUrl(path: string, baseUrl: string): string | null {
@@ -35,12 +35,12 @@ export async function createStripeCheckoutUrl(params: {
         return { success: false, error: "الدفع الإلكتروني غير متاح حالياً" };
     }
 
-    const user = await currentUser();
-    if (!user) {
-        return { success: false, error: "يجب تسجيل الدخول" };
-    }
-
     try {
+        const { userId } = await auth();
+        if (!userId) {
+            return { success: false, error: "يجب تسجيل الدخول" };
+        }
+
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
         const safeSuccessUrl = buildInternalUrl(params.successUrl, baseUrl);
         const safeCancelUrl = buildInternalUrl(params.cancelUrl, baseUrl);
@@ -61,8 +61,8 @@ export async function createStripeCheckoutUrl(params: {
                 .single(),
             supabase
                 .from("profiles")
-                .select("id")
-                .eq("clerk_id", user.id)
+                .select("id, email")
+                .eq("clerk_id", userId)
                 .single(),
         ]);
 
@@ -111,11 +111,11 @@ export async function createStripeCheckoutUrl(params: {
             metadata: {
                 order_id: order.id,
                 order_number: order.order_number,
-                clerk_user_id: user.id,
+                clerk_user_id: userId,
             },
             success_url: successUrl.toString(),
             cancel_url: safeCancelUrl,
-            customer_email: user.emailAddresses?.[0]?.emailAddress || undefined,
+            customer_email: profile.email || undefined,
         });
 
         return {

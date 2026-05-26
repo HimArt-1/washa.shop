@@ -6,21 +6,31 @@
 "use server";
 
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 async function getCurrentProfile() {
-    const user = await currentUser();
-    if (!user) return null;
+    try {
+        const { userId } = await auth();
+        if (!userId) return null;
 
-    const supabase = getSupabaseAdminClient();
-    const { data } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("clerk_id", user.id)
-        .maybeSingle();
+        const supabase = getSupabaseAdminClient();
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("clerk_id", userId)
+            .maybeSingle();
 
-    return (data as { id: string } | null) ?? null;
+        if (error) {
+            console.error("[social.getCurrentProfile]", error.message);
+            return null;
+        }
+
+        return (data as { id: string } | null) ?? null;
+    } catch (error) {
+        console.error("[social.getCurrentProfile] Failed to resolve auth state:", error);
+        return null;
+    }
 }
 
 async function getFollowableArtist(artistId: string) {

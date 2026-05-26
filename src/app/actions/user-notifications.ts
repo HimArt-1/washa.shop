@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { UserNotificationType, UserNotification } from "@/types/database";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 // Raw client for user_notifications (bypasses typed schema to avoid postgrest-js never-type issue)
@@ -22,12 +22,27 @@ function getRawClient() {
 }
 
 async function getCurrentProfileId() {
-    const user = await currentUser();
-    if (!user) return null;
+    try {
+        const { userId } = await auth();
+        if (!userId) return null;
 
-    const supabase = getRawClient();
-    const { data: profile } = await supabase.from("profiles").select("id").eq("clerk_id", user.id).single();
-    return profile?.id ?? null;
+        const supabase = getRawClient();
+        const { data: profile, error } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("clerk_id", userId)
+            .maybeSingle();
+
+        if (error) {
+            console.error("[getCurrentProfileId]", error.message);
+            return null;
+        }
+
+        return profile?.id ?? null;
+    } catch (error) {
+        console.error("[getCurrentProfileId] Failed to resolve auth state:", error);
+        return null;
+    }
 }
 
 export async function createUserNotification(data: {

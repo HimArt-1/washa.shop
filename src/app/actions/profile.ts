@@ -3,7 +3,7 @@
 import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
 import { profileSchema, type ProfileFormData } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth } from "@clerk/nextjs/server";
 import { STORAGE_BUCKETS } from "@/lib/constants";
 
 const MAX_AVATAR_SIZE = 10 * 1024 * 1024; // 10MB — phone camera photos can be large, they get compressed client-side
@@ -28,8 +28,8 @@ export async function updateProfile(
     prevState: ProfileActionState,
     formData: FormData
 ): Promise<ProfileActionState> {
-    const clerkUser = await currentUser();
-    if (!clerkUser) {
+    const { userId } = await auth();
+    if (!userId) {
         return { success: false, message: "يجب تسجيل الدخول أولاً" };
     }
 
@@ -37,7 +37,7 @@ export async function updateProfile(
     const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("clerk_id", clerkUser.id)
+        .eq("clerk_id", userId)
         .single();
     if (!existingProfile) {
         return { success: false, message: "الملف الشخصي غير موجود. تواصل مع الإدارة لتفعيل حسابك." };
@@ -91,7 +91,7 @@ export async function updateProfile(
                 social_links: data.social_links ?? null,
                 updated_at: new Date().toISOString(),
             })
-            .eq("clerk_id", clerkUser.id);
+            .eq("clerk_id", userId);
 
         if (error) {
             console.error("Profile update error:", error);
@@ -123,14 +123,14 @@ export async function uploadProfileImage(
     formData: FormData,
     type: "avatar" | "cover"
 ): Promise<{ success: true; url: string } | { success: false; error: string }> {
-    const clerkUser = await currentUser();
-    if (!clerkUser) return { success: false, error: "يجب تسجيل الدخول أولاً" };
+    const { userId } = await auth();
+    if (!userId) return { success: false, error: "يجب تسجيل الدخول أولاً" };
 
     const supabase = getSupabaseServerClient();
     const { data: profile } = await supabase
         .from("profiles")
         .select("id")
-        .eq("clerk_id", clerkUser.id)
+        .eq("clerk_id", userId)
         .single();
 
     if (!profile) return { success: false, error: "الملف الشخصي غير موجود" };
@@ -155,7 +155,7 @@ export async function uploadProfileImage(
     }
 
     const adminSupabase = getSupabaseAdminClient();
-    const fileName = `${clerkUser.id}/${type}-${Date.now()}.${ext || "jpg"}`;
+    const fileName = `${userId}/${type}-${Date.now()}.${ext || "jpg"}`;
 
     // Determine the correct contentType for upload
     const extToMime: Record<string, string> = {
@@ -189,15 +189,25 @@ export async function uploadProfileImage(
 import { type Profile } from "@/types/database";
 
 export async function getProfile(): Promise<Profile | null> {
-    const clerkUser = await currentUser();
-    if (!clerkUser) return null;
+    const { userId } = await auth();
+    if (!userId) return null;
 
-    const supabase = getSupabaseServerClient();
-    const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("clerk_id", clerkUser.id)
-        .single();
+    try {
+        const supabase = getSupabaseServerClient();
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("clerk_id", userId)
+            .maybeSingle();
 
-    return data as Profile | null;
+        if (error) {
+            console.error("[getProfile]", error.message);
+            return null;
+        }
+
+        return data as Profile | null;
+    } catch (error) {
+        console.error("[getProfile] Failed to load profile:", error);
+        return null;
+    }
 }
