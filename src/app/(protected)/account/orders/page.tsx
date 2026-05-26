@@ -17,11 +17,20 @@ export default async function OrdersPage() {
     const user = await currentUser();
     if (!user) redirect("/sign-in");
 
-    const [ordersRes, designOrders] = await Promise.all([
+    const [ordersResult, designOrdersResult] = await Promise.allSettled([
         getUserOrders(),
         getUserDesignOrders()
     ]);
 
+    if (ordersResult.status === "rejected") {
+        console.error("[account.orders] Failed to load regular orders:", ordersResult.reason);
+    }
+    if (designOrdersResult.status === "rejected") {
+        console.error("[account.orders] Failed to load design orders:", designOrdersResult.reason);
+    }
+
+    const ordersRes = ordersResult.status === "fulfilled" ? ordersResult.value : { data: [] };
+    const designOrders = designOrdersResult.status === "fulfilled" ? designOrdersResult.value : [];
     const orders = ordersRes.data || [];
     const totalCount = orders.length + designOrders.length;
 

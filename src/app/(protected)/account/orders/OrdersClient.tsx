@@ -37,6 +37,42 @@ const designStatusFallback = {
     bg: "bg-theme-subtle",
 };
 
+const riyadhOffsetMs = 3 * 60 * 60 * 1000;
+const arabicMonthNames = [
+    "يناير",
+    "فبراير",
+    "مارس",
+    "أبريل",
+    "مايو",
+    "يونيو",
+    "يوليو",
+    "أغسطس",
+    "سبتمبر",
+    "أكتوبر",
+    "نوفمبر",
+    "ديسمبر",
+];
+
+function formatStableNumber(value: unknown) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "0";
+
+    const fixed = Number.isInteger(number)
+        ? String(number)
+        : number.toFixed(2).replace(/\.?0+$/, "");
+    const [integer, decimal] = fixed.split(".");
+
+    return `${integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${decimal ? `.${decimal}` : ""}`;
+}
+
+function formatRiyadhDate(value: unknown) {
+    const date = new Date(String(value ?? ""));
+    if (Number.isNaN(date.getTime())) return "-";
+
+    const riyadhDate = new Date(date.getTime() + riyadhOffsetMs);
+    return `${riyadhDate.getUTCDate()} ${arabicMonthNames[riyadhDate.getUTCMonth()]} ${riyadhDate.getUTCFullYear()}`;
+}
+
 function OrderProgressBar({ status }: { status: string }) {
     const currentIdx = progressSteps.indexOf(status);
     if (status === "cancelled") {
@@ -281,7 +317,7 @@ export function OrdersClient({
                                         </span>
                                     </div>
                                     <span className="text-xs text-theme-faint">
-                                        {new Date(order.created_at).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" })}
+                                        {formatRiyadhDate(order.created_at)}
                                     </span>
                                 </div>
 
@@ -301,10 +337,10 @@ export function OrdersClient({
                                                     <div className="flex-1 min-w-0">
                                                         <p className="line-clamp-2 text-sm text-theme sm:line-clamp-1">{title}</p>
                                                         <p className="text-[10px] text-theme-faint">
-                                                            {item.quantity}× · {item.size && `مقاس ${item.size} · `}{Number(item.unit_price).toLocaleString()} ر.س
+                                                            {item.quantity}× · {item.size && `مقاس ${item.size} · `}{formatStableNumber(item.unit_price)} ر.س
                                                         </p>
                                                     </div>
-                                                    <span className="shrink-0 text-xs font-bold text-theme-subtle">{Number(item.total_price).toLocaleString()} ر.س</span>
+                                                    <span className="shrink-0 text-xs font-bold text-theme-subtle">{formatStableNumber(item.total_price)} ر.س</span>
                                                 </div>
                                             );
                                         })}
@@ -317,12 +353,12 @@ export function OrdersClient({
                                             <span className="text-xs text-theme-subtle block mb-0.5">الإجمالي</span>
                                             {(order.discount_amount > 0) ? (
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-theme-faint line-through">{Number(order.subtotal + (order.shipping_cost || 0)).toLocaleString()} ر.س</span>
-                                                    <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
-                                                    <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-md">خصم {Number(order.discount_amount).toLocaleString()} ر.س{order.coupon?.code ? ` (${order.coupon.code})` : ''}</span>
+                                                    <span className="text-xs text-theme-faint line-through">{formatStableNumber(Number(order.subtotal) + Number(order.shipping_cost || 0))} ر.س</span>
+                                                    <span className="text-sm font-bold text-gold">{formatStableNumber(order.total)} ر.س</span>
+                                                    <span className="text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded-md">خصم {formatStableNumber(order.discount_amount)} ر.س{order.coupon?.code ? ` (${order.coupon.code})` : ''}</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-sm font-bold text-gold">{Number(order.total).toLocaleString()} ر.س</span>
+                                                <span className="text-sm font-bold text-gold">{formatStableNumber(order.total)} ر.س</span>
                                             )}
                                         </div>
                                         {/* Invoice Button */}
