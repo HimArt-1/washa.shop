@@ -20,7 +20,7 @@ import {
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { fetchDtfStudioConfig } from '../services/configService';
-import { parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import { makeLightEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 
 export interface OrderResult {
   itemTitle: string;
@@ -77,6 +77,7 @@ export interface ToastState {
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
 const REFERENCE_IMAGE_QUALITY = 0.76;
+const TRANSPARENT_REFERENCE_TYPES = new Set(['image/png', 'image/webp']);
 
 const EMPTY_STATE: DesignState = {
   garmentId: null,
@@ -116,6 +117,11 @@ function getReadableErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function getReferenceOutputMimeType(file: File, dataUrl: string) {
+  const detectedMimeType = parseDataUrlParts(dataUrl)?.mimeType.toLowerCase() || file.type.toLowerCase();
+  return TRANSPARENT_REFERENCE_TYPES.has(detectedMimeType) ? 'image/webp' : 'image/jpeg';
 }
 
 function isLikelyGenerationTimeout(message: string) {
@@ -397,7 +403,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           const resized = await resizeDataUrl(base64String, {
             maxDimension: REFERENCE_IMAGE_MAX_DIMENSION,
             quality: REFERENCE_IMAGE_QUALITY,
-            outputMimeType: 'image/jpeg',
+            outputMimeType: getReferenceOutputMimeType(file, base64String),
           });
 
           updateState({
@@ -550,7 +556,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       const extracted = await extractDesign(parts.base64, parts.mimeType);
 
       if (extracted) {
-        setExtractedImage(extracted);
+        const printReady = await makeLightEdgeBackgroundTransparent(extracted).catch(() => null);
+        setExtractedImage(printReady?.dataUrl ?? extracted);
         showToast('تم استخراج التصميم بنجاح! 🎨', 'success');
       } else {
         setError('فشل في استخراج التصميم.');
@@ -591,6 +598,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           const parts = parseDataUrlParts(mockupImage);
           if (parts) {
             submitExtractedBg = await extractDesign(parts.base64, parts.mimeType);
+            if (submitExtractedBg) {
+              const printReady = await makeLightEdgeBackgroundTransparent(submitExtractedBg).catch(() => null);
+              submitExtractedBg = printReady?.dataUrl ?? submitExtractedBg;
+            }
             if (submitExtractedBg) setExtractedImage(submitExtractedBg);
           }
         } catch (err) {
@@ -607,8 +618,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         });
         submitMockupBg = compressedMockup.dataUrl;
 
-        if (extractedImage) {
-          const compressedExtracted = await resizeDataUrl(extractedImage, {
+        if (submitExtractedBg) {
+          const compressedExtracted = await resizeDataUrl(submitExtractedBg, {
             maxDimension: 2048,
             quality: 0.8,
             outputMimeType: 'image/webp'

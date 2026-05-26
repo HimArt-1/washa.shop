@@ -32,6 +32,11 @@ function calculateSize(width: number, height: number, maxDimension: number) {
   };
 }
 
+function getDataUrlMimeType(dataUrl: string, fallback: string) {
+  const match = dataUrl.match(/^data:([^;,]+)/);
+  return match ? match[1].trim() : fallback;
+}
+
 export async function resizeDataUrl(dataUrl: string, options: ResizeOptions) {
   const image = await loadImage(dataUrl);
   const { width, height } = calculateSize(image.width, image.height, options.maxDimension);
@@ -53,7 +58,75 @@ export async function resizeDataUrl(dataUrl: string, options: ResizeOptions) {
 
   return {
     dataUrl: resizedDataUrl,
-    mimeType: outputMimeType,
+    mimeType: getDataUrlMimeType(resizedDataUrl, outputMimeType),
+  };
+}
+
+export async function makeLightEdgeBackgroundTransparent(dataUrl: string) {
+  const image = await loadImage(dataUrl);
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    throw new Error('تعذر تجهيز أداة معالجة الصورة');
+  }
+
+  context.drawImage(image, 0, 0);
+
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const { data, width, height } = imageData;
+  const visited = new Uint8Array(width * height);
+  const stack: number[] = [];
+
+  const isLightBackground = (index: number) => {
+    const offset = index * 4;
+    const r = data[offset];
+    const g = data[offset + 1];
+    const b = data[offset + 2];
+    const a = data[offset + 3];
+    return a > 0 && r >= 238 && g >= 238 && b >= 238 && Math.max(r, g, b) - Math.min(r, g, b) <= 16;
+  };
+
+  const pushIfBackground = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const index = y * width + x;
+    if (visited[index] || !isLightBackground(index)) return;
+    visited[index] = 1;
+    stack.push(index);
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    pushIfBackground(x, 0);
+    pushIfBackground(x, height - 1);
+  }
+  for (let y = 0; y < height; y += 1) {
+    pushIfBackground(0, y);
+    pushIfBackground(width - 1, y);
+  }
+
+  while (stack.length > 0) {
+    const index = stack.pop()!;
+    const offset = index * 4;
+    data[offset + 3] = 0;
+
+    const x = index % width;
+    const y = Math.floor(index / width);
+    pushIfBackground(x + 1, y);
+    pushIfBackground(x - 1, y);
+    pushIfBackground(x, y + 1);
+    pushIfBackground(x, y - 1);
+  }
+
+  context.putImageData(imageData, 0, 0);
+
+  const outputMimeType = getDataUrlMimeType(dataUrl, 'image/png') === 'image/webp' ? 'image/webp' : 'image/png';
+  const transparentDataUrl = canvas.toDataURL(outputMimeType, 0.92);
+
+  return {
+    dataUrl: transparentDataUrl,
+    mimeType: getDataUrlMimeType(transparentDataUrl, outputMimeType),
   };
 }
 

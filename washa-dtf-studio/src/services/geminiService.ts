@@ -67,13 +67,16 @@ export async function generateMockup(
   const printDirectives = [
     'Premium DTF print integrated directly into the garment.',
     preferences.removeBackground
-      ? 'No backdrop block, colored panel, boxed field, or square image area behind the artwork.'
+      ? 'The print artwork must have a transparent cutout boundary: no backdrop block, colored panel, boxed field, white rectangle, or square image area behind it.'
       : null,
     preferences.avoidHardEdges
       ? 'No forced frame, border, crop edge, enclosing rectangle, or hard outer edge unless the concept truly needs it.'
       : null,
     referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
-      ? 'If a reference image is used, reinterpret only its subject for print and do not preserve its background, frame, crop, or edges.'
+      ? 'If a reference image has transparency, use only the visible foreground artwork; treat transparent pixels as absent and never render them as white, black, gray, or any background patch.'
+      : null,
+    referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
+      ? 'Do not preserve the reference image background, frame, crop, or edges.'
       : null,
   ];
 
@@ -168,7 +171,7 @@ export async function generateMockup(
 }
 
 export async function extractDesign(mockupImageBase64: string, mimeType: string): Promise<string | null> {
-  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: pure solid white background (#FFFFFF), no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean layer, print-ready quality.`;
+  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: transparent background with alpha channel, no white background, no colored canvas, no checkerboard pattern, no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean transparent layer, print-ready DTF quality.`;
 
   try {
     const response = await fetch(`${API_BASE_URL}/extract-design`, {
