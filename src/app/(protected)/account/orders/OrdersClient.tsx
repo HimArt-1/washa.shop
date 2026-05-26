@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2, FileText } from "lucide-react";
 import { DesignResultsPopup } from "@/components/design-your-piece/DesignResultsPopup";
 import { openInvoicePrint } from "@/lib/invoice";
-import type { CustomDesignOrder } from "@/types/database";
+import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { cancelDesignOrderByCustomer } from "@/app/actions/smart-store";
 
 // ─── Regular Orders Configuration ───────────────────────────
@@ -22,12 +22,19 @@ const statusConfig: Record<string, { label: string; icon: any; color: string; bg
 const progressSteps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 
 // ─── Custom Design Configurations ───────────────────────────
-const designStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
+const designStatusConfig: Record<CustomDesignOrderStatus, { label: string; color: string; bg: string }> = {
     new: { label: "مستلم", color: "text-blue-400", bg: "bg-blue-400/10" },
     in_progress: { label: "قيد التصميم", color: "text-amber-400", bg: "bg-amber-400/10" },
     awaiting_review: { label: "جاهز للمراجعة", color: "text-gold", bg: "bg-gold/10" },
+    modification_requested: { label: "طلب تعديل", color: "text-amber-400", bg: "bg-amber-400/10" },
     completed: { label: "مضاف للسلة", color: "text-emerald-400", bg: "bg-emerald-400/10" },
     cancelled: { label: "ملغي", color: "text-red-400", bg: "bg-red-400/10" },
+};
+
+const designStatusFallback = {
+    label: "قيد المتابعة",
+    color: "text-theme-soft",
+    bg: "bg-theme-subtle",
 };
 
 function OrderProgressBar({ status }: { status: string }) {
@@ -141,7 +148,7 @@ export function OrdersClient({
                     </h2>
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         {designOrders.map((dOrder) => {
-                            const conf = designStatusConfig[dOrder.status];
+                            const conf = designStatusConfig[dOrder.status] ?? designStatusFallback;
                             const isAwaiting = dOrder.status === "awaiting_review";
 
                             return (
