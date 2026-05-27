@@ -41,26 +41,25 @@ export function resolvePrintPlacementFromOption(option: PlacementInput): {
   printSize: PrintSize;
   designPosition: string;
 } {
-  const text = normalizeArabic([
+  const labelText = normalizeArabic([
     option?.id,
     option?.name,
-    option?.description,
   ].filter(Boolean).join(' '));
 
   const explicitPrintPosition =
-    includesAny(text, ['back', 'rear', 'ظهر', 'خلف'])
+    includesAny(labelText, ['back', 'rear', 'ظهر', 'خلفي', 'الخلف'])
       ? 'back'
-      : includesAny(text, ['right', 'يمين', 'ايمن'])
+      : includesAny(labelText, ['right', 'يمين', 'ايمن'])
         ? 'shoulder_right'
-        : includesAny(text, ['left', 'يسار', 'ايسر', 'قلب'])
+        : includesAny(labelText, ['left', 'يسار', 'ايسر', 'قلب'])
           ? 'shoulder_left'
-          : includesAny(text, ['front', 'chest', 'صدر', 'امام'])
+          : includesAny(labelText, ['front', 'chest', 'صدر', 'امام'])
             ? 'chest'
             : null;
   const explicitPrintSize =
-    includesAny(text, ['small', 'logo', 'صغير', 'شعار', 'بسيط'])
+    includesAny(labelText, ['small', 'logo', 'صغير', 'شعار', 'بسيط'])
       ? 'small'
-      : includesAny(text, ['large', 'كبير'])
+      : includesAny(labelText, ['large', 'كبير'])
         ? 'large'
         : null;
 
@@ -71,7 +70,7 @@ export function resolvePrintPlacementFromOption(option: PlacementInput): {
     if (
       printPosition === 'shoulder_right' ||
       printPosition === 'shoulder_left' ||
-      includesAny(text, ['small', 'logo', 'صغير', 'شعار', 'بسيط'])
+      includesAny(labelText, ['small', 'logo', 'صغير', 'شعار', 'بسيط'])
     ) {
       printSize = 'small';
     } else {
