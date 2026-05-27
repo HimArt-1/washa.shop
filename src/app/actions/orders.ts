@@ -39,6 +39,20 @@ interface ShippingAddressInput {
     phone?: string;
 }
 
+function isMissingColumnError(error: unknown, columnName: string) {
+    const message = typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message ?? "")
+        : String(error ?? "");
+    return message.toLowerCase().includes(`'${columnName.toLowerCase()}'`)
+        || message.toLowerCase().includes(`\"${columnName.toLowerCase()}\"`)
+        || message.toLowerCase().includes(columnName.toLowerCase());
+}
+
+function omitCustomPosition<T extends { custom_position?: string | null }>(item: T) {
+    const { custom_position: _customPosition, ...rest } = item;
+    return rest;
+}
+
 
 function buildOrderDispatchMetadata(
     orderId: string,
@@ -583,18 +597,24 @@ export async function createOrder(
         }),
     }));
 
-    const { error: itemsError } = await supabase
+    let { error: itemsError } = await supabase
         .from("order_items")
         .insert(orderItems);
 
+    if (itemsError && isMissingColumnError(itemsError, "custom_position")) {
+        console.warn("[createOrder] custom_position column is unavailable; retrying order_items insert without it.", itemsError);
+        const retry = await supabase
+            .from("order_items")
+            .insert(orderItems.map(omitCustomPosition));
+        itemsError = retry.error;
+    }
+
     if (itemsError) {
         console.error("Order items error:", itemsError);
+        await supabase.from("orders").delete().eq("id", order.id);
         return {
-            success: true,
-            order_number: order.order_number,
-            order_id: order.id,
-            total,
-            warning: "تم إنشاء الطلب لكن بعض العناصر لم تُسجل",
+            success: false,
+            error: "فشل في تسجيل عناصر الطلب. لم يتم تثبيت الطلب، حاول مرة أخرى.",
         };
     }
 

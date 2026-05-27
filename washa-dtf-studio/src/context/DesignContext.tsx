@@ -15,12 +15,15 @@ import {
   type DtfStudioPaletteOption,
   type DtfStudioPositionOption,
   type DtfStudioSizeOption,
-  type PrintPosition,
-  type PrintSize,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { fetchDtfStudioConfig } from '../services/configService';
-import { makeLightEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import { makeEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import {
+  resolvePrintPlacementFromOption,
+  resolvePrintPositionFromDesignPosition,
+  resolvePrintSizeFromDesignPosition,
+} from '../lib/placement';
 
 export interface OrderResult {
   itemTitle: string;
@@ -159,26 +162,6 @@ function isUuid(value: string | null | undefined) {
   return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
 }
 
-function resolveDesignPosition(position: PrintPosition | null | undefined, size: PrintSize | null | undefined) {
-  if (position === 'back') return size === 'small' ? 'back_small' : 'back_large';
-  if (position === 'shoulder_right') return 'logo_right';
-  if (position === 'shoulder_left') return 'logo_left';
-  if (position === 'chest') return size === 'small' ? 'front_small' : 'front_large';
-  return 'front_large';
-}
-
-function resolvePrintPositionFromDesignPosition(designPosition: string): PrintPosition {
-  if (designPosition.startsWith('back')) return 'back';
-  if (designPosition === 'logo_right') return 'shoulder_right';
-  if (designPosition === 'logo_left') return 'shoulder_left';
-  return 'chest';
-}
-
-function resolvePrintSizeFromDesignPosition(designPosition: string): PrintSize {
-  if (designPosition.includes('small') || designPosition.startsWith('logo_')) return 'small';
-  return 'large';
-}
-
 function buildInitialState(config: DtfStudioConfig): DesignState {
   const garment = config.garments[0] || null;
   const color = garment?.colors[0] || null;
@@ -187,8 +170,7 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
   const technique = config.techniques[0] || null;
   const palette = config.palettes[0] || null;
   const printOption = config.positions[0] || null;
-  const printPosition = printOption?.printPosition ?? 'chest';
-  const printSize = printOption?.printSize ?? 'large';
+  const placement = resolvePrintPlacementFromOption(printOption);
 
   return {
     ...EMPTY_STATE,
@@ -205,10 +187,10 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
     technique: technique?.name || '',
     paletteId: palette?.id || null,
     palette: palette?.name || '',
-    designPosition: resolveDesignPosition(printPosition, printSize),
+    designPosition: placement.designPosition,
     printOptionId: printOption?.id ?? null,
-    printPosition,
-    printSize,
+    printPosition: placement.printPosition,
+    printSize: placement.printSize,
     printPositionLabel: printOption?.name ?? 'تصميم أمامي كبير',
   };
 }
@@ -556,7 +538,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       const extracted = await extractDesign(parts.base64, parts.mimeType);
 
       if (extracted) {
-        const printReady = await makeLightEdgeBackgroundTransparent(extracted).catch(() => null);
+        const printReady = await makeEdgeBackgroundTransparent(extracted).catch(() => null);
         setExtractedImage(printReady?.dataUrl ?? extracted);
         showToast('تم استخراج التصميم بنجاح! 🎨', 'success');
       } else {
@@ -599,7 +581,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           if (parts) {
             submitExtractedBg = await extractDesign(parts.base64, parts.mimeType);
             if (submitExtractedBg) {
-              const printReady = await makeLightEdgeBackgroundTransparent(submitExtractedBg).catch(() => null);
+              const printReady = await makeEdgeBackgroundTransparent(submitExtractedBg).catch(() => null);
               submitExtractedBg = printReady?.dataUrl ?? submitExtractedBg;
             }
             if (submitExtractedBg) setExtractedImage(submitExtractedBg);
@@ -610,7 +592,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        // Compress the images to WebP before sending to prevent 413 Content Too Large from Serverless Functions
+        // Keep the mockup compact, but preserve the extracted DTF as transparent PNG.
         const compressedMockup = await resizeDataUrl(mockupImage, {
           maxDimension: 2048,
           quality: 0.8,
@@ -620,9 +602,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
         if (submitExtractedBg) {
           const compressedExtracted = await resizeDataUrl(submitExtractedBg, {
-            maxDimension: 2048,
-            quality: 0.8,
-            outputMimeType: 'image/webp'
+            maxDimension: 4096,
+            quality: 1,
+            outputMimeType: 'image/png'
           });
           submitExtractedBg = compressedExtracted.dataUrl;
         }

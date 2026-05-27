@@ -44,6 +44,7 @@ import type {
     CustomDesignSize,
     CustomDesignStyle,
     CustomDesignArtStyle,
+    CustomDesignPosition,
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
@@ -131,6 +132,7 @@ interface Props {
     garments: CustomDesignGarment[];
     styles: CustomDesignStyle[];
     artStyles: CustomDesignArtStyle[];
+    positions: CustomDesignPosition[];
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
@@ -166,6 +168,7 @@ export function DesignYourPieceWizard({
     garments,
     styles,
     artStyles,
+    positions,
     colorPackages,
     studioItems,
     garmentStudioMockups,
@@ -800,6 +803,7 @@ export function DesignYourPieceWizard({
                         {state.step === 4 && (
                             <StepPrintPlacement
                                 garment={state.garment}
+                                positions={positions}
                                 selectedPosition={state.printPosition}
                                 selectedSize={state.printSize}
                                 onSelectPosition={(p) => setState((s) => ({ ...s, printPosition: p }))}
@@ -1892,8 +1896,9 @@ function getPrintPrice(pricing: any, pos: PrintPosition, sz: PrintSize): number 
 
 import { getGarmentPricing } from "@/app/actions/smart-store";
 
-function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectPosition, onSelectSize, onBack, onNext }: {
+function StepPrintPlacement({ garment, positions, selectedPosition, selectedSize, onSelectPosition, onSelectSize, onBack, onNext }: {
     garment: CustomDesignGarment | null;
+    positions: CustomDesignPosition[];
     selectedPosition: PrintPosition | null;
     selectedSize: PrintSize | null;
     onSelectPosition: (p: PrintPosition) => void;
@@ -1915,46 +1920,120 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
     const currentPrice = selectedPosition && selectedSize && pricing
         ? getPrintPrice(pricing, selectedPosition, selectedSize)
         : null;
+    const useSharedPositionCatalog = positions.length > 0;
+    const selectedSharedPosition = useSharedPositionCatalog
+        ? positions.find((pos) => {
+            const printPosition = pos.print_position ?? "chest";
+            const printSize = pos.print_size ?? "large";
+            return printPosition === selectedPosition && printSize === selectedSize;
+        })
+        : null;
+    const selectedPositionLabel = selectedSharedPosition?.name
+        ?? PRINT_POSITIONS.find(p => p.id === selectedPosition)?.label
+        ?? "الموقع";
+    const selectedSizeLabel = selectedSharedPosition?.print_size
+        ? PRINT_SIZES.find(s => s.id === selectedSharedPosition.print_size)?.label
+        : PRINT_SIZES.find(s => s.id === selectedSize)?.label;
 
     return (
         <>
-            <StepHeader title="موقع وحجم التصميم" desc="حدد مكان التصميم وحجمه على القطعة + شاهد السعر" />
+            <StepHeader title="موقع وحجم التصميم" desc="اختر من نفس مواقع التصميم والأسعار المستخدمة في WASHA AI" />
 
             {/* Position Selector */}
             <div className="mb-6">
                 <p className="text-sm font-bold text-theme mb-3 flex items-center gap-2"><MapPin className="w-4 h-4 text-gold" /> اختر موقع التصميم</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {PRINT_POSITIONS.map((pos) => {
-                        const isActive = selectedPosition === pos.id;
-                        return (
-                            <motion.button
-                                key={pos.id}
-                                whileHover={{ scale: 1.03 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={() => onSelectPosition(pos.id)}
-                                className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
-                                    ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
-                                    : "border-theme-soft hover:border-white/20 bg-theme-faint"
-                                    }`}
-                            >
-                                <div className="text-3xl mb-2">{pos.emoji}</div>
-                                <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme"}`}>{pos.label}</p>
-                                <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
-                                {isActive && (
-                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                                        className="absolute top-2 left-2 w-5 h-5 rounded-full bg-gold flex items-center justify-center">
-                                        <Check className="w-3 h-3 text-bg" />
-                                    </motion.div>
-                                )}
-                            </motion.button>
-                        );
-                    })}
-                </div>
+                {useSharedPositionCatalog ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {positions.map((pos) => {
+                            const printPosition = pos.print_position ?? "chest";
+                            const printSize = pos.print_size ?? "large";
+                            const isActive = selectedPosition === printPosition && selectedSize === printSize;
+                            const price = pricing
+                                ? getPrintPrice(pricing, printPosition, printSize)
+                                : (pos.print_size ? pos.price : pos.price_large);
+                            const sizeLabel = PRINT_SIZES.find(s => s.id === printSize)?.label;
+                            return (
+                                <motion.button
+                                    key={pos.id}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => {
+                                        onSelectPosition(printPosition);
+                                        onSelectSize(printSize);
+                                    }}
+                                    className={`relative grid min-h-[132px] grid-cols-[86px_1fr] gap-3 rounded-2xl border-2 p-3 text-right transition-all ${isActive
+                                        ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
+                                        : "border-theme-soft hover:border-white/20 bg-theme-faint"
+                                        }`}
+                                >
+                                    <div className="h-full overflow-hidden rounded-xl border border-theme-soft bg-theme-subtle">
+                                        {pos.image_url ? (
+                                            <img src={pos.image_url} alt={pos.name} className="h-full min-h-[106px] w-full object-cover" />
+                                        ) : (
+                                            <div className="flex h-full min-h-[106px] items-center justify-center">
+                                                <MapPin className={`h-8 w-8 ${isActive ? "text-gold" : "text-theme-faint"}`} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className={`text-sm font-bold leading-6 ${isActive ? "text-gold" : "text-theme"}`}>{pos.name}</p>
+                                        <p className="mt-1 min-h-[28px] text-[11px] leading-4 text-fg/45 line-clamp-2">{pos.description ?? "موقع تصميم من إعدادات الإدارة المشتركة"}</p>
+                                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                                            {sizeLabel && (
+                                                <span className="rounded-full border border-theme-soft px-2 py-1 text-[10px] text-theme-subtle">{sizeLabel}</span>
+                                            )}
+                                            {!loadingPricing && (
+                                                <span className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme-subtle"}`}>
+                                                    {price > 0 ? `${price} ر.س` : "مجاني"}
+                                                </span>
+                                            )}
+                                            {loadingPricing && <Loader2 className="h-4 w-4 animate-spin text-theme-faint" />}
+                                        </div>
+                                    </div>
+                                    {isActive && (
+                                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                            className="absolute top-3 left-3 flex h-5 w-5 items-center justify-center rounded-full bg-gold">
+                                            <Check className="h-3 w-3 text-bg" />
+                                        </motion.div>
+                                    )}
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {PRINT_POSITIONS.map((pos) => {
+                            const isActive = selectedPosition === pos.id;
+                            return (
+                                <motion.button
+                                    key={pos.id}
+                                    whileHover={{ scale: 1.03 }}
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={() => onSelectPosition(pos.id)}
+                                    className={`relative p-4 rounded-2xl border-2 transition-all text-center ${isActive
+                                        ? "border-gold bg-gold/10 shadow-lg shadow-gold/10"
+                                        : "border-theme-soft hover:border-white/20 bg-theme-faint"
+                                        }`}
+                                >
+                                    <div className="text-3xl mb-2">{pos.emoji}</div>
+                                    <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme"}`}>{pos.label}</p>
+                                    <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
+                                    {isActive && (
+                                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                            className="absolute top-2 left-2 w-5 h-5 rounded-full bg-gold flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-bg" />
+                                        </motion.div>
+                                    )}
+                                </motion.button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Size Selector */}
             <AnimatePresence>
-                {selectedPosition && (
+                {selectedPosition && !useSharedPositionCatalog && (
                     <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
@@ -2021,7 +2100,7 @@ function StepPrintPlacement({ garment, selectedPosition, selectedSize, onSelectP
                             <div>
                                 <p className="text-sm text-theme-subtle">سعر التصميم</p>
                                 <p className="text-xs text-theme-faint mt-0.5">
-                                    {PRINT_POSITIONS.find(p => p.id === selectedPosition)?.label} — {PRINT_SIZES.find(s => s.id === selectedSize)?.label}
+                                    {selectedPositionLabel}{selectedSizeLabel ? ` — ${selectedSizeLabel}` : ""}
                                 </p>
                             </div>
                             <p className="text-2xl font-bold text-gold">{currentPrice > 0 ? `${currentPrice} ر.س` : "مجاني"}</p>

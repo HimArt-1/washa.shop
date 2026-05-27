@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
+import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import type { PrintPosition, PrintSize } from '../../types';
 
 type PositionCard = {
@@ -19,14 +20,6 @@ type PositionCard = {
   icon: ReactNode;
   visual?: (isSelected: boolean) => ReactNode;
 };
-
-function resolveDesignPosition(position: PrintPosition | null | undefined, size: PrintSize | null | undefined) {
-  if (position === 'back') return size === 'small' ? 'back_small' : 'back_large';
-  if (position === 'shoulder_right') return 'logo_right';
-  if (position === 'shoulder_left') return 'logo_left';
-  if (position === 'chest') return size === 'small' ? 'front_small' : 'front_large';
-  return 'front_large';
-}
 
 export default function StepPosition() {
   const { state, updateState, nextStep, prevStep, positionOptions } = useDesign();
@@ -118,17 +111,20 @@ export default function StepPosition() {
   ];
 
   const displayPositions: PositionCard[] = positionOptions.length > 0
-    ? positionOptions.map(p => ({
-        id: p.id,
-        title: p.name,
-        description: p.description,
-        imageUrl: p.imageUrl,
-        designPosition: resolveDesignPosition(p.printPosition, p.printSize),
-        printPosition: p.printPosition ?? 'chest',
-        printSize: p.printSize ?? 'large',
-        price: p.price,
-        icon: <LayoutDashboard className="h-5 w-5" />
-      }))
+    ? positionOptions.map(p => {
+        const placement = resolvePrintPlacementFromOption(p);
+        return {
+          id: p.id,
+          title: p.name,
+          description: p.description,
+          imageUrl: p.imageUrl,
+          designPosition: placement.designPosition,
+          printPosition: placement.printPosition,
+          printSize: placement.printSize,
+          price: p.price,
+          icon: <LayoutDashboard className="h-5 w-5" />
+        };
+      })
     : defaultPositions;
 
   return (

@@ -62,7 +62,7 @@ export async function resizeDataUrl(dataUrl: string, options: ResizeOptions) {
   };
 }
 
-export async function makeLightEdgeBackgroundTransparent(dataUrl: string) {
+export async function makeEdgeBackgroundTransparent(dataUrl: string) {
   const image = await loadImage(dataUrl);
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
@@ -80,19 +80,24 @@ export async function makeLightEdgeBackgroundTransparent(dataUrl: string) {
   const visited = new Uint8Array(width * height);
   const stack: number[] = [];
 
-  const isLightBackground = (index: number) => {
+  const isEdgeBackground = (index: number) => {
     const offset = index * 4;
     const r = data[offset];
     const g = data[offset + 1];
     const b = data[offset + 2];
     const a = data[offset + 3];
-    return a > 0 && r >= 238 && g >= 238 && b >= 238 && Math.max(r, g, b) - Math.min(r, g, b) <= 16;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const isNeutral = max - min <= 18;
+    const isWhiteCanvas = min >= 238;
+    const isCheckerboardGray = isNeutral && max >= 32 && max <= 235;
+    return a > 0 && (isWhiteCanvas || isCheckerboardGray);
   };
 
   const pushIfBackground = (x: number, y: number) => {
     if (x < 0 || y < 0 || x >= width || y >= height) return;
     const index = y * width + x;
-    if (visited[index] || !isLightBackground(index)) return;
+    if (visited[index] || !isEdgeBackground(index)) return;
     visited[index] = 1;
     stack.push(index);
   };

@@ -243,12 +243,22 @@ export async function getColorSizes(garmentId: string, colorId?: string): Promis
     return (data as CustomDesignSize[]) ?? [];
 }
 
+export async function getDesignPositions(): Promise<CustomDesignPosition[]> {
+    const sb = getSmartStoreSb();
+    const { data } = await sb
+        .from("custom_design_positions")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+    return (data as CustomDesignPosition[]) ?? [];
+}
+
 export async function getDesignStyles(): Promise<CustomDesignStyle[]> {
     const sb = getSmartStoreSb();
     const { data } = await sb
         .from("custom_design_styles")
         .select("*")
-        .in("catalog_scope", ["design_piece", "shared"])
+        .in("catalog_scope", ["dtf_studio", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignStyle[]) ?? []).map(normalizeStyleRow);
@@ -259,7 +269,7 @@ export async function getArtStyles(): Promise<CustomDesignArtStyle[]> {
     const { data } = await sb
         .from("custom_design_art_styles")
         .select("*")
-        .in("catalog_scope", ["design_piece", "shared"])
+        .in("catalog_scope", ["dtf_studio", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignArtStyle[]) ?? []).map(normalizeArtStyleRow);
@@ -270,7 +280,7 @@ export async function getColorPackages(): Promise<CustomDesignColorPackage[]> {
     const { data } = await sb
         .from("custom_design_color_packages")
         .select("*")
-        .in("catalog_scope", ["design_piece", "shared"])
+        .in("catalog_scope", ["dtf_studio", "shared"])
         .eq("is_active", true)
         .order("sort_order");
     return ((data as CustomDesignColorPackage[]) ?? []).map(normalizeColorPackageRow);

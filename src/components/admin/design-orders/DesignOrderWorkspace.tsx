@@ -44,6 +44,7 @@ import {
 } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { DesignOrderAdminChat } from "@/components/admin/DesignOrderAdminChat";
+import { downloadTransparentDesignAsPng } from "@/lib/download-design";
 
 type AdminProfile = {
     id: string;
@@ -199,6 +200,7 @@ export function DesignOrderWorkspace({
     const [tokenExpiry, setTokenExpiry] = useState(order.tracker_token_expires_at);
     const [renewingToken, setRenewingToken] = useState(false);
     const [copiedLink, setCopiedLink] = useState(false);
+    const [downloadingDtf, setDownloadingDtf] = useState(false);
 
     const status = statusMeta[currentOrder.status];
     const next = nextStatuses[currentOrder.status] || [];
@@ -421,6 +423,29 @@ export function DesignOrderWorkspace({
             setError("تعذر رفع الملف الآن. حاول مرة أخرى.");
         } finally {
             setUploading(null);
+        }
+    };
+
+    const handleDownloadDtf = async () => {
+        if (!currentOrder.dtf_extracted_url) return;
+
+        setDownloadingDtf(true);
+        setError(null);
+        try {
+            await downloadTransparentDesignAsPng(
+                `/api/dashboard/design-orders/${currentOrder.id}/dtf-download?mode=inline`,
+                `washa-dtf-${currentOrder.order_number}`,
+                {
+                    targetLongEdge: 4096,
+                    maxLongEdge: 8192,
+                    removeEdgeBackground: true,
+                },
+            );
+        } catch (error) {
+            console.error("DTF export failed", error);
+            setError(error instanceof Error ? error.message : "تعذر تصدير ملف DTF الآن.");
+        } finally {
+            setDownloadingDtf(false);
         }
     };
 
@@ -906,37 +931,29 @@ export function DesignOrderWorkspace({
                             {/* Extracted DTF print template */}
                             {currentOrder.dtf_extracted_url ? (
                                 <div className="relative overflow-hidden rounded-2xl border border-gold/20 bg-[color:var(--surface-elevated)]">
-                                    <div className="flex items-center justify-between px-4 py-3 border-b border-gold/15">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex flex-col gap-3 border-b border-gold/15 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
                                             <span className="text-xs font-bold text-gold uppercase tracking-wider">نموذج الطباعة DTF</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-theme-faint">2K Print Ready</span>
-                                            <a
-                                                href={currentOrder.dtf_extracted_url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                download
-                                                className="inline-flex items-center gap-1.5 rounded-lg border border-gold/30 bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold hover:bg-gold/25 transition-colors"
+                                            <span className="text-[10px] text-theme-faint">PNG شفاف · 4K</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleDownloadDtf}
+                                                disabled={downloadingDtf}
+                                                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-gold/30 bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold transition-colors hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
                                             >
-                                                <Download className="h-3 w-3" />
-                                                تحميل ملف DTF
-                                            </a>
+                                                {downloadingDtf ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                                                {downloadingDtf ? "جاري التصدير" : "تحميل ملف DTF"}
+                                            </button>
                                         </div>
                                     </div>
-                                    {/* Checkerboard bg for transparent PNG */}
-                                    <div
-                                        className="flex items-center justify-center p-4 min-h-[200px]"
-                                        style={{
-                                            backgroundImage: "repeating-conic-gradient(#3a3a3a 0% 25%, #2a2a2a 0% 50%)",
-                                            backgroundSize: "20px 20px",
-                                        }}
-                                    >
+                                    <div className="flex min-h-[200px] items-center justify-center bg-transparent p-4">
                                         <img
                                             src={currentOrder.dtf_extracted_url}
                                             alt="DTF Print Template"
-                                            className="max-h-56 max-w-full object-contain drop-shadow-xl"
+                                            className="max-h-56 max-w-full object-contain"
                                         />
                                     </div>
                                 </div>

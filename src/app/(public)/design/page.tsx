@@ -7,6 +7,7 @@ import {
     getActiveGarments,
     getDesignStyles,
     getArtStyles,
+    getDesignPositions,
     getColorPackages,
     getStudioItems,
     getAllGarmentStudioMockups,
@@ -27,10 +28,11 @@ export default async function DesignYourPieceHubPage() {
 
     const washaAiAvailable = isWashaAiRouteAvailable(visibility);
 
-    const [garments, styles, artStyles, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities] = await Promise.all([
+    const [garments, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities] = await Promise.all([
         getActiveGarments(),
         getDesignStyles(),
         getArtStyles(),
+        getDesignPositions(),
         getColorPackages(),
         getStudioItems(),
         getAllGarmentStudioMockups(),
@@ -50,6 +52,7 @@ export default async function DesignYourPieceHubPage() {
                     garments={garments}
                     styles={styles}
                     artStyles={artStyles}
+                    positions={positions}
                     colorPackages={colorPackages}
                     studioItems={studioItems}
                     garmentStudioMockups={garmentStudioMockups}

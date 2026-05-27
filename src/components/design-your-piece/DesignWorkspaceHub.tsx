@@ -9,6 +9,7 @@ import type {
     CustomDesignGarment,
     CustomDesignStyle,
     CustomDesignArtStyle,
+    CustomDesignPosition,
     CustomDesignColorPackage,
     CustomDesignStudioItem,
     GarmentStudioMockup,
@@ -23,6 +24,7 @@ type Props = {
     garments: CustomDesignGarment[];
     styles: CustomDesignStyle[];
     artStyles: CustomDesignArtStyle[];
+    positions: CustomDesignPosition[];
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
@@ -35,6 +37,7 @@ export function DesignWorkspaceHub({
     garments,
     styles,
     artStyles,
+    positions,
     colorPackages,
     studioItems,
     garmentStudioMockups,
@@ -148,6 +151,7 @@ export function DesignWorkspaceHub({
                                 garments={garments}
                                 styles={styles}
                                 artStyles={artStyles}
+                                positions={positions}
                                 colorPackages={colorPackages}
                                 studioItems={studioItems}
                                 garmentStudioMockups={garmentStudioMockups}

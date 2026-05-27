@@ -95,28 +95,35 @@ export async function generateMockup(
     const wearerSide = effectivePrintPosition === 'shoulder_right'
       ? "wearer's right shoulder / right upper chest area"
       : "wearer's left shoulder / left upper chest area";
+    const viewerSide = effectivePrintPosition === 'shoulder_right'
+      ? "viewer-left side of the image"
+      : "viewer-right side of the image";
 
     sceneDirectives = compactPrompt([
-      `Medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
+      `Front-facing medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
       `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo print is placed strictly on the ${wearerSide} of the ${color} ${garmentType}.`,
+      `For a front-facing garment, this should appear on the ${viewerSide}; keep the center chest blank.`,
       `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `The print must be proportional and unmistakably placed on the ${wearerSide}; do not center it on the chest or back.`,
+      `The print must be proportional and unmistakably offset to the ${wearerSide}; do not center it on the chest and do not move it to the back.`,
       preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);
   } else {
-    const side = effectivePrintPosition === 'back' ? 'back' : 'chest/front';
+    const side = effectivePrintPosition === 'back' ? 'back panel / rear side' : 'chest/front';
     const scale = effectivePrintSize === 'large'
       ? 'large and centered, filling roughly 60-70% of the printable area'
       : 'small and neatly placed, filling roughly 20-30% of the printable area';
     const backInstruction = effectivePrintPosition === 'back'
-      ? 'Show the back side of the garment clearly; do not place the artwork on the chest/front.'
-      : 'Show the front side of the garment clearly; do not place the artwork on the back.';
+      ? 'Rear-view mockup only: show the back side of the garment clearly, as if the garment/person is facing away from the camera. Do not show or use the chest/front side.'
+      : 'Front-view mockup only: show the chest/front side of the garment clearly; do not place the artwork on the back.';
 
     sceneDirectives = compactPrompt([
       `Studio mockup of a full ${color} ${garmentType} with one DTF print placed on the ${side}.`,
       `Placement: ${scale}.`,
       backInstruction,
+      effectivePrintPosition === 'back'
+        ? 'The artwork must be on the rear back panel, not on the front chest. The front of the garment must not be visible as the printed side.'
+        : 'The artwork must be on the front chest panel, not on the rear back panel.',
       preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
       `Full garment visible, clean studio background.`,
     ]);
@@ -171,7 +178,7 @@ export async function generateMockup(
 }
 
 export async function extractDesign(mockupImageBase64: string, mimeType: string): Promise<string | null> {
-  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: transparent background with alpha channel, no white background, no colored canvas, no checkerboard pattern, no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean transparent layer, print-ready DTF quality.`;
+  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: transparent background with alpha channel, only the artwork pixels, no simulated transparency, no checkerboard pattern, no white background, no colored canvas, no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean transparent layer, print-ready DTF quality.`;
 
   try {
     const response = await fetch(`${API_BASE_URL}/extract-design`, {
