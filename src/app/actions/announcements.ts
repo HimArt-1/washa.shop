@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import type {
     Announcement,
     AnnouncementEngagementItem,
@@ -17,13 +17,27 @@ import {
 } from "@/lib/announcement-types";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database } from "@/types/database";
+import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+
+const ANNOUNCEMENTS_CACHE_TAG = "announcements";
+const ANNOUNCEMENTS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("ANNOUNCEMENTS_QUERY_TIMEOUT_MS", 800, 500, 10000);
+const ANNOUNCEMENTS_CACHE_REVALIDATE_SECONDS = readPositiveIntegerEnv("ANNOUNCEMENTS_CACHE_REVALIDATE_SECONDS", 120, 10, 3600);
 
 // ─── Admin Supabase Client ──────────────────────────────────
 
-function getAdminSupabase() {
+function hasAdminSupabaseConfig() {
+    return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function getAdminSupabase(options?: { timeoutMs?: number }) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
-    return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, { auth: { persistSession: false } });
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured");
+
+    return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceKey, {
+        auth: { persistSession: false },
+        global: options?.timeoutMs ? { fetch: createTimeoutFetch(options.timeoutMs) } : undefined,
+    });
 }
 
 async function requireAdmin() {
@@ -155,25 +169,29 @@ function validateAnnouncementPayload(data: Omit<Announcement, "id" | "createdAt"
 }
 
 function revalidateAnnouncementSurfaces() {
+    revalidateTag(ANNOUNCEMENTS_CACHE_TAG);
     revalidatePath("/dashboard/announcements");
     revalidatePath("/", "layout");
 }
 
 // ─── GET Announcements ──────────────────────────────────────
 
-export async function getAnnouncements(): Promise<Announcement[]> {
-    // Check if Supabase is configured before attempting to use it
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+async function getAnnouncementsUncached(): Promise<Announcement[]> {
+    if (!hasAdminSupabaseConfig()) {
         return [];
     }
 
     try {
-        const supabase = getAdminSupabase();
-        const { data } = await supabase
-            .from("site_settings")
-            .select("value")
-            .eq("key", "announcements")
-            .maybeSingle();
+        const supabase = getAdminSupabase({ timeoutMs: ANNOUNCEMENTS_QUERY_TIMEOUT_MS });
+        const { data } = await withTimeout(
+            supabase
+                .from("site_settings")
+                .select("value")
+                .eq("key", "announcements")
+                .maybeSingle(),
+            ANNOUNCEMENTS_QUERY_TIMEOUT_MS + 250,
+            "getAnnouncements"
+        );
 
         const raw = data?.value;
         if (!raw || !Array.isArray(raw)) return [];
@@ -184,10 +202,18 @@ export async function getAnnouncements(): Promise<Announcement[]> {
             trigger: a.trigger || DEFAULT_TRIGGER,
         })) as Announcement[];
     } catch (error) {
-        // Return empty array if Supabase is not configured (development mode)
-        console.warn("getAnnouncements: Supabase not configured, returning empty array");
+        console.warn("getAnnouncements: returning empty array after lookup failed", error);
         return [];
     }
+}
+
+const getCachedAnnouncements = unstable_cache(getAnnouncementsUncached, [ANNOUNCEMENTS_CACHE_TAG], {
+    revalidate: ANNOUNCEMENTS_CACHE_REVALIDATE_SECONDS,
+    tags: [ANNOUNCEMENTS_CACHE_TAG],
+});
+
+export async function getAnnouncements(): Promise<Announcement[]> {
+    return getCachedAnnouncements();
 }
 
 // ─── GET Active Public Announcements ────────────────────────
@@ -210,7 +236,7 @@ export async function createAnnouncement(data: Omit<Announcement, "id" | "create
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const existing = await getAnnouncements();
+    const existing = await getAnnouncementsUncached();
     const normalized = normalizeAnnouncementPayload(data);
     const validationError = validateAnnouncementPayload(normalized);
     if (validationError) return { success: false, error: validationError };
@@ -242,7 +268,7 @@ export async function updateAnnouncement(id: string, updates: Partial<Omit<Annou
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const existing = await getAnnouncements();
+    const existing = await getAnnouncementsUncached();
     const index = existing.findIndex((a) => a.id === id);
     if (index === -1) return { success: false, error: "الإعلان غير موجود" };
 
@@ -271,7 +297,7 @@ export async function deleteAnnouncement(id: string) {
     await requireAdmin();
     const supabase = getAdminSupabase();
 
-    const existing = await getAnnouncements();
+    const existing = await getAnnouncementsUncached();
     const updated = existing.filter((a) => a.id !== id);
 
     const { error } = await supabase
@@ -290,7 +316,7 @@ export async function deleteAnnouncement(id: string) {
 // ─── TOGGLE Active ──────────────────────────────────────────
 
 export async function toggleAnnouncementActive(id: string) {
-    const existing = await getAnnouncements();
+    const existing = await getAnnouncementsUncached();
     const announcement = existing.find((a) => a.id === id);
     if (!announcement) return { success: false, error: "غير موجود" };
 

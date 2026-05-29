@@ -10,9 +10,12 @@ export default async function Home() {
     const v = settings.visibility;
     const showWashaAiButton = (v.hero_washa_ai_button ?? true) && isWashaAiRouteAvailable(v);
     const heroBackgroundMode = process.env.HERO_BACKGROUND_MODE === "video" ? "video" : "shader";
+    const showStore = Boolean(v.store);
+    const showAiSection = settings.visibility.ai_section !== false;
+    const showFlowStack = showStore || showAiSection;
 
     return (
-        <PublicPageWrapper>
+        <PublicPageWrapper visibility={v}>
             <div className="relative">
                 <Hero
                     backgroundMode={heroBackgroundMode}
@@ -20,10 +23,19 @@ export default async function Home() {
                     showWashaAiButton={showWashaAiButton}
                     showJoinArtistButton={settings.visibility.hero_join_artist_button}
                 />
-                {v.store ? <Store /> : null}
-                {settings.visibility.ai_section !== false && (
-                    <AISection config={settings.ai_simulation} />
-                )}
+                {showFlowStack ? (
+                    <div className="home-flow-stack">
+                        <div className="home-section-smoke home-flow-stack-smoke" aria-hidden="true">
+                            <span />
+                            <span />
+                            <span />
+                        </div>
+                        {showStore ? <Store /> : null}
+                        {showAiSection ? (
+                            <AISection config={settings.ai_simulation} />
+                        ) : null}
+                    </div>
+                ) : null}
             </div>
         </PublicPageWrapper>
     );

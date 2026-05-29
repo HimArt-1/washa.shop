@@ -92,19 +92,23 @@ export async function generateMockup(
 
   let sceneDirectives = '';
   if (effectivePrintPosition === 'shoulder_right' || effectivePrintPosition === 'shoulder_left') {
-    const wearerSide = effectivePrintPosition === 'shoulder_right'
-      ? "wearer's right shoulder / right upper chest area"
-      : "wearer's left shoulder / left upper chest area";
-    const viewerSide = effectivePrintPosition === 'shoulder_right'
-      ? "viewer-left side of the image"
-      : "viewer-right side of the image";
+    const imageSide = effectivePrintPosition === 'shoulder_right'
+      ? 'RIGHT side of the image / viewer-right upper chest'
+      : 'LEFT side of the image / viewer-left upper chest';
+    const forbiddenSide = effectivePrintPosition === 'shoulder_right'
+      ? 'left side'
+      : 'right side';
+    const placementCode = effectivePrintPosition === 'shoulder_right'
+      ? 'LOGO_ON_IMAGE_RIGHT'
+      : 'LOGO_ON_IMAGE_LEFT';
 
     sceneDirectives = compactPrompt([
       `Front-facing medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
-      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo print is placed strictly on the ${wearerSide} of the ${color} ${garmentType}.`,
-      `For a front-facing garment, this should appear on the ${viewerSide}; keep the center chest blank.`,
+      `Placement code: ${placementCode}.`,
+      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo print is placed strictly on the ${imageSide} of the ${color} ${garmentType}.`,
+      `Use screen/image coordinates only: image right means the viewer's right side, image left means the viewer's left side.`,
       `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `The print must be proportional and unmistakably offset to the ${wearerSide}; do not center it on the chest and do not move it to the back.`,
+      `Keep the center chest blank. Do not place the logo on the ${forbiddenSide}, do not center it on the chest, and do not move it to the back.`,
       preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);

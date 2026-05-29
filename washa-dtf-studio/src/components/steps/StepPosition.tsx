@@ -96,7 +96,7 @@ export default function StepPosition() {
       printPosition: 'shoulder_right',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
     {
       id: 'logo_left',
@@ -106,7 +106,7 @@ export default function StepPosition() {
       printPosition: 'shoulder_left',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
   ];
 

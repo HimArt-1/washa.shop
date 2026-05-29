@@ -28,6 +28,8 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
   const items = useCartStore((s) => s.items);
   const cartCount = items.reduce((a, b) => a + b.quantity, 0);
   const lastScrollY = useRef(0);
+  const scrollFrame = useRef<number | null>(null);
+  const scrollState = useRef({ isScrolled: false, isHidden: false });
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -58,24 +60,39 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
     pathname === href || pathname.startsWith(`${href}/`);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const updateHeaderState = () => {
+      scrollFrame.current = null;
       const currentY = window.scrollY;
       const scrollingDown = currentY > lastScrollY.current;
+      const nextScrolled = currentY > 50;
+      const nextHidden = currentY > 100 ? scrollingDown : false;
 
-      setIsScrolled(currentY > 50);
+      if (scrollState.current.isScrolled !== nextScrolled) {
+        scrollState.current.isScrolled = nextScrolled;
+        setIsScrolled(nextScrolled);
+      }
 
-      // Hide header when scrolling down past 100px, show when scrolling up
-      if (currentY > 100) {
-        setIsHidden(scrollingDown);
-      } else {
-        setIsHidden(false);
+      if (scrollState.current.isHidden !== nextHidden) {
+        scrollState.current.isHidden = nextHidden;
+        setIsHidden(nextHidden);
       }
 
       lastScrollY.current = currentY;
     };
 
+    const handleScroll = () => {
+      if (scrollFrame.current !== null) return;
+      scrollFrame.current = window.requestAnimationFrame(updateHeaderState);
+    };
+
+    updateHeaderState();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (scrollFrame.current !== null) {
+        window.cancelAnimationFrame(scrollFrame.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -115,6 +132,11 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
     menuBackdrop: "var(--header-menu-backdrop)",
     menuCardGradient: "var(--header-menu-card-gradient)",
     menuCardShadow: "var(--header-menu-card-shadow)",
+    logoTone: "var(--header-logo-tone)",
+    ctaBg: "var(--header-cta-bg)",
+    ctaText: "var(--header-cta-text)",
+    ctaBorder: "var(--header-cta-border)",
+    ctaShadow: "var(--header-cta-shadow)",
     clerkSecondary: "var(--clerk-secondary-text)",
   };
 
@@ -153,12 +175,18 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
             )}
             {/* Logo — دائماً ظاهر وواضح */}
             <div className="relative z-[110] flex-shrink-0">
-              <Logo size="sm" className="block" />
+              <Logo
+                size="sm"
+                src="/header-logo-identity.png"
+                aspectRatio={1017 / 888}
+                toneColor={headerTokens.logoTone}
+                className="block"
+              />
             </div>
 
             {/* Desktop Navigation */}
             <nav
-              className="hidden md:flex items-center justify-center gap-5 lg:gap-7 flex-1 max-w-2xl mx-6 rounded-full border px-5 py-2.5"
+              className="hidden md:flex items-center justify-center gap-5 lg:gap-7 flex-1 max-w-3xl mx-6 rounded-full border px-6 py-3"
               style={{
                 backgroundColor: headerTokens.chipBg,
                 borderColor: headerTokens.chipBorder,
@@ -167,7 +195,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               {filteredNavItems.map((item, index) => (
                 <Link key={item.href} href={item.href} className="group">
                   <motion.span
-                    className={`relative inline-block rounded-full px-3 py-2 text-sm font-medium transition-colors duration-300 ${
+                    className={`relative inline-block rounded-full px-4 py-2.5 text-[15px] font-bold leading-none transition-colors duration-300 lg:text-base ${
                       isNavItemActive(item.href)
                         ? "text-[var(--wusha-gold)]"
                         : "group-hover:text-[var(--wusha-gold)]"
@@ -233,7 +261,16 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                   </div>
                   
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Link href="/account" className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer">
+                    <Link
+                      href="/account"
+                      className="flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-transform duration-300 hover:-translate-y-0.5"
+                      style={{
+                        background: headerTokens.ctaBg,
+                        border: `1px solid ${headerTokens.ctaBorder}`,
+                        boxShadow: headerTokens.ctaShadow,
+                        color: headerTokens.ctaText,
+                      }}
+                    >
                       <User className="w-4 h-4" />
                       حسابي
                     </Link>
@@ -269,7 +306,16 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
               <SignedOut>
                 {visibility?.hero_auth_buttons !== false && (
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Link href="/sign-in" className="btn-gold text-sm py-2.5 px-5 flex items-center gap-2 cursor-pointer">
+                    <Link
+                      href="/sign-in"
+                      className="flex cursor-pointer items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-transform duration-300 hover:-translate-y-0.5"
+                      style={{
+                        background: headerTokens.ctaBg,
+                        border: `1px solid ${headerTokens.ctaBorder}`,
+                        boxShadow: headerTokens.ctaShadow,
+                        color: headerTokens.ctaText,
+                      }}
+                    >
                       <User className="w-4 h-4" />
                       تسجيل الدخول
                     </Link>
@@ -551,9 +597,19 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.25 }}
                     >
-                      <Link href="/sign-in" onClick={() => setIsMobileMenuOpen(false)} className="btn-gold flex items-center gap-2 cursor-pointer py-3 px-6">
-                          <User className="w-5 h-5" />
-                          تسجيل الدخول
+                      <Link
+                        href="/sign-in"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-6 py-3 font-bold"
+                        style={{
+                          background: headerTokens.ctaBg,
+                          border: `1px solid ${headerTokens.ctaBorder}`,
+                          boxShadow: headerTokens.ctaShadow,
+                          color: headerTokens.ctaText,
+                        }}
+                      >
+                        <User className="w-5 h-5" />
+                        تسجيل الدخول
                       </Link>
                     </motion.div>
                   )}

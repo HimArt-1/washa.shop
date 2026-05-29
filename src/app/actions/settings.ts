@@ -11,18 +11,42 @@ import {
     type OperationalRulesConfig,
 } from "@/lib/operational-rules";
 import { getInventoryWithSales } from "@/app/actions/erp/inventory";
+import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+
+const SITE_SETTINGS_CACHE_TAG = "site-settings";
+const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
+const SITE_SETTINGS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("SITE_SETTINGS_QUERY_TIMEOUT_MS", 1200, 500, 10000);
+const SITE_SETTINGS_CACHE_REVALIDATE_SECONDS = readPositiveIntegerEnv("SITE_SETTINGS_CACHE_REVALIDATE_SECONDS", 120, 10, 3600);
 
 // ─── Admin Supabase Client ──────────────────────────────────
 
-function getAdminSupabase() {
+function hasAdminSupabaseConfig() {
+    return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function getAdminSupabase(options?: { timeoutMs?: number }) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!serviceKey) {
         throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured — admin operations require the service role key.");
     }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        throw new Error("NEXT_PUBLIC_SUPABASE_URL is not configured.");
+    }
+
+    const clientOptions: Parameters<typeof createClient>[2] = {
+        auth: { persistSession: false },
+    };
+
+    if (options?.timeoutMs) {
+        clientOptions.global = {
+            fetch: createTimeoutFetch(options.timeoutMs),
+        };
+    }
+
     return createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
         serviceKey,
-        { auth: { persistSession: false } }
+        clientOptions
     );
 }
 
@@ -312,21 +336,100 @@ function collectChangedRuleKeys(before: OperationalRulesConfig, after: Operation
     return changedKeys;
 }
 
+function buildSiteSettings(settings: Record<string, any>): SiteSettingsType {
+    const visibility = normalizeVisibilitySettings(settings.visibility);
+    const washaAi = settings.washa_ai || {};
+    const cp = settings.creation_prices || {};
+    const pi = settings.product_identifiers || {};
+    const aiSim = settings.ai_simulation || {};
+
+    return {
+        visibility,
+        washa_ai: {
+            dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
+                washaAi.dtf_daily_quota_limit,
+                DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5
+            ),
+        },
+        site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
+        shipping: {
+            flat_rate: Number(settings.shipping?.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
+            free_above: Number(settings.shipping?.free_above ?? DEFAULT_SITE_SETTINGS.shipping.free_above),
+            tax_rate: Number(settings.shipping?.tax_rate ?? DEFAULT_SITE_SETTINGS.shipping.tax_rate),
+            shipping_enabled: coerceBooleanSetting(
+                settings.shipping?.shipping_enabled,
+                DEFAULT_SITE_SETTINGS.shipping.shipping_enabled ?? true
+            ),
+            tax_enabled: coerceBooleanSetting(
+                settings.shipping?.tax_enabled,
+                DEFAULT_SITE_SETTINGS.shipping.tax_enabled ?? true
+            ),
+        },
+        creation_prices: {
+            tshirt: cp.tshirt ?? DEFAULT_SITE_SETTINGS.creation_prices?.tshirt ?? 89,
+            hoodie: cp.hoodie ?? DEFAULT_SITE_SETTINGS.creation_prices?.hoodie ?? 149,
+            pullover: cp.pullover ?? DEFAULT_SITE_SETTINGS.creation_prices?.pullover ?? 129,
+        },
+        product_identifiers: {
+            prefix: pi.prefix ?? DEFAULT_SITE_SETTINGS.product_identifiers?.prefix ?? "WSH",
+            product_code_template: pi.product_code_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.product_code_template ?? "{PREFIX}-{SEQ:5}",
+            sku_template: pi.sku_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
+            type_map: pi.type_map ?? DEFAULT_SITE_SETTINGS.product_identifiers?.type_map ?? { print: "P", apparel: "T", digital: "D", nft: "N", original: "O" },
+        },
+        ai_simulation: {
+            step1_image: aiSim.step1_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_image ?? "",
+            step1_color_name: aiSim.step1_color_name ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_color_name ?? "",
+            step1_pattern: aiSim.step1_pattern ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_pattern ?? "",
+            step2_prompt: aiSim.step2_prompt ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_prompt ?? "",
+            step2_art_style: aiSim.step2_art_style ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_art_style ?? "",
+            step2_result_image: aiSim.step2_result_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_result_image ?? "",
+            step3_final_image: aiSim.step3_final_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step3_final_image ?? "",
+        },
+        brand_assets: {
+            business_card_name: settings.brand_assets?.business_card_name ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_name ?? "",
+            business_card_title: settings.brand_assets?.business_card_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_title ?? "",
+            business_card_phone: settings.brand_assets?.business_card_phone ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_phone ?? "",
+            business_card_email: settings.brand_assets?.business_card_email ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_email ?? "",
+            business_card_website: settings.brand_assets?.business_card_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_website ?? "",
+            thank_you_title: settings.brand_assets?.thank_you_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_title ?? "",
+            thank_you_message: settings.brand_assets?.thank_you_message ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_message ?? "",
+            thank_you_handle: settings.brand_assets?.thank_you_handle ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_handle ?? "",
+            social_instagram: settings.brand_assets?.social_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_instagram ?? "",
+            social_twitter: settings.brand_assets?.social_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_twitter ?? "",
+            social_tiktok: settings.brand_assets?.social_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_tiktok ?? "",
+            social_snapchat: settings.brand_assets?.social_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_snapchat ?? "",
+            social_whatsapp: settings.brand_assets?.social_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_whatsapp ?? "",
+            linktree_title: settings.brand_assets?.linktree_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_title ?? "",
+            linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_subtitle ?? "",
+            show_instagram: settings.brand_assets?.show_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_instagram ?? true,
+            show_twitter: settings.brand_assets?.show_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_twitter ?? true,
+            show_tiktok: settings.brand_assets?.show_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_tiktok ?? true,
+            show_snapchat: settings.brand_assets?.show_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_snapchat ?? true,
+            show_whatsapp: settings.brand_assets?.show_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_whatsapp ?? true,
+            show_website: settings.brand_assets?.show_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_website ?? true,
+        },
+        operational_rules: normalizeOperationalRules(settings.operational_rules),
+    };
+}
+
 // ═══════════════════════════════════════════════════════════
 //  GET ALL SETTINGS
 // ═══════════════════════════════════════════════════════════
 
-export async function getSiteSettings() {
-    // Check if Supabase is configured before attempting to use it
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+async function getSiteSettingsUncached() {
+    if (!hasAdminSupabaseConfig()) {
         return DEFAULT_SITE_SETTINGS;
     }
-    
+
     try {
-        const supabase = getAdminSupabase();
-        const { data, error } = await supabase
-            .from("site_settings")
-            .select("key, value");
+        const supabase = getAdminSupabase({ timeoutMs: SITE_SETTINGS_QUERY_TIMEOUT_MS });
+        const { data, error } = await withTimeout(
+            supabase
+                .from("site_settings")
+                .select("key, value"),
+            SITE_SETTINGS_QUERY_TIMEOUT_MS + 250,
+            "getSiteSettings"
+        );
 
         if (error || !data) {
             return DEFAULT_SITE_SETTINGS;
@@ -334,86 +437,23 @@ export async function getSiteSettings() {
 
         const settings: Record<string, any> = {};
         for (const row of data) {
-        settings[row.key] = row.value;
+            settings[row.key] = row.value;
         }
 
-        const visibility = normalizeVisibilitySettings(settings.visibility);
-        const washaAi = settings.washa_ai || {};
-        const cp = settings.creation_prices || {};
-        const pi = settings.product_identifiers || {};
-        const aiSim = settings.ai_simulation || {};
-
-        return {
-            visibility,
-            washa_ai: {
-                dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
-                    washaAi.dtf_daily_quota_limit,
-                    DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5
-                ),
-            },
-            site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
-            shipping: {
-                flat_rate: Number(settings.shipping?.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
-                free_above: Number(settings.shipping?.free_above ?? DEFAULT_SITE_SETTINGS.shipping.free_above),
-                tax_rate: Number(settings.shipping?.tax_rate ?? DEFAULT_SITE_SETTINGS.shipping.tax_rate),
-                shipping_enabled: coerceBooleanSetting(
-                    settings.shipping?.shipping_enabled,
-                    DEFAULT_SITE_SETTINGS.shipping.shipping_enabled ?? true
-                ),
-                tax_enabled: coerceBooleanSetting(
-                    settings.shipping?.tax_enabled,
-                    DEFAULT_SITE_SETTINGS.shipping.tax_enabled ?? true
-                ),
-            },
-            creation_prices: {
-                tshirt: cp.tshirt ?? DEFAULT_SITE_SETTINGS.creation_prices?.tshirt ?? 89,
-                hoodie: cp.hoodie ?? DEFAULT_SITE_SETTINGS.creation_prices?.hoodie ?? 149,
-                pullover: cp.pullover ?? DEFAULT_SITE_SETTINGS.creation_prices?.pullover ?? 129,
-            },
-            product_identifiers: {
-                prefix: pi.prefix ?? DEFAULT_SITE_SETTINGS.product_identifiers?.prefix ?? "WSH",
-                product_code_template: pi.product_code_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.product_code_template ?? "{PREFIX}-{SEQ:5}",
-                sku_template: pi.sku_template ?? DEFAULT_SITE_SETTINGS.product_identifiers?.sku_template ?? "{PREFIX}-{TYPE}-{SEQ:5}-{SIZE}-{COLOR}",
-                type_map: pi.type_map ?? DEFAULT_SITE_SETTINGS.product_identifiers?.type_map ?? { print: "P", apparel: "T", digital: "D", nft: "N", original: "O" },
-            },
-            ai_simulation: {
-                step1_image: aiSim.step1_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_image ?? "",
-                step1_color_name: aiSim.step1_color_name ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_color_name ?? "",
-                step1_pattern: aiSim.step1_pattern ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step1_pattern ?? "",
-                step2_prompt: aiSim.step2_prompt ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_prompt ?? "",
-                step2_art_style: aiSim.step2_art_style ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_art_style ?? "",
-                step2_result_image: aiSim.step2_result_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step2_result_image ?? "",
-                step3_final_image: aiSim.step3_final_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step3_final_image ?? "",
-            },
-            brand_assets: {
-                business_card_name: settings.brand_assets?.business_card_name ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_name ?? "",
-                business_card_title: settings.brand_assets?.business_card_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_title ?? "",
-                business_card_phone: settings.brand_assets?.business_card_phone ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_phone ?? "",
-                business_card_email: settings.brand_assets?.business_card_email ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_email ?? "",
-                business_card_website: settings.brand_assets?.business_card_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_website ?? "",
-                thank_you_title: settings.brand_assets?.thank_you_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_title ?? "",
-                thank_you_message: settings.brand_assets?.thank_you_message ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_message ?? "",
-                thank_you_handle: settings.brand_assets?.thank_you_handle ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_handle ?? "",
-                social_instagram: settings.brand_assets?.social_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_instagram ?? "",
-                social_twitter: settings.brand_assets?.social_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_twitter ?? "",
-                social_tiktok: settings.brand_assets?.social_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_tiktok ?? "",
-                social_snapchat: settings.brand_assets?.social_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_snapchat ?? "",
-                social_whatsapp: settings.brand_assets?.social_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_whatsapp ?? "",
-                linktree_title: settings.brand_assets?.linktree_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_title ?? "",
-                linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_subtitle ?? "",
-                show_instagram: settings.brand_assets?.show_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_instagram ?? true,
-                show_twitter: settings.brand_assets?.show_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_twitter ?? true,
-                show_tiktok: settings.brand_assets?.show_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_tiktok ?? true,
-                show_snapchat: settings.brand_assets?.show_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_snapchat ?? true,
-                show_whatsapp: settings.brand_assets?.show_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_whatsapp ?? true,
-                show_website: settings.brand_assets?.show_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_website ?? true,
-            },
-            operational_rules: normalizeOperationalRules(settings.operational_rules),
-        };
+        return buildSiteSettings(settings);
     } catch (error) {
-        console.warn("getSiteSettings: Supabase not configured, returning defaults");
+        console.warn("getSiteSettings: returning defaults after settings lookup failed", error);
         return DEFAULT_SITE_SETTINGS;
     }
+}
+
+const getCachedSiteSettings = unstable_cache(getSiteSettingsUncached, [SITE_SETTINGS_CACHE_TAG], {
+    revalidate: SITE_SETTINGS_CACHE_REVALIDATE_SECONDS,
+    tags: [SITE_SETTINGS_CACHE_TAG],
+});
+
+export async function getSiteSettings() {
+    return getCachedSiteSettings();
 }
 
 export async function getOperationalRulesDiagnostics(): Promise<OperationalRulesDiagnostics> {
@@ -706,37 +746,12 @@ export async function getOperationalRulesDiagnostics(): Promise<OperationalRules
 // ─── أسعار القطع (للتصميم — بدون صلاحية أدمن) ───
 
 export async function getCreationPrices() {
-    // Check if Supabase is configured before attempting to use it
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return {
-            tshirt: 89,
-            hoodie: 149,
-            pullover: 129,
-        };
-    }
-    
-    try {
-        const supabase = getAdminSupabase();
-        const { data } = await supabase
-            .from("site_settings")
-            .select("value")
-            .eq("key", "creation_prices")
-            .maybeSingle();
-
-        const p = (data as { value?: Record<string, number> } | null)?.value;
-        return {
-            tshirt: p?.tshirt ?? 89,
-            hoodie: p?.hoodie ?? 149,
-            pullover: p?.pullover ?? 129,
-        };
-    } catch (error) {
-        // Return defaults if Supabase is not configured
-        return {
-            tshirt: 89,
-            hoodie: 149,
-            pullover: 129,
-        };
-    }
+    const settings = await getSiteSettings();
+    return {
+        tshirt: settings.creation_prices?.tshirt ?? 89,
+        hoodie: settings.creation_prices?.hoodie ?? 149,
+        pullover: settings.creation_prices?.pullover ?? 129,
+    };
 }
 
 export async function getWashaAiSettings() {
@@ -744,59 +759,20 @@ export async function getWashaAiSettings() {
         dtf_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5,
     };
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return fallback;
-    }
-
-    try {
-        const supabase = getAdminSupabase();
-        const { data } = await supabase
-            .from("site_settings")
-            .select("value")
-            .eq("key", "washa_ai")
-            .maybeSingle();
-
-        const raw = (data as { value?: Record<string, unknown> } | null)?.value;
-
-        return {
-            dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
-                raw?.dtf_daily_quota_limit,
-                fallback.dtf_daily_quota_limit
-            ),
-        };
-    } catch {
-        return fallback;
-    }
+    const settings = await getSiteSettings();
+    return {
+        dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            settings.washa_ai?.dtf_daily_quota_limit,
+            fallback.dtf_daily_quota_limit
+        ),
+    };
 }
 
 // ─── Public visibility (للصفحات العامة — بدون صلاحية أدمن) ───
 
-async function getPublicVisibilityUncached(): Promise<SiteSettingsType["visibility"]> {
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        return normalizeVisibilitySettings(null);
-    }
-
-    try {
-        const supabase = getAdminSupabase();
-        const { data } = await supabase
-            .from("site_settings")
-            .select("value")
-            .eq("key", "visibility")
-            .maybeSingle();
-
-        const visibility = (data as { value?: Record<string, unknown> } | null)?.value;
-        return normalizeVisibilitySettings(visibility);
-    } catch {
-        return normalizeVisibilitySettings(null);
-    }
-}
-
-/** تخزين مؤقت لتقليل استعلامات Supabase على كل طلب (تحسين TTFB للصفحات العامة) */
 export async function getPublicVisibility() {
-    return unstable_cache(getPublicVisibilityUncached, ["public-visibility"], {
-        revalidate: 120,
-        tags: ["public-visibility"],
-    })();
+    const settings = await getSiteSettings();
+    return settings.visibility;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -832,8 +808,9 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
         return { success: false, error: error.message };
     }
 
+    revalidateTag(SITE_SETTINGS_CACHE_TAG);
     if (key === "visibility") {
-        revalidateTag("public-visibility");
+        revalidateTag(PUBLIC_VISIBILITY_CACHE_TAG);
     }
 
     if (key === "operational_rules" && changedRuleKeys.length > 0) {

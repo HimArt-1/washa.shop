@@ -233,6 +233,7 @@ export default function StepResult() {
   const isLightColor = LIGHT_GARMENT_COLORS.includes(state.garmentColor);
 
   const handleConfirmOrder = () => setShowTerms(true);
+  const handleEditOptions = () => setStep(5);
   const handleAcceptTerms = async () => {
     const success = await submitOrder();
     if (success) setShowTerms(false);
@@ -382,7 +383,7 @@ export default function StepResult() {
               <p className="text-sm text-washa-text-sec max-w-md">{error}</p>
             </div>
             <div className="flex gap-3">
-              <Button variant="ghost" onClick={() => setStep(6)} className="gap-2 rounded-xl">
+              <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
               <Button variant="gold" onClick={resetDesign} className="gap-2 rounded-xl">
@@ -501,7 +502,7 @@ export default function StepResult() {
 
             {/* ── Footer navigation ── */}
             <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={() => setStep(6)} className="gap-2 rounded-xl hover:bg-washa-gold/5">
+              <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl hover:bg-washa-gold/5">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
               <Button variant="outline" onClick={resetDesign} className="gap-2 rounded-xl">

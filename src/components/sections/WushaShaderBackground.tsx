@@ -23,11 +23,13 @@ type ShaderPalette = {
 
 const MAX_CLICKS = 6;
 const CLICK_LIFETIME_MS = 3500;
+const SHADER_FRAME_INTERVAL_MS = 1000 / 30;
+const LOGO_INK: Rgb = [0.106, 0.031, 0.031];
 const DEFAULT_PALETTE: ShaderPalette = {
-  base: [0.102, 0.173, 0.251],
-  accent: [0.706, 0.216, 0.145],
-  highlight: [0.98, 0.953, 0.902],
-  warm: [0.85, 0.38, 0.28],
+  base: [0.027, 0.024, 0.024],
+  accent: LOGO_INK,
+  highlight: [0.294, 0.22, 0.176],
+  warm: [0.157, 0.063, 0.059],
 };
 
 const VERTEX_SHADER_SOURCE = `
@@ -105,11 +107,11 @@ void main() {
   vec3 c2 = u_highlight_color;
   vec3 c3 = u_warm_color;
 
-  vec3 col = mix(c0, c1, f1);
-  col = mix(col, c2, clamp(f1 * f2 * 1.6, 0.0, 1.0));
-  col = mix(col, c3, smoothstep(0.58, 1.0, f2) * 0.55);
-  col += u_highlight_color * 0.05 / (dist + 0.025);
-  col = pow(max(col, vec3(0.0)), vec3(0.88));
+  vec3 col = mix(c0, c1, f1 * 0.86);
+  col = mix(col, c2, clamp(f1 * f2 * 0.62, 0.0, 1.0));
+  col = mix(col, c3, smoothstep(0.64, 1.0, f2) * 0.18);
+  col += u_highlight_color * 0.022 / (dist + 0.035);
+  col = pow(max(col, vec3(0.0)), vec3(1.02));
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -226,25 +228,22 @@ function readThemePalette(probe: HTMLSpanElement): ShaderPalette {
     resolveCssColor(probe, rootStyle.getPropertyValue(name).trim(), fallback);
 
   const bg = read("--wusha-bg", DEFAULT_PALETTE.base);
-  const surface = read("--wusha-surface", DEFAULT_PALETTE.highlight);
-  const earth = read("--wusha-earth", [0.353, 0.243, 0.169]);
+  const logoInk = read("--hero-logo-ink", LOGO_INK);
+  const shaderBase = read("--hero-shader-base", DEFAULT_PALETTE.base);
+  const shaderAccent = read("--hero-shader-accent", LOGO_INK);
+  const shaderHighlight = read("--hero-shader-highlight", DEFAULT_PALETTE.highlight);
+  const shaderWarm = read("--hero-shader-warm", DEFAULT_PALETTE.warm);
   const gold = read("--wusha-gold", [0.604, 0.482, 0.239]);
   const goldLight = read("--wusha-gold-light", [0.722, 0.588, 0.31]);
   const lightMode = luminance(bg) > 0.55;
 
   return {
     base: lightMode
-      ? mixColor(shadeColor(earth, 0.34), shadeColor(bg, 0.18), 0.24)
-      : mixColor(bg, shadeColor(earth, 0.36), 0.28),
-    accent: lightMode
-      ? mixColor(earth, gold, 0.34)
-      : mixColor(gold, earth, 0.45),
-    highlight: lightMode
-      ? mixColor(surface, goldLight, 0.36)
-      : mixColor(goldLight, surface, 0.18),
-    warm: lightMode
-      ? mixColor(goldLight, gold, 0.48)
-      : mixColor(goldLight, gold, 0.35),
+      ? mixColor(shaderBase, bg, 0.08)
+      : mixColor(shaderBase, shadeColor(bg, 0.42), 0.1),
+    accent: mixColor(shaderAccent, logoInk, lightMode ? 0.08 : 0.34),
+    highlight: mixColor(shaderHighlight, goldLight, lightMode ? 0.12 : 0.08),
+    warm: mixColor(shaderWarm, gold, lightMode ? 0.18 : 0.06),
   };
 }
 
@@ -322,7 +321,11 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
     let width = 0;
     let height = 0;
     let dpr = 1;
-    let frameId = 0;
+    let frameId: number | null = null;
+    let frameTimerId: number | null = null;
+    let lastDrawAt = 0;
+    let isActive = true;
+    let isPageVisible = document.visibilityState === "visible";
     let clickWaves: ClickWave[] = [];
     const startedAt = performance.now();
     const mouse = {
@@ -345,13 +348,18 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
     });
 
     const resize = () => {
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = Math.max(1, Math.floor(window.innerWidth * dpr));
-      height = Math.max(1, Math.floor(window.innerHeight * dpr));
-      canvas.width = width;
-      canvas.height = height;
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
+      const bounds = canvas.parentElement?.getBoundingClientRect();
+      const cssWidth = Math.max(1, Math.ceil(bounds?.width || window.innerWidth));
+      const cssHeight = Math.max(1, Math.ceil(bounds?.height || window.innerHeight));
+      const compactViewport = window.matchMedia("(max-width: 768px)").matches;
+      dpr = Math.min(window.devicePixelRatio || 1, compactViewport ? 1.2 : 1.5);
+      width = Math.max(1, Math.floor(cssWidth * dpr));
+      height = Math.max(1, Math.floor(cssHeight * dpr));
+
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
+      canvas.style.width = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
       gl.viewport(0, 0, width, height);
     };
 
@@ -372,7 +380,38 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
       }
     };
 
+    const shouldRender = () => isActive && isPageVisible;
+
+    const cancelRender = () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+      if (frameTimerId !== null) {
+        window.clearTimeout(frameTimerId);
+        frameTimerId = null;
+      }
+    };
+
+    const scheduleRender = () => {
+      if (frameId !== null || frameTimerId !== null || !shouldRender()) return;
+
+      const elapsedSinceDraw = performance.now() - lastDrawAt;
+      const delay = Math.max(0, SHADER_FRAME_INTERVAL_MS - elapsedSinceDraw);
+
+      frameTimerId = window.setTimeout(() => {
+        frameTimerId = null;
+        if (shouldRender()) {
+          frameId = window.requestAnimationFrame(render);
+        }
+      }, delay);
+    };
+
     const render = (now: number) => {
+      frameId = null;
+      if (!shouldRender()) return;
+      lastDrawAt = now;
+
       const elapsedSeconds = (now - startedAt) / 1000;
       clickWaves = clickWaves.filter((wave) => now - wave.startedAt < CLICK_LIFETIME_MS);
 
@@ -408,20 +447,60 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       reportReady();
-      frameId = window.requestAnimationFrame(render);
+      scheduleRender();
     };
 
+    const handleResize = () => {
+      resize();
+      scheduleRender();
+    };
+
+    const handleVisibilityChange = () => {
+      isPageVisible = document.visibilityState === "visible";
+      if (isPageVisible) {
+        scheduleRender();
+      } else {
+        cancelRender();
+      }
+    };
+
+    let intersectionObserver: IntersectionObserver | null = null;
+    if ("IntersectionObserver" in window) {
+      intersectionObserver = new IntersectionObserver(
+        ([entry]) => {
+          isActive = entry.isIntersecting || entry.intersectionRatio > 0;
+          if (isActive) {
+            scheduleRender();
+          } else {
+            cancelRender();
+          }
+        },
+        { rootMargin: "180px 0px" },
+      );
+      intersectionObserver.observe(canvas);
+    }
+
+    let resizeObserver: ResizeObserver | null = null;
+    if ("ResizeObserver" in window && canvas.parentElement) {
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(canvas.parentElement);
+    }
+
     resize();
-    window.addEventListener("resize", resize);
+    window.addEventListener("resize", handleResize);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerdown", handlePointerDown, { passive: true });
-    frameId = window.requestAnimationFrame(render);
+    scheduleRender();
 
     return () => {
-      window.cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", resize);
+      cancelRender();
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handlePointerDown);
+      intersectionObserver?.disconnect();
+      resizeObserver?.disconnect();
       themeObserver.disconnect();
       colorProbe.remove();
       gl.deleteBuffer(quad);
@@ -436,6 +515,11 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
         ref={canvasRef}
         className={canRenderShader ? "shader-wallpaper-canvas" : "hidden"}
       />
+      <div className="shader-smoke-layer" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 }

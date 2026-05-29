@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
-import {
-  IBM_Plex_Sans_Arabic,
-  Playfair_Display,
-  Tajawal,
-} from "next/font/google";
 import dynamic from "next/dynamic";
 import { ThemeProvider } from "@/context/ThemeContext";
 const FloatingWhatsAppButton = dynamic(() => import("@/components/ui/FloatingWhatsAppButton").then(m => m.FloatingWhatsAppButton), { ssr: false });
@@ -18,7 +13,6 @@ import { CartSyncProvider } from "@/components/store/CartSyncProvider";
 import { ProfileBootstrapper } from "@/components/auth/ProfileBootstrapper";
 import { ReamazeLoader } from "@/components/support/ReamazeLoader";
 import { Suspense } from "react";
-import { getSiteSettings } from "@/app/actions/settings";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -28,6 +22,7 @@ export const viewport: Viewport = {
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "+966532235005";
 const BUILD_VERSION =
   process.env.NEXT_PUBLIC_BUILD_VERSION ||
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
@@ -252,28 +247,6 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
   });
 })();`;
 
-const arabicFont = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-arabic",
-});
-
-const bodyFont = Tajawal({
-  subsets: ["arabic", "latin"],
-  weight: ["200", "300", "400", "500", "700", "800", "900"],
-  display: "swap",
-  variable: "--font-tajawal",
-});
-
-const displayFont = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-  variable: "--font-display",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -345,7 +318,7 @@ const clerkAppearance = {
     colorInputBackground: "var(--wusha-surface-2)",
     colorInputText: "var(--wusha-text)",
     colorTextSecondary: "var(--clerk-secondary-text)",
-    fontFamily: "var(--font-arabic), 'IBM Plex Sans Arabic', sans-serif",
+    fontFamily: "var(--font-arabic), system-ui, sans-serif",
     borderRadius: "0.75rem",
   },
   elements: {
@@ -370,9 +343,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const settings = await getSiteSettings();
-  const whatsappNumber = settings.brand_assets?.social_whatsapp || "+966532235005";
-
   return (
     <ClerkProvider
       localization={arSA}
@@ -384,7 +354,6 @@ export default async function RootLayout({
         dir="rtl"
         suppressHydrationWarning
         data-theme="light"
-        className={`${arabicFont.variable} ${bodyFont.variable} ${displayFont.variable}`}
       >
         <head>
           <meta name="wusha-build" content={BUILD_VERSION} />
@@ -499,7 +468,7 @@ export default async function RootLayout({
           <ServiceWorkerRegister />
           
           {/* Floating UI Elements */}
-          <FloatingWhatsAppButton phoneNumber={whatsappNumber} />
+          <FloatingWhatsAppButton phoneNumber={WHATSAPP_NUMBER} />
           <FloatingSupportButton />
 
           {/* Re:amaze — دعم فني */}

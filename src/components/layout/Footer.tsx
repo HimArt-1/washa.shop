@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
-import { Instagram, Twitter, MessageCircle, Mail, MapPin, Phone, Check, Loader2 } from "lucide-react";
+import { Instagram, Twitter, MessageCircle, Mail, MapPin, Phone, Check, Loader2, Sparkles } from "lucide-react";
 import { subscribeNewsletter } from "@/app/actions/forms";
 import { JoinCommunityModal } from "@/components/modals/JoinCommunityModal";
 
@@ -75,21 +75,6 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [isJoinModalOpen, setJoinModalOpen] = useState(false);
-  const footerTokens = {
-    bg: "var(--footer-bg)",
-    text: "var(--footer-text)",
-    border: "var(--footer-border)",
-    orbGold: "var(--footer-orb-gold)",
-    orbMist: "var(--footer-orb-mist)",
-    textMuted: "var(--footer-text-muted)",
-    textStrong: "var(--footer-text-strong)",
-    divider: "var(--footer-divider)",
-    cardBg: "var(--footer-card-bg)",
-    cardBorder: "var(--footer-card-border)",
-    successBg: "var(--footer-success-bg)",
-    successBorder: "var(--footer-success-border)",
-    bottomText: "var(--footer-bottom-text)",
-  };
 
   const handleSubscribe = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -121,206 +106,147 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
   }).filter(column => column.links.length > 0); // Remove columns with no links
 
   return (
-      <footer
-      className="relative overflow-hidden pt-12 sm:pt-20 pb-6 sm:pb-8 border-t"
-      style={{
-        backgroundColor: footerTokens.bg,
-        color: footerTokens.text,
-        borderColor: footerTokens.border,
-      }}
-    >
-      <div
-        className="pointer-events-none absolute -top-20 right-8 h-56 w-56 rounded-full blur-3xl"
-        style={{ backgroundColor: footerTokens.orbGold }}
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute bottom-8 left-6 h-48 w-48 rounded-full blur-3xl"
-        style={{ backgroundColor: footerTokens.orbMist }}
-        aria-hidden
-      />
+    <footer className="home-flow-section home-flow-section--footer">
+      <div className="home-section-smoke" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
 
-      <div className="container-wusha relative z-10 space-y-8 sm:space-y-10">
-        <div className="theme-surface-panel rounded-[2rem] px-6 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl">
-              <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">
+      <div className="container-wusha relative z-10">
+        <div className="home-footer-shell">
+          <div className="home-footer-cta">
+            <div>
+              <div className="home-section-kicker">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 مجتمع وشّى
-              </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-theme-strong">
-                الفن، الأزياء، والانضمام الذكي في مساحة واحدة
-              </h3>
-              <p className="mt-3 max-w-xl text-sm sm:text-base text-theme-subtle">
-                سواء كنت فنانًا، مصممًا، مودل، عميلًا مهتمًا أو شريكًا، صارت بوابة الانضمام في وشّى أكثر وضوحًا واحترافية.
+              </div>
+              <h3>الفن، الأزياء، والانضمام الذكي في مساحة واحدة</h3>
+              <p>
+                بوابة واضحة للفنانين والمصممين والعملاء والشركاء، بنفس هوية الواجهة الجديدة وبدون انفصال بصري عن الصفحة.
               </p>
             </div>
             {visibility?.join !== false && (
               <motion.button
                 type="button"
                 onClick={() => setJoinModalOpen(true)}
-                className="btn-gold w-full sm:w-auto px-8 py-3"
-                whileHover={{ scale: 1.02 }}
+                className="home-cta-pill home-footer-action"
+                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
               >
                 انضم إلى المجتمع
               </motion.button>
             )}
           </div>
-        </div>
 
-        <div className="theme-surface-panel rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-12 mb-12 sm:mb-16">
-          {/* Brand Column */}
-          <div className="col-span-2 sm:col-span-2 lg:col-span-2">
-            <Logo size="md" className="mb-6" />
-            <p className="mb-6 max-w-sm" style={{ color: footerTokens.textMuted }}>
-              منصة فنية رقمية للأزياء ..
-            </p>
+          <div className="home-footer-grid">
+            <div className="home-footer-brand">
+              <Logo
+                size="lg"
+                src="/header-logo-identity.png"
+                aspectRatio={1017 / 888}
+                toneColor="var(--hero-logo-tone)"
+                className="home-footer-logo"
+              />
+              <h3>وشّى</h3>
+              <p>
+                منصة فنية رقمية للأزياء، تجمع التصميم، المتجر، وخدمات المجتمع في تجربة واحدة متماسكة.
+              </p>
 
-            {/* Contact Info */}
-            <div className="space-y-3">
-              <a
-                href="mailto:washaksa@hotmail.com"
-                className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                style={{ color: footerTokens.textMuted }}
-              >
-                <Mail className="w-4 h-4" />
-                washaksa@hotmail.com
-              </a>
-              <a
-                href="https://wa.me/966532235005"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                style={{ color: footerTokens.textMuted }}
-              >
-                <Phone className="w-4 h-4" />
-                +966 53 223 5005
-              </a>
-              <div className="flex items-center gap-3 text-sm" style={{ color: footerTokens.textMuted }}>
-                <MapPin className="w-4 h-4" />
-                المملكة العربية السعودية
+              <div className="home-footer-contact">
+                <a href="mailto:washaksa@hotmail.com">
+                  <Mail className="h-4 w-4" aria-hidden />
+                  <span>washaksa@hotmail.com</span>
+                </a>
+                <a href="https://wa.me/966532235005" target="_blank" rel="noopener noreferrer">
+                  <Phone className="h-4 w-4" aria-hidden />
+                  <span dir="ltr">+966 53 223 5005</span>
+                </a>
+                <span>
+                  <MapPin className="h-4 w-4" aria-hidden />
+                  المملكة العربية السعودية
+                </span>
+              </div>
+
+              <div className="home-footer-socials">
+                {socialLinks.map((social) => {
+                  const IconComponent = social.icon;
+                  return (
+                    <motion.a
+                      key={social.label}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      aria-label={social.label}
+                    >
+                      <IconComponent className="h-4 w-4" />
+                    </motion.a>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Social Links */}
-            <div className="flex gap-3 mt-6">
-              {socialLinks.map((social) => {
-                const IconComponent = social.icon;
-                return (
-                  <motion.a
-                    key={social.label}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="theme-icon-button h-10 w-10 hover:bg-[var(--wusha-gold)] hover:text-[var(--wusha-bg)] hover:border-[var(--wusha-gold)]"
-                    whileHover={{ scale: 1.1, y: -3 }}
-                    whileTap={{ scale: 0.95 }}
-                    aria-label={social.label}
-                  >
-                    <IconComponent className="w-5 h-5" />
-                  </motion.a>
-                );
-              })}
+            <div className="home-footer-links">
+              {filteredFooterLinks.map((column) => (
+                <div key={column.title}>
+                  <h4>{column.title}</h4>
+                  <ul>
+                    {column.links.map((link: any) => (
+                      <li key={link.label}>
+                        {link.action === "openJoinModal" ? (
+                          <button type="button" onClick={() => setJoinModalOpen(true)}>
+                            {link.label}
+                          </button>
+                        ) : (
+                          <Link href={link.href}>{link.label}</Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
-          </div>
 
-          {/* Links Columns */}
-          {filteredFooterLinks.map((column) => (
-            <div key={column.title}>
-              <h4 className="font-bold mb-6" style={{ color: footerTokens.textStrong }}>{column.title}</h4>
-              <ul className="space-y-3">
-                {column.links.map((link: any) => (
-                  <li key={link.label}>
-                    {link.action === "openJoinModal" ? (
-                      <button
-                        onClick={() => setJoinModalOpen(true)}
-                        className="text-sm transition-colors text-right hover:text-[var(--wusha-gold)]"
-                        style={{ color: footerTokens.textMuted }}
-                      >
-                        {link.label}
-                      </button>
-                    ) : (
-                      <Link
-                        href={link.href}
-                        className="text-sm transition-colors hover:text-[var(--wusha-gold)]"
-                        style={{ color: footerTokens.textMuted }}
-                      >
-                        {link.label}
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        {/* Newsletter */}
-        <div className="pt-8 sm:pt-12 mb-8 sm:mb-12" style={{ borderTop: `1px solid ${footerTokens.divider}` }}>
-          <div className="max-w-xl mx-auto text-center rounded-[1.5rem] border px-5 py-6 sm:px-6 sm:py-7" style={{
-            backgroundColor: footerTokens.cardBg,
-            borderColor: footerTokens.cardBorder,
-          }}>
-            <h4 className="text-xl font-bold mb-3" style={{ color: footerTokens.textStrong }}>ابقَ على اطلاع</h4>
-            <p className="text-sm mb-6" style={{ color: footerTokens.textMuted }}>
-              اشترك في نشرتنا البريدية لتصلك آخر الأعمال والمعارض
-            </p>
-            {subscribed ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-4 rounded-lg flex items-center justify-center gap-2 border"
-                style={{
-                  backgroundColor: footerTokens.successBg,
-                  color: "var(--wusha-forest)",
-                  borderColor: footerTokens.successBorder,
-                }}
-              >
-                <Check className="w-5 h-5" />
-                شكراً لاشتراكك!
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3">
-                <input
-                  name="email"
-                  type="email"
-                  required
-                  placeholder="بريدك الإلكتروني"
-                  className="input-dark flex-1 rounded-lg px-4 py-3 text-sm"
-                  dir="ltr"
-                />
-                <motion.button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn-gold py-3 px-6 disabled:opacity-50"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+            <div className="home-footer-newsletter">
+              <h4>ابقَ على اطلاع</h4>
+              <p>تصلك تحديثات المتجر، التصاميم، وفرص المجتمع بدون إزعاج.</p>
+              {subscribed ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="home-footer-success"
                 >
-                  {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "اشترك"}
-                </motion.button>
-              </form>
-            )}
+                  <Check className="h-5 w-5" aria-hidden />
+                  تم تسجيل اشتراكك
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubscribe}>
+                  <input
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="بريدك الإلكتروني"
+                    dir="ltr"
+                  />
+                  <motion.button
+                    type="submit"
+                    disabled={submitting}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "اشترك"}
+                  </motion.button>
+                </form>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 flex flex-col md:flex-row justify-between items-center gap-4" style={{ borderTop: `1px solid ${footerTokens.divider}` }}>
-          <p className="text-sm" style={{ color: footerTokens.bottomText }}>
-            © {new Date().getFullYear()} وشّى. جميع الحقوق محفوظة.
-          </p>
-          <div className="flex items-center gap-2 text-sm" style={{ color: footerTokens.bottomText }}>
-            <span>صُنع بـ</span>
-            <motion.span
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              ❤️
-            </motion.span>
-            <span>في السعودية</span>
+          <div className="home-footer-bottom">
+            <p>© {new Date().getFullYear()} وشّى. جميع الحقوق محفوظة.</p>
+            <p>صُنع في السعودية</p>
           </div>
-        </div>
         </div>
       </div>
 

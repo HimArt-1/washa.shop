@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, type CSSProperties } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { LogIn, UserPlus, Sparkles, ShoppingBag } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { JoinModal } from "@/components/ui/JoinModal";
@@ -17,6 +16,38 @@ interface HeroProps {
   showJoinArtistButton?: boolean;
 }
 
+const HERO_LOGO_SRC = "/hero-logo-cinematic.png";
+const HERO_LOGO_ASPECT = "aspect-[2171/1468]";
+const HERO_LOGO_TONE = "var(--hero-logo-tone)";
+const INTRO_LOGO_SRC = "/header-logo-identity.png";
+const INTRO_LOGO_ASPECT = "aspect-[1017/888]";
+const INTRO_MIN_VISIBLE_MS = 1700;
+const INTRO_READY_HOLD_MS = 760;
+const INTRO_LOGO_ENTER_DURATION = 1.15;
+const INTRO_LOGO_EXIT_DURATION = 1.6;
+const INTRO_CURTAIN_EXIT_DURATION = 0.85;
+const INTRO_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const INTRO_EASE_IN_OUT: [number, number, number, number] = [0.42, 0, 0.58, 1];
+
+const createLogoMask = (src: string, backgroundColor: string, filter?: string): CSSProperties => ({
+  backgroundColor,
+  WebkitMaskImage: `url(${src})`,
+  maskImage: `url(${src})`,
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+  filter,
+});
+
+const createHeroLogoMask = (backgroundColor: string, filter?: string): CSSProperties =>
+  createLogoMask(HERO_LOGO_SRC, backgroundColor, filter);
+
+const createIntroLogoMask = (backgroundColor: string, filter?: string): CSSProperties =>
+  createLogoMask(INTRO_LOGO_SRC, backgroundColor, filter);
+
 export function Hero({
   backgroundMode = "shader",
   showAuthButtons = true,
@@ -26,6 +57,8 @@ export function Hero({
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [backgroundReady, setBackgroundReady] = useState(false);
+  const [introMinimumElapsed, setIntroMinimumElapsed] = useState(false);
+  const [introExiting, setIntroExiting] = useState(false);
   const [curtainLifted, setCurtainLifted] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
   const router = useRouter();
@@ -75,12 +108,25 @@ export function Hero({
     return () => clearTimeout(fallback);
   }, [backgroundMode]);
 
-  // Lift curtain 600ms after the shader is ready (let animation breathe)
   useEffect(() => {
-    if (!backgroundReady) return;
-    const timer = setTimeout(() => setCurtainLifted(true), 600);
+    const timer = setTimeout(() => setIntroMinimumElapsed(true), INTRO_MIN_VISIBLE_MS);
     return () => clearTimeout(timer);
-  }, [backgroundReady]);
+  }, []);
+
+  // Keep the intro visible long enough to feel intentional, even when WebGL is ready immediately.
+  useEffect(() => {
+    if (!backgroundReady || !introMinimumElapsed) return;
+    const exitTimer = setTimeout(() => setIntroExiting(true), INTRO_READY_HOLD_MS);
+    const liftTimer = setTimeout(
+      () => setCurtainLifted(true),
+      INTRO_READY_HOLD_MS + INTRO_LOGO_EXIT_DURATION * 1000,
+    );
+
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(liftTimer);
+    };
+  }, [backgroundReady, introMinimumElapsed]);
 
   const heroTokens = {
     subtitle: "rgba(224, 201, 154, 0.94)",
@@ -106,32 +152,83 @@ export function Hero({
       <AnimatePresence>
         {!curtainLifted && (
           <motion.div
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center"
+            data-intro-curtain
+            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
             style={{ backgroundColor: "var(--wusha-bg)" }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: INTRO_CURTAIN_EXIT_DURATION, ease: INTRO_EASE_OUT }}
           >
             {/* Animated Logo */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              data-intro-logo
+              initial={{ opacity: 0, scale: 0.72, y: 18, filter: "blur(10px)" }}
+              animate={
+                introExiting
+                  ? {
+                      opacity: [1, 0.92, 0.26, 0],
+                      scale: [1, 0.98, 0.91, 0.86],
+                      y: [0, -5, -24, -34],
+                      filter: ["blur(0px)", "blur(1px)", "blur(5px)", "blur(11px)"],
+                    }
+                  : { opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }
+              }
+              transition={{
+                duration: introExiting ? INTRO_LOGO_EXIT_DURATION : INTRO_LOGO_ENTER_DURATION,
+                ease: introExiting ? INTRO_EASE_IN_OUT : INTRO_EASE_OUT,
+                times: introExiting ? [0, 0.52, 0.86, 1] : undefined,
+              }}
               className="relative"
+              style={{ willChange: "transform, opacity, filter" }}
             >
               <motion.div
                 animate={{
-                  filter: backgroundReady ? "blur(0px)" : ["blur(0px)", "blur(2px)", "blur(0px)"],
+                  filter:
+                    backgroundReady || introExiting
+                      ? "blur(0px)"
+                      : ["blur(0px)", "blur(2px)", "blur(0px)"],
+                  scale: introExiting ? 1 : [1, 1.018, 1],
                 }}
-                transition={{ duration: 2, repeat: backgroundReady ? 0 : Infinity, ease: "easeInOut" }}
+                transition={{
+                  duration: introExiting ? INTRO_LOGO_EXIT_DURATION : 3.2,
+                  repeat: backgroundReady || introExiting ? 0 : Infinity,
+                  ease: INTRO_EASE_IN_OUT,
+                }}
               >
-                <div className="relative w-[180px] sm:w-[220px] md:w-[280px] aspect-[280/160]">
-                  <Image
-                    src="/hero-logo.png"
-                    alt="وشّى"
-                    fill
-                    sizes="(max-width: 640px) 180px, (max-width: 768px) 220px, 280px"
-                    className="object-contain brightness-0 invert sepia saturate-[2] hue-rotate-[5deg] opacity-90"
-                    priority
+                <div className={`relative w-[160px] sm:w-[210px] md:w-[250px] ${INTRO_LOGO_ASPECT}`}>
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute -inset-x-[18%] -inset-y-[24%] rounded-full blur-2xl"
+                    style={{ background: "var(--hero-logo-halo-bg)" }}
+                    animate={
+                      introExiting
+                        ? { opacity: [0.62, 0.44, 0.12, 0], scale: [1.04, 1.12, 1.22, 1.28] }
+                        : { opacity: [0.5, 0.76, 0.5], scale: [0.96, 1.04, 0.96] }
+                    }
+                    transition={{
+                      duration: introExiting ? INTRO_LOGO_EXIT_DURATION : 4.8,
+                      repeat: introExiting ? 0 : Infinity,
+                      ease: INTRO_EASE_IN_OUT,
+                      times: introExiting ? [0, 0.52, 0.86, 1] : undefined,
+                    }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 block blur-[20px]"
+                    style={{
+                      ...createIntroLogoMask("var(--hero-logo-blur-tone)"),
+                      opacity: "var(--hero-logo-blur-opacity)",
+                    }}
+                  />
+                  <span
+                    role="img"
+                    aria-label="وشّى"
+                    className="absolute inset-0 block opacity-95"
+                    style={{
+                      ...createIntroLogoMask(
+                        HERO_LOGO_TONE,
+                        "var(--hero-logo-filter)",
+                      ),
+                    }}
                   />
                 </div>
               </motion.div>
@@ -140,8 +237,22 @@ export function Hero({
               <motion.div
                 className="h-0.5 bg-gradient-to-r from-transparent via-gold to-transparent mt-4 mx-auto"
                 initial={{ width: 0, opacity: 0 }}
-                animate={{ width: "100%", opacity: 1 }}
-                transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
+                animate={
+                  introExiting
+                    ? {
+                        width: ["100%", "76%", "30%", "18%"],
+                        opacity: [1, 0.6, 0.12, 0],
+                        scaleX: [1, 0.84, 0.42, 0.34],
+                      }
+                    : { width: "100%", opacity: 1, scaleX: 1 }
+                }
+                transition={{
+                  duration: introExiting ? INTRO_LOGO_EXIT_DURATION * 0.82 : 1.5,
+                  delay: introExiting ? 0 : 0.3,
+                  ease: introExiting ? INTRO_EASE_IN_OUT : INTRO_EASE_OUT,
+                  times: introExiting ? [0, 0.52, 0.86, 1] : undefined,
+                }}
+                style={{ transformOrigin: "center" }}
               />
             </motion.div>
 
@@ -149,8 +260,8 @@ export function Hero({
             <motion.div
               className="mt-8 flex items-center gap-2"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
+              animate={{ opacity: introExiting ? 0 : 1, y: introExiting ? -8 : 0 }}
+              transition={{ duration: 0.45, delay: introExiting ? 0 : 0.5, ease: INTRO_EASE_OUT }}
             >
               {/* Three pulsing dots */}
               {[0, 1, 2].map((i) => (
@@ -162,7 +273,7 @@ export function Hero({
                     scale: backgroundReady ? 0 : [1, 1.3, 1],
                   }}
                   transition={{
-                    duration: 1,
+                    duration: 1.15,
                     repeat: backgroundReady ? 0 : Infinity,
                     delay: i * 0.2,
                     ease: "easeInOut",
@@ -177,7 +288,7 @@ export function Hero({
                 <motion.span
                   className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-alnaseeb"
                   initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: introExiting ? 0 : 1, y: introExiting ? -8 : 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4 }}
                 >
@@ -249,15 +360,67 @@ export function Hero({
           transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           onClick={handleAdminSignIn}
         >
-          <div className="relative w-[180px] sm:w-[250px] md:w-[350px] lg:w-[450px] aspect-[450/260]">
-            <Image
-              src="/hero-logo.png"
-              alt="وشّى"
-              fill
-              sizes="(max-width: 640px) 180px, (max-width: 768px) 250px, (max-width: 1024px) 350px, 450px"
-              className="object-contain brightness-0 invert sepia saturate-[2] hue-rotate-[5deg] drop-shadow-[0_0_40px_rgba(206,174,127,0.25)]"
-              priority
-              draggable={false}
+          <div className={`relative w-[280px] sm:w-[390px] md:w-[520px] lg:w-[640px] ${HERO_LOGO_ASPECT}`}>
+            <motion.div
+              aria-hidden="true"
+              className="absolute -inset-x-[10%] -inset-y-[12%] rounded-full blur-2xl"
+              style={{ background: "var(--hero-logo-halo-bg)" }}
+              animate={{ opacity: [0.25, 0.44, 0.25], scale: [0.97, 1.025, 0.97] }}
+              transition={{ duration: 8.4, repeat: Infinity, ease: [0.45, 0, 0.15, 1] }}
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-[10%] inset-y-[24%] rounded-full blur-2xl"
+              style={{ background: "var(--hero-logo-inner-halo-bg)" }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 block blur-[20px]"
+              style={{
+                ...createHeroLogoMask("var(--hero-logo-blur-tone)"),
+                opacity: "var(--hero-logo-blur-opacity)",
+              }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute inset-0 block blur-[46px]"
+              style={{
+                ...createHeroLogoMask("var(--hero-logo-pearl-tone)"),
+                opacity: "var(--hero-logo-pearl-opacity)",
+              }}
+            />
+            <span
+              role="img"
+              aria-label="وشّى"
+              className="absolute inset-0 block"
+              style={{
+                ...createHeroLogoMask(
+                  HERO_LOGO_TONE,
+                  "var(--hero-logo-filter)",
+                ),
+              }}
+            />
+            <motion.span
+              aria-hidden="true"
+              className="absolute inset-0 block mix-blend-soft-light"
+              style={{
+                ...createHeroLogoMask("transparent"),
+                backgroundImage: "var(--hero-logo-shimmer-gradient)",
+                backgroundPosition: "180% 50%",
+                backgroundSize: "280% 100%",
+                filter: "var(--hero-logo-shimmer-filter)",
+              }}
+              initial={{ opacity: 0, backgroundPosition: "180% 50%" }}
+              animate={{
+                backgroundPosition: ["180% 50%", "-90% 50%"],
+                opacity: [0, 0.14, 0.08, 0],
+              }}
+              transition={{
+                duration: 12.5,
+                repeat: Infinity,
+                repeatDelay: 7.5,
+                ease: [0.45, 0, 0.15, 1],
+              }}
             />
           </div>
         </motion.div>
@@ -269,13 +432,20 @@ export function Hero({
           animate={curtainLifted ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 0.5 }}
         >
-          <p className="text-3xl sm:text-4xl md:text-5xl font-alnaseeb italic text-glow-gold"
-            style={{ color: heroTokens.subtitle, letterSpacing: "0.04em" }}>
-            فنٌ يرتدى
+          <p
+            className="font-alnaseeb text-4xl font-bold text-glow-gold sm:text-5xl md:text-6xl"
+            style={{ color: "var(--hero-subtitle)", letterSpacing: 0, fontWeight: 700 }}
+          >
+            فنٌ يُرتدى
           </p>
           <div className="flex items-center gap-3">
             <div className="h-px w-16 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="text-xs tracking-[0.3em] uppercase text-[rgba(250,243,230,0.58)]">art you wear</span>
+            <span
+              className="text-sm font-semibold uppercase sm:text-[15px]"
+              style={{ color: "var(--hero-tagline-text)", letterSpacing: 0 }}
+            >
+              art you wear
+            </span>
             <div className="h-px w-16 bg-gradient-to-l from-transparent to-gold/40" />
           </div>
         </motion.div>
@@ -355,7 +525,7 @@ export function Hero({
                   <motion.div
                     className="absolute -inset-6 sm:-inset-8 rounded-[3.5rem] pointer-events-none"
                     style={{
-                      background: "radial-gradient(ellipse at center, rgba(206, 174, 127, 0.12) 0%, rgba(206, 174, 127, 0.04) 50%, transparent 70%)",
+                      background: "var(--hero-ai-card-halo)",
                     }}
                     animate={{ opacity: [0.5, 1, 0.5], scale: [0.97, 1.02, 0.97] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
@@ -365,30 +535,36 @@ export function Hero({
                     type="button"
                     className="group relative px-10 sm:px-14 py-8 sm:py-10 font-bold rounded-[2.5rem] overflow-hidden transition-all duration-700 hover:scale-[1.04] active:scale-[0.98] w-full sm:w-[420px]"
                     style={{
-                      background: "linear-gradient(145deg, rgba(255, 253, 248, 0.92) 0%, rgba(250, 245, 235, 0.88) 40%, rgba(245, 238, 225, 0.85) 100%)",
+                      background: "var(--hero-ai-card-bg)",
                       backdropFilter: "blur(20px) saturate(1.8)",
-                      border: "1.5px solid rgba(206, 174, 127, 0.35)",
-                      boxShadow: "0 8px 40px rgba(206, 174, 127, 0.18), 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.7)",
+                      border: "1.5px solid var(--hero-ai-card-border)",
+                      boxShadow: "var(--hero-ai-card-shadow)",
                     }}
                     whileHover={{
-                      boxShadow: "0 20px 60px rgba(206, 174, 127, 0.3), 0 8px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
-                      borderColor: "rgba(206, 174, 127, 0.6)",
+                      boxShadow: "var(--hero-ai-card-shadow-hover)",
+                      borderColor: "var(--hero-ai-card-border-hover)",
                     }}
                     onClick={() => router.push("/design/washa-ai")}
                     suppressHydrationWarning
                   >
                     {/* Subtle warm gradient overlay */}
-                    <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-white/40 via-transparent to-amber-50/30 opacity-60" />
+                    <div className="absolute inset-0 rounded-[2.5rem] opacity-90" style={{ background: "var(--hero-ai-card-overlay)" }} />
 
-                    {/* Golden shimmer sweep */}
+                    {/* Soft traveling sheen */}
                     <motion.div
-                      className="absolute -inset-[100%] bg-gradient-to-r from-transparent via-amber-200/25 to-transparent skew-x-[-20deg]"
-                      animate={{ left: ["-100%", "200%"] }}
-                      transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 2 }}
+                      className="absolute inset-y-[-70%] left-[-52%] w-[34%] rotate-[-18deg] bg-gradient-to-r from-transparent via-[#f5ded8]/[0.08] to-transparent"
+                      initial={{ x: "-220%", opacity: 0 }}
+                      animate={{ x: ["-220%", "420%"], opacity: [0, 0.12, 0] }}
+                      transition={{
+                        duration: 11.5,
+                        repeat: Infinity,
+                        repeatDelay: 7,
+                        ease: [0.45, 0, 0.15, 1],
+                      }}
                     />
 
                     {/* Light noise texture for depth */}
-                    <div className="absolute inset-0 rounded-[2.5rem] opacity-[0.03]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")" }} />
+                    <div className="absolute inset-0 rounded-[2.5rem] opacity-[0.055] mix-blend-soft-light" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")" }} />
 
                     <div className="relative z-10 flex flex-col items-center gap-5">
                       {/* AI Icon + Brand */}
@@ -396,22 +572,22 @@ export function Hero({
                         <motion.div
                           className="flex h-11 w-11 items-center justify-center rounded-2xl"
                           style={{
-                            background: "linear-gradient(135deg, rgba(206, 174, 127, 0.2) 0%, rgba(180, 140, 80, 0.15) 100%)",
-                            border: "1px solid rgba(206, 174, 127, 0.3)",
-                            boxShadow: "0 2px 8px rgba(206, 174, 127, 0.12)",
+                            background: "rgba(255, 238, 210, 0.1)",
+                            border: "1px solid var(--hero-ai-card-border)",
+                            boxShadow: "0 2px 12px rgba(206, 174, 127, 0.14)",
                           }}
                           animate={{ boxShadow: ["0 2px 8px rgba(206,174,127,0.12)", "0 4px 16px rgba(206,174,127,0.25)", "0 2px 8px rgba(206,174,127,0.12)"] }}
                           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                         >
-                          <Sparkles className="w-5 h-5" style={{ color: "#9a7b3d" }} />
+                          <Sparkles className="w-5 h-5" style={{ color: "var(--hero-ai-card-status)" }} />
                         </motion.div>
                         <span
                           className="text-3xl sm:text-4xl font-alnaseeb italic tracking-widest"
                           style={{
-                            background: "linear-gradient(135deg, #6b5426 0%, #9a7b3d 45%, #c9a84c 100%)",
+                            background: "var(--hero-ai-card-title)",
                             WebkitBackgroundClip: "text",
                             WebkitTextFillColor: "transparent",
-                            filter: "drop-shadow(0 1px 2px rgba(154, 123, 61, 0.15))",
+                            filter: "drop-shadow(0 1px 8px rgba(218, 185, 145, 0.18))",
                           }}
                         >
                           WASHA AI
@@ -420,18 +596,18 @@ export function Hero({
 
                       {/* Elegant divider */}
                       <div className="flex items-center gap-3 w-full max-w-[200px]">
-                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-amber-700/20" />
-                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: "linear-gradient(135deg, #c9a84c, #9a7b3d)" }} />
-                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-amber-700/20" />
+                        <div className="flex-1 h-px bg-gradient-to-r from-transparent to-[var(--hero-ai-card-line)]" />
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--hero-ai-card-status)" }} />
+                        <div className="flex-1 h-px bg-gradient-to-l from-transparent to-[var(--hero-ai-card-line)]" />
                       </div>
 
                       {/* CTA Text */}
-                      <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.08em]" style={{ color: "#6b5c3e" }}>
+                      <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.08em]" style={{ color: "var(--hero-ai-card-text)" }}>
                         <span>صمّم خيالك في ثوانٍ</span>
                         <motion.span
                           animate={{ x: [0, 5, 0] }}
                           transition={{ duration: 1.5, repeat: Infinity }}
-                          style={{ color: "#9a7b3d" }}
+                          style={{ color: "var(--hero-ai-card-status)" }}
                         >
                           ←
                         </motion.span>
@@ -441,22 +617,22 @@ export function Hero({
                       <div
                         className="flex items-center gap-1.5 rounded-full px-3 py-1"
                         style={{
-                          background: "rgba(206, 174, 127, 0.1)",
-                          border: "1px solid rgba(206, 174, 127, 0.2)",
+                          background: "var(--hero-ai-card-chip-bg)",
+                          border: "1px solid var(--hero-ai-card-chip-border)",
                         }}
                       >
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: "#8b7542" }}>
+                        <div className="h-1.5 w-1.5 rounded-full animate-pulse" style={{ backgroundColor: "var(--hero-ai-card-status)" }} />
+                        <span className="text-[10px] font-bold tracking-wider uppercase" style={{ color: "var(--hero-ai-card-chip-text)" }}>
                           متاح الآن
                         </span>
                       </div>
                     </div>
 
                     {/* Corner Ornaments — warm gold on light */}
-                    <div className="absolute top-4 left-4 w-4 h-4 border-t-[1.5px] border-l-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
-                    <div className="absolute top-4 right-4 w-4 h-4 border-t-[1.5px] border-r-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
-                    <div className="absolute bottom-4 left-4 w-4 h-4 border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
-                    <div className="absolute bottom-4 right-4 w-4 h-4 border-b-[1.5px] border-r-[1.5px]" style={{ borderColor: "rgba(206, 174, 127, 0.3)" }} />
+                    <div className="absolute top-4 left-4 w-4 h-4 border-t-[1.5px] border-l-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
+                    <div className="absolute top-4 right-4 w-4 h-4 border-t-[1.5px] border-r-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
+                    <div className="absolute bottom-4 left-4 w-4 h-4 border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
+                    <div className="absolute bottom-4 right-4 w-4 h-4 border-b-[1.5px] border-r-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
                   </motion.button>
                 </div>
 

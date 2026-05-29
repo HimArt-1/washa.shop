@@ -850,7 +850,12 @@ export function DesignYourPieceWizard({
                             />
                         )}
                         {state.step === 9 && (
-                            <StepSubmit state={state} garmentStudioMockups={garmentStudioMockups} onBack={goBack} onSend={triggerSend} />
+                            <StepSubmit
+                                state={state}
+                                garmentStudioMockups={garmentStudioMockups}
+                                onBack={goBack}
+                                onSend={triggerSend}
+                            />
                         )}
                     </motion.div>
                 </AnimatePresence>
@@ -2118,7 +2123,12 @@ function StepPrintPlacement({ garment, positions, selectedPosition, selectedSize
 //  Step 9: Submit
 // ═══════════════════════════════════════════════════════════
 
-function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: { state: WizardState; garmentStudioMockups: GarmentStudioMockup[]; onBack: () => void; onSend: () => void }) {
+function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
+    state: WizardState;
+    garmentStudioMockups: GarmentStudioMockup[];
+    onBack: () => void;
+    onSend: () => void;
+}) {
     const [previewIdx, setPreviewIdx] = useState(0);
     const presetOverrideLabels = getPresetOverrideLabels(state);
     const presetIsFullyAligned = presetOverrideLabels.length === 0;

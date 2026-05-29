@@ -6,11 +6,13 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import { createTimeoutFetch, readPositiveIntegerEnv } from "@/lib/async-timeout";
 
 // ─── Environment Variables ───────────────────────────────
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SERVER_SUPABASE_FETCH_TIMEOUT_MS = readPositiveIntegerEnv("SERVER_SUPABASE_FETCH_TIMEOUT_MS", 8000, 1000, 30000);
 
 // ─── Browser Client (Client Components) ─────────────────
 
@@ -31,6 +33,9 @@ export function getSupabaseServerClient() {
             persistSession: false,
             autoRefreshToken: false,
         },
+        global: {
+            fetch: createTimeoutFetch(SERVER_SUPABASE_FETCH_TIMEOUT_MS),
+        },
     });
 }
 
@@ -45,6 +50,9 @@ export function getSupabaseAdminClient() {
         auth: {
             persistSession: false,
             autoRefreshToken: false,
+        },
+        global: {
+            fetch: createTimeoutFetch(SERVER_SUPABASE_FETCH_TIMEOUT_MS),
         },
     });
 }

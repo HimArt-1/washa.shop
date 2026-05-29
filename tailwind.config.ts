@@ -37,6 +37,8 @@ const config: Config = {
         },
       },
       fontFamily: {
+        sans: ["var(--font-body)", "system-ui", "sans-serif"],
+        serif: ["var(--font-display)", "var(--font-body)", "system-ui", "sans-serif"],
         display: ["var(--font-display)", "system-ui", "sans-serif"],
         body: ["var(--font-body)", "system-ui", "sans-serif"],
         arabic: ["var(--font-arabic)", "system-ui", "sans-serif"],

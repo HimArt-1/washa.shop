@@ -1,10 +1,65 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'Alnaseeb';
-  src: url('/fonts/Alnaseeb-Regular.otf') format('opentype');
-  font-weight: normal;
+  font-family: 'ArabicPoetry';
+  src: url('/fonts/ArabicPoetry-Medium.otf') format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-Thin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-ExtraLight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-Medium.otf') format('opentype');
+  font-weight: 500 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'TheYearOfTheCamel';
+  src: url('/fonts/TheYearofTheCamel-ExtraBold.otf') format('opentype');
+  font-weight: 800 900;
   font-style: normal;
   font-display: swap;
 }
@@ -23,9 +78,9 @@
   --color-washa-text-sec: #8b7e6a;
   --color-washa-text-faint: #b5a990;
 
-  --font-sans: 'Tajawal', system-ui, sans-serif;
-  --font-serif: 'Playfair Display', serif;
-  --font-alnaseeb: 'Alnaseeb', system-ui, sans-serif;
+  --font-sans: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
+  --font-serif: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
+  --font-alnaseeb: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
 }
 
 /* ————— Base ————— */
@@ -35,14 +90,31 @@ html {
   text-size-adjust: 100%;
 }
 
-h2, h3, h4, h5, h6 {
+h1 {
+  font-family: var(--font-serif);
+  font-weight: 800;
+}
+
+h2 {
   font-family: var(--font-alnaseeb);
+  font-weight: 700;
+}
+
+h3, h4 {
+  font-family: var(--font-alnaseeb);
+  font-weight: 600;
+}
+
+h5, h6 {
+  font-family: var(--font-alnaseeb);
+  font-weight: 500;
 }
 
 body {
   background-color: var(--color-washa-bg);
   color: var(--color-washa-text);
   font-family: var(--font-sans);
+  font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;

@@ -1,17 +1,23 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { getPublicVisibility } from "@/app/actions/settings";
+import { getPublicVisibility, type SiteSettingsType } from "@/app/actions/settings";
 
 /**
  * Wrapper for pages that need the public layout (Header, Footer, CartSheet).
  * Used by app/page.tsx (root) to avoid the route-group client-reference-manifest bug.
  */
-export async function PublicPageWrapper({ children }: { children: React.ReactNode }) {
-    const visibility = await getPublicVisibility();
+export async function PublicPageWrapper({
+    children,
+    visibility,
+}: {
+    children: React.ReactNode;
+    visibility?: SiteSettingsType["visibility"];
+}) {
+    const resolvedVisibility = visibility ?? await getPublicVisibility();
     
     return (
         <>
-            <Header visibility={visibility} />
+            <Header visibility={resolvedVisibility} />
             <div className="public-shell">
                 <div className="public-orb public-orb-primary" aria-hidden />
                 <div className="public-orb public-orb-secondary" aria-hidden />
@@ -21,7 +27,7 @@ export async function PublicPageWrapper({ children }: { children: React.ReactNod
                     {children}
                 </div>
             </div>
-            <Footer visibility={visibility} />
+            <Footer visibility={resolvedVisibility} />
         </>
     );
 }

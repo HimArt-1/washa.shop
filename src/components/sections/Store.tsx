@@ -2,11 +2,9 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowLeft, Star, ShoppingCart } from "lucide-react";
-import { useCartStore } from "@/stores/cartStore";
+import { ArrowLeft, ShoppingBag, Sparkles } from "lucide-react";
 import { getProducts } from "@/app/actions/products";
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import type { Product } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -18,8 +16,13 @@ type ProductWithArtist = Product & {
   };
 };
 
+const storeSignals = [
+  { value: "01", label: "اختيار فني", detail: "قطع مختارة بعناية" },
+  { value: "02", label: "هوية واحدة", detail: "ألوان وخامات متناسقة" },
+  { value: "03", label: "جاهزة للارتداء", detail: "منتجات تصل كقطعة نهائية" },
+];
+
 export function Store() {
-  const addToCart = useCartStore((state) => state.addItem);
   const [products, setProducts] = useState<ProductWithArtist[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -33,99 +36,107 @@ export function Store() {
   }, []);
 
   return (
-    <section id="store" className="py-16 sm:py-24 relative">
-      {/* Section Divider */}
-      <div className="section-divider mb-16 sm:mb-24" />
+    <section id="store" className="home-flow-section home-flow-section--store">
+      <div className="home-section-smoke" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
 
-      <div className="container-wusha">
-        <div className="text-center mb-10 sm:mb-16">
-          <motion.span
-            className="text-gold/60 text-sm tracking-[0.3em] uppercase block mb-4"
+      <div className="container-wusha relative z-10">
+        <div className="grid items-start gap-8 lg:grid-cols-[0.9fr_1.35fr] lg:gap-10 xl:gap-14">
+          <motion.aside
+            className="home-panel home-panel--intro"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           >
-            منتجات حصرية
-          </motion.span>
-          <motion.h2
-            className="text-4xl md:text-6xl font-bold mb-4"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <span className="text-gradient">المتجر</span>
-          </motion.h2>
-          <motion.p
-            className="prose-readable text-theme-subtle mx-auto max-w-2xl"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-          >
-            منتجات فنية حصرية بجودة عالية — تختارها الفريق وتُحدَّث أسبوعيًا.
-          </motion.p>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="glass-card rounded-2xl overflow-hidden animate-pulse">
-                <div className="relative aspect-square bg-theme-faint/50 border-b border-theme-subtle"></div>
-                <div className="p-3 sm:p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="h-5 w-16 bg-theme-faint rounded-full"></div>
-                    <div className="h-4 w-8 bg-theme-faint rounded-md"></div>
-                  </div>
-                  <div className="h-4 sm:h-5 w-3/4 bg-theme-faint rounded-md mb-2 sm:mb-3"></div>
-                  <div className="flex items-center justify-between mt-auto pt-2">
-                    <div className="h-6 w-16 bg-theme-faint rounded-md"></div>
-                    <div className="h-9 w-9 bg-theme-faint rounded-xl"></div>
-                  </div>
-                </div>
+            <div className="home-panel-inner">
+              <div className="home-section-kicker">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                منتجات حصرية
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
-            {products.map((product, index) => {
-              const featured = products.length >= 3 && index === 0;
-              return (
-                <div key={product.id} className={cn(featured && "col-span-2 md:col-span-2")}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="h-full"
-                  >
-                    <ProductCard product={product} featured={featured} />
-                  </motion.div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+              <h2 className="home-section-title">
+                متجر وشّى
+              </h2>
+              <p className="home-section-copy">
+                امتداد مباشر لعالم الهيرو: قطع فنية بملمس هادئ، ألوان محسوبة، وتفاصيل تصل كجزء من هوية واحدة لا كمنتجات متفرقة.
+              </p>
 
-        {!loading && products.length > 0 ? (
+              <div className="mt-8 space-y-3">
+                {storeSignals.map((item) => (
+                  <div key={item.value} className="home-detail-row">
+                    <span>{item.value}</span>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Link href="/store" className="home-cta-pill group mt-8">
+                <span className="home-cta-icon">
+                  <ShoppingBag className="h-4 w-4" aria-hidden />
+                </span>
+                تصفح المتجر بالكامل
+                <ArrowLeft className="h-4 w-4 transition-transform duration-500 group-hover:-translate-x-1" aria-hidden />
+              </Link>
+            </div>
+          </motion.aside>
+
           <motion.div
-            className="mt-12 flex justify-center"
-            initial={{ opacity: 0, y: 12 }}
+            className="home-product-deck"
+            initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
-            <Link
-              href="/store"
-              className="group inline-flex items-center gap-2 rounded-2xl border border-gold/25 bg-theme-faint px-6 py-3 text-sm font-bold text-theme transition-colors hover:border-gold/40 hover:bg-theme-subtle"
-            >
-              تصفح المتجر بالكامل
-              <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" aria-hidden />
-            </Link>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className={cn("home-loading-card", i === 1 && "col-span-2")}>
+                    <div className={cn("bg-theme-faint/60", i === 1 ? "aspect-[5/4]" : "aspect-square")} />
+                    <div className="space-y-3 p-4">
+                      <div className="h-3 w-20 rounded-full bg-theme-faint" />
+                      <div className="h-4 w-3/4 rounded-full bg-theme-faint" />
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="h-4 w-14 rounded-full bg-theme-faint" />
+                        <div className="h-9 w-9 rounded-2xl bg-theme-faint" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : products.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
+                {products.map((product, index) => {
+                  const featured = products.length >= 3 && index === 0;
+                  return (
+                    <div key={product.id} className={cn(featured && "col-span-2")}>
+                      <motion.div
+                        initial={{ opacity: 0, y: 34 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.65, delay: Math.min(index * 0.08, 0.32), ease: [0.16, 1, 0.3, 1] }}
+                        className="h-full"
+                      >
+                        <ProductCard product={product} featured={featured} />
+                      </motion.div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="home-empty-state">
+                <Sparkles className="h-6 w-6" aria-hidden />
+                <h3>المتجر قيد التنسيق</h3>
+                <p>ستظهر المنتجات المختارة هنا بمجرد تفعيلها من لوحة التحكم.</p>
+              </div>
+            )}
           </motion.div>
-        ) : null}
-
-        {!loading && products.length === 0 && (
-          <div className="text-center text-theme-subtle">لا توجد منتجات حالياً.</div>
-        )}
+        </div>
       </div>
     </section>
   );
