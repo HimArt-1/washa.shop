@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
+import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
 import { logDiagnosticWarning } from "../utils/api-error";
 
 export type TelemetryAction = "generate-mockup" | "extract-design" | "submit-order";
@@ -145,16 +146,24 @@ export class DtfTelemetryService {
     }
 
     private static buildInsertPayload(params: LogParams) {
+        const referenceImage = normalizeDtfTelemetryImageUrlForLog(params.referenceImageUrl, "reference_image");
+        const resultImage = normalizeDtfTelemetryImageUrlForLog(params.resultImageUrl, "result_image");
+        const metadata = {
+            ...(params.metadata || {}),
+            ...referenceImage.metadata,
+            ...resultImage.metadata,
+        };
+
         return {
             profile_id: params.profileId || null,
             clerk_id: params.clerkId || null,
             action: params.action,
             status: params.status,
             prompt: params.prompt || null,
-            reference_image_url: params.referenceImageUrl || null,
-            result_image_url: params.resultImageUrl || null,
+            reference_image_url: referenceImage.url,
+            result_image_url: resultImage.url,
             error_message: params.errorMessage || null,
-            metadata: params.metadata || null,
+            metadata: Object.keys(metadata).length > 0 ? metadata : null,
         };
     }
 

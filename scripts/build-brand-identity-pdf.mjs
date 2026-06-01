@@ -1,12 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { execFile } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { promisify } from "node:util";
 import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const htmlPath = path.join(root, "washa-brand-identity.html");
 const pdfPath = path.join(root, "WASHA_Brand_Identity_2026.pdf");
+const vectorPdfPath = path.join(root, ".WASHA_Brand_Identity_2026.vector.tmp.pdf");
+const execFileAsync = promisify(execFile);
 
 const colors = [
   ["حبر الهوية", "Identity Ink", "#4B3434", "الشعار، العناوين، بطاقات الطباعة"],
@@ -60,12 +64,33 @@ const browser = await chromium.launch({ headless: true });
 const browserPage = await browser.newPage({ viewport: { width: 1240, height: 1754 }, deviceScaleFactor: 1 });
 await browserPage.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" });
 await browserPage.pdf({
-  path: pdfPath,
+  path: vectorPdfPath,
   printBackground: true,
   displayHeaderFooter: false,
   preferCSSPageSize: true,
 });
 await browser.close();
+await rasterizePdf(vectorPdfPath, pdfPath);
+await fs.rm(vectorPdfPath, { force: true });
+
+async function rasterizePdf(inputPath, outputPath) {
+  try {
+    await execFileAsync("gs", [
+      "-q",
+      "-dNOPAUSE",
+      "-dBATCH",
+      "-dSAFER",
+      "-r220",
+      "-sDEVICE=pdfimage24",
+      `-sOutputFile=${outputPath}`,
+      inputPath,
+    ]);
+  } catch (error) {
+    await fs.copyFile(inputPath, outputPath);
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[brand-pdf] Ghostscript rasterization skipped: ${message}`);
+  }
+}
 
 function renderHtml(contentPages) {
   return `<!doctype html>
