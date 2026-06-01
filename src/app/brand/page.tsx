@@ -1,13 +1,15 @@
 import { getSiteSettings } from "@/app/actions/settings";
 import { getProfile } from "@/app/actions/profile";
+import { isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { redirect } from "next/navigation";
 import BrandAssetsClient from "./BrandAssetsClient";
 
 export default async function BrandAssetsPage() {
   const profile = await getProfile();
+  const allowLocalDevAdmin = process.env.NODE_ENV !== "production" && isDevAuthBypassEnabled();
 
   // السماح للمشرفين والمدراء فقط (admin)
-  if (!profile || profile.role !== "admin") {
+  if ((!profile || profile.role !== "admin") && !allowLocalDevAdmin) {
     redirect("/");
   }
 

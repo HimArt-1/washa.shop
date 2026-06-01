@@ -1912,7 +1912,8 @@ export async function bookTorodShipment(orderId: string) {
                 courier_name: result.courier_name,
                 waybill_url: result.waybill_url,
                 torod_order_id: result.torod_order_id,
-                status: "shipped",
+                torod_last_status: result.torod_status || (result.pending_shipment ? "Pending" : "Shipped"),
+                status: result.tracking_number ? "shipped" : "processing",
                 updated_at: new Date().toISOString()
             })
             .eq("id", orderId);
@@ -1927,6 +1928,8 @@ export async function bookTorodShipment(orderId: string) {
         return {
             success: true,
             tracking_number: result.tracking_number,
+            torod_order_id: result.torod_order_id,
+            pending_shipment: result.pending_shipment,
             is_simulation: result.is_simulation
         };
 
@@ -1942,15 +1945,17 @@ export async function cancelTorodShipment(orderId: string) {
 
         const { data: order, error: orderError } = await supabase
             .from("orders")
-            .select("tracking_number, status")
+            .select("tracking_number, torod_order_id, status")
             .eq("id", orderId)
             .single();
 
-        if (orderError || !order || !order.tracking_number) {
+        const trackingOrOrderId = order?.tracking_number || order?.torod_order_id;
+
+        if (orderError || !order || !trackingOrOrderId) {
             return { success: false, error: "لا توجد شحنة نشطة لإلغائها" };
         }
 
-        const result = await torod.cancelOrder(order.tracking_number);
+        const result = await torod.cancelOrder(trackingOrOrderId);
 
         if (!result.success) {
             return { success: false, error: result.error || "فشل إلغاء الشحنة في طرود" };

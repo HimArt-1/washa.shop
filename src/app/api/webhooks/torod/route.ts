@@ -30,6 +30,67 @@ export async function OPTIONS() {
     });
 }
 
+type OrderLookupTarget = {
+    column: "id" | "torod_order_id" | "tracking_number";
+    value: string;
+};
+
+function payloadString(payload: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+        const value = payload[key];
+        if (typeof value === "string" && value.trim()) return value.trim();
+        if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    }
+    return undefined;
+}
+
+function buildOrderLookupTargets(params: {
+    orderId?: string;
+    torodOrderId?: string;
+    trackingId?: string;
+}) {
+    const targets: OrderLookupTarget[] = [];
+    const seen = new Set<string>();
+
+    function add(column: OrderLookupTarget["column"], value?: string) {
+        if (!value) return;
+        const key = `${column}:${value}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        targets.push({ column, value });
+    }
+
+    add("id", params.orderId);
+    add("torod_order_id", params.orderId);
+    add("torod_order_id", params.torodOrderId);
+    add("tracking_number", params.trackingId);
+
+    return targets;
+}
+
+async function findOrderByTorodIdentifiers(
+    supabase: any,
+    targets: OrderLookupTarget[]
+) {
+    let fetchError: { message?: string } | null = null;
+
+    for (const target of targets) {
+        const { data, error } = await supabase
+            .from("orders")
+            .select("id, status, metadata")
+            .eq(target.column, target.value)
+            .single();
+
+        if (data && !error) {
+            return { order: data, fetchError: null };
+        }
+
+        if (error) fetchError = error;
+    }
+
+    return { order: null, fetchError };
+}
+
 export async function POST(req: Request) {
     try {
         const rawBody = await req.text();
@@ -47,25 +108,25 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: true, message: "Acknowledged" });
         }
 
+        const authorization = req.headers.get("Authorization");
         const headerHmac = req.headers.get("X-Hmac-Sha256");
 
         console.log("[Torod Webhook Received]:", JSON.stringify(payload, null, 2));
 
-        // 1. Security Check
-        if (headerHmac && !torod.validateWebhookSignature(rawBody, headerHmac)) {
-            console.error("[Torod Webhook Security] Invalid HMAC signature");
-            return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        // 1. Security Check. Official Torod docs send the Client Secret Key in Authorization.
+        if ((authorization || headerHmac) && !torod.validateWebhookRequest(rawBody, { authorization, hmac: headerHmac })) {
+            console.error("[Torod Webhook Security] Invalid webhook verification header");
+            return NextResponse.json({ error: "Invalid webhook verification" }, { status: 401 });
         }
 
-        const order_id =
-            typeof payload.order_id === "string" ? payload.order_id : undefined;
-        const tracking_id =
-            typeof payload.tracking_id === "string" ? payload.tracking_id : undefined;
-        const status =
-            typeof payload.status === "string" ? payload.status : undefined;
+        const order_id = payloadString(payload, ["order_id", "orderId"]);
+        const torod_order_id = payloadString(payload, ["torod_order_id", "torodOrderId"]);
+        const tracking_id = payloadString(payload, ["tracking_id", "tracking_number", "trackingId", "trackingNumber"]);
+        const status = payloadString(payload, ["status", "order_status", "shipment_status"]);
+        const lookupTargets = buildOrderLookupTargets({ orderId: order_id, torodOrderId: torod_order_id, trackingId: tracking_id });
 
         // Validation/Ping check (if specific identifiers missing but body exists)
-        if (!order_id && !tracking_id) {
+        if (lookupTargets.length === 0) {
             return NextResponse.json({ success: true, message: "Validation payload received" });
         }
 
@@ -76,6 +137,10 @@ export async function POST(req: Request) {
         const normalizedStatus = status ? status.toLowerCase() : "unknown";
         
         switch (normalizedStatus) {
+            case "pending":
+                wushaStatus = "processing";
+                break;
+            case "created":
             case "shipped":
             case "in transit":
             case "ready for pickup":
@@ -92,28 +157,17 @@ export async function POST(req: Request) {
             case "rto":
             case "damage":
             case "lost":
-                wushaStatus = "shipping_failed";
+                // Keep the internal order status within the app's allowed status set.
+                // The exact Torod failure/RTO value is preserved in torod_last_status and history.
+                wushaStatus = "processing";
                 break;
             default:
                 wushaStatus = null; // No change if status unknown or intermediate
         }
 
-        // 3. Find the order (metadata column exists in DB but may be missing from generated types)
-        let orderQuery = (supabase as any)
-            .from("orders")
-            .select("id, status, metadata");
-
-        if (order_id && tracking_id) {
-            orderQuery = orderQuery.or(
-                `id.eq.${order_id},tracking_number.eq.${tracking_id}`
-            );
-        } else if (order_id) {
-            orderQuery = orderQuery.eq("id", order_id);
-        } else {
-            orderQuery = orderQuery.eq("tracking_number", tracking_id as string);
-        }
-
-        const { data: order, error: fetchError } = await orderQuery.single();
+        // 3. Find the order. Torod's order_id is usually our stored torod_order_id,
+        // while older/internal tests may still send the Supabase orders.id value.
+        const { order, fetchError } = await findOrderByTorodIdentifiers(supabase, lookupTargets);
 
         if (fetchError || !order) {
             // Torod’s “validate webhook URL” often POSTs sample payloads; those IDs won’t exist → must still be 2xx.
@@ -129,13 +183,20 @@ export async function POST(req: Request) {
             });
         }
 
+        if (!authorization && !headerHmac && torod.requiresWebhookSignature()) {
+            console.error("[Torod Webhook Security] Missing webhook verification for matched order");
+            return NextResponse.json({ error: "Missing webhook verification" }, { status: 401 });
+        }
+
         // 4. Update metadata with history
         const currentMetadata = (order.metadata as any) || {};
-        const history = currentMetadata.shipping_history || [];
+        const history = Array.isArray(currentMetadata.shipping_history)
+            ? currentMetadata.shipping_history
+            : [];
         
         const newHistoryEntry = {
             status: normalizedStatus,
-            timestamp: new Date().toISOString(),
+            timestamp: payloadString(payload, ["date_time", "dateTime"]) || new Date().toISOString(),
             raw_payload: payload
         };
 

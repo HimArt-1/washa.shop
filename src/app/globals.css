@@ -2772,3 +2772,324 @@ body.reamaze-active [data-reamaze-widget] {
   border-color: color-mix(in srgb, var(--wusha-gold) 40%, transparent) !important;
   box-shadow: 0 0 24px color-mix(in srgb, var(--wusha-gold) 10%, transparent), inset 0 0 20px color-mix(in srgb, var(--wusha-gold) 3%, transparent);
 }
+
+/* Brand assets cards */
+.brand-assets-page {
+  --brand-page-bg: var(--wusha-bg);
+  --brand-grid-opacity: 0.05;
+  --brand-card-ink: #3f2b2c;
+  --brand-card-ink-strong: #28191a;
+  --brand-card-muted: rgba(63, 43, 44, 0.66);
+  --brand-card-faint: rgba(75, 52, 52, 0.045);
+  --brand-card-accent: #4b3434;
+  --brand-card-accent-soft: rgba(75, 52, 52, 0.11);
+  --brand-card-mark: #4b3434;
+  --brand-mark-glow: rgba(75, 52, 52, 0.18);
+  --brand-shadow-tint: rgba(75, 52, 52, 0.16);
+  --brand-card-border: rgba(75, 52, 52, 0.16);
+  --brand-card-border-strong: rgba(75, 52, 52, 0.3);
+  --brand-card-line: rgba(75, 52, 52, 0.12);
+  --brand-card-chip-bg: rgba(255, 250, 246, 0.72);
+  --brand-card-capture-bg: linear-gradient(135deg, #fffaf6 0%, #f5e5de 52%, #ead2ca 100%);
+  --brand-card-bg:
+    radial-gradient(circle at 12% 9%, rgba(255, 255, 252, 0.98) 0%, rgba(255, 255, 252, 0) 36%),
+    radial-gradient(circle at 90% 0%, rgba(75, 52, 52, 0.14) 0%, rgba(75, 52, 52, 0) 34%),
+    radial-gradient(circle at 10% 92%, rgba(224, 190, 181, 0.2) 0%, rgba(224, 190, 181, 0) 38%),
+    linear-gradient(145deg, rgba(255, 250, 246, 0.98) 0%, rgba(247, 232, 224, 0.95) 50%, rgba(234, 211, 202, 0.93) 100%);
+  --brand-card-shadow:
+    0 28px 78px rgba(75, 52, 52, 0.15),
+    0 8px 24px rgba(75, 52, 52, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(75, 52, 52, 0.055);
+  --brand-card-shadow-hover:
+    0 34px 96px rgba(75, 52, 52, 0.2),
+    0 12px 30px rgba(75, 52, 52, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  --brand-card-sheen:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.5), transparent 29%, rgba(75, 52, 52, 0.04) 72%, transparent),
+    linear-gradient(90deg, transparent, var(--brand-card-line), transparent),
+    radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.28), transparent 22%);
+  --brand-card-inner-border: rgba(255, 255, 255, 0.3);
+  --brand-card-inner-shadow: inset 0 0 0 1px rgba(75, 52, 52, 0.035);
+  background: var(--brand-page-bg);
+}
+
+[data-theme="dark"] .brand-assets-page {
+  --brand-page-bg: var(--home-flow-bg);
+  --brand-grid-opacity: 0.026;
+  --brand-card-ink: var(--hero-ai-card-text);
+  --brand-card-ink-strong: #fff1d5;
+  --brand-card-muted: rgba(255, 241, 220, 0.68);
+  --brand-card-faint: rgba(224, 201, 154, 0.055);
+  --brand-card-accent: var(--home-flow-strong);
+  --brand-card-accent-soft: rgba(224, 201, 154, 0.12);
+  --brand-card-mark: var(--hero-logo-tone);
+  --brand-mark-glow: rgba(224, 201, 154, 0.3);
+  --brand-shadow-tint: rgba(0, 0, 0, 0.44);
+  --brand-card-border: var(--hero-ai-card-border);
+  --brand-card-border-strong: var(--hero-ai-card-border-hover);
+  --brand-card-line: var(--hero-ai-card-line);
+  --brand-card-chip-bg: rgba(255, 238, 210, 0.105);
+  --brand-card-capture-bg: linear-gradient(145deg, #2a1b1b 0%, #1f1213 48%, #11090a 100%);
+  --brand-card-bg:
+    var(--hero-ai-card-overlay),
+    radial-gradient(circle at 82% 86%, rgba(206, 174, 127, 0.08), transparent 42%),
+    var(--hero-ai-card-bg);
+  --brand-card-shadow: var(--hero-ai-card-shadow);
+  --brand-card-shadow-hover: var(--hero-ai-card-shadow-hover);
+  --brand-card-sheen:
+    radial-gradient(circle at 18% 10%, rgba(255, 229, 190, 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.052), transparent 42%, rgba(206, 174, 127, 0.09)),
+    linear-gradient(90deg, transparent, var(--brand-card-line), transparent);
+  --brand-card-inner-border: rgba(255, 241, 220, 0.08);
+  --brand-card-inner-shadow: inset 0 1px 0 rgba(255, 246, 232, 0.08);
+}
+
+.brand-assets-page .cyber-grid {
+  opacity: var(--brand-grid-opacity);
+}
+
+.brand-card {
+  isolation: isolate;
+  background: var(--brand-card-bg);
+  border-color: var(--brand-card-border);
+  color: var(--brand-card-ink);
+  box-shadow: var(--brand-card-shadow);
+  backdrop-filter: blur(28px) saturate(1.28);
+  -webkit-backdrop-filter: blur(28px) saturate(1.28);
+}
+
+.brand-card::before,
+.brand-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.brand-card::before {
+  background: var(--brand-card-sheen);
+  opacity: 0.76;
+  mix-blend-mode: soft-light;
+}
+
+.brand-card::after {
+  border: 1px solid var(--brand-card-inner-border);
+  border-radius: inherit;
+  box-shadow: var(--brand-card-inner-shadow);
+}
+
+.brand-card:hover {
+  border-color: var(--brand-card-border-strong);
+  box-shadow: var(--brand-card-shadow-hover);
+}
+
+.brand-card--force-light {
+  --brand-card-ink: #3f2b2c;
+  --brand-card-ink-strong: #28191a;
+  --brand-card-muted: rgba(63, 43, 44, 0.66);
+  --brand-card-faint: rgba(75, 52, 52, 0.045);
+  --brand-card-accent: #4b3434;
+  --brand-card-accent-soft: rgba(75, 52, 52, 0.11);
+  --brand-card-mark: #4b3434;
+  --brand-mark-glow: rgba(75, 52, 52, 0.18);
+  --brand-shadow-tint: rgba(75, 52, 52, 0.16);
+  --brand-card-border: rgba(75, 52, 52, 0.16);
+  --brand-card-border-strong: rgba(75, 52, 52, 0.3);
+  --brand-card-line: rgba(75, 52, 52, 0.12);
+  --brand-card-chip-bg: rgba(255, 250, 246, 0.72);
+  --brand-card-capture-bg: linear-gradient(135deg, #fffaf6 0%, #f5e5de 52%, #ead2ca 100%);
+  --brand-card-bg:
+    radial-gradient(circle at 12% 9%, rgba(255, 255, 252, 0.98) 0%, rgba(255, 255, 252, 0) 36%),
+    radial-gradient(circle at 90% 0%, rgba(75, 52, 52, 0.14) 0%, rgba(75, 52, 52, 0) 34%),
+    radial-gradient(circle at 10% 92%, rgba(224, 190, 181, 0.2) 0%, rgba(224, 190, 181, 0) 38%),
+    linear-gradient(145deg, rgba(255, 250, 246, 0.98) 0%, rgba(247, 232, 224, 0.95) 50%, rgba(234, 211, 202, 0.93) 100%);
+  --brand-card-shadow:
+    0 28px 78px rgba(75, 52, 52, 0.15),
+    0 8px 24px rgba(75, 52, 52, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(75, 52, 52, 0.055);
+  --brand-card-shadow-hover:
+    0 34px 96px rgba(75, 52, 52, 0.2),
+    0 12px 30px rgba(75, 52, 52, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  --brand-card-sheen:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.5), transparent 29%, rgba(75, 52, 52, 0.04) 72%, transparent),
+    linear-gradient(90deg, transparent, var(--brand-card-line), transparent),
+    radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.28), transparent 22%);
+  --brand-card-inner-border: rgba(255, 255, 255, 0.3);
+  --brand-card-inner-shadow: inset 0 0 0 1px rgba(75, 52, 52, 0.035);
+}
+
+.brand-card--force-dark {
+  --brand-card-ink: var(--hero-ai-card-text);
+  --brand-card-ink-strong: #fff1d5;
+  --brand-card-muted: rgba(255, 241, 220, 0.68);
+  --brand-card-faint: rgba(224, 201, 154, 0.055);
+  --brand-card-accent: var(--home-flow-strong);
+  --brand-card-accent-soft: rgba(224, 201, 154, 0.12);
+  --brand-card-mark: var(--hero-logo-tone);
+  --brand-mark-glow: rgba(224, 201, 154, 0.3);
+  --brand-shadow-tint: rgba(0, 0, 0, 0.44);
+  --brand-card-border: var(--hero-ai-card-border);
+  --brand-card-border-strong: var(--hero-ai-card-border-hover);
+  --brand-card-line: var(--hero-ai-card-line);
+  --brand-card-chip-bg: rgba(255, 238, 210, 0.105);
+  --brand-card-capture-bg: linear-gradient(145deg, #2a1b1b 0%, #1f1213 48%, #11090a 100%);
+  --brand-card-bg:
+    var(--hero-ai-card-overlay),
+    radial-gradient(circle at 82% 86%, rgba(206, 174, 127, 0.08), transparent 42%),
+    var(--hero-ai-card-bg);
+  --brand-card-shadow: var(--hero-ai-card-shadow);
+  --brand-card-shadow-hover: var(--hero-ai-card-shadow-hover);
+  --brand-card-sheen:
+    radial-gradient(circle at 18% 10%, rgba(255, 229, 190, 0.12), transparent 36%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.052), transparent 42%, rgba(206, 174, 127, 0.09)),
+    linear-gradient(90deg, transparent, var(--brand-card-line), transparent);
+  --brand-card-inner-border: rgba(255, 241, 220, 0.08);
+  --brand-card-inner-shadow: inset 0 1px 0 rgba(255, 246, 232, 0.08);
+}
+
+.brand-card-glow {
+  background: radial-gradient(circle, var(--brand-card-accent-soft) 0%, transparent 68%);
+}
+
+.brand-accent,
+.brand-icon {
+  color: var(--brand-card-accent);
+}
+
+.brand-strong {
+  color: var(--brand-card-ink-strong);
+}
+
+.brand-muted {
+  color: var(--brand-card-muted);
+}
+
+.brand-chip,
+.brand-link-pill,
+.brand-social-row,
+.brand-care-item {
+  background: var(--brand-card-chip-bg);
+  border-color: var(--brand-card-line);
+}
+
+.brand-chip,
+.brand-link-pill {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.brand-divider {
+  border-color: var(--brand-card-line);
+}
+
+.brand-download {
+  background: var(--brand-card-chip-bg);
+  border-color: var(--brand-card-line);
+  color: var(--brand-card-ink-strong);
+}
+
+.brand-download:hover {
+  background: var(--brand-card-accent);
+  border-color: var(--brand-card-accent);
+  color: #fffaf6;
+}
+
+.brand-social-row,
+.brand-care-item,
+.brand-chip,
+.brand-download {
+  transition:
+    transform 0.3s var(--ease-smooth),
+    border-color 0.3s var(--ease-smooth),
+    background-color 0.3s var(--ease-smooth),
+    box-shadow 0.3s var(--ease-smooth),
+    color 0.3s var(--ease-smooth);
+}
+
+.brand-social-row:hover,
+.brand-care-item:hover,
+.brand-chip:hover {
+  background: color-mix(in srgb, var(--brand-card-accent) 8%, var(--brand-card-chip-bg));
+  border-color: var(--brand-card-border-strong);
+  transform: translateY(-1px);
+}
+
+.brand-option-card {
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--brand-card-chip-bg) 82%, transparent), color-mix(in srgb, var(--brand-card-faint) 42%, transparent)),
+    color-mix(in srgb, var(--brand-card-chip-bg) 74%, transparent);
+  border-color: var(--brand-card-line);
+  box-shadow:
+    0 22px 58px rgba(75, 52, 52, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(20px) saturate(1.18);
+  -webkit-backdrop-filter: blur(20px) saturate(1.18);
+}
+
+[data-theme="dark"] .brand-option-card {
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 241, 220, 0.06);
+}
+
+.brand-option-stage {
+  background:
+    radial-gradient(circle at 20% 16%, color-mix(in srgb, var(--brand-card-accent-soft) 82%, transparent), transparent 32%),
+    linear-gradient(145deg, color-mix(in srgb, var(--brand-card-chip-bg) 66%, transparent), color-mix(in srgb, var(--brand-card-faint) 70%, transparent));
+  border: 1px solid var(--brand-card-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(75, 52, 52, 0.04);
+}
+
+.brand-import-card {
+  --import-strong: #2a1a19;
+  --import-muted: rgba(92, 74, 67, 0.78);
+  --import-accent: #8c5d3f;
+  --import-line: rgba(74, 33, 13, 0.14);
+  --import-chip: rgba(255, 248, 237, 0.58);
+  --import-icon-bg: rgba(74, 33, 13, 0.08);
+  --import-orb: rgba(74, 33, 13, 0.075);
+  --import-orb-strong: rgba(140, 93, 63, 0.11);
+  isolation: isolate;
+  color: var(--import-strong);
+  background: linear-gradient(135deg, #fff8ed 0%, #f5ecdd 58%, #dfc6af 100%);
+  border-color: var(--import-line);
+  box-shadow:
+    0 22px 62px rgba(74, 33, 13, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.brand-import-card--dark {
+  --import-strong: #fff8ed;
+  --import-muted: rgba(245, 236, 221, 0.74);
+  --import-accent: #d9a37c;
+  --import-line: rgba(255, 248, 237, 0.14);
+  --import-chip: rgba(255, 248, 237, 0.075);
+  --import-icon-bg: rgba(217, 163, 124, 0.13);
+  --import-orb: rgba(255, 248, 237, 0.08);
+  --import-orb-strong: rgba(140, 93, 63, 0.16);
+  background: linear-gradient(135deg, #432b2b 0%, #2a1a19 54%, #130d0c 100%);
+  box-shadow:
+    0 24px 70px rgba(42, 26, 25, 0.3),
+    inset 0 1px 0 rgba(255, 248, 237, 0.08);
+}
+
+.brand-import-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--import-line) 72%, transparent);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+}
+
+@media (max-width: 640px) {
+  .brand-business-card-frame {
+    max-width: min(22rem, calc(100vw - 2rem));
+    transform: none !important;
+  }
+}

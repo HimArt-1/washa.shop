@@ -178,6 +178,8 @@ export type Order = Timestamps & {
     courier_name: string | null;
     waybill_url: string | null;
     torod_order_id: string | null;
+    torod_last_status: string | null;
+    metadata: Record<string, unknown>;
 }
 
 export type ShippingAddress = {
@@ -627,17 +629,19 @@ export type Database = {
             };
             orders: {
                 Row: Order;
-                Insert: Omit<Order, "id" | "created_at" | "updated_at" | "order_number" | "status" | "payment_status" | "shipping_cost" | "tax" | "discount_amount" | "tracking_number" | "courier_name" | "waybill_url" | "torod_order_id"> & { 
-                    status?: OrderStatus; 
-                    payment_status?: PaymentStatus; 
-                    shipping_cost?: number; 
-                    tax?: number; 
-                    discount_amount?: number; 
+                Insert: Omit<Order, "id" | "created_at" | "updated_at" | "order_number" | "status" | "payment_status" | "shipping_cost" | "tax" | "discount_amount" | "tracking_number" | "courier_name" | "waybill_url" | "torod_order_id" | "torod_last_status" | "metadata"> & {
+                    status?: OrderStatus;
+                    payment_status?: PaymentStatus;
+                    shipping_cost?: number;
+                    tax?: number;
+                    discount_amount?: number;
                     coupon_id?: string | null;
                     tracking_number?: string | null;
                     courier_name?: string | null;
                     waybill_url?: string | null;
                     torod_order_id?: string | null;
+                    torod_last_status?: string | null;
+                    metadata?: Record<string, unknown>;
                 };
                 Update: Partial<Omit<Order, "id" | "created_at" | "buyer_id">>;
                 Relationships: [

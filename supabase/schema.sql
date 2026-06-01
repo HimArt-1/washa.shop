@@ -126,6 +126,12 @@ CREATE TABLE IF NOT EXISTS orders (
   currency TEXT DEFAULT 'SAR',
   shipping_address JSONB,
   notes TEXT,
+  tracking_number TEXT,
+  courier_name TEXT,
+  waybill_url TEXT,
+  torod_order_id TEXT,
+  torod_last_status TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -133,6 +139,8 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS idx_orders_buyer ON orders(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_tracking_number ON orders(tracking_number);
+CREATE INDEX IF NOT EXISTS idx_orders_torod_order_id ON orders(torod_order_id);
 
 -- ─── Order Items ─────────────────────────────────────────
 
