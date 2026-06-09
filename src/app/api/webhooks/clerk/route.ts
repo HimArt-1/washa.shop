@@ -6,11 +6,23 @@
 import { verifyWebhook } from "@clerk/nextjs/webhooks";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendAdminNewUserNotificationEmail, sendAdminUserLoginNotificationEmail, sendWelcomeEmail } from "@/lib/email";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 
 const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+
+type ClerkWebhookUser = {
+    id: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    username?: string | null;
+    primary_email_address_id?: string | null;
+    primary_phone_number_id?: string | null;
+    email_addresses?: Array<{ id: string; email_address: string }>;
+    phone_numbers?: Array<{ id: string; phone_number: string }>;
+};
 
 async function reportClerkWebhookAlert(params: {
     dispatchKey: string;
@@ -43,6 +55,25 @@ function getAdminSupabase() {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) return null;
     return createClient(url, key, { auth: { persistSession: false } });
+}
+
+function getWebhookUserDisplayName(user: ClerkWebhookUser | null | undefined, fallback = "مستخدم وشّى") {
+    if (!user) return fallback;
+    return [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || fallback;
+}
+
+function getWebhookUserEmail(user: ClerkWebhookUser | null | undefined) {
+    if (!user) return null;
+    return user.email_addresses?.find((entry) => entry.id === user.primary_email_address_id)?.email_address ||
+        user.email_addresses?.[0]?.email_address ||
+        null;
+}
+
+function getWebhookUserPhone(user: ClerkWebhookUser | null | undefined) {
+    if (!user) return null;
+    return user.phone_numbers?.find((entry) => entry.id === user.primary_phone_number_id)?.phone_number ||
+        user.phone_numbers?.[0]?.phone_number ||
+        null;
 }
 
 export async function POST(req: NextRequest) {
@@ -117,8 +148,48 @@ export async function POST(req: NextRequest) {
                     return NextResponse.json({ received: true, conflict: true }, { status: 200 });
                 }
 
+                const userCreatedSideEffects: Promise<unknown>[] = [];
+
                 if (email && ensured.action === "created") {
-                    sendWelcomeEmail(email, displayName).catch(console.error);
+                    userCreatedSideEffects.push(sendWelcomeEmail(email, displayName));
+                }
+
+                userCreatedSideEffects.push(
+                    runIdempotentDispatch(
+                        {
+                            dispatchKey: `clerk_user:${id}:admin_email:user_created`,
+                            eventType: "user_created",
+                            channel: "email_admin",
+                            resourceType: "user",
+                            resourceId: ensured.profile?.id ?? id,
+                            metadata: {
+                                clerk_id: id,
+                                profile_id: ensured.profile?.id ?? null,
+                                email,
+                                action: ensured.action,
+                            },
+                        },
+                        async () => {
+                            const result = await sendAdminNewUserNotificationEmail({
+                                name: displayName,
+                                email,
+                                phone,
+                                username: username || null,
+                                clerkId: id,
+                                profileAction: ensured.action,
+                            });
+                            if (result.success === false) {
+                                throw new Error("Failed to send admin new user email");
+                            }
+                        }
+                    )
+                );
+
+                const sideEffectResults = await Promise.allSettled(userCreatedSideEffects);
+                for (const result of sideEffectResults) {
+                    if (result.status === "rejected") {
+                        console.error("[Clerk Webhook] user.created side effect:", result.reason);
+                    }
                 }
             } catch (error) {
                 console.error("[Clerk Webhook] user.created:", error);
@@ -140,6 +211,58 @@ export async function POST(req: NextRequest) {
             }
 
             console.log("[Clerk Webhook] تم إنشاء ملف للمستخدم:", id);
+        }
+
+        if (evt.type === "session.created") {
+            const { id, user_id, user, latest_activity } = evt.data;
+            const displayName = getWebhookUserDisplayName(user, "مستخدم وشّى");
+            const email = getWebhookUserEmail(user);
+            const phone = getWebhookUserPhone(user);
+            const ipAddress = latest_activity?.ip_address || evt.event_attributes?.http_request?.client_ip || null;
+            const userAgent = evt.event_attributes?.http_request?.user_agent || null;
+
+            try {
+                await runIdempotentDispatch(
+                    {
+                        dispatchKey: `clerk_session:${id}:admin_email:session_created`,
+                        eventType: "session_created",
+                        channel: "email_admin",
+                        resourceType: "session",
+                        resourceId: id,
+                        metadata: {
+                            clerk_id: user_id,
+                            session_id: id,
+                            email,
+                            ip_address: ipAddress,
+                            city: latest_activity?.city ?? null,
+                            country: latest_activity?.country ?? null,
+                            device_type: latest_activity?.device_type ?? null,
+                            browser_name: latest_activity?.browser_name ?? null,
+                        },
+                    },
+                    async () => {
+                        const result = await sendAdminUserLoginNotificationEmail({
+                            name: displayName,
+                            email,
+                            phone,
+                            username: user?.username ?? null,
+                            clerkId: user_id,
+                            sessionId: id,
+                            ipAddress,
+                            userAgent,
+                            city: latest_activity?.city ?? null,
+                            country: latest_activity?.country ?? null,
+                            deviceType: latest_activity?.device_type ?? null,
+                            browserName: latest_activity?.browser_name ?? null,
+                        });
+                        if (result.success === false) {
+                            throw new Error("Failed to send admin user login email");
+                        }
+                    }
+                );
+            } catch (error) {
+                console.error("[Clerk Webhook] session.created side effect:", error);
+            }
         }
 
         if (evt.type === "user.updated") {

@@ -10,6 +10,8 @@ import {
     parsePrintPositionValue,
     parsePrintSizeValue,
 } from "@/lib/smart-store-core";
+import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import {
     releaseSmartStoreSizeReservation,
     reserveSmartStoreSizeStock,
@@ -48,6 +50,59 @@ function getPrintSizeLabel(size: PrintSize) {
 }
 
 export class DtfOrderService {
+    private static async dispatchDesignOrderCreatedSideEffects(params: {
+        orderId: string;
+        orderNumber: number;
+        customerName: string;
+        customerEmail: string | null;
+        customerPhone: string | null;
+        garmentName: string;
+        colorName: string;
+    }) {
+        const metadata = {
+            design_order_id: params.orderId,
+            order_number: params.orderNumber,
+            customer_email: params.customerEmail,
+            garment_name: params.garmentName,
+            color_name: params.colorName,
+            source: "washa_ai_dtf_studio",
+        };
+
+        const results = await Promise.allSettled([
+            runIdempotentDispatch(
+                {
+                    dispatchKey: `dtf_design_order:${params.orderId}:admin_email:new_order`,
+                    eventType: "design_order_created",
+                    channel: "email_admin",
+                    resourceType: "design_order",
+                    resourceId: params.orderId,
+                    metadata,
+                },
+                async () => {
+                    const result = await sendAdminDesignOrderNotificationEmail(
+                        params.orderNumber,
+                        params.customerName,
+                        params.customerEmail || "",
+                        params.customerPhone || "",
+                        params.garmentName,
+                        params.colorName,
+                        "studio",
+                        params.orderId
+                    );
+                    if (result.success === false) {
+                        throw new Error("Failed to send admin DTF design order email");
+                    }
+                }
+            ),
+        ]);
+
+        for (const result of results) {
+            if (result.status === "rejected") {
+                console.error("[DtfOrderService.dispatchDesignOrderCreatedSideEffects]", result.reason);
+            }
+        }
+    }
+
     private static resolveServerErrorMessage(error: unknown): { error: string; status: number } {
         const rawMessage = error instanceof Error ? error.message : String(error ?? "");
         const normalized = rawMessage.toLowerCase();
@@ -475,6 +530,18 @@ export class DtfOrderService {
                 logDiagnosticWarning("dtf-design-order-insert", insertOrderError);
                 if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
                 return DtfOrderService.resolveServerErrorMessage(insertOrderError);
+            }
+
+            if (insertedOrder?.id && insertedOrder.order_number) {
+                await DtfOrderService.dispatchDesignOrderCreatedSideEffects({
+                    orderId: insertedOrder.id,
+                    orderNumber: insertedOrder.order_number,
+                    customerName,
+                    customerEmail,
+                    customerPhone,
+                    garmentName: resolvedGarmentName,
+                    colorName: resolvedColorName,
+                });
             }
 
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_succeeded", {

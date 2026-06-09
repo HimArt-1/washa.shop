@@ -567,7 +567,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
             {/* ─── 2. Site Info ─── */}
             <SettingsCard title="معلومات الموقع" icon={Globe}>
-                <p className="text-theme-subtle text-xs mb-4">لإشعارات البريد (طلبات جديدة، طلبات انضمام): أضف <code className="bg-theme-subtle px-1 rounded">ADMIN_EMAIL</code> في ملف .env</p>
+                <p className="text-theme-subtle text-xs mb-4">لإشعارات البريد (طلبات المتجر، طلبات Washa AI، طلبات الانضمام، تسجيل الحسابات، وتسجيل الدخول): أضف <code className="bg-theme-subtle px-1 rounded">ADMIN_EMAILS</code> كقائمة مفصولة بفواصل، أو <code className="bg-theme-subtle px-1 rounded">ADMIN_EMAIL</code> لعنوان واحد.</p>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Field

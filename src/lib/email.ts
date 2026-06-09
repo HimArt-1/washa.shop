@@ -19,6 +19,7 @@ const MAX_EMAIL_SUBJECT_LENGTH = 180;
 const MAX_EMAIL_HTML_LENGTH = 250_000;
 
 export const EMAIL_ENABLED = !!resend;
+type EmailRecipientInput = string | string[];
 
 /* ─── Premium Email Wrapper ────────────────────────────── */
 
@@ -44,9 +45,39 @@ function sanitizeEmailAddress(value: string | null | undefined): string | null {
     return normalized;
 }
 
-function getEmailDomain(value: string | null | undefined) {
-    const sanitized = sanitizeEmailAddress(value);
-    return sanitized?.split("@")[1] ?? null;
+function sanitizeEmailRecipients(value: EmailRecipientInput | null | undefined): string[] {
+    const rawRecipients = Array.isArray(value)
+        ? value
+        : (value || "").split(/[,;\n]/);
+
+    return Array.from(
+        new Set(
+            rawRecipients
+                .map((recipient) => sanitizeEmailAddress(recipient))
+                .filter((recipient): recipient is string => Boolean(recipient))
+        )
+    );
+}
+
+function getAdminNotificationRecipients(adminEmailOverride?: string) {
+    if (adminEmailOverride) {
+        return sanitizeEmailRecipients(adminEmailOverride);
+    }
+
+    return sanitizeEmailRecipients([
+        process.env.ADMIN_EMAILS || "",
+        process.env.ADMIN_EMAIL || "",
+    ]);
+}
+
+function getEmailDomains(values: string[]) {
+    return Array.from(
+        new Set(
+            values
+                .map((value) => value.split("@")[1])
+                .filter(Boolean)
+        )
+    );
 }
 
 function sanitizeSubject(value: string): string {
@@ -161,7 +192,7 @@ function infoBlock(label: string, value: string): string {
 
 /* ─── Send Helper ──────────────────────────────────────── */
 
-async function send(options: { to: string; subject: string; html: string }) {
+async function send(options: { to: EmailRecipientInput; subject: string; html: string }) {
     if (!resend) {
         console.warn("[Email] RESEND_API_KEY غير معرّف — تخطي الإرسال");
         await reportAdminOperationalAlert({
@@ -177,16 +208,16 @@ async function send(options: { to: string; subject: string; html: string }) {
         return { success: false };
     }
 
-    const recipient = sanitizeEmailAddress(options.to);
+    const recipients = sanitizeEmailRecipients(options.to);
     const subject = sanitizeSubject(options.subject);
-    if (!recipient || !subject || !options.html || options.html.length > MAX_EMAIL_HTML_LENGTH) {
+    if (!recipients.length || !subject || !options.html || options.html.length > MAX_EMAIL_HTML_LENGTH) {
         return { success: false };
     }
 
     try {
         const { error } = await resend.emails.send({
             from: FROM_EMAIL,
-            to: recipient,
+            to: recipients,
             subject,
             html: options.html,
         });
@@ -203,7 +234,8 @@ async function send(options: { to: string; subject: string; html: string }) {
                 source: "email.resend.send",
                 metadata: {
                     subject,
-                    recipient_domain: getEmailDomain(recipient),
+                    recipient_domains: getEmailDomains(recipients),
+                    recipient_count: recipients.length,
                     error: error.message,
                 },
             });
@@ -223,7 +255,8 @@ async function send(options: { to: string; subject: string; html: string }) {
             source: "email.resend.send",
             metadata: {
                 subject,
-                recipient_domain: getEmailDomain(recipient),
+                recipient_domains: getEmailDomains(recipients),
+                recipient_count: recipients.length,
                 error: err instanceof Error ? err.message : String(err),
             },
             stack: err instanceof Error ? err.stack ?? null : null,
@@ -367,8 +400,8 @@ export async function sendAdminOrderNotificationEmail(
     type: "new_order" | "payment_received",
     adminEmailOverride?: string
 ) {
-    const adminEmail = sanitizeEmailAddress(adminEmailOverride || process.env.ADMIN_EMAIL);
-    if (!adminEmail?.trim()) {
+    const adminEmails = getAdminNotificationRecipients(adminEmailOverride);
+    if (!adminEmails.length) {
         return { success: false };
     }
     const safeOrderNumber = sanitizeText(orderNumber, 40, "—");
@@ -383,7 +416,7 @@ export async function sendAdminOrderNotificationEmail(
         : `تم استلام الدفع #${safeOrderNumber} — ${total.toLocaleString()} ر.س`;
 
     return send({
-        to: adminEmail,
+        to: adminEmails,
         subject: `[${SITE_NAME}] ${subject}`,
         html: wushaTemplate(`
             ${heading(title)}
@@ -406,14 +439,14 @@ export async function sendAdminApplicationNotificationEmail(
     email: string,
     artStyle: string
 ) {
-    const adminEmail = sanitizeEmailAddress(process.env.ADMIN_EMAIL);
-    if (!adminEmail?.trim()) return { success: false };
+    const adminEmails = getAdminNotificationRecipients();
+    if (!adminEmails.length) return { success: false };
     const safeFullName = sanitizeText(fullName, 100, "مقدم الطلب");
     const safeApplicantEmail = sanitizeText(sanitizeEmailAddress(email) || email, 160, "—");
     const safeArtStyle = sanitizeText(artStyle, 120, "—");
 
     return send({
-        to: adminEmail,
+        to: adminEmails,
         subject: `[${SITE_NAME}] طلب انضمام جديد — ${safeFullName}`,
         html: wushaTemplate(`
             ${heading("طلب انضمام جديد 📬")}
@@ -432,6 +465,114 @@ export async function sendAdminApplicationNotificationEmail(
     });
 }
 
+export async function sendAdminNewUserNotificationEmail(params: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    username?: string | null;
+    clerkId?: string | null;
+    profileAction?: "created" | "linked" | string;
+}) {
+    const adminEmails = getAdminNotificationRecipients();
+    if (!adminEmails.length) return { success: false };
+
+    const safeName = sanitizeText(params.name, 100, "مستخدم جديد");
+    const safeUserEmail = sanitizeText(sanitizeEmailAddress(params.email) || params.email, 160, "—");
+    const safePhone = sanitizeText(params.phone, 40, "—");
+    const safeUsername = sanitizeText(params.username, 80, "—");
+    const safeClerkId = sanitizeText(params.clerkId, 80, "—");
+    const profileActionLabel = params.profileAction === "linked"
+        ? "ربط بملف موجود"
+        : "ملف جديد";
+
+    return send({
+        to: adminEmails,
+        subject: `[${SITE_NAME}] تسجيل حساب جديد — ${safeName}`,
+        html: wushaTemplate(`
+            ${heading("تسجيل حساب جديد 👤")}
+            ${paragraph("تم إنشاء حساب جديد في منصة وشّى عبر Clerk.")}
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.06);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
+              <tr><td>
+                ${infoBlock("الاسم", safeName)}
+                ${infoBlock("البريد", safeUserEmail)}
+                ${infoBlock("الجوال", safePhone)}
+                ${infoBlock("اسم المستخدم", safeUsername)}
+                ${infoBlock("حالة الملف", profileActionLabel)}
+                ${infoBlock("Clerk ID", safeClerkId)}
+              </td></tr>
+            </table>
+
+            ${ctaButton("عرض المستخدمين", "/dashboard/users-clerk")}
+        `),
+    });
+}
+
+export async function sendAdminUserLoginNotificationEmail(params: {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    username?: string | null;
+    clerkId?: string | null;
+    sessionId?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    city?: string | null;
+    country?: string | null;
+    deviceType?: string | null;
+    browserName?: string | null;
+}) {
+    const adminEmails = getAdminNotificationRecipients();
+    if (!adminEmails.length) return { success: false };
+
+    const safeName = sanitizeText(params.name, 100, "مستخدم وشّى");
+    const safeUserEmail = sanitizeText(sanitizeEmailAddress(params.email) || params.email, 160, "—");
+    const safePhone = sanitizeText(params.phone, 40, "—");
+    const safeUsername = sanitizeText(params.username, 80, "—");
+    const safeClerkId = sanitizeText(params.clerkId, 80, "—");
+    const safeSessionId = sanitizeText(params.sessionId, 80, "—");
+    const safeIpAddress = sanitizeText(params.ipAddress, 80, "—");
+    const safeUserAgent = sanitizeText(params.userAgent, 180, "—");
+    const safeLocation = sanitizeText(
+        [params.city, params.country].filter(Boolean).join(", "),
+        120,
+        "—"
+    );
+    const safeDevice = sanitizeText(
+        [params.deviceType, params.browserName].filter(Boolean).join(" / "),
+        120,
+        "—"
+    );
+
+    return send({
+        to: adminEmails,
+        subject: `[${SITE_NAME}] تسجيل دخول — ${safeName}`,
+        html: wushaTemplate(`
+            ${heading("تسجيل دخول مستخدم 🔐")}
+            ${paragraph("تم إنشاء جلسة دخول جديدة في منصة وشّى عبر Clerk.")}
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;background:rgba(206,174,127,0.06);border:1px solid rgba(206,174,127,0.12);border-radius:12px;padding:20px 24px;">
+              <tr><td>
+                ${infoBlock("الاسم", safeName)}
+                ${infoBlock("البريد", safeUserEmail)}
+                ${infoBlock("الجوال", safePhone)}
+                ${infoBlock("اسم المستخدم", safeUsername)}
+                <div style="height:12px;"></div>
+                ${infoBlock("الموقع التقريبي", safeLocation)}
+                ${infoBlock("الجهاز / المتصفح", safeDevice)}
+                ${infoBlock("IP", safeIpAddress)}
+                ${infoBlock("User Agent", safeUserAgent)}
+                <div style="height:12px;"></div>
+                ${infoBlock("Clerk ID", safeClerkId)}
+                ${infoBlock("Session ID", safeSessionId)}
+              </td></tr>
+            </table>
+
+            ${ctaButton("عرض المستخدمين", "/dashboard/users-clerk")}
+        `),
+    });
+}
+
 export async function sendAdminDesignOrderNotificationEmail(
     orderNumber: number,
     customerName: string,
@@ -442,8 +583,8 @@ export async function sendAdminDesignOrderNotificationEmail(
     designMethod: string,
     orderId: string
 ) {
-    const adminEmail = sanitizeEmailAddress(process.env.ADMIN_EMAIL);
-    if (!adminEmail?.trim()) return { success: false };
+    const adminEmails = getAdminNotificationRecipients();
+    if (!adminEmails.length) return { success: false };
     const safeCustomerName = sanitizeText(customerName, 100, "—");
     const safeCustomerEmail = sanitizeText(sanitizeEmailAddress(customerEmail) || customerEmail, 160, "—");
     const safeCustomerPhone = sanitizeText(customerPhone, 40, "—");
@@ -456,7 +597,7 @@ export async function sendAdminDesignOrderNotificationEmail(
                    : 'تصميم من الاستوديو';
 
     return send({
-        to: adminEmail,
+        to: adminEmails,
         subject: `[${SITE_NAME}] طلب تصميم جديد 🎨 — #${orderNumber}`,
         html: wushaTemplate(`
             ${heading("طلب تصميم جديد 🎨")}

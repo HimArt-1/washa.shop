@@ -38,8 +38,18 @@ IMAGE_PROVIDER=gemini
 ```env
 RESEND_API_KEY=re_xxxx
 EMAIL_FROM=وشّى <noreply@washa.shop>
+ADMIN_EMAILS=orders@washa.shop,ops@washa.shop,admin@washa.shop
 ADMIN_EMAIL=admin@washa.shop
 ```
+
+#### Clerk Webhook - **مطلوب لمزامنة المستخدمين وتنبيهات الدخول**
+```env
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_xxxx
+```
+
+في Clerk Dashboard أضف endpoint:
+- URL: `https://washa.shop/api/webhooks/clerk`
+- Events: `user.created`, `user.updated`, `user.deleted`, `session.created`
 
 #### Web Push - **اختياري**
 ```env
@@ -88,6 +98,7 @@ git push
 - **Development**: استخدم `pk_test_...` و `sk_test_...`
 - **Production**: استخدم `pk_live_...` و `sk_live_...`
 - تأكد من إضافة `localhost` و `washa.shop` في Clerk Dashboard → Domains
+- تنبيه تسجيل الدخول يعتمد على تفعيل حدث `session.created` في Clerk Webhooks.
 
 ### ⚠️ Supabase
 - تأكد من أن RLS (Row Level Security) policies معرّفة بشكل صحيح
