@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -122,13 +122,31 @@ export function ArtworkFormModal({
         setError("");
     }, [artwork, open]);
 
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+    const setFileWithPreview = useCallback((f: File) => {
+        if (f.size > 5 * 1024 * 1024) { setError("حجم الملف يجب أن لا يتجاوز 5 ميجابايت"); return; }
+        if (!ALLOWED.includes(f.type)) { setError("نوع الملف غير مدعوم — PNG, JPG, WebP, GIF فقط"); return; }
+        setPreviewUrl(prev => {
+            if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+            return URL.createObjectURL(f);
+        });
+        setFile(f);
+        setError("");
+    }, []);
+
+    // Cleanup blob URLs on unmount
+    useEffect(() => {
+        return () => {
+            setPreviewUrl(prev => {
+                if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+                return prev;
+            });
+        };
+    }, []);
+
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const f = e.target.files?.[0];
-        if (f && f.size <= 5 * 1024 * 1024) {
-            setFile(f);
-            setPreviewUrl(URL.createObjectURL(f));
-            setError("");
-        } else if (f) setError("حجم الملف يجب أن لا يتجاوز 5 ميجابايت");
+        if (e.target.files?.[0]) setFileWithPreview(e.target.files[0]);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -421,7 +439,7 @@ export function ArtworkFormModal({
                                 onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
                                 className="rounded border-theme-soft text-gold focus:ring-gold/30"
                             />
-                            <span className="text-sm text-theme-strong">عمل مميز (يظهر في الصفحة الرئيسية)</span>
+                            <span className="text-sm text-theme">عمل مميز (يظهر في الصفحة الرئيسية)</span>
                         </label>
 
                         {error && (

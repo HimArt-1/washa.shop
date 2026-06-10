@@ -81,6 +81,7 @@ export async function adminSendOrderMessage(orderId: string, message: string) {
         return { success: false, error: error.message };
     }
 
-    revalidatePath("/dashboard/smart-store");
+    revalidatePath(`/dashboard/design-orders/${orderId}`);
+    revalidatePath("/dashboard/design-orders");
     return { success: true };
 }

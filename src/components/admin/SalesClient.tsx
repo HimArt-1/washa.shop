@@ -68,7 +68,7 @@ export function SalesClient({ initialData }: SalesClientProps) {
             </div>
 
             {/* المبيعات حسب المنتج */}
-            <div className="rounded-2xl border border-theme-subtle bg-surface/50 p-6">
+            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-6">
                 <h2 className="text-lg font-bold text-theme mb-4 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-gold" />
                     المبيعات حسب المنتج
@@ -89,7 +89,7 @@ export function SalesClient({ initialData }: SalesClientProps) {
                                     <tr key={sp.productId} className="border-b border-theme-faint">
                                         <td className="py-3 px-4 text-theme-soft">{i + 1}</td>
                                         <td className="py-3 px-4 font-medium text-theme">{sp.title}</td>
-                                        <td className="py-3 px-4 text-theme-strong">{sp.quantity}</td>
+                                        <td className="py-3 px-4 text-theme">{sp.quantity}</td>
                                         <td className="py-3 px-4 text-gold font-bold">{sp.revenue.toLocaleString()} ر.س</td>
                                     </tr>
                                 ))}

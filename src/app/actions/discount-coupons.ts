@@ -40,10 +40,23 @@ export async function createDiscountCoupon(data: {
 
     if (profile?.role !== "admin") return { error: "صلاحيات غير كافية" };
 
+    // Server-side validation
+    const trimmedCode = data.code.toUpperCase().trim();
+    if (!trimmedCode || trimmedCode.length < 2 || trimmedCode.length > 32)
+        return { error: "كود الخصم يجب أن يكون بين 2 و 32 حرفاً" };
+    if (!/^[A-Z0-9_-]+$/.test(trimmedCode))
+        return { error: "الكود يجب أن يحتوي على أحرف إنجليزية كبيرة وأرقام وشرطات فقط" };
+    if (!data.discount_value || data.discount_value <= 0)
+        return { error: "قيمة الخصم يجب أن تكون أكبر من صفر" };
+    if (data.discount_type === "percentage" && data.discount_value > 100)
+        return { error: "نسبة الخصم لا يمكن أن تتجاوز 100%" };
+    if (data.discount_type === "fixed" && data.discount_value > 10000)
+        return { error: "مبلغ الخصم الثابت لا يمكن أن يتجاوز 10,000 ريال" };
+
     const { error, data: newCoupon } = await sb
         .from("discount_coupons")
         .insert({
-            code: data.code.toUpperCase(),
+            code: trimmedCode,
             discount_type: data.discount_type,
             discount_value: data.discount_value,
             max_uses: data.max_uses || 0,

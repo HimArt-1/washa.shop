@@ -1,19 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Tag, Percent, Copy, Check, Trash2, Power, Zap } from "lucide-react";
+import {
+    Plus, Tag, Percent, Copy, Check, Trash2, Power, Zap, Loader2,
+    TrendingUp, AlertTriangle, Clock, Gift,
+} from "lucide-react";
 import { createDiscountCoupon, deleteDiscountCoupon, toggleCouponStatus } from "@/app/actions/discount-coupons";
 import type { Database } from "@/types/database";
 
 type Coupon = Database["public"]["Tables"]["discount_coupons"]["Row"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getDaysLeft(validUntil: string | null): number | null {
+    if (!validUntil) return null;
+    const diff = new Date(validUntil).getTime() - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function usagePercent(coupon: Coupon): number {
+    if (!coupon.max_uses || coupon.max_uses <= 0) return 0;
+    return Math.min(100, Math.round((coupon.current_uses / coupon.max_uses) * 100));
+}
+
+function getCouponStatus(coupon: Coupon): "active" | "inactive" | "expired" | "exhausted" {
+    if (!coupon.is_active) return "inactive";
+    if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) return "expired";
+    if (coupon.max_uses > 0 && coupon.current_uses >= coupon.max_uses) return "exhausted";
+    return "active";
+}
+
+const STATUS_META = {
+    active:    { label: "نشط",    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" },
+    inactive:  { label: "موقوف", className: "border-theme-subtle bg-theme-faint text-theme-faint" },
+    expired:   { label: "منتهي", className: "border-red-500/20 bg-red-500/10 text-red-400" },
+    exhausted: { label: "مُستنفد", className: "border-amber-500/20 bg-amber-500/10 text-amber-400" },
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) {
     const [coupons, setCoupons] = useState<Coupon[]>(initialCoupons);
     const [isCreating, setIsCreating] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [error, setError] = useState("");
+    const [formError, setFormError] = useState("");
+    const [globalError, setGlobalError] = useState("");
     const [copiedCode, setCopiedCode] = useState("");
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -25,39 +62,59 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
     const [validUntil, setValidUntil] = useState("");
     const [details, setDetails] = useState("");
 
+    // ── Analytics ─────────────────────────────────────────────────────────────
+
+    const stats = useMemo(() => {
+        const active    = coupons.filter(c => getCouponStatus(c) === "active").length;
+        const expired   = coupons.filter(c => getCouponStatus(c) === "expired").length;
+        const exhausted = coupons.filter(c => getCouponStatus(c) === "exhausted").length;
+        const totalUses = coupons.reduce((s, c) => s + (c.current_uses || 0), 0);
+        const topCoupon = [...coupons].sort((a, b) => (b.current_uses || 0) - (a.current_uses || 0))[0];
+        const expiringSoon = coupons.filter(c => {
+            const d = getDaysLeft(c.valid_until);
+            return d !== null && d > 0 && d <= 7 && getCouponStatus(c) === "active";
+        }).length;
+        return { active, expired, exhausted, totalUses, topCoupon, expiringSoon };
+    }, [coupons]);
+
+    // ── Handlers ──────────────────────────────────────────────────────────────
+
+    const openCreate = () => {
+        setCode(""); setType("percentage"); setValue(""); setMaxUses("");
+        setValidUntil(""); setDetails(""); setFormError("");
+        setIsCreating(true);
+    };
+
     const handleCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
-        setIsSubmitting(true);
+        setFormError("");
 
+        // Client-side validation
+        const numVal = Number(value);
+        if (!code.trim()) { setFormError("يرجى إدخال كود الخصم"); return; }
+        if (numVal <= 0)   { setFormError("قيمة الخصم يجب أن تكون أكبر من صفر"); return; }
+        if (type === "percentage" && numVal > 100) { setFormError("نسبة الخصم لا يمكن أن تتجاوز 100%"); return; }
+
+        setIsSubmitting(true);
         try {
             const result = await createDiscountCoupon({
                 code,
                 discount_type: type,
-                discount_value: Number(value),
+                discount_value: numVal,
                 max_uses: maxUses ? Number(maxUses) : 0,
                 valid_until: validUntil ? new Date(validUntil).toISOString() : null,
                 details: details || null,
-                is_active: true
+                is_active: true,
             });
 
-            if (result.error) {
-                setError(result.error);
-                return;
-            }
+            if (result.error) { setFormError(result.error); return; }
 
             if (result.data) {
-                setCoupons([result.data as Coupon, ...coupons]);
+                setCoupons(prev => [result.data as Coupon, ...prev]);
                 setIsCreating(false);
-                // Reset form
-                setCode("");
-                setValue("");
-                setMaxUses("");
-                setValidUntil("");
-                setDetails("");
             }
         } catch (err: any) {
-            setError(err.message || "حدث خطأ غير متوقع");
+            setFormError(err.message || "حدث خطأ غير متوقع");
         } finally {
             setIsSubmitting(false);
         }
@@ -66,7 +123,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
     const handleToggle = async (id: string, currentStatus: boolean) => {
         const result = await toggleCouponStatus(id, currentStatus);
         if (result.success) {
-            setCoupons(coupons.map(c => c.id === id ? { ...c, is_active: !currentStatus } : c));
+            setCoupons(prev => prev.map(c => c.id === id ? { ...c, is_active: !currentStatus } : c));
         }
     };
 
@@ -78,10 +135,10 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
         setIsDeleting(false);
         setConfirmDeleteId(null);
         if (result.success) {
-            setCoupons(coupons.filter(c => c.id !== targetId));
+            setCoupons(prev => prev.filter(c => c.id !== targetId));
             return;
         }
-        setError(result.error || "تعذر حذف كود الخصم الآن.");
+        setGlobalError(result.error || "تعذر حذف كود الخصم الآن.");
     };
 
     const copyToClipboard = (text: string) => {
@@ -90,143 +147,310 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
         setTimeout(() => setCopiedCode(""), 2000);
     };
 
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <div className="space-y-6">
-            {error && !isCreating && (
+
+            {globalError && (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                    {error}
+                    {globalError}
                 </div>
             )}
-            <div className="flex items-center justify-between">
+
+            {/* ── Header ── */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-black text-theme-strong">كوبونات الخصم</h1>
-                    <p className="text-theme-subtle text-sm mt-1">أدِر حملاتك التسويقية وأكواد الخصم بسهولة</p>
+                    <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint uppercase">Discount Campaigns</p>
+                    <h1 className="mt-1 text-2xl font-black text-theme sm:text-3xl">كوبونات الخصم</h1>
                 </div>
                 <button
-                    onClick={() => setIsCreating(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-gold/10 text-gold hover:bg-gold hover:text-[var(--wusha-bg)] border border-gold/20 rounded-xl font-bold transition-all"
+                    onClick={openCreate}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-gold/30 bg-gold/10 px-5 py-2.5 text-sm font-bold text-gold transition-colors hover:bg-gold/20"
                 >
-                    <Plus className="w-5 h-5" />
+                    <Plus className="h-4 w-4" />
                     كوبون جديد
                 </button>
             </div>
 
-            {/* Create Modal */}
+            {/* ── Analytics Strip ── */}
+            {coupons.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                        { label: "نشطة",     value: String(stats.active),     icon: Gift,       color: "text-emerald-400" },
+                        { label: "استخدامات", value: String(stats.totalUses),  icon: TrendingUp, color: "text-gold" },
+                        { label: "تنتهي قريباً", value: String(stats.expiringSoon), icon: Clock, color: stats.expiringSoon > 0 ? "text-amber-400" : "text-theme-faint" },
+                        { label: "منتهية/مُستنفدة", value: String(stats.expired + stats.exhausted), icon: AlertTriangle, color: stats.expired + stats.exhausted > 0 ? "text-red-400" : "text-theme-faint" },
+                    ].map(({ label, value, icon: Icon, color }) => (
+                        <div key={label} className="theme-surface-panel rounded-[20px] p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Icon className={`h-3.5 w-3.5 ${color}`} />
+                                <p className="text-[10px] font-bold tracking-wider text-theme-faint uppercase">{label}</p>
+                            </div>
+                            <p className={`text-2xl font-black ${color}`}>{value}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* ── Coupons Grid ── */}
+            {coupons.length > 0 ? (
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    {coupons.map((coupon) => {
+                        const status = getCouponStatus(coupon);
+                        const sm = STATUS_META[status];
+                        const pct = usagePercent(coupon);
+                        const daysLeft = getDaysLeft(coupon.valid_until);
+                        const isActive = status === "active";
+
+                        return (
+                            <motion.div
+                                key={coupon.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`relative overflow-hidden rounded-[24px] border p-5 transition-all ${
+                                    isActive
+                                        ? "theme-surface-panel hover:border-gold/30"
+                                        : "border-theme-subtle bg-theme-faint opacity-75"
+                                }`}
+                            >
+                                {/* Status pill */}
+                                <div className="mb-4 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${isActive ? "border-gold/30 bg-gold/10 text-gold" : "border-theme-subtle bg-theme-faint text-theme-faint"}`}>
+                                            {coupon.discount_type === "percentage"
+                                                ? <Percent className="h-5 w-5" />
+                                                : <Tag className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5">
+                                                <p className="text-xl font-black text-theme tracking-widest">{coupon.code}</p>
+                                                <button
+                                                    onClick={() => copyToClipboard(coupon.code)}
+                                                    className="text-theme-faint transition-colors hover:text-gold"
+                                                >
+                                                    {copiedCode === coupon.code
+                                                        ? <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                                        : <Copy className="h-3.5 w-3.5" />}
+                                                </button>
+                                            </div>
+                                            <p className="text-sm font-semibold text-theme-soft">
+                                                {coupon.discount_type === "percentage"
+                                                    ? `خصم ${coupon.discount_value}%`
+                                                    : `خصم ${Number(coupon.discount_value).toLocaleString("ar-SA")} ر.س`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${sm.className}`}>
+                                        {sm.label}
+                                    </span>
+                                </div>
+
+                                {/* Usage bar */}
+                                <div className="mb-3 space-y-1.5">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-theme-faint">الاستخدام</span>
+                                        <span className="font-mono font-bold text-theme">
+                                            {coupon.current_uses} / {coupon.max_uses === 0 ? "∞" : coupon.max_uses}
+                                        </span>
+                                    </div>
+                                    {coupon.max_uses > 0 && (
+                                        <div className="h-1.5 overflow-hidden rounded-full bg-theme-faint">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-amber-400" : "bg-emerald-400"}`}
+                                                style={{ width: `${pct}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Meta row */}
+                                <div className="mb-4 flex flex-wrap items-center gap-2">
+                                    {coupon.valid_until && (
+                                        <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                                            status === "expired" ? "border-red-500/20 text-red-400"
+                                            : daysLeft !== null && daysLeft <= 7 ? "border-amber-500/20 text-amber-400"
+                                            : "border-theme-subtle text-theme-faint"
+                                        }`}>
+                                            <Clock className="h-3 w-3" />
+                                            {status === "expired"
+                                                ? "انتهت صلاحيته"
+                                                : daysLeft !== null && daysLeft <= 0
+                                                    ? "ينتهي اليوم"
+                                                    : daysLeft !== null && daysLeft <= 7
+                                                        ? `${daysLeft} أيام متبقية`
+                                                        : formatDate(coupon.valid_until)}
+                                        </span>
+                                    )}
+                                    {coupon.details && (
+                                        <span className="truncate max-w-[160px] rounded-full border border-theme-subtle px-2 py-0.5 text-[11px] text-theme-faint">
+                                            {coupon.details}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 border-t border-theme-faint pt-4">
+                                    <button
+                                        onClick={() => handleToggle(coupon.id, coupon.is_active)}
+                                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-bold transition-all ${
+                                            coupon.is_active
+                                                ? "border-theme-subtle bg-theme-faint text-theme-soft hover:bg-theme-subtle"
+                                                : "border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15"
+                                        }`}
+                                    >
+                                        {coupon.is_active ? <Power className="h-3.5 w-3.5" /> : <Zap className="h-3.5 w-3.5" />}
+                                        {coupon.is_active ? "إيقاف" : "تفعيل"}
+                                    </button>
+                                    <button
+                                        onClick={() => { setGlobalError(""); setConfirmDeleteId(coupon.id); }}
+                                        className="rounded-xl border border-theme-subtle bg-theme-faint p-2 text-theme-faint transition-all hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-400"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="rounded-[28px] border border-dashed border-theme-subtle bg-theme-faint py-20 text-center">
+                    <Tag className="mx-auto mb-4 h-12 w-12 text-theme-faint" />
+                    <h3 className="text-lg font-bold text-theme">لا توجد كوبونات بعد</h3>
+                    <p className="mt-1 text-sm text-theme-faint">أنشئ أول كوبون خصم لحملاتك التسويقية</p>
+                    <button
+                        onClick={openCreate}
+                        className="mt-6 inline-flex items-center gap-2 rounded-2xl border border-gold/30 bg-gold/10 px-5 py-2.5 text-sm font-bold text-gold hover:bg-gold/20"
+                    >
+                        <Plus className="h-4 w-4" />
+                        كوبون جديد
+                    </button>
+                </div>
+            )}
+
+            {/* ═══ Create Modal ════════════════════════════════════════════════════ */}
             <AnimatePresence>
                 {isCreating && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] backdrop-blur-md p-4"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
                     >
                         <motion.div
-                            initial={{ scale: 0.95, y: 20 }}
+                            initial={{ scale: 0.97, y: 16 }}
                             animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 20 }}
-                            className="theme-surface-panel p-6 rounded-[1.75rem] w-full max-w-md max-h-[90vh] overflow-y-auto shadow-[0_30px_90px_rgba(0,0,0,0.16)]"
+                            exit={{ scale: 0.97, y: 16 }}
+                            className="theme-surface-panel w-full max-w-md overflow-y-auto rounded-[28px] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.2)] max-h-[90vh]"
                         >
-                            <div className="mb-6">
-                                <p className="text-xs uppercase tracking-[0.3em] text-theme-faint mb-2">Discount Campaign</p>
-                                <h2 className="text-xl font-bold text-theme">إنشاء كود خصم جديد</h2>
-                            </div>
+                            <p className="text-[11px] font-bold tracking-[0.3em] text-theme-faint uppercase">Discount Campaign</p>
+                            <h2 className="mt-2 text-xl font-black text-theme">إنشاء كود خصم</h2>
 
-                            {error && (
-                                <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm mb-6">
-                                    {error}
+                            {formError && (
+                                <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                                    {formError}
                                 </div>
                             )}
 
-                            <form onSubmit={handleCreate} className="space-y-4">
+                            <form onSubmit={handleCreate} className="mt-5 space-y-4">
+                                {/* Code */}
                                 <div>
-                                    <label className="block text-sm font-medium text-theme-soft mb-1">كود الخصم (مثال: WASHA20)</label>
+                                    <label className="mb-1.5 block text-xs font-semibold text-theme">كود الخصم</label>
                                     <input
                                         type="text"
                                         required
                                         value={code}
-                                        onChange={(e) => setCode(e.target.value.toUpperCase())}
-                                        className="input-dark w-full rounded-xl px-4 py-2.5 uppercase"
-                                        placeholder="CODE2024"
+                                        onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))}
+                                        className="input-dark w-full rounded-2xl px-4 py-2.5 font-mono tracking-widest uppercase"
+                                        placeholder="WASHA20"
+                                        maxLength={32}
                                     />
+                                    <p className="mt-1 text-[11px] text-theme-faint">أحرف إنجليزية كبيرة، أرقام، شرطات فقط</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                {/* Type + Value */}
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-sm font-medium text-theme-soft mb-1">نوع الخصم</label>
+                                        <label className="mb-1.5 block text-xs font-semibold text-theme">نوع الخصم</label>
                                         <select
                                             value={type}
-                                            onChange={(e) => setType(e.target.value as any)}
-                                            className="input-dark w-full rounded-xl px-4 py-2.5"
+                                            onChange={(e) => setType(e.target.value as "percentage" | "fixed")}
+                                            className="input-dark w-full rounded-2xl px-4 py-2.5 text-sm"
                                         >
                                             <option value="percentage">نسبة مئوية (%)</option>
-                                            <option value="fixed">مبلغ ثابت (SAR)</option>
+                                            <option value="fixed">مبلغ ثابت (ر.س)</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-theme-soft mb-1">
-                                            {type === 'percentage' ? 'النسبة (%)' : 'المبلغ (SAR)'}
+                                        <label className="mb-1.5 block text-xs font-semibold text-theme">
+                                            {type === "percentage" ? "النسبة (1–100%)" : "المبلغ (ر.س)"}
                                         </label>
                                         <input
                                             type="number"
                                             required
-                                            min="0.1"
-                                            step={type === 'percentage' ? "1" : "0.01"}
+                                            min="0.01"
+                                            max={type === "percentage" ? "100" : "10000"}
+                                            step={type === "percentage" ? "1" : "0.01"}
                                             value={value}
                                             onChange={(e) => setValue(e.target.value)}
-                                            className="input-dark w-full rounded-xl px-4 py-2.5"
-                                            placeholder="20"
+                                            className="input-dark w-full rounded-2xl px-4 py-2.5 text-sm"
+                                            placeholder={type === "percentage" ? "20" : "50"}
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                {/* Max uses + Expiry */}
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block text-sm font-medium text-theme-soft mb-1">الحد الأقصى للاستخدام</label>
+                                        <label className="mb-1.5 block text-xs font-semibold text-theme">الحد الأقصى للاستخدام</label>
                                         <input
                                             type="number"
                                             min="0"
                                             value={maxUses}
                                             onChange={(e) => setMaxUses(e.target.value)}
-                                            className="input-dark w-full rounded-xl px-4 py-2.5"
-                                            placeholder="أتركه فارغاً للامحدود"
+                                            className="input-dark w-full rounded-2xl px-4 py-2.5 text-sm"
+                                            placeholder="∞ بلا حد"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-theme-soft mb-1">تاريخ الانتهاء</label>
+                                        <label className="mb-1.5 block text-xs font-semibold text-theme">تاريخ الانتهاء</label>
                                         <input
                                             type="datetime-local"
                                             value={validUntil}
                                             onChange={(e) => setValidUntil(e.target.value)}
-                                            className="input-dark w-full rounded-xl px-4 py-2.5"
+                                            className="input-dark w-full rounded-2xl px-4 py-2.5 text-sm"
                                         />
                                     </div>
                                 </div>
 
+                                {/* Details */}
                                 <div>
-                                    <label className="block text-sm font-medium text-theme-soft mb-1">تفاصيل وملاحظات (اختياري)</label>
+                                    <label className="mb-1.5 block text-xs font-semibold text-theme">ملاحظات (اختياري)</label>
                                     <input
                                         type="text"
                                         value={details}
                                         onChange={(e) => setDetails(e.target.value)}
-                                        className="input-dark w-full rounded-xl px-4 py-2.5"
-                                        placeholder="مثال: خصم بمناسبة اليوم الوطني"
+                                        className="input-dark w-full rounded-2xl px-4 py-2.5 text-sm"
+                                        placeholder="مثال: خصم اليوم الوطني"
                                     />
                                 </div>
 
-                                <div className="flex items-center gap-3 pt-4">
+                                <div className="flex items-center gap-3 pt-2">
                                     <button
                                         type="button"
                                         onClick={() => setIsCreating(false)}
-                                        className="flex-1 py-2.5 rounded-xl font-bold text-theme-soft bg-theme-faint hover:bg-theme-subtle border border-theme-subtle transition-colors"
+                                        className="flex-1 rounded-2xl border border-theme-subtle bg-theme-faint py-2.5 text-sm font-semibold text-theme-soft transition-colors hover:bg-theme-subtle"
                                     >
                                         إلغاء
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="flex-1 py-2.5 bg-gold text-[var(--wusha-bg)] rounded-xl font-bold hover:bg-gold-light transition-colors disabled:opacity-50 shadow-[0_16px_36px_rgba(154,123,61,0.2)]"
+                                        className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-2.5 text-sm font-bold text-[var(--wusha-bg)] transition-colors hover:bg-gold/90 disabled:opacity-50"
                                     >
-                                        {isSubmitting ? "جاري الإنشاء..." : "إنشاء الكوبون"}
+                                        {isSubmitting
+                                            ? <><Loader2 className="h-4 w-4 animate-spin" /> جارٍ الإنشاء...</>
+                                            : "إنشاء الكوبون"}
                                     </button>
                                 </div>
                             </form>
@@ -235,101 +459,7 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                 )}
             </AnimatePresence>
 
-            {/* Coupons List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {coupons.map((coupon) => {
-                    const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
-                    const isExhausted = coupon.max_uses > 0 && coupon.current_uses >= coupon.max_uses;
-                    const isValid = coupon.is_active && !isExpired && !isExhausted;
-
-                    return (
-                        <motion.div
-                            key={coupon.id}
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className={`relative p-6 rounded-[1.75rem] border backdrop-blur-md transition-all ${isValid
-                                ? "theme-surface-panel hover:border-gold/40"
-                                : "bg-red-500/6 border-red-500/20 opacity-80"
-                                }`}
-                        >
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-3 rounded-xl ${isValid ? "bg-gold/10 text-gold" : "bg-theme-subtle text-theme-subtle"}`}>
-                                        {coupon.discount_type === 'percentage' ? <Percent className="w-6 h-6" /> : <Tag className="w-6 h-6" />}
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="text-2xl font-black text-theme">{coupon.code}</h3>
-                                            <button
-                                                onClick={() => copyToClipboard(coupon.code)}
-                                                className="text-theme-subtle hover:text-gold transition-colors"
-                                            >
-                                                {copiedCode === coupon.code ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                        <p className="text-theme-soft font-medium tracking-wide">
-                                            {coupon.discount_type === 'percentage'
-                                                ? `خصم ${coupon.discount_value}%`
-                                                : `خصم ${coupon.discount_value} ر.س`}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2 mb-6">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-theme-subtle">الاستخدام</span>
-                                    <span className="text-theme font-mono">
-                                        {coupon.current_uses} / {coupon.max_uses === 0 ? "∞" : coupon.max_uses}
-                                    </span>
-                                </div>
-                                {coupon.valid_until && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-theme-subtle">صالح حتى</span>
-                                        <span className={`font-mono ${isExpired ? "text-red-400" : "text-theme"}`}>
-                                            {new Date(coupon.valid_until).toLocaleDateString('ar-SA')}
-                                        </span>
-                                    </div>
-                                )}
-                                {coupon.details && (
-                                    <p className="text-theme-subtle text-xs mt-2 line-clamp-2">{coupon.details}</p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-2 border-t border-theme-faint pt-4">
-                                <button
-                                    onClick={() => handleToggle(coupon.id, coupon.is_active)}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition-all ${coupon.is_active
-                                        ? "bg-theme-faint border border-theme-subtle text-theme-soft hover:bg-theme-subtle"
-                                        : "bg-gold/10 border border-gold/20 text-gold hover:bg-gold/20"
-                                        }`}
-                                >
-                                    {coupon.is_active ? <Power className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                                    {coupon.is_active ? "إيقاف" : "تفعيل"}
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setError("");
-                                        setConfirmDeleteId(coupon.id);
-                                    }}
-                                    className="p-2 bg-theme-faint border border-theme-subtle text-theme-subtle hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-                        </motion.div>
-                    );
-                })}
-            </div>
-
-            {coupons.length === 0 && (
-                <div className="text-center py-20 border border-dashed border-theme-soft rounded-3xl">
-                    <Tag className="w-12 h-12 text-theme-faint mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-theme mb-2">لا يوجد كوبونات</h3>
-                    <p className="text-theme-subtle">لم تقم بإنشاء أي أكواد خصم بعد.</p>
-                </div>
-            )}
-
+            {/* ═══ Delete Confirm Modal ════════════════════════════════════════════ */}
             <AnimatePresence>
                 {confirmDeleteId && (
                     <motion.div
@@ -339,22 +469,24 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                         className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--wusha-bg)_68%,transparent)] p-4 backdrop-blur-md"
                     >
                         <motion.div
-                            initial={{ scale: 0.95, y: 16 }}
+                            initial={{ scale: 0.97, y: 12 }}
                             animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 16 }}
-                            className="theme-surface-panel w-full max-w-sm rounded-[1.5rem] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.16)]"
+                            exit={{ scale: 0.97, y: 12 }}
+                            className="theme-surface-panel w-full max-w-sm rounded-[24px] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.2)]"
                         >
-                            <p className="text-xs uppercase tracking-[0.24em] text-theme-faint">Delete Coupon</p>
-                            <h3 className="mt-2 text-lg font-bold text-theme">حذف كود الخصم</h3>
-                            <p className="mt-3 text-sm leading-relaxed text-theme-subtle">
-                                سيتم حذف هذا الكوبون نهائيًا من القائمة الحالية.
+                            <div className="mb-1 flex h-12 w-12 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10">
+                                <Trash2 className="h-5 w-5 text-red-400" />
+                            </div>
+                            <h3 className="mt-4 text-lg font-black text-theme">حذف كود الخصم</h3>
+                            <p className="mt-2 text-sm leading-relaxed text-theme-soft">
+                                سيتم حذف هذا الكوبون نهائياً ولن يقبله المتجر في الطلبات الجديدة.
                             </p>
                             <div className="mt-6 flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => setConfirmDeleteId(null)}
                                     disabled={isDeleting}
-                                    className="flex-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-sm font-bold text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme disabled:opacity-40"
+                                    className="flex-1 rounded-2xl border border-theme-subtle bg-theme-faint py-2.5 text-sm font-semibold text-theme-soft transition-colors hover:bg-theme-subtle disabled:opacity-40"
                                 >
                                     إلغاء
                                 </button>
@@ -362,10 +494,11 @@ export function CouponsClient({ initialCoupons }: { initialCoupons: Coupon[] }) 
                                     type="button"
                                     onClick={handleDelete}
                                     disabled={isDeleting}
-                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 py-2.5 text-sm font-bold text-red-300 transition-colors hover:bg-red-500/15 disabled:opacity-40"
                                 >
-                                    {isDeleting ? <Check className="w-4 h-4 animate-pulse" /> : <Trash2 className="w-4 h-4" />}
-                                    حذف الكوبون
+                                    {isDeleting
+                                        ? <><Loader2 className="h-4 w-4 animate-spin" /> جارٍ الحذف...</>
+                                        : <><Trash2 className="h-4 w-4" /> حذف نهائياً</>}
                                 </button>
                             </div>
                         </motion.div>

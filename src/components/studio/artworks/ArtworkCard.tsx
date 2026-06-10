@@ -17,8 +17,8 @@ interface Artwork {
 }
 
 const artworkStatusMap: Record<string, { label: string; className: string }> = {
-    draft: { label: "مسودة", className: "bg-gray-500/90 text-theme" },
-    pending: { label: "قيد المراجعة", className: "bg-amber-500/90 text-theme" },
+    draft: { label: "مسودة", className: "bg-gray-500/90 text-white" },
+    pending: { label: "قيد المراجعة", className: "bg-amber-500/90 text-white" },
     published: { label: "منشور", className: "bg-green-500/90 text-theme" },
     rejected: { label: "مرفوض", className: "bg-red-500/90 text-white" },
     archived: { label: "مؤرشف", className: "bg-gray-700/90 text-white" },

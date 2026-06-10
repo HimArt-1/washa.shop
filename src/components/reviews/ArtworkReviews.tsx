@@ -16,6 +16,7 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
     const [reviews, setReviews] = useState(initialReviews);
     const [userReview, setUserReview] = useState<{ rating: number; comment: string } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
     const [loadingUser, setLoadingUser] = useState(true);
 
     const avgRating = reviews.length > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
@@ -34,11 +35,14 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
     const handleSubmit = async () => {
         if (!userReview || userReview.rating < 1) return;
         setLoading(true);
+        setSubmitError(null);
         const res = await submitArtworkReview(artworkId, userReview.rating, userReview.comment || undefined);
         setLoading(false);
         if (res.success) {
             const fresh = await getArtworkReviews(artworkId);
             setReviews(fresh);
+        } else {
+            setSubmitError((res as any).error || "تعذر إرسال التقييم، حاول مجدداً");
         }
     };
 
@@ -77,7 +81,7 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
                         value={userReview?.comment ?? ""}
                         onChange={(e) => setUserReview((u) => ({ ...(u || { rating: 0, comment: "" }), comment: e.target.value }))}
                         placeholder="اكتب مراجعتك (اختياري)..."
-                        className="w-full px-4 py-3 rounded-xl bg-theme-subtle border border-theme-soft text-theme text-sm mb-3 resize-none"
+                        className="input-dark w-full rounded-xl px-4 py-3 text-sm mb-3 resize-none"
                         rows={3}
                         dir="rtl"
                     />
@@ -89,6 +93,9 @@ export function ArtworkReviews({ artworkId, initialReviews }: ArtworkReviewsProp
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                         إرسال
                     </button>
+                    {submitError && (
+                        <p className="mt-2 text-xs text-red-400">{submitError}</p>
+                    )}
                 </div>
             )}
 

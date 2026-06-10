@@ -109,7 +109,7 @@ export function DesignOrderAdminChat({ orderId }: { orderId: string }) {
                                 transition={{ delay: 0.05 }}
                                 className={clsx(
                                     "flex flex-col gap-1 max-w-[85%]",
-                                    isAdmin ? "mr-auto items-end" : "ml-auto items-start"
+                                    isAdmin ? "ml-auto items-end" : "mr-auto items-start"
                                 )}
                             >
                                 <span className={clsx("text-[10px] px-1", isAdmin ? "text-blue-400" : "text-theme-subtle")}>

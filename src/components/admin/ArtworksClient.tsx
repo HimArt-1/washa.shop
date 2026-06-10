@@ -68,7 +68,7 @@ export function ArtworksClient({
     categories,
 }: ArtworksClientProps) {
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingArtwork, setEditingArtwork] = useState<any | null>(null);
@@ -217,10 +217,10 @@ export function ArtworksClient({
                             )}
 
                             <div className="absolute bottom-3 left-3 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="flex items-center gap-1 text-theme-strong text-xs">
+                                <span className="flex items-center gap-1 text-white text-xs">
                                     <Eye className="w-3.5 h-3.5" /> {artwork.views_count ?? 0}
                                 </span>
-                                <span className="flex items-center gap-1 text-theme-strong text-xs">
+                                <span className="flex items-center gap-1 text-white text-xs">
                                     <Heart className="w-3.5 h-3.5" /> {artwork.likes_count ?? 0}
                                 </span>
                             </div>

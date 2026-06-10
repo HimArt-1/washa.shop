@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createArtwork, uploadArtworkImage } from "@/app/actions/artworks";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_SIZE = 5 * 1024 * 1024;
 
 interface Category {
     id: string;
@@ -26,74 +29,76 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
         description: "",
         category_id: "",
         tags: "",
+        price: "",
+        medium: "",
+        dimensions: "",
+        year: "",
     });
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const selectedFile = e.target.files[0];
-            if (selectedFile.size > 5 * 1024 * 1024) { // 5MB limit
-                setError("حجم الملف يجب أن لا يتجاوز 5 ميجابايت");
-                return;
+    // Revoke object URL on unmount or when previewUrl changes
+    useEffect(() => {
+        return () => {
+            if (previewUrl && previewUrl.startsWith("blob:")) {
+                URL.revokeObjectURL(previewUrl);
             }
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
-            setError("");
+        };
+    }, [previewUrl]);
+
+    const setFileWithPreview = (selectedFile: File) => {
+        // Revoke old preview
+        if (previewUrl && previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+
+        if (selectedFile.size > MAX_SIZE) {
+            setError("حجم الملف يجب أن لا يتجاوز 5 ميجابايت");
+            return;
         }
+        if (!ALLOWED_TYPES.includes(selectedFile.type)) {
+            setError("نوع الملف غير مدعوم — PNG, JPG, WebP, GIF فقط");
+            return;
+        }
+        setFile(selectedFile);
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+        setError("");
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files?.[0]) setFileWithPreview(e.target.files[0]);
     };
 
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const selectedFile = e.dataTransfer.files[0];
-            if (selectedFile.size > 5 * 1024 * 1024) {
-                setError("حجم الملف يجب أن لا يتجاوز 5 ميجابايت");
-                return;
-            }
-            setFile(selectedFile);
-            setPreviewUrl(URL.createObjectURL(selectedFile));
-            setError("");
-        }
+        if (e.dataTransfer.files?.[0]) setFileWithPreview(e.dataTransfer.files[0]);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file) {
-            setError("الرجاء اختيار صورة للعمل الفني");
-            return;
-        }
-        if (!formData.title || !formData.category_id) {
-            setError("الرجاء تعبئة الحقول المطلوبة");
-            return;
-        }
+        if (!file) { setError("الرجاء اختيار صورة للعمل الفني"); return; }
+        if (!formData.title.trim()) { setError("العنوان مطلوب"); return; }
+        if (!formData.category_id) { setError("الرجاء اختيار الفئة"); return; }
 
         setIsUploading(true);
         setError("");
 
         try {
-            // 1. Upload file via Server Action (يتجاوز RLS)
             const fd = new FormData();
             fd.append("file", file);
             const uploadResult = await uploadArtworkImage(fd);
 
-            if (!uploadResult.success) {
-                throw new Error(uploadResult.error);
-            }
+            if (!uploadResult.success) throw new Error(uploadResult.error);
 
-            // 2. Create DB Record
             const result = await createArtwork({
                 ...formData,
                 image_url: uploadResult.url,
-                tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+                tags: formData.tags.split(",").map(t => t.trim()).filter(Boolean),
+                price: formData.price ? parseFloat(formData.price) : null,
+                year: formData.year ? parseInt(formData.year, 10) : null,
             });
 
-            if (!result.success) {
-                throw new Error(result.error);
-            }
+            if (!result.success) throw new Error(result.error);
 
             router.push("/studio/artworks");
         } catch (err: any) {
-            console.error(err);
             setError(err.message || "حدث خطأ أثناء الرفع");
         } finally {
             setIsUploading(false);
@@ -107,12 +112,13 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                 <label className="block text-sm font-bold text-theme">صورة العمل الفني</label>
 
                 <div
-                    className={`theme-surface-panel relative aspect-square rounded-[1.75rem] border-2 border-dashed transition-all duration-300 overflow-hidden flex flex-col items-center justify-center cursor-pointer group ${isDragging
+                    className={`theme-surface-panel relative aspect-square rounded-[1.75rem] border-2 border-dashed transition-all duration-300 overflow-hidden flex flex-col items-center justify-center cursor-pointer group ${
+                        isDragging
                             ? "border-gold bg-gold/5"
                             : error && !file
                                 ? "border-red-400 bg-red-500/5"
-                                : "border-theme-strong hover:border-gold/50 hover:bg-gold/5"
-                        }`}
+                                : "border-theme-subtle hover:border-gold/50 hover:bg-gold/5"
+                    }`}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
@@ -122,20 +128,15 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                         type="file"
                         ref={fileInputRef}
                         className="hidden"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         onChange={handleFileSelect}
                     />
 
                     {previewUrl ? (
                         <div className="relative w-full h-full">
-                            <Image
-                                src={previewUrl}
-                                alt="Preview"
-                                fill
-                                className="object-cover"
-                            />
+                            <Image src={previewUrl} alt="Preview" fill className="object-cover" />
                             <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <p className="text-theme-strong font-medium flex items-center gap-2">
+                                <p className="text-white font-medium flex items-center gap-2">
                                     <Upload className="w-5 h-5" />
                                     تغيير الصورة
                                 </p>
@@ -144,6 +145,7 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                                 type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
                                     setFile(null);
                                     setPreviewUrl(null);
                                     setError("");
@@ -160,20 +162,18 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                             </div>
                             <div>
                                 <p className="text-theme font-medium">اضغط للرفع أو اسحب الصورة هنا</p>
-                                <p className="text-theme-faint text-sm mt-1">PNG, JPG حتى 5 ميجابايت</p>
+                                <p className="text-theme-faint text-sm mt-1">PNG, JPG, WebP حتى 5 ميجابايت</p>
                             </div>
                         </div>
                     )}
                 </div>
-                {error && !file && <p className="text-red-500 text-xs px-2">{error}</p>}
+                {error && !file && <p className="text-red-400 text-xs px-2">{error}</p>}
             </div>
 
             {/* ─── Details Form ─── */}
-            <div className="space-y-6">
-                <div className="theme-surface-panel p-6 rounded-[1.75rem] space-y-5">
-                    <div className="flex items-center gap-2 text-theme mb-2">
-                        <h2 className="text-xl font-bold">تفاصيل العمل</h2>
-                    </div>
+            <div className="space-y-5">
+                <div className="theme-surface-panel p-6 rounded-[1.75rem] space-y-4">
+                    <h2 className="text-xl font-bold text-theme">تفاصيل العمل</h2>
 
                     <div>
                         <label className="block text-sm text-theme-subtle mb-1.5">عنوان العمل *</label>
@@ -181,8 +181,9 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                             type="text"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="input-dark"
+                            className="input-dark w-full"
                             placeholder="مثال: غروب في الصحراء"
+                            required
                         />
                     </div>
 
@@ -191,13 +192,12 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                         <select
                             value={formData.category_id}
                             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                            className="input-dark appearance-none"
+                            className="input-dark w-full appearance-none"
+                            required
                         >
                             <option value="">اختر الفئة...</option>
                             {categories.map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                    {cat.name_ar}
-                                </option>
+                                <option key={cat.id} value={cat.id}>{cat.name_ar}</option>
                             ))}
                         </select>
                     </div>
@@ -207,9 +207,59 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="input-dark h-32 resize-none"
+                            className="input-dark w-full h-24 resize-none"
                             placeholder="قصة العمل الفني، التقنيات المستخدمة..."
                         />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm text-theme-subtle mb-1.5">الخامة</label>
+                            <input
+                                type="text"
+                                value={formData.medium}
+                                onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
+                                className="input-dark w-full"
+                                placeholder="رسم رقمي، خط..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-theme-subtle mb-1.5">الأبعاد</label>
+                            <input
+                                type="text"
+                                value={formData.dimensions}
+                                onChange={(e) => setFormData({ ...formData, dimensions: e.target.value })}
+                                className="input-dark w-full"
+                                placeholder="80×60 سم"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-sm text-theme-subtle mb-1.5">السنة</label>
+                            <input
+                                type="number"
+                                value={formData.year}
+                                onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                                className="input-dark w-full"
+                                placeholder={String(new Date().getFullYear())}
+                                min="1900"
+                                max="2100"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-theme-subtle mb-1.5">السعر (ر.س)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                className="input-dark w-full"
+                                placeholder="فارغ = غير معروض للبيع"
+                            />
+                        </div>
                     </div>
 
                     <div>
@@ -218,13 +268,13 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                             type="text"
                             value={formData.tags}
                             onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                            className="input-dark"
+                            className="input-dark w-full"
                             placeholder="طبيعة, تجريدي, ألوان زيتية (افصل بفاصلة)"
                         />
                     </div>
                 </div>
 
-                {error && <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl">{error}</div>}
+                {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</div>}
 
                 <button
                     type="submit"
@@ -232,15 +282,9 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
                     className="btn-gold w-full py-4 text-base font-bold shadow-lg shadow-gold/10 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isUploading ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            جاري الرفع والإرسال...
-                        </>
+                        <><Loader2 className="w-5 h-5 animate-spin" />جارٍ الرفع والإرسال...</>
                     ) : (
-                        <>
-                            <Upload className="w-5 h-5" />
-                            إرسال العمل للمراجعة
-                        </>
+                        <><Upload className="w-5 h-5" />إرسال العمل للمراجعة</>
                     )}
                 </button>
                 <p className="px-2 text-center text-xs text-theme-faint">

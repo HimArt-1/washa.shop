@@ -108,7 +108,7 @@ export function DesignOrderChat({ orderId, trackerToken }: { orderId: string; tr
                                 transition={{ delay: 0.05 }}
                                 className={clsx(
                                     "flex flex-col gap-1 max-w-[85%]",
-                                    isUser ? "mr-auto items-end" : "ml-auto items-start"
+                                    isUser ? "ml-auto items-end" : "mr-auto items-start"
                                 )}
                             >
                                 <span className="text-[10px] text-theme-subtle px-1">

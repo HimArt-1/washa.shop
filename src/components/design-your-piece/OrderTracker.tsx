@@ -9,12 +9,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Clock, Check, Loader2, X, Eye,
+    Clock, Check, Loader2, Eye,
     Shirt, Palette, Ruler, Sparkles, Paintbrush, SwatchBook,
-    FileText, Download, MessageCircle,
     AlertCircle, CheckCircle2, Ban,
-    ShoppingCart, MapPin, Maximize2, Minimize2,
-    ChevronLeft, ChevronRight,
 } from "lucide-react";
 import {
     getDesignOrderPublic,
@@ -135,20 +132,6 @@ const SIZE_LABELS: Record<PrintSize, { label: string; desc: string }> = {
     small: { label: "مقاس صغير", desc: "تصميم أنيق ومحدود" },
 };
 
-function getPrice(pricing: any, position: PrintPosition, size: PrintSize): number {
-    const positionPricing = pricing?.positions?.[position];
-    if (positionPricing) {
-        return size === "large" ? (positionPricing.price_large ?? 0) : (positionPricing.price_small ?? 0);
-    }
-    if (position === "shoulder_right" || position === "shoulder_left") {
-        return size === "large" ? (pricing?.price_shoulder_large ?? 0) : (pricing?.price_shoulder_small ?? 0);
-    }
-    if (position === "back") {
-        return size === "large" ? (pricing?.price_back_large ?? 0) : (pricing?.price_back_small ?? 0);
-    }
-    return size === "large" ? (pricing?.price_chest_large ?? 0) : (pricing?.price_chest_small ?? 0);
-}
-
 // ─── Main Component ─────────────────────────────────────
 
 export function OrderTracker({ orderId, trackerToken }: { orderId: string; trackerToken?: string | null }) {
@@ -157,6 +140,7 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [showResultsPopup, setShowResultsPopup] = useState(false);
+    const autoShownPopupRef = useRef(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -167,8 +151,9 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
         setOrder(data);
         setLoading(false);
 
-        // Auto-show popup when results are ready
-        if (data && data.status === "awaiting_review" && !showResultsPopup) {
+        // Auto-show popup only once when results first become ready
+        if (data && data.status === "awaiting_review" && !autoShownPopupRef.current) {
+            autoShownPopupRef.current = true;
             setShowResultsPopup(true);
         }
 
@@ -179,7 +164,7 @@ export function OrderTracker({ orderId, trackerToken }: { orderId: string; track
                 intervalRef.current = null;
             }
         }
-    }, [orderId, showResultsPopup, trackerToken]);
+    }, [orderId, trackerToken]);
 
     useEffect(() => {
         fetchOrder();
@@ -447,7 +432,7 @@ function MiniCard({ icon: Icon, label, value, color }: { icon: any; label: strin
             <div className="flex items-center justify-center mb-1.5">
                 {color ? <div className="w-5 h-5 rounded-md" style={{ backgroundColor: color }} /> : <Icon className="w-4 h-4 text-theme-faint" />}
             </div>
-            <p className="text-[10px] text-fg/35">{label}</p>
+            <p className="text-[10px] text-theme-faint">{label}</p>
             <p className="text-xs font-medium text-theme truncate">{value}</p>
         </div>
     );

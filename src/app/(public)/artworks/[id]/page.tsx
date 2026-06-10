@@ -51,8 +51,19 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
 
     const reviews = await getArtworkReviews(id);
 
-    const similar = await getArtworks(1, "all", "");
-    const similarArtworks = similar.data?.filter((a: any) => a.id !== artwork.id).slice(0, 4) || [];
+    // Fetch similar artworks: same category first, then by same artist, then general
+    const categorySlug = (artwork as any).category?.slug;
+    const [byCat, byArtist] = await Promise.all([
+        categorySlug
+            ? getArtworks(1, categorySlug, "")
+            : Promise.resolve({ data: [] }),
+        getArtworks(1, "all", ""),
+    ]);
+    const catIds = new Set((byCat.data || []).map((a: any) => a.id));
+    const similarArtworks = [
+        ...(byCat.data || []).filter((a: any) => a.id !== artwork.id),
+        ...(byArtist.data || []).filter((a: any) => a.id !== artwork.id && !catIds.has(a.id)),
+    ].slice(0, 4);
 
     return (
         <div className="min-h-[60vh] bg-theme pt-6 sm:pt-8 pb-16 sm:pb-24" dir="rtl">
@@ -109,7 +120,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                     </div>
 
                     {/* ── Info Panel ── */}
-                    <div className="premium-card rounded-[2rem] p-7 sm:p-9 flex flex-col">
+                    <div className="premium-card relative rounded-[2rem] p-7 sm:p-9 flex flex-col">
                         <div className="absolute inset-0 bg-gradient-to-br from-[var(--wusha-gold)]/4 via-transparent to-transparent rounded-[2rem] pointer-events-none" />
 
                         {/* Category Badge */}
@@ -214,7 +225,6 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                             color: 'color-mix(in srgb, var(--wusha-text) 50%, transparent)',
                                             background: 'color-mix(in srgb, var(--wusha-gold) 3%, transparent)'
                                         }}
-                                        onMouseEnter={() => { }}
                                     >
                                         #{tag}
                                     </Link>

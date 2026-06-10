@@ -92,8 +92,8 @@ export default function SalesClient({
             setActionError("الكمية غير صحيحة");
             return;
         }
-        if (totalPrice < 0) {
-            setActionError("السعر الإجمالي غير صحيح");
+        if (totalPrice <= 0) {
+            setActionError("السعر الإجمالي يجب أن يكون أكبر من صفر");
             return;
         }
 
@@ -321,7 +321,7 @@ export default function SalesClient({
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 font-semibold text-gold">
-                                    {item.total_price} ر.س
+                                    {Number(item.total_price).toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ر.س
                                 </td>
                                 <td className="px-6 py-4 text-theme-soft text-xs text-left" dir="ltr">
                                     {new Date(item.created_at).toLocaleString('ar-SA')}
@@ -364,7 +364,7 @@ export default function SalesClient({
                                     {/* Column 1: Product & Inventory */}
                                     <div className="space-y-5">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-theme-strong">المنتج (الباركود / الـ SKU)</label>
+                                            <label className="text-sm font-medium text-theme">المنتج (الباركود / الـ SKU)</label>
                                             <select
                                                 required
                                                 className="input-dark w-full rounded-xl p-3 font-mono text-sm"
@@ -382,7 +382,7 @@ export default function SalesClient({
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-theme-strong">سحب من مستودع</label>
+                                                <label className="text-sm font-medium text-theme">سحب من مستودع</label>
                                                 <select
                                                     required
                                                     className="input-dark w-full rounded-xl p-3 text-sm"
@@ -395,7 +395,7 @@ export default function SalesClient({
                                                 </select>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className="text-sm font-medium text-theme-strong">الكمية المباعة</label>
+                                                <label className="text-sm font-medium text-theme">الكمية المباعة</label>
                                                 <input
                                                     type="number"
                                                     required
@@ -411,7 +411,7 @@ export default function SalesClient({
                                     {/* Column 2: Payment Details */}
                                     <div className="space-y-5">
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-theme-strong">السعر الإجمالي (ر.س)</label>
+                                            <label className="text-sm font-medium text-theme">السعر الإجمالي (ر.س)</label>
                                             <input
                                                 type="number"
                                                 required
@@ -424,7 +424,7 @@ export default function SalesClient({
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="text-sm font-medium text-theme-strong">طريقة الدفع</label>
+                                            <label className="text-sm font-medium text-theme">طريقة الدفع</label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([val, label]) => (
                                                     <label
@@ -448,7 +448,7 @@ export default function SalesClient({
                                 </div>
 
                                 <div className="space-y-2 text-sm pt-2 border-t border-theme-subtle/50">
-                                    <label className="text-theme-strong font-medium">ملاحظات إضافية (اختياري)</label>
+                                    <label className="text-theme font-medium">ملاحظات إضافية (اختياري)</label>
                                     <textarea
                                         rows={2}
                                         className="input-dark w-full rounded-xl p-3 resize-none"
@@ -508,13 +508,13 @@ export default function SalesClient({
                                 </div>
                                 <div className="flex justify-between pt-1">
                                     <span className="text-theme-soft text-sm">الإجمالي</span>
-                                    <span className="font-bold text-gold text-lg">{receiptSale.total_price} ر.س</span>
+                                    <span className="font-bold text-gold text-lg">{Number(receiptSale.total_price).toLocaleString("ar-SA", { maximumFractionDigits: 2 })} ر.س</span>
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => setReceiptSale(null)}
-                                className="w-full py-3 rounded-xl bg-theme-subtle hover:bg-theme-soft/50 text-theme-strong font-medium transition-colors"
+                                className="w-full py-3 rounded-xl bg-theme-subtle hover:bg-theme-soft/50 text-theme font-medium transition-colors"
                             >
                                 إغلاق وإكمال البيع
                             </button>

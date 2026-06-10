@@ -77,20 +77,45 @@ export async function recordManualSale(
 
         if (!sku) return { error: "المنتج المحدد غير موجود" };
 
-        // 2. Check inventory availability
-        const { data: currentLevel } = await supabase
-            .from("inventory_levels")
-            .select("quantity")
-            .eq("sku_id", skuId)
-            .eq("warehouse_id", warehouseId)
-            .single();
+        // 2. Check and decrement inventory with optimistic locking (3 attempts)
+        let previousQuantity = 0;
+        let newQuantity = 0;
+        let lockSucceeded = false;
 
-        const previousQuantity = currentLevel?.quantity ?? 0;
-        if (previousQuantity < quantity) {
-            return { error: `المخزون غير كافٍ. المتوفر: ${previousQuantity} قطعة فقط` };
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const { data: currentLevel } = await supabase
+                .from("inventory_levels")
+                .select("quantity")
+                .eq("sku_id", skuId)
+                .eq("warehouse_id", warehouseId)
+                .maybeSingle();
+
+            previousQuantity = currentLevel ? Number(currentLevel.quantity) : 0;
+
+            if (previousQuantity < quantity) {
+                return { error: `المخزون غير كافٍ. المتوفر: ${previousQuantity} قطعة فقط` };
+            }
+
+            newQuantity = previousQuantity - quantity;
+
+            // Optimistic lock: only update if quantity hasn't changed since we read it
+            const { data: updated } = await supabase
+                .from("inventory_levels")
+                .update({ quantity: newQuantity })
+                .eq("sku_id", skuId)
+                .eq("warehouse_id", warehouseId)
+                .eq("quantity", previousQuantity)
+                .select("quantity")
+                .maybeSingle();
+
+            if (updated) { lockSucceeded = true; break; }
+            // Concurrent write detected — retry
         }
 
-        const newQuantity = previousQuantity - quantity;
+        if (!lockSucceeded) {
+            return { error: "تعذر تسجيل البيع بسبب تعارض متزامن في المخزون — حاول مجدداً" };
+        }
+
         const unitPrice = totalPrice / quantity;
 
         // 3. Record Sale
@@ -110,16 +135,6 @@ export async function recordManualSale(
             .single();
 
         if (saleError) throw saleError;
-
-        // 4. Deduct Inventory
-        const { error: upsertError } = await supabase
-            .from("inventory_levels")
-            .upsert(
-                { sku_id: skuId, warehouse_id: warehouseId, quantity: newQuantity },
-                { onConflict: "sku_id,warehouse_id" }
-            );
-
-        if (upsertError) throw upsertError;
 
         // 5. Log Inventory Transaction
         await supabase.from("inventory_transactions").insert({

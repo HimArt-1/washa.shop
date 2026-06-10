@@ -893,7 +893,7 @@ export function DesignOrderWorkspace({
                             {(currentOrder.dtf_style_label || currentOrder.dtf_technique_label || currentOrder.dtf_palette_label) && (
                                 <div className="flex flex-wrap gap-2">
                                     {currentOrder.dtf_style_label && (
-                                        <span className="rounded-full border border-gold/20 bg-gold/8 px-2.5 py-1 text-[11px] text-gold">
+                                        <span className="rounded-full border border-gold/20 bg-gold/10 px-2.5 py-1 text-[11px] text-gold">
                                             {currentOrder.dtf_style_label}
                                         </span>
                                     )}

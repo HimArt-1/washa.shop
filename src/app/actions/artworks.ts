@@ -69,9 +69,9 @@ export async function getArtworks(
         }
     }
 
-    // Search by title
+    // Search by title or description (tags are arrays, not text-searchable the same way)
     if (search) {
-        query = query.ilike("title", `%${search}%`);
+        query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     const { data, count, error } = await query
@@ -90,20 +90,25 @@ export async function getArtworks(
     };
 }
 
-export async function getArtworkById(id: string) {
+export async function getArtworkById(id: string, adminOverride = false) {
+    noStore();
     const supabase = getSupabaseServerClient();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from("artworks")
         .select(`
       *,
       artist:profiles(id, display_name, username, bio, avatar_url, is_verified),
       category:categories(name_ar, slug)
     `)
-        .eq("id", id)
-        .single();
+        .eq("id", id);
 
-    if (error) return null;
+    // Public access: only show published artworks
+    if (!adminOverride) query = query.eq("status", "published");
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error || !data) return null;
     return data;
 }
 
@@ -177,22 +182,38 @@ export async function uploadArtworkImage(formData: FormData): Promise<{ success:
 
 // ─── WRITE ACTIONS ───────────────────────────────────────────
 
-export async function createArtwork(formData: any) {
+export async function createArtwork(formData: {
+    title: string;
+    description?: string;
+    category_id?: string;
+    image_url: string;
+    tags?: string[];
+    price?: number | null;
+    medium?: string;
+    dimensions?: string;
+    year?: number | null;
+}) {
     const access = await resolveStudioAccess();
     if (!access.ok) return { success: false, error: access.error };
 
+    if (!formData.title?.trim()) return { success: false, error: "العنوان مطلوب" };
+    if (!formData.image_url) return { success: false, error: "صورة العمل مطلوبة" };
+
     const adminSupabase = getSupabaseAdminClient();
 
-    // Insert artwork (admin client bypasses RLS — we've verified user via Clerk)
     const { error } = await adminSupabase.from("artworks").insert({
         artist_id: access.profile.id,
-        title: formData.title,
-        description: formData.description,
-        category_id: formData.category_id,
+        title: formData.title.trim(),
+        description: formData.description?.trim() || null,
+        category_id: formData.category_id || null,
         image_url: formData.image_url,
         status: "pending",
         tags: formData.tags || [],
         currency: "SAR",
+        price: formData.price ?? null,
+        medium: formData.medium?.trim() || null,
+        dimensions: formData.dimensions?.trim() || null,
+        year: formData.year ?? null,
     });
 
     if (error) {
@@ -202,6 +223,7 @@ export async function createArtwork(formData: any) {
 
     revalidatePath("/studio/artworks");
     revalidatePath("/studio");
+    revalidatePath("/gallery");
     return { success: true };
 }
 
@@ -218,10 +240,10 @@ export async function deleteArtwork(id: string, imageUrl: string) {
         .eq("id", id)
         .single();
 
-    if (!artwork) return { success: false, error: "Unauthorized" };
+    if (!artwork) return { success: false, error: "العمل الفني غير موجود" };
 
     if (artwork.artist_id !== access.profile.id) {
-        return { success: false, error: "Unauthorized" };
+        return { success: false, error: "غير مصرح — هذا العمل لا ينتمي لحسابك" };
     }
 
     // Delete from DB (admin client bypasses RLS)
@@ -235,5 +257,6 @@ export async function deleteArtwork(id: string, imageUrl: string) {
     }
 
     revalidatePath("/studio/artworks");
+    revalidatePath("/gallery");
     return { success: true };
 }

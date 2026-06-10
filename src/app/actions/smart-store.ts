@@ -1618,9 +1618,6 @@ export async function sendDesignOrderToCustomer(id: string, finalPrice: number) 
     if (!order.skip_results && !hasOrderDeliverables(order)) {
         return { error: "ارفع نتيجة واحدة على الأقل قبل إرسال الطلب للعميل." };
     }
-    if (!parsePrintPositionValue(order.print_position) || !parsePrintSizeValue(order.print_size)) {
-        return { error: "مواصفات الطباعة على الطلب غير مكتملة." };
-    }
 
     // Update the database to lock in the final price and mark it as sent
     const { error, data: updatedOrder } = await sb.from("custom_design_orders")
