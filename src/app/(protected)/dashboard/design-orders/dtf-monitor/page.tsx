@@ -34,8 +34,8 @@ export default async function DtfMonitorPage({ searchParams }: PageProps) {
                     <ArrowRightIcon className="w-5 h-5" />
                 </Link>
                 <AdminHeader
-                    title="رادار استوديو الذكاء الاصطناعي (DTF)"
-                    subtitle="مراقبة حية، كشف الأخطاء، وسجل نبضات نظام توليد التصاميم لترشيد الاستهلاك وحل الشكاوى."
+                    title="رادار عمليات DTF"
+                    subtitle="متابعة نتائج التوليد والعزل، تحليل الأخطاء، وضبط جودة طلبات التصميم من مكان واحد."
                 />
             </div>
 

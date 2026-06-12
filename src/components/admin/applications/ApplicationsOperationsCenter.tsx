@@ -358,8 +358,8 @@ export function ApplicationsOperationsCenter({
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(92,184,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
                     <div className="relative space-y-6">
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-sky-200 uppercase">
-                                Applications Operations Center
+                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
+                                مركز عمليات الانضمام
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
                                 {missionTone === "critical" ? "تعطّل في الهوية" : missionTone === "warning" ? "قرارات معلقة" : "الطابور منضبط"}
@@ -413,7 +413,7 @@ export function ApplicationsOperationsCenter({
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Mission Pulse</p>
+                            <p className="text-xs font-medium text-theme-faint">نبض القرار</p>
                             <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
                         </div>
                     </div>
@@ -458,35 +458,35 @@ export function ApplicationsOperationsCenter({
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <SummaryCard
-                    title="Pending Intake"
+                    title="الوارد المعلّق"
                     value={String(snapshot.stats.pending)}
                     subtitle="طلبات دخلت المسار ولم تبدأ مراجعتها بعد."
                     icon={ClipboardCheck}
                     accent="#60a5fa"
                 />
                 <SummaryCard
-                    title="Active Review"
+                    title="تحت المراجعة"
                     value={String(snapshot.stats.reviewing)}
                     subtitle="طلبات تحت مراجعة بشرية فعلية الآن."
                     icon={UsersRound}
                     accent="#f59e0b"
                 />
                 <SummaryCard
-                    title="Accepted"
+                    title="مقبول"
                     value={String(snapshot.stats.accepted)}
                     subtitle="طلبات وصلت إلى قرار قبول ويمكن تشغيل أصحابها."
                     icon={BadgeCheck}
                     accent="#34d399"
                 />
                 <SummaryCard
-                    title="Identity Backlog"
+                    title="تعثر الهوية"
                     value={String(snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk)}
                     subtitle="طلبات مقبولة تحتاج profile أو حساب Clerk."
                     icon={UserPlus}
                     accent="#f87171"
                 />
                 <SummaryCard
-                    title="Priority Load"
+                    title="ضغط الأولوية"
                     value={String(snapshot.stats.highPriority)}
                     subtitle="طلبات حرجة أو عالية تحتاج قرارًا أو متابعة الآن."
                     icon={ShieldAlert}
@@ -514,7 +514,7 @@ export function ApplicationsOperationsCenter({
                     isHydrated={isHydrated}
                 />
                 <QueueLane
-                    title="Backlog الهوية"
+                    title="طابور الهوية"
                     subtitle="طلبات مقبولة لكن تشغيل صاحبها لم يكتمل على مستوى profile أو Clerk."
                     emptyState="كل الطلبات المقبولة مرتبطة بهوية جاهزة."
                     items={snapshot.identityBacklog}
@@ -570,7 +570,7 @@ export function ApplicationsOperationsCenter({
                 className={`${subtlePanelClass} p-5`}
             >
                 <div className="mb-5">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Execution Desk</p>
+                    <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
                     <h3 className="mt-2 text-xl font-bold text-theme">مكتب تنفيذ القرارات</h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
                         هنا تبقى إجراءات القبول والرفض وإنشاء المستخدم كما هي، لكن ضمن سياق تشغيلي أوضح.

@@ -268,7 +268,7 @@ export function IdentityOperationsCenter({
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Mission Pulse</p>
+                            <p className="text-xs font-medium text-theme-faint">نبض الهوية</p>
                             <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
                         </div>
                     </div>
@@ -277,7 +277,7 @@ export function IdentityOperationsCenter({
                         <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
                             <div className="flex items-center gap-2 text-red-200">
                                 <UserPlus className="h-4 w-4" />
-                                <span className="text-sm font-bold">handoff القبول</span>
+                                <span className="text-sm font-bold">تسليم القبول</span>
                             </div>
                             <p className="mt-2 text-sm leading-6 text-theme-subtle">
                                 {snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk > 0
@@ -304,7 +304,7 @@ export function IdentityOperationsCenter({
                                 <span className="text-sm font-bold">الرؤية الموحدة</span>
                             </div>
                             <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                يمكنك من هنا متابعة profiles ثم الانتقال إلى [Clerk] لإدارة نظام المصادقة نفسه.
+                                يمكنك من هنا متابعة ملفات المستخدمين ثم الانتقال إلى Clerk لإدارة نظام المصادقة نفسه.
                             </p>
                             <Link
                                 href="/dashboard/users-clerk"
@@ -320,35 +320,35 @@ export function IdentityOperationsCenter({
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <SummaryCard
-                    title="Profiles"
+                    title="ملفات المستخدمين"
                     value={String(snapshot.stats.total)}
                     subtitle="إجمالي ملفات المستخدمين الموجودة على المنصة."
                     icon={Users}
                     accent="#60a5fa"
                 />
                 <SummaryCard
-                    title="Verified"
+                    title="موثقة"
                     value={String(snapshot.stats.verified)}
                     subtitle="عدد الحسابات الموثقة داخل المنصة."
                     icon={BadgeCheck}
                     accent="#34d399"
                 />
                 <SummaryCard
-                    title="Wushsha"
+                    title="الوشّايون"
                     value={String(snapshot.stats.wushsha)}
                     subtitle="عدد الوشّايين النشطين داخل ملفات profiles."
                     icon={Sparkles}
                     accent="#c084fc"
                 />
                 <SummaryCard
-                    title="Temp Profiles"
+                    title="ملفات مؤقتة"
                     value={String(snapshot.stats.tempProfiles)}
                     subtitle="ملفات تحمل clerk_id مرحليًا وتحتاج إكمال الربط."
                     icon={UserCog}
                     accent="#f87171"
                 />
                 <SummaryCard
-                    title="Contact Gaps"
+                    title="نقص التواصل"
                     value={String(snapshot.stats.missingContact)}
                     subtitle="ملفات ينقصها البريد أو الهاتف."
                     icon={MailWarning}
@@ -358,7 +358,7 @@ export function IdentityOperationsCenter({
 
             <div className="grid gap-5 xl:grid-cols-3">
                 <IdentityBacklogLane
-                    title="Backlog القبول"
+                    title="طابور القبول"
                     subtitle="طلبات مقبولة لم تصل بعد إلى profile أو Clerk مكتمل."
                     emptyState="لا توجد طلبات مقبولة معلقة على مستوى الهوية."
                     items={snapshot.identityBacklog}
@@ -367,7 +367,7 @@ export function IdentityOperationsCenter({
                 />
                 <IdentityBacklogLane
                     title="طابور نظافة الملفات"
-                    subtitle="Profiles مؤقتة أو ملفات ينقصها البريد أو الهاتف."
+                    subtitle="ملفات مؤقتة أو ملفات ينقصها البريد أو الهاتف."
                     emptyState="جميع الملفات الرئيسية نظيفة على مستوى الربط وبيانات التواصل."
                     items={snapshot.profileHygieneQueue}
                     tone="warning"
@@ -389,7 +389,7 @@ export function IdentityOperationsCenter({
                 className={`${subtlePanelClass} p-5`}
             >
                 <div className="mb-5">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Execution Desk</p>
+                    <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
                     <h3 className="mt-2 text-xl font-bold text-theme">مكتب تشغيل المستخدمين</h3>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
                         جدول التنفيذ الكامل يبقى هنا: تعديل الأدوار، المستويات، البحث، التصدير، وإدارة الملفات.

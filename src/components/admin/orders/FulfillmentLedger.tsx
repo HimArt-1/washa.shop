@@ -43,8 +43,8 @@ export function FulfillmentLedger({ transactions }: FulfillmentLedgerProps) {
                     <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
                     النشاط المالي للمستودع
                 </h3>
-                <span className="text-[10px] text-white/20 bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                    LIVE_LEDGER_V2
+                <span className="text-[10px] text-white/40 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                    سجل مباشر
                 </span>
             </div>
 
@@ -88,7 +88,7 @@ export function FulfillmentLedger({ transactions }: FulfillmentLedgerProps) {
                                         {formatCurrency(tx.amount)}
                                     </div>
                                     <div className="text-[10px] text-emerald-500/50 flex items-center justify-end gap-1">
-                                        SUCCESS
+                                        مكتمل
                                         <ArrowUpRight className="w-3 h-3" />
                                     </div>
                                 </div>

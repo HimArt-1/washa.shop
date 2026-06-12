@@ -229,13 +229,13 @@ export function DesignOrdersClient({
                     <p>لا توجد طلبات تصميم {searchTerm ? `تطابق "${searchTerm}"` : currentStatus !== "all" && `بحالة "${FILTER_STATUSES.find(s => s.value === currentStatus)?.label}"`}</p>
                 </div>
             ) : viewMode === "kanban" ? (
-                <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory hide-scrollbar">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {FILTER_STATUSES.filter(s => s.value !== "all").map(status => {
                         const statusOrders = filteredOrders.filter(o => o.status === status.value);
                         if (currentStatus !== "all" && currentStatus !== status.value) return null;
                         
                         return (
-                            <div key={status.value} className="flex-shrink-0 w-[320px] snap-center">
+                            <div key={status.value} className="min-w-0">
                                 <div className="flex items-center justify-between mb-3 px-2">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-2.5 h-2.5 rounded-full ${STATUS_MAP[status.value as CustomDesignOrderStatus]?.color.split(' ')[1]}`} />
@@ -264,7 +264,7 @@ export function DesignOrdersClient({
                                                 <div className="flex items-center gap-3 mb-3">
                                                     {order.design_method === "studio" && order.dtf_mockup_url ? (
                                                         // eslint-disable-next-line @next/next/no-img-element
-                                                        <img src={order.dtf_mockup_url} alt="mockup" className="w-12 h-12 rounded-lg object-cover border border-emerald-500/20" />
+                                                        <img src={order.dtf_mockup_url} alt="معاينة التصميم" className="w-12 h-12 rounded-lg object-cover border border-emerald-500/20" />
                                                     ) : (
                                                         <div className="w-12 h-12 rounded-lg bg-theme-faint flex items-center justify-center">
                                                             <Paintbrush className="w-5 h-5 text-theme-subtle" />
@@ -298,7 +298,7 @@ export function DesignOrdersClient({
                                                     <div className="flex gap-1">
                                                         {order.design_method === "studio" ? (
                                                             <>
-                                                                <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="موكب AI" />
+                                                                <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="معاينة ذكية" />
                                                                 <div className={`w-2 h-2 rounded-full ${order.dtf_extracted_url ? "bg-sky-400" : "bg-theme-faint"}`} title="ملف DTF" />
                                                             </>
                                                         ) : (
@@ -319,8 +319,8 @@ export function DesignOrdersClient({
                     })}
                 </div>
             ) : (
-                <div className="theme-surface-panel overflow-x-auto rounded-2xl">
-                    <table className="w-full text-sm">
+                <div className="theme-surface-panel overflow-x-auto rounded-2xl" dir="ltr">
+                    <table className="min-w-[980px] w-full text-sm" dir="rtl">
                         <thead>
                             <tr className="border-b border-theme-subtle">
                                 <th className="text-right text-xs text-theme-subtle font-medium px-4 py-3">#</th>
@@ -368,7 +368,7 @@ export function DesignOrdersClient({
                                                     // eslint-disable-next-line @next/next/no-img-element
                                                     <img
                                                         src={order.dtf_mockup_url}
-                                                        alt="mockup"
+                                                        alt="معاينة التصميم"
                                                         className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-emerald-500/20"
                                                     />
                                                 )}
@@ -418,7 +418,7 @@ export function DesignOrdersClient({
                                             <div className="flex flex-col gap-1">
                                                 {order.design_method === "studio" ? (
                                                     <div className="flex gap-1">
-                                                        <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="موكب AI" />
+                                                        <div className={`w-2 h-2 rounded-full ${order.dtf_mockup_url ? "bg-emerald-400" : "bg-theme-faint"}`} title="معاينة ذكية" />
                                                         <div className={`w-2 h-2 rounded-full ${order.dtf_extracted_url ? "bg-sky-400" : "bg-theme-faint"}`} title="ملف DTF" />
                                                     </div>
                                                 ) : (

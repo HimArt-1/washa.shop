@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import {
     Shield, ArrowRight, Search, Filter, Clock,
@@ -54,6 +54,21 @@ const ALL_CONTEXTS = ["all", "admin_action", "webhook_created", "bootstrap", "sy
 
 // ─── Helpers ─────────────────────────────────────────────────
 
+const auditDateTimeFormatter = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+    timeZone: "Asia/Riyadh",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+});
+
+function formatAuditDateTime(dateStr: string): string {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return "—";
+    return auditDateTimeFormatter.format(date);
+}
+
 function timeAgo(dateStr: string): string {
     const now = new Date();
     const d = new Date(dateStr);
@@ -62,7 +77,7 @@ function timeAgo(dateStr: string): string {
     if (diff < 3600) return `منذ ${Math.floor(diff / 60)} دقيقة`;
     if (diff < 86400) return `منذ ${Math.floor(diff / 3600)} ساعة`;
     if (diff < 604800) return `منذ ${Math.floor(diff / 86400)} يوم`;
-    return d.toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return formatAuditDateTime(dateStr);
 }
 
 function RoleBadge({ role }: { role: string | null }) {
@@ -98,6 +113,11 @@ export function AuditLogClient({
     const pathname = usePathname();
     const [, startTransition] = useTransition();
     const [searchInput, setSearchInput] = useState(currentSearch);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     function navigate(overrides: Record<string, string | number>) {
         const sp = new URLSearchParams();
@@ -239,10 +259,11 @@ export function AuditLogClient({
                                         <div className="flex items-center">
                                             <span
                                                 className="text-[11px] text-theme-faint font-medium shrink-0 whitespace-nowrap"
-                                                title={new Date(entry.changed_at).toLocaleString("ar-SA")}
+                                                title={formatAuditDateTime(entry.changed_at)}
+                                                suppressHydrationWarning
                                             >
                                                 <Clock className="w-3 h-3 inline ml-1 opacity-60" />
-                                                {timeAgo(entry.changed_at)}
+                                                {mounted ? timeAgo(entry.changed_at) : formatAuditDateTime(entry.changed_at)}
                                             </span>
                                         </div>
                                     </motion.div>

@@ -4,8 +4,17 @@ import { useState, useRef } from "react";
 import { Plus, Search, Loader2, QrCode, Printer, X } from "lucide-react";
 import Image from "next/image";
 import { createSKU } from "@/app/actions/erp/inventory";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 import Barcode from 'react-barcode';
+
+function formatSkuDate(value: string) {
+    return new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+        timeZone: "Asia/Riyadh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(new Date(value));
+}
 
 export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) {
     const [skus, setSkus] = useState(initialSKUs);
@@ -25,12 +34,9 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
     const [isSaving, setIsSaving] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const fetchProducts = async () => {
         setLoadingProducts(true);
+        const supabase = getSupabaseBrowserClient();
         const { data, error } = await supabase.from("products").select("id, title, type, image_url").order("created_at", { ascending: false });
         if (data) setProducts(data);
         if (error) {
@@ -207,7 +213,7 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-theme-soft text-xs text-left" dir="ltr">
-                                    {new Date(sku.created_at).toLocaleDateString()}
+                                    {formatSkuDate(sku.created_at)}
                                 </td>
                                 <td className="px-6 py-4">
                                     <button

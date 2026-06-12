@@ -423,7 +423,7 @@ export function OrdersClient({
                                     </select>
                                     <ChevronDown className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-theme-subtle pointer-events-none" />
                                 </div>
-                                <button className="rounded-lg bg-theme-surface border border-theme-subtle px-3 py-1.5 text-xs font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold flex items-center gap-1.5 opacity-50 cursor-not-allowed" title="قريباً">
+                                <button className="rounded-lg bg-theme-surface border border-theme-subtle px-3 py-1.5 text-xs font-bold text-theme transition-colors hover:border-gold/30 hover:text-gold flex items-center gap-1.5 opacity-50 cursor-not-allowed" title="يتطلب ربط مزود الشحن الجماعي">
                                     <FileDown className="h-3.5 w-3.5" /> طباعة البوليصات
                                 </button>
                             </div>

@@ -11,6 +11,8 @@ vi.mock("@supabase/supabase-js", () => ({
 
 vi.mock("next/cache", () => ({
     revalidatePath: vi.fn(),
+    revalidateTag: vi.fn(),
+    unstable_cache: vi.fn((fn) => fn),
     unstable_noStore: vi.fn(),
 }));
 
@@ -54,18 +56,18 @@ describe("settings visibility normalization", () => {
     it("coerces public visibility flags from string values", async () => {
         mockCreateClient.mockReturnValue({
             from: vi.fn(() => ({
-                select: vi.fn(() => ({
-                    eq: vi.fn(() => ({
-                        maybeSingle: vi.fn(async () => ({
-                            data: {
-                                value: {
-                                    gallery: "false",
-                                    join: "1",
-                                    design_piece_generation_public: "true",
-                                },
+                select: vi.fn(async () => ({
+                    data: [
+                        {
+                            key: "visibility",
+                            value: {
+                                gallery: "false",
+                                join: "1",
+                                design_piece_generation_public: "true",
                             },
-                        })),
-                    })),
+                        },
+                    ],
+                    error: null,
                 })),
             })),
         });

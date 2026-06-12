@@ -162,6 +162,11 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
         }).format(val);
     };
 
+    const isWarehousePaymentPaid = (metadata: any) => (
+        metadata?.fulfillment_paid === true ||
+        metadata?.warehouse_payment?.status === "paid"
+    );
+
     const handleStatusUpdate = async (orderId: string, newStatus: string) => {
         startTransition(async () => {
             const result = await updateOrderStatus(orderId, newStatus as any);
@@ -187,7 +192,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
     const handleWarehousePayment = async (orderId: string) => {
         startTransition(async () => {
             const result = await initiateWarehousePayment(orderId);
-            if (result.success && result.url) {
+            if (result.success) {
                 window.open(result.url, "_blank");
                 toast.success("تم إنشاء فاتورة المستودع بنجاح");
             } else {
@@ -200,7 +205,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
         if (selectedIds.size === 0) return;
         startTransition(async () => {
             const result = await initiateBulkWarehousePayment(Array.from(selectedIds));
-            if (result.success && result.url) {
+            if (result.success) {
                 window.open(result.url, "_blank");
                 toast.success(`تم إنشاء فاتورة مجمعة لـ ${selectedIds.size} طلبات`);
             } else {
@@ -226,8 +231,8 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
         startTransition(async () => {
             const result = await bookTorodShipment(orderId);
             if (result.success) {
-                toast.success(result.is_simulation 
-                    ? `[Sim] تم حجز الشحنة بنجاح: ${result.tracking_number}` 
+                toast.success(result.is_simulation
+                    ? `تم حجز الشحنة كتجربة: ${result.tracking_number}`
                     : `تم حجز الشحنة بنجاح: ${result.tracking_number}`
                 );
             } else {
@@ -251,25 +256,24 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
 
     return (
         <div className="relative min-h-screen space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 select-none">
-            {/* Tactical Grid Overlay */}
+            {/* Subtle page texture */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.03]" 
                  style={{ backgroundImage: `radial-gradient(var(--wucha-gold) 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
             
             {/* Scanline Effect */}
             <div className="fixed inset-0 pointer-events-none z-[60] opacity-[0.04] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] animate-scan" />
 
-            {/* Premium HUD Header */}
             <div className="relative z-10 flex items-center justify-between mb-10">
                 <div className="flex items-center gap-4">
                     <div className="w-1.5 h-12 bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]" />
                     <div>
-                        <CyberGlitchText text="OPS_COMMAND_CENTER" className="text-xl font-black text-gold tracking-[0.3em]" />
-                        <p className="text-[10px] text-theme-faint font-mono tracking-widest mt-1">SECURE_ADMIN_TERMINAL // VER_7.07</p>
+                        <h2 className="text-xl font-black text-gold tracking-tight">مركز قيادة الطلبات</h2>
+                        <p className="mt-1 text-[11px] text-theme-faint">مراقبة التنفيذ والدفع والشحن من شاشة واحدة</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
                     <div className="text-left">
-                        <p className="text-[10px] text-theme-faint font-mono uppercase tracking-widest mb-1">System Entropy</p>
+                        <p className="mb-1 text-[10px] font-bold text-theme-faint">استقرار التشغيل</p>
                         <div className="flex gap-1">
                             {[1, 2, 3, 4, 5].map(i => (
                                 <motion.div 
@@ -284,7 +288,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 </div>
             </div>
 
-            {/* Strategic Activity HUD */}
+            {/* Operations summary */}
             <div className="relative z-10 mb-8 p-4 rounded-[40px] bg-theme-base/50 border border-theme-border/50 backdrop-blur-xl overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-emerald-500/5 opacity-50" />
                 
@@ -295,10 +299,10 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                         </div>
                         <div>
                             <h3 className="text-xl font-black text-theme-base tracking-tighter flex items-center gap-2">
-                                مراقبة العمليات الاستراتيجية
+                                متابعة عمليات التجهيز
                                 <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
                             </h3>
-                            <p className="text-xs text-theme-subtle font-mono uppercase tracking-[0.2em]">Live Tactical Monitoring Feed</p>
+                            <p className="text-xs text-theme-subtle">مراقبة مباشرة للطوابير والحالات</p>
                         </div>
                     </div>
 
@@ -346,7 +350,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                             {formatCurrency(data.stats.warehouseDebt)}
                         </h2>
                     </div>
-                    <p className="text-[9px] text-emerald-400/50 font-mono mt-2 tracking-widest">DEBT_ESTIMATE_V1</p>
+                    <p className="text-[9px] text-emerald-400/60 mt-2 font-bold">تقدير مستحقات التجهيز</p>
                 </div>
 
                 <div className="md:col-span-3 grid grid-cols-3 gap-3">
@@ -452,7 +456,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                         <div className="flex items-center gap-3">
                                                             <h3 className="text-2xl font-black text-theme tracking-tighter group-hover:text-gold transition-colors">#{order.order_number}</h3>
                                                             <div className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
-                                                                <span className="text-[10px] font-mono text-theme-faint tracking-widest uppercase">LOG_REF_{order.id.slice(0, 6)}</span>
+                                                                <span className="text-[10px] text-theme-faint tracking-widest">مرجع {order.id.slice(0, 6)}</span>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2.5 mt-2">
@@ -468,30 +472,30 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                 
                                                 <div className="flex items-center gap-6">
                                                     <div className="flex flex-col items-end border-r border-white/10 pr-6">
-                                                        <p className="text-[10px] uppercase tracking-[0.2em] text-theme-faint font-black mb-1 text-right">Vault Security</p>
+                                                        <p className="text-[10px] tracking-[0.12em] text-theme-faint font-black mb-1 text-right">حالة الدفع</p>
                                                         <div className="flex items-center gap-2">
-                                                            {/* Store Payment Status */}
+                                                            {/* Store payment status */}
                                                             <div className={cn(
                                                                 "w-9 h-9 rounded-xl flex items-center justify-center border transition-all",
                                                                 order.payment_status === "paid" 
                                                                     ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
                                                                     : "bg-white/5 border-white/10 text-white/20"
-                                                            )} title="Store Payment: Locked">
+                                                            )} title="دفع المتجر مؤكد">
                                                                 <Lock className="w-4 h-4" />
                                                             </div>
-                                                            {/* Warehouse Payment Status */}
+                                                            {/* Warehouse payment status */}
                                                             <div className={cn(
                                                                 "w-9 h-9 rounded-xl flex items-center justify-center border transition-all",
-                                                                order.metadata?.fulfillment_paid
+                                                                isWarehousePaymentPaid(order.metadata)
                                                                     ? "bg-gold/10 border-gold/30 text-gold shadow-[0_0_15px_rgba(212,175,55,0.1)]"
                                                                     : "bg-theme-soft/20 border-white/5 text-white/10"
-                                                            )} title="Warehouse Fulfillment: Pending">
+                                                            )} title="استحقاق المستودع بانتظار الدفع">
                                                                 <Warehouse className="w-4 h-4" />
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="text-left min-w-[120px]">
-                                                        <p className="text-[10px] uppercase tracking-[0.2em] text-theme-faint font-black mb-1">Total Payload</p>
+                                                        <p className="text-[10px] tracking-[0.12em] text-theme-faint font-black mb-1">إجمالي الطلب</p>
                                                         {order.discount_amount > 0 ? (
                                                             <div className="flex flex-col items-end">
                                                                 <span className="text-[10px] text-theme-faint line-through decoration-red-500/30">
@@ -569,7 +573,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 hover:border-gold/20"
                                                         >
                                                             <Printer className="w-4 h-4" />
-                                                            <span className="hidden sm:inline uppercase tracking-widest">Invoice</span>
+                                                            <span className="hidden sm:inline tracking-wide">الفاتورة</span>
                                                         </button>
                                                         <button 
                                                             onClick={() => setLabelOrder({
@@ -579,7 +583,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                             className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-gold/5 hover:bg-gold/10 text-[11px] font-black text-gold/60 hover:text-gold transition-all border border-gold/10"
                                                         >
                                                             <Truck className="w-4 h-4" />
-                                                            <span className="hidden sm:inline uppercase tracking-widest">Waybill</span>
+                                                            <span className="hidden sm:inline tracking-wide">البوليصة</span>
                                                         </button>
                                                     </div>
                                                     
@@ -628,7 +632,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                     {order.status === "shipped" && order.tracking_number && (
                                                         <div className="flex items-center gap-3">
                                                             <div className="flex flex-col items-end mr-2">
-                                                                <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{order.courier_name || "TRACKING"}</p>
+                                                                <p className="text-[9px] font-black text-emerald-400 tracking-wide">{order.courier_name || "التتبع"}</p>
                                                                 <p className="text-sm font-mono font-black text-theme tracking-tighter">{order.tracking_number}</p>
                                                             </div>
                                                             <div className="flex items-center gap-2">
@@ -636,7 +640,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                                     <a 
                                                                         href={order.waybill_url} 
                                                                         target="_blank" 
-                                                                        title="View Waybill"
+                                                                        title="عرض بوليصة الشحن"
                                                                         className="p-3 rounded-xl bg-theme-faint border border-theme-soft hover:border-gold hover:text-gold transition-all"
                                                                     >
                                                                         <FileText className="w-4 h-4" />
@@ -645,7 +649,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                                 <button 
                                                                     disabled={isPending}
                                                                     onClick={() => handleCancelTorod(order.id)}
-                                                                    title="Cancel Torod Shipment"
+                                                                    title="إلغاء شحنة طرود"
                                                                     className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 transition-all active:scale-95 disabled:opacity-50"
                                                                 >
                                                                     <XCircle className="w-4 h-4" />
@@ -673,8 +677,8 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                         <div className="absolute inset-0 rounded-full border-2 border-gold/10 animate-ping duration-[3s]" />
                                         <Package className="w-14 h-14 text-theme-faint/40 group-hover:text-gold group-hover:scale-110 transition-all duration-700" />
                                     </div>
-                                    <h3 className="text-2xl font-black text-theme tracking-tight italic">Operations Depot Empty</h3>
-                                    <p className="text-sm text-theme-faint mt-3 max-w-sm mx-auto font-medium opacity-60">تنبيه: جميع مهام القسم محققة. الأنظمة بانتظار إشارات دفع جديدة عبر رادار الطلبات.</p>
+                                    <h3 className="text-2xl font-black text-theme tracking-tight">لا توجد طلبات في هذا المسار</h3>
+                                    <p className="text-sm text-theme-faint mt-3 max-w-sm mx-auto font-medium opacity-70">كل المهام الحالية مكتملة، وستظهر الطلبات الجديدة هنا عند انتقالها إلى هذا المسار.</p>
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -697,21 +701,21 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                             <div className="p-3 w-fit rounded-2xl bg-theme-faint group-hover:bg-gold/10 transition-colors shadow-inner">
                                 <FileText className="w-5 h-5 text-theme-faint group-hover:text-gold" />
                             </div>
-                            <p className="text-[11px] font-black text-theme mt-4 uppercase tracking-[0.1em]">Ops Report</p>
-                            <p className="text-[9px] text-theme-faint mt-1 font-bold">Daily Intelligence</p>
+                            <p className="text-[11px] font-black text-theme mt-4 tracking-wide">تقرير العمليات</p>
+                            <p className="text-[9px] text-theme-faint mt-1 font-bold">ملخص يومي</p>
                         </button>
                         <button className="p-6 rounded-[32px] bg-[var(--wusha-surface)] border border-theme-soft hover:border-gold hover:shadow-xl hover:shadow-gold/5 transition-all group flex flex-col items-center justify-center text-center">
                             <div className="p-3 w-fit rounded-2xl bg-theme-faint group-hover:bg-gold/10 transition-colors shadow-inner">
                                 <Warehouse className="w-5 h-5 text-theme-faint group-hover:text-gold" />
                             </div>
-                            <p className="text-[11px] font-black text-theme mt-4 uppercase tracking-[0.1em]">Depot Master</p>
-                            <p className="text-[9px] text-theme-faint mt-1 font-bold">Inventory Sync</p>
+                            <p className="text-[11px] font-black text-theme mt-4 tracking-wide">إدارة المستودع</p>
+                            <p className="text-[9px] text-theme-faint mt-1 font-bold">مزامنة المخزون</p>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Bulk Action HUD */}
+            {/* Bulk actions */}
             <AnimatePresence>
                 {selectedIds.size > 0 && (
                     <motion.div 
@@ -730,7 +734,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                         <BrainCircuit className="w-6 h-6 text-gold" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black text-theme-faint uppercase tracking-[0.2em] mb-0.5">Batch Operations</p>
+                                        <p className="text-[10px] font-black text-theme-faint tracking-[0.12em] mb-0.5">إجراءات جماعية</p>
                                         <h4 className="text-sm font-black text-theme uppercase tracking-widest flex items-center gap-2">
                                             {selectedIds.size} طلبات مختارة
                                         </h4>
@@ -810,17 +814,17 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                     <div key={id} className="p-4 bg-white/5 rounded-2xl border border-white/5">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-xs font-black text-gold uppercase tracking-widest">
-                                                Order ID: {id.slice(-8)}
+                                                معرف الطلب: {id.slice(-8)}
                                             </span>
                                             <span className="text-sm font-black text-white">
                                                 {formatCurrency(breakdown.summary.grandTotal)}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2 text-[10px] text-white/40 uppercase tracking-tighter">
-                                            <div className="flex justify-between"><span>Garments</span> <span>{formatCurrency(breakdown.summary.garmentSubtotal)}</span></div>
-                                            <div className="flex justify-between"><span>Printing</span> <span>{formatCurrency(breakdown.summary.printingSubtotal)}</span></div>
-                                            <div className="flex justify-between"><span>Packaging</span> <span>{formatCurrency(breakdown.summary.packagingTotal)}</span></div>
-                                            <div className="flex justify-between"><span>Handling</span> <span>{formatCurrency(breakdown.summary.handlingFee)}</span></div>
+                                            <div className="flex justify-between"><span>القطع</span> <span>{formatCurrency(breakdown.summary.garmentSubtotal)}</span></div>
+                                            <div className="flex justify-between"><span>الطباعة</span> <span>{formatCurrency(breakdown.summary.printingSubtotal)}</span></div>
+                                            <div className="flex justify-between"><span>التغليف</span> <span>{formatCurrency(breakdown.summary.packagingTotal)}</span></div>
+                                            <div className="flex justify-between"><span>المعالجة</span> <span>{formatCurrency(breakdown.summary.handlingFee)}</span></div>
                                         </div>
                                     </div>
                                 ))}

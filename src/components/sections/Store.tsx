@@ -54,14 +54,27 @@ export function Store() {
           >
             <div className="home-panel-inner">
               <div className="home-section-kicker">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                <span
+                  aria-hidden
+                  className="block h-4 w-5 shrink-0 bg-current"
+                  style={{
+                    WebkitMaskImage: "url('/header-logo-identity.png')",
+                    maskImage: "url('/header-logo-identity.png')",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskPosition: "center",
+                    maskPosition: "center",
+                    WebkitMaskSize: "contain",
+                    maskSize: "contain",
+                  }}
+                />
                 منتجات حصرية
               </div>
               <h2 className="home-section-title">
                 متجر وشّى
               </h2>
               <p className="home-section-copy">
-                امتداد مباشر لعالم الهيرو: قطع فنية بملمس هادئ، ألوان محسوبة، وتفاصيل تصل كجزء من هوية واحدة لا كمنتجات متفرقة.
+                اكتشف قطعاً فنية مختارة بعناية، جاهزة للطلب والارتداء، بتصاميم تحمل هوية وشّى وتفاصيل تصنع حضوراً مختلفاً.
               </p>
 
               <div className="mt-8 space-y-3">

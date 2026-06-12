@@ -19,6 +19,14 @@
 }
 
 @font-face {
+  font-family: 'Alnaseeb';
+  src: url('/fonts/Alnaseeb-Regular.otf') format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'TheYearOfTheCamel';
   src: url('/fonts/TheYearofTheCamel-ExtraLight.otf') format('opentype');
   font-weight: 200;
@@ -74,12 +82,13 @@
 :root {
   --font-primary: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
   --font-display: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
+  --font-poetry: 'ArabicPoetry', 'TheYearOfTheCamel', serif;
   --font-arabic: var(--font-primary);
   --font-tajawal: var(--font-primary);
   --font-sans: var(--font-primary);
   --font-serif: var(--font-display);
   --font-body: var(--font-primary);
-  --font-alnaseeb: var(--font-display);
+  --font-alnaseeb: 'Alnaseeb', var(--font-display);
   --wusha-heading-main-weight: 800;
   --wusha-heading-section-weight: 700;
   --wusha-heading-card-weight: 600;
@@ -759,6 +768,292 @@ h3 {
   box-shadow:
     0 20px 60px color-mix(in srgb, var(--wusha-bg) 18%, transparent),
     inset 0 1px 0 color-mix(in srgb, var(--wusha-text) 4%, transparent);
+}
+
+.wusha-product-card {
+  border-color: color-mix(in srgb, var(--wusha-gold) 24%, transparent);
+  background:
+    radial-gradient(circle at 16% 0%, color-mix(in srgb, var(--wusha-gold-light) 16%, transparent) 0%, transparent 36%),
+    radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--wusha-earth) 12%, transparent) 0%, transparent 34%),
+    linear-gradient(
+      156deg,
+      color-mix(in srgb, var(--wusha-surface) 96%, var(--wusha-gold) 4%),
+      color-mix(in srgb, var(--wusha-surface-2) 88%, var(--wusha-earth) 12%)
+    );
+  box-shadow:
+    0 28px 76px color-mix(in srgb, var(--wusha-earth) 13%, transparent),
+    0 12px 30px color-mix(in srgb, var(--wusha-gold) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 56%, transparent);
+}
+
+.wusha-product-card:hover {
+  border-color: color-mix(in srgb, var(--wusha-gold-light) 42%, transparent);
+  box-shadow:
+    0 34px 92px color-mix(in srgb, var(--wusha-earth) 18%, transparent),
+    0 14px 38px color-mix(in srgb, var(--wusha-gold) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 62%, transparent);
+}
+
+.wusha-product-card-footer {
+  border-top: 1px solid color-mix(in srgb, var(--wusha-gold) 12%, transparent);
+  background:
+    radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--wusha-gold-light) 12%, transparent), transparent 42%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--wusha-surface) 90%, var(--wusha-gold) 10%),
+      color-mix(in srgb, var(--wusha-surface-2) 86%, var(--wusha-earth) 14%)
+    );
+}
+
+[data-theme="dark"] .wusha-product-card {
+  border-color: color-mix(in srgb, var(--wusha-gold) 22%, transparent);
+  background:
+    radial-gradient(circle at 14% -8%, color-mix(in srgb, var(--wusha-gold-light) 18%, transparent) 0%, transparent 42%),
+    radial-gradient(circle at 88% 16%, color-mix(in srgb, #6c4b4b 24%, transparent) 0%, transparent 36%),
+    linear-gradient(156deg, rgba(45, 31, 28, 0.94), rgba(24, 15, 14, 0.96) 55%, rgba(13, 8, 8, 0.98));
+  box-shadow:
+    0 28px 76px rgba(0, 0, 0, 0.38),
+    0 12px 34px color-mix(in srgb, var(--wusha-gold) 9%, transparent),
+    inset 0 1px 0 rgba(255, 238, 218, 0.08);
+}
+
+[data-theme="dark"] .wusha-product-card:hover {
+  border-color: color-mix(in srgb, var(--wusha-gold-light) 38%, transparent);
+  box-shadow:
+    0 34px 94px rgba(0, 0, 0, 0.48),
+    0 16px 42px color-mix(in srgb, var(--wusha-gold) 13%, transparent),
+    inset 0 1px 0 rgba(255, 238, 218, 0.12);
+}
+
+[data-theme="dark"] .wusha-product-card-footer {
+  border-top-color: color-mix(in srgb, var(--wusha-gold) 16%, transparent);
+  background:
+    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--wusha-gold-light) 10%, transparent), transparent 40%),
+    linear-gradient(180deg, rgba(49, 34, 30, 0.88), rgba(24, 15, 14, 0.94));
+}
+
+.store-page {
+  position: relative;
+  overflow: hidden;
+  background: var(--home-flow-bg);
+}
+
+.store-page::before,
+.store-page::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(34px);
+  transform: translateZ(0);
+}
+
+.store-page::before {
+  top: 4rem;
+  right: -10vw;
+  width: 32vw;
+  height: 20rem;
+  background: radial-gradient(circle, color-mix(in srgb, var(--home-flow-strong) 18%, transparent), transparent 68%);
+  opacity: 0.55;
+}
+
+.store-page::after {
+  bottom: 8rem;
+  left: -8vw;
+  width: 36vw;
+  height: 24rem;
+  background: radial-gradient(circle, color-mix(in srgb, var(--wusha-earth) 18%, transparent), transparent 70%);
+  opacity: 0.42;
+}
+
+.store-page-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.store-hero-panel,
+.store-filter-panel,
+.store-empty-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--home-flow-border) 82%, transparent);
+  background:
+    radial-gradient(circle at 14% 8%, color-mix(in srgb, var(--home-flow-strong) 13%, transparent) 0%, transparent 36%),
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--wusha-earth) 11%, transparent) 0%, transparent 34%),
+    color-mix(in srgb, var(--home-flow-surface-strong) 82%, transparent);
+  box-shadow: var(--home-flow-shadow);
+}
+
+.store-hero-panel::before,
+.store-filter-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--home-flow-strong) 8%, transparent), transparent),
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, white 8%, transparent), transparent 42%);
+  opacity: 0.7;
+}
+
+.store-hero-panel > *,
+.store-filter-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.store-hero-panel h1 {
+  color: var(--home-flow-strong);
+  font-family: var(--font-display);
+  line-height: 0.98;
+  text-wrap: balance;
+  text-shadow: var(--hero-title-glow);
+}
+
+.store-hero-panel p {
+  color: var(--home-flow-copy);
+  line-height: 1.9;
+}
+
+.store-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--home-flow-border) 82%, transparent);
+  background: color-mix(in srgb, var(--home-flow-surface-strong) 76%, transparent);
+  color: var(--home-flow-strong);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.store-brand-mark {
+  display: block;
+  width: 1.25rem;
+  height: 1rem;
+  flex-shrink: 0;
+  background: currentColor;
+  -webkit-mask-image: url('/header-logo-identity.png');
+  mask-image: url('/header-logo-identity.png');
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.store-count-pill,
+.store-pill-link {
+  border: 1px solid color-mix(in srgb, var(--home-flow-strong) 22%, transparent);
+  background: color-mix(in srgb, var(--home-flow-strong) 9%, transparent);
+  color: var(--home-flow-strong);
+}
+
+.store-pill-link:hover {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 38%, transparent);
+  background: color-mix(in srgb, var(--home-flow-strong) 14%, transparent);
+}
+
+.store-filter-panel {
+  box-shadow:
+    0 20px 60px color-mix(in srgb, var(--home-flow-strong) 9%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 13%, transparent);
+}
+
+.store-filter-inline {
+  border-top: 1px solid color-mix(in srgb, var(--home-flow-border) 62%, transparent);
+  padding-top: 1rem;
+}
+
+.store-filter-panel--compact {
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--home-flow-strong) 10%, transparent), transparent 40%),
+    color-mix(in srgb, var(--home-flow-surface) 72%, transparent);
+}
+
+.store-filter-eyebrow {
+  color: var(--home-flow-strong);
+  letter-spacing: 0;
+}
+
+.store-filter-hint {
+  color: var(--home-flow-copy);
+}
+
+.store-filter-chip {
+  border-color: color-mix(in srgb, var(--home-flow-border) 48%, transparent);
+  background: color-mix(in srgb, var(--home-flow-surface) 34%, transparent);
+  color: var(--home-flow-copy);
+}
+
+.store-filter-chip:hover {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 28%, transparent);
+  background: color-mix(in srgb, var(--home-flow-strong) 10%, transparent);
+  color: var(--home-flow-strong);
+}
+
+.store-filter-chip--active {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 40%, transparent);
+  background:
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--wusha-gold-light) 24%, transparent), transparent 44%),
+    color-mix(in srgb, var(--home-flow-strong) 16%, transparent);
+  color: var(--home-flow-strong);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--home-flow-strong) 12%, transparent);
+}
+
+.store-select {
+  appearance: none;
+  outline: none;
+  border: 1px solid color-mix(in srgb, var(--home-flow-border) 74%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--home-flow-surface-strong) 84%, transparent), color-mix(in srgb, var(--home-flow-surface) 72%, transparent));
+  color: var(--wusha-text);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.store-select:focus {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 48%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--home-flow-strong) 12%, transparent);
+}
+
+.store-stock-toggle {
+  border-color: color-mix(in srgb, var(--home-flow-border) 70%, transparent);
+  background: color-mix(in srgb, var(--home-flow-surface) 56%, transparent);
+  color: var(--home-flow-copy);
+}
+
+.store-stock-toggle-track {
+  background: color-mix(in srgb, var(--home-flow-strong) 16%, transparent);
+}
+
+.store-stock-toggle-track--active {
+  background: linear-gradient(135deg, var(--wusha-gold), var(--wusha-gold-light));
+}
+
+.store-page-link {
+  border-color: color-mix(in srgb, var(--home-flow-border) 70%, transparent);
+  background: color-mix(in srgb, var(--home-flow-surface) 56%, transparent);
+  color: var(--home-flow-copy);
+}
+
+.store-page-link:hover {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 32%, transparent);
+  background: color-mix(in srgb, var(--home-flow-strong) 10%, transparent);
+  color: var(--home-flow-strong);
+}
+
+.store-page-link--active {
+  border-color: color-mix(in srgb, var(--home-flow-strong) 46%, transparent);
+  background: var(--home-flow-strong);
+  color: var(--wusha-bg);
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--home-flow-strong) 18%, transparent);
 }
 
 .theme-icon-button {
@@ -2414,8 +2709,10 @@ body.reamaze-active [data-reamaze-widget] {
 
 .home-footer-brand h3 {
   color: var(--home-flow-strong);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Arabic", "Segoe UI", system-ui, sans-serif;
   font-size: clamp(2.2rem, 5vw, 4rem);
-  font-weight: 900;
+  font-weight: 1000;
+  letter-spacing: 0;
   line-height: 0.95;
   text-shadow: var(--hero-title-glow);
 }
@@ -2758,6 +3055,10 @@ body.reamaze-active [data-reamaze-widget] {
 
 .font-body {
   font-family: var(--font-body);
+}
+
+.font-poetry {
+  font-family: var(--font-poetry);
 }
 
 /* ═══════════════════════════════════════════════════════════

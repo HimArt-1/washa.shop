@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Logo } from "@/components/ui/Logo";
-import { Instagram, Twitter, MessageCircle, Mail, MapPin, Phone, Check, Loader2, Sparkles } from "lucide-react";
+import { Instagram, Twitter, MessageCircle, Mail, MapPin, Phone, Check, Loader2 } from "lucide-react";
 import { subscribeNewsletter } from "@/app/actions/forms";
 import { JoinCommunityModal } from "@/components/modals/JoinCommunityModal";
 
@@ -71,6 +71,17 @@ const socialLinks = [
   { icon: SnapchatIcon, href: "https://snapchat.com/t/iqNmyrCp", label: "Snapchat" },
 ];
 
+const wushaIntroMarkMaskStyle: CSSProperties = {
+  WebkitMaskImage: "url('/header-logo-identity.png')",
+  maskImage: "url('/header-logo-identity.png')",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+};
+
 export function Footer({ visibility }: { visibility?: { gallery?: boolean; store?: boolean; design_piece?: boolean; join?: boolean; } }) {
   const [submitting, setSubmitting] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
@@ -118,12 +129,16 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
           <div className="home-footer-cta">
             <div>
               <div className="home-section-kicker">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                <span
+                  aria-hidden
+                  className="block h-4 w-5 shrink-0 bg-current"
+                  style={wushaIntroMarkMaskStyle}
+                />
                 مجتمع وشّى
               </div>
               <h3>الفن، الأزياء، والانضمام الذكي في مساحة واحدة</h3>
               <p>
-                بوابة واضحة للفنانين والمصممين والعملاء والشركاء، بنفس هوية الواجهة الجديدة وبدون انفصال بصري عن الصفحة.
+                انضم إلى مساحة تجمع الفنانين والعملاء في تجربة واحدة؛ من اكتشاف الأعمال والمنتجات إلى طلب القطعة المناسبة بثقة.
               </p>
             </div>
             {visibility?.join !== false && (

@@ -1,4 +1,4 @@
-import { getProductById, getProducts } from "@/app/actions/products";
+import { getProductById } from "@/app/actions/products";
 import { getProductReviews } from "@/app/actions/reviews";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -11,6 +11,15 @@ import { RecentlyViewedTracker } from "@/components/store/RecentlyViewedTracker"
 import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection";
 import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 import { ProductImageGallery } from "@/components/store/ProductImageGallery";
+
+const TYPE_LABELS: Record<string, string> = {
+    apparel: "ملابس",
+    print: "طباعة",
+    digital: "رقمي",
+    original: "عمل أصلي",
+    nft: "NFT",
+};
+function typeLabel(type: string) { return TYPE_LABELS[type] ?? type; }
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -162,7 +171,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <div className="theme-surface-panel flex flex-col justify-center rounded-[2rem] p-5 sm:p-8 lg:p-10">
                         <div className="mb-4 flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                {product.type}
+                                {typeLabel(product.type)}
                             </span>
                             <span
                                 className={`rounded-full border px-3 py-1 text-xs font-semibold ${
@@ -201,7 +210,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         <div className="mb-8 space-y-3">
                             <div className="flex flex-col gap-1 border-b border-theme-subtle py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                                 <span className="text-xs text-theme-faint">النوع</span>
-                                <span className="text-right text-sm text-theme-soft">{product.type}</span>
+                                <span className="text-right text-sm text-theme-soft">{typeLabel(product.type)}</span>
                             </div>
                             {availableSizes.size > 0 && (
                                 <div className="flex flex-col gap-1 border-b border-theme-subtle py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -219,6 +228,16 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
                         {/* Price */}
                         <div className="mb-6">
+                            {product.original_price != null && product.original_price > product.price && (
+                                <div className="mb-1 flex items-center gap-2">
+                                    <span className="text-sm text-theme-faint line-through">
+                                        {Number(product.original_price).toLocaleString()} ر.س
+                                    </span>
+                                    <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold">
+                                        خصم {Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
+                                    </span>
+                                </div>
+                            )}
                             <span className="text-3xl font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                             <span className="text-xs text-theme-faint mr-2">{product.currency || "SAR"}</span>
                         </div>

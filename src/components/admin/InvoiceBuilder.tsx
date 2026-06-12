@@ -220,6 +220,7 @@ export function InvoiceBuilder({ order, onClose }: InvoiceBuilderProps) {
                                         onChange={(e) => updateConfig("fontFamily", e.target.value)}
                                         className="input-dark w-full rounded-lg px-3 py-2.5 text-sm appearance-none"
                                     >
+                                        <option value="TheYearOfTheCamel">TheYearOfTheCamel</option>
                                         <option value="IBM Plex Sans Arabic">IBM Plex Sans</option>
                                         <option value="Cairo">Cairo</option>
                                         <option value="Tajawal">Tajawal</option>

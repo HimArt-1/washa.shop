@@ -2,6 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getRequestClientIdentifier } from "@/lib/request-client";
+
+const OPS_LOG_RATE_LIMIT = 30;
+const OPS_LOG_RATE_WINDOW_MS = 60_000;
 
 function getSupabaseClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,6 +36,20 @@ export async function POST(req: NextRequest) {
         const supabase = getSupabaseClient();
         if (!supabase) {
             return NextResponse.json({ ok: false }, { status: 500 });
+        }
+
+        const identifier = getRequestClientIdentifier(req);
+        const rateLimit = await checkRateLimit(`ops-log:${identifier}`, OPS_LOG_RATE_LIMIT, OPS_LOG_RATE_WINDOW_MS);
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { ok: false },
+                {
+                    status: 429,
+                    headers: {
+                        "Retry-After": String(Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000))),
+                    },
+                }
+            );
         }
 
         const body = await req.json().catch(() => ({}));

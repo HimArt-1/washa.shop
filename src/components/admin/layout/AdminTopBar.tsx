@@ -18,6 +18,16 @@ import {
     CreditCard,
     ShieldAlert,
     CheckCheck,
+    Truck,
+    TrendingUp,
+    Ticket,
+    HeadphonesIcon,
+    Bell,
+    Mail,
+    History,
+    Brush,
+    Wand2,
+    Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -33,16 +43,34 @@ import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { toast } from "sonner";
 
 const COMMAND_ITEMS = [
-    { href: "/dashboard", label: "نظرة عامة", icon: LayoutDashboard },
-    { href: "/dashboard/users", label: "المستخدمون", icon: Users },
-    { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingCart },
-    { href: "/dashboard/applications", label: "طلبات الانضمام", icon: FileText },
-    { href: "/dashboard/artworks", label: "الأعمال الفنية", icon: Palette },
-    { href: "/dashboard/products-inventory", label: "التنفيذ والمخزون", icon: Package },
-    { href: "/dashboard/exclusive-designs", label: "التصاميم الحصرية", icon: Palette },
-    { href: "/dashboard/settings", label: "الإعدادات", icon: Settings },
-    { href: "/store", label: "المتجر العام", icon: ExternalLink, external: true },
-    { href: "/studio", label: "الاستوديو", icon: Sparkles },
+    { href: "/dashboard", label: "لوحة المؤشرات", icon: LayoutDashboard, description: "نبض المنصة والعمليات اليومية." },
+    { href: "/dashboard/analytics", label: "المالية والإيرادات", icon: CreditCard, description: "الإيرادات، الطلبات المدفوعة، ومؤشرات المال." },
+    { href: "/dashboard/activity-log", label: "سجل العمليات", icon: History, description: "تتبع الإجراءات الحساسة داخل الإدارة." },
+    { href: "/dashboard/orders/command-center", label: "مركز قيادة الطلبات", icon: ShoppingCart, description: "مكتب تشغيل الطلبات من الفرز حتى التنفيذ." },
+    { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingCart, description: "قائمة الطلبات وإجراءات المتابعة." },
+    { href: "/dashboard/shipping", label: "إدارة الشحن", icon: Truck, description: "الشحنات، التتبع، ومزودي التوصيل." },
+    { href: "/dashboard/products-inventory", label: "المنتجات والمخزون", icon: Package, description: "المنتجات، المخزون، الجرد، والباركود في مركز واحد." },
+    { href: "/dashboard/sales", label: "المبيعات", icon: TrendingUp, description: "نقاط البيع وسجل الحركة التجارية." },
+    { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, description: "حملات الخصم والاستخدامات." },
+    { href: "/dashboard/barcodes", label: "الباركود", icon: Package, description: "رموز SKU وربط المنتجات بالمستودع." },
+    { href: "/dashboard/design-orders", label: "طلبات التصميم", icon: Brush, description: "طلبات DTF والتسليمات والملفات." },
+    { href: "/dashboard/design-orders/dtf-monitor", label: "رادار DTF", icon: Wand2, description: "مراقبة توليد التصميم واستهلاك النظام." },
+    { href: "/dashboard/artworks", label: "الأعمال الفنية", icon: Palette, description: "إدارة أعمال الفنانين ومحتوى المعرض." },
+    { href: "/dashboard/exclusive-designs", label: "التصاميم الحصرية", icon: Palette, description: "تصاميم المتجر الحصرية وتنظيم عرضها." },
+    { href: "/dashboard/smart-store", label: "المتجر الذكي", icon: Sparkles, description: "كتالوج صمّم قطعتك واستوديو DTF." },
+    { href: "/dashboard/categories", label: "الفئات", icon: FileText, description: "تصنيف المنتجات والأعمال داخل المنصة." },
+    { href: "/dashboard/announcements", label: "الإعلانات والعروض", icon: Bell, description: "حملات الواجهة، الرسائل، وجدولة الظهور." },
+    { href: "/dashboard/newsletter", label: "النشرة البريدية", icon: Mail, description: "المشتركين وقوائم التواصل." },
+    { href: "/dashboard/users", label: "المستخدمون", icon: Users, description: "العملاء، الأدوار، وسجل الحسابات." },
+    { href: "/dashboard/users-clerk", label: "مزامنة الهوية", icon: ShieldAlert, description: "مزامنة حسابات Clerk مع قاعدة البيانات." },
+    { href: "/dashboard/users/audit-log", label: "سجل الأدوار", icon: History, description: "تغيرات الصلاحيات والأدوار." },
+    { href: "/dashboard/applications", label: "طلبات الانضمام", icon: FileText, description: "طلبات الفنانين والعملاء والمرشحين." },
+    { href: "/dashboard/support", label: "الدعم الفني", icon: HeadphonesIcon, description: "التذاكر والمحادثات وحالات الدعم." },
+    { href: "/dashboard/notifications", label: "الإشعارات", icon: Bell, description: "تنبيهات الإدارة وقنوات المتابعة." },
+    { href: "/dashboard/integrations", label: "حالة التكاملات", icon: Wifi, description: "فحص الدفع والشحن والهوية والذكاء والتنبيهات." },
+    { href: "/dashboard/settings", label: "الإعدادات", icon: Settings, description: "إعدادات المنصة والذكاء والربط التشغيلي." },
+    { href: "/store", label: "المتجر العام", icon: ExternalLink, external: true, description: "فتح واجهة المتجر للزوار." },
+    { href: "/studio", label: "الاستوديو", icon: Sparkles, description: "فتح تجربة التصميم العامة." },
 ];
 
 function getAdminNotificationIcon(notification: AdminNotification) {
@@ -100,7 +128,7 @@ function getPageMeta(pathname: string) {
     if (exactMatch) {
         return {
             title: exactMatch.label,
-            description: "تنقل أسرع بين المراكز التشغيلية مع بحث أقرب إلى العمل الفعلي.",
+            description: exactMatch.description,
         };
     }
 
@@ -245,7 +273,7 @@ export function AdminTopBar() {
                 <div className="flex flex-col gap-3 px-4 py-3 pr-16 sm:px-6 sm:pr-6 lg:px-8 lg:pr-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                         <div className="min-w-0">
-                            <p className="text-[11px] font-bold tracking-[0.2em] text-theme-faint">ADMIN NAVIGATION</p>
+                            <p className="text-[11px] font-bold text-theme-faint">تنقل الإدارة</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                                 <h1 className="text-lg font-bold text-theme sm:text-xl">{pageMeta.title}</h1>
                                 <span className="inline-flex items-center rounded-full border border-gold/15 bg-gold/10 px-2.5 py-1 text-[10px] font-bold text-gold">
@@ -350,7 +378,10 @@ export function AdminTopBar() {
                                                     }`}
                                             >
                                                 <Icon className="w-5 h-5 shrink-0 text-theme-subtle" />
-                                                <span className="flex-1 font-medium">{item.label}</span>
+                                                <span className="flex-1">
+                                                    <span className="block font-medium">{item.label}</span>
+                                                    <span className="mt-0.5 block text-xs text-theme-faint">{item.description}</span>
+                                                </span>
                                                 {item.external && (
                                                     <ExternalLink className="w-4 h-4 text-theme-faint" />
                                                 )}

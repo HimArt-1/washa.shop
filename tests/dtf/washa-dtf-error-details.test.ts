@@ -6,7 +6,7 @@ describe("getWashaDtfErrorDetails", () => {
         const result = getWashaDtfErrorDetails(new Error("GEMINI_API_KEY is not configured"));
 
         expect(result).toEqual({
-            message: "إعدادات Washa AI غير مكتملة على الخادم. أضف المفتاح الصحيح ثم أعد المحاولة.",
+            message: "إعدادات Washa AI غير مكتملة أو المفتاح غير صالح. أضف المفتاح الصحيح في إعدادات الخادم ثم أعد المحاولة.",
             status: 503,
         });
     });

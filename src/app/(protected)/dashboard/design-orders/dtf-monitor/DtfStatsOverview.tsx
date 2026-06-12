@@ -1,227 +1,263 @@
 "use client";
 
-import { useMemo } from "react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { ActivityIcon, CheckCircleIcon, SlashIcon, AlertTriangleIcon } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+    Area,
+    AreaChart,
+    CartesianGrid,
+    Cell,
+    Pie,
+    PieChart,
+    Tooltip as RechartsTooltip,
+    XAxis,
+    YAxis,
+} from "recharts";
+import { ActivityIcon, AlertTriangleIcon, CheckCircleIcon, ShieldCheckIcon, SlashIcon } from "lucide-react";
 import type { DtfTelemetryStats } from "@/app/actions/dtf-telemetry";
 
 interface DtfStatsOverviewProps {
     stats: DtfTelemetryStats;
 }
 
-const PIE_COLORS = {
-    success: "#4ade80", // green-400
-    error: "#f87171",   // red-400
-    timeout: "#fb923c", // orange-400
-    quota: "#d4af37",   // gold
+const CHART_COLORS = {
+    success: "#34d399",
+    failed: "#f87171",
+    timeout: "#f59e0b",
+    quota: "#d4af37",
 };
+
+function MetricCard({
+    label,
+    value,
+    helper,
+    icon,
+    tone = "neutral",
+}: {
+    label: string;
+    value: string | number;
+    helper: string;
+    icon: JSX.Element;
+    tone?: "neutral" | "success" | "warning" | "error";
+}) {
+    const toneClass = {
+        neutral: "border-theme-subtle bg-theme-faint text-theme-subtle",
+        success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+        warning: "border-gold/25 bg-gold/10 text-gold",
+        error: "border-red-500/20 bg-red-500/10 text-red-300",
+    }[tone];
+
+    return (
+        <div className="theme-surface-panel rounded-[24px] p-5">
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-semibold text-theme-faint">{label}</p>
+                    <p className="mt-3 text-3xl font-black tabular-nums tracking-tight text-theme">{value}</p>
+                </div>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${toneClass}`}>
+                    {icon}
+                </div>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-theme-subtle">{helper}</p>
+        </div>
+    );
+}
+
+function MeasuredChart({
+    height,
+    children,
+}: {
+    height: number;
+    children: (size: { width: number; height: number }) => ReactNode;
+}) {
+    const ref = useRef<HTMLDivElement>(null);
+    const [width, setWidth] = useState(0);
+
+    useEffect(() => {
+        const element = ref.current;
+        if (!element) return;
+
+        const updateWidth = () => {
+            const nextWidth = Math.floor(element.getBoundingClientRect().width || element.clientWidth || 0);
+            if (nextWidth > 0) {
+                setWidth(nextWidth);
+            }
+        };
+
+        updateWidth();
+
+        if (typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", updateWidth);
+            return () => window.removeEventListener("resize", updateWidth);
+        }
+
+        const observer = new ResizeObserver(updateWidth);
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={ref} className="h-full w-full">
+            {width > 0 ? children({ width, height }) : null}
+        </div>
+    );
+}
 
 export function DtfStatsOverview({ stats }: DtfStatsOverviewProps) {
     const pieData = useMemo(() => {
         return [
-            { name: "نجاح (Success)", value: stats.statusDistribution.success, color: PIE_COLORS.success },
-            { name: "فشل تقني (Error)", value: stats.statusDistribution.error, color: PIE_COLORS.error },
-            { name: "انقضاء الوقت (Timeout)", value: stats.statusDistribution.timeout, color: PIE_COLORS.timeout },
-            { name: "تجاوز الحد (Spam)", value: stats.statusDistribution.quotaExceeded, color: PIE_COLORS.quota },
-        ].filter(item => item.value > 0);
+            { name: "ناجحة", value: stats.statusDistribution.success, color: CHART_COLORS.success },
+            { name: "أخطاء", value: stats.statusDistribution.error, color: CHART_COLORS.failed },
+            { name: "انقضاء وقت", value: stats.statusDistribution.timeout, color: CHART_COLORS.timeout },
+            { name: "تجاوز الحد", value: stats.statusDistribution.quotaExceeded, color: CHART_COLORS.quota },
+        ].filter((item) => item.value > 0);
     }, [stats.statusDistribution]);
 
-    const successRate = stats.totalRequests === 0 
-        ? 0 
+    const successRate = stats.totalRequests === 0
+        ? 0
         : Math.round((stats.statusDistribution.success / stats.totalRequests) * 100);
+    const failedCount = stats.statusDistribution.error + stats.statusDistribution.timeout;
+    const needsAttention = failedCount + stats.statusDistribution.quotaExceeded;
 
     return (
-        <div className="space-y-8 mb-8 mt-4" dir="rtl">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                
-                {/* Total Stats Card */}
-                <div className="relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-gold/30 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_40px_rgba(212,175,55,0.15)]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-gold/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 rounded-full blur-[50px] -mr-10 -mt-10 pointer-events-none" />
-                    <div className="p-6 relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="text-neutral-400 text-sm font-medium tracking-wide">إجمالي التوليد</p>
-                            <div className="p-2.5 bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                                <ActivityIcon className="w-5 h-5 text-gold" />
-                            </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <h4 className="text-4xl font-black bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent drop-shadow-sm">{stats.totalRequests}</h4>
-                            <span className="text-xs text-gold/80 mb-1.5 px-2 py-1 rounded-md bg-gold/10 border border-gold/20 flex items-center gap-1">آخر 7 أيام</span>
-                        </div>
-                    </div>
-                    <div className="h-1 w-full bg-gradient-to-r from-gold/50 to-transparent absolute bottom-0 right-0 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300" />
-                </div>
-
-                {/* Success Stats Card */}
-                <div className="relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-green-500/30 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_40px_rgba(74,222,128,0.15)]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 via-green-500/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-[50px] -mr-10 -mt-10 pointer-events-none" />
-                    <div className="p-6 relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="text-neutral-400 text-sm font-medium tracking-wide">النجاح والاستقرار</p>
-                            <div className="p-2.5 bg-gradient-to-br from-green-500/20 to-green-500/5 border border-green-500/20 rounded-xl shadow-[0_0_15px_rgba(74,222,128,0.2)]">
-                                <CheckCircleIcon className="w-5 h-5 text-green-400" />
-                            </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <div className="flex items-baseline gap-1">
-                                <h4 className="text-4xl font-black bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent drop-shadow-sm">{successRate}</h4>
-                                <span className="text-xl text-neutral-500 font-bold">%</span>
-                            </div>
-                            <span className="text-xs text-green-400 mb-1.5 px-2 py-1 rounded-md bg-green-500/10 border border-green-500/20">{stats.statusDistribution.success} دقة</span>
-                        </div>
-                    </div>
-                    <div className="h-1 w-full bg-gradient-to-r from-green-500/50 to-transparent absolute bottom-0 right-0 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300" />
-                </div>
-
-                {/* Spam Protection Card */}
-                <div className="relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-gold/30 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_40px_rgba(212,175,55,0.15)]">
-                     <div className="absolute inset-0 bg-gradient-to-br from-gold/5 via-gold/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gold/10 rounded-full blur-[50px] -mr-10 -mt-10 pointer-events-none" />
-                    <div className="p-6 relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="text-neutral-400 text-sm font-medium tracking-wide">تدخلات الحماية</p>
-                            <div className="p-2.5 bg-gradient-to-br from-gold/20 to-gold/5 border border-gold/20 rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.2)]">
-                                <SlashIcon className="w-5 h-5 text-gold" />
-                            </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <h4 className="text-4xl font-black bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent drop-shadow-sm">{stats.statusDistribution.quotaExceeded}</h4>
-                            <span className="text-xs text-gold/90 mb-1.5 px-2 py-1 rounded-md bg-gold/10 border border-gold/20">محظر وممنوع</span>
-                        </div>
-                    </div>
-                    <div className="h-1 w-full bg-gradient-to-r from-gold/50 to-transparent absolute bottom-0 right-0 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300" />
-                </div>
-
-                {/* Errors Card */}
-                <div className="relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-red-500/30 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-[0_8px_40px_rgba(248,113,113,0.15)]">
-                    <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-red-500/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-[50px] -mr-10 -mt-10 pointer-events-none" />
-                    <div className="p-6 relative z-10">
-                        <div className="flex items-center justify-between mb-6">
-                            <p className="text-neutral-400 text-sm font-medium tracking-wide">أخطاء السيرفر</p>
-                            <div className="p-2.5 bg-gradient-to-br from-red-500/20 to-red-500/5 border border-red-500/20 rounded-xl shadow-[0_0_15px_rgba(248,113,113,0.2)]">
-                                <AlertTriangleIcon className="w-5 h-5 text-red-400" />
-                            </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <div className="flex items-baseline gap-2">
-                                <h4 className="text-4xl font-black bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent drop-shadow-sm">{stats.statusDistribution.error + stats.statusDistribution.timeout}</h4>
-                            </div>
-                            <span className="text-xs text-red-300 mb-1.5 px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20">أخطاء برمجية</span>
-                        </div>
-                    </div>
-                    <div className="h-1 w-full bg-gradient-to-r from-red-500/50 to-transparent absolute bottom-0 right-0 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-300" />
-                </div>
+        <div className="mb-8 mt-4 space-y-6" dir="rtl">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                    label="إجمالي العمليات"
+                    value={stats.totalRequests}
+                    helper="كل عمليات التوليد والعزل التي قرأها الرادار ضمن نافذة القياس."
+                    icon={<ActivityIcon className="h-5 w-5" />}
+                />
+                <MetricCard
+                    label="معدل النجاح"
+                    value={`${successRate}%`}
+                    helper={`${stats.statusDistribution.success} عملية ناجحة داخل العينة الحالية.`}
+                    icon={<CheckCircleIcon className="h-5 w-5" />}
+                    tone="success"
+                />
+                <MetricCard
+                    label="تدخلات الحماية"
+                    value={stats.statusDistribution.quotaExceeded}
+                    helper="طلبات أوقفتها حدود الاستخدام قبل استهلاك موارد إضافية."
+                    icon={<SlashIcon className="h-5 w-5" />}
+                    tone="warning"
+                />
+                <MetricCard
+                    label="تحتاج متابعة"
+                    value={needsAttention}
+                    helper="تشمل الأخطاء، انقضاء الوقت، والطلبات التي تجاوزت الحد."
+                    icon={<AlertTriangleIcon className="h-5 w-5" />}
+                    tone={needsAttention > 0 ? "error" : "success"}
+                />
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* Area Chart: Traffic Trend */}
-                <div className="lg:col-span-2 relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-gold/20 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] p-6 z-10 flex flex-col">
-                    <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
-                    
-                    <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-lg font-bold text-white flex items-center gap-3">
-                            <span className="w-1.5 h-6 bg-gold rounded-full shadow-[0_0_10px_rgba(212,175,55,0.6)]"></span>
-                            نبض السيرفر الجرافيكي
-                        </h4>
-                        <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs text-neutral-400 tracking-wider">LIVE TELEMETRY</span>
-                    </div>
-
-                    <div className="h-[300px] w-full mt-auto" dir="ltr">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorSuccess" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={PIE_COLORS.success} stopOpacity={0.6}/>
-                                        <stop offset="95%" stopColor={PIE_COLORS.success} stopOpacity={0}/>
-                                    </linearGradient>
-                                    <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor={PIE_COLORS.error} stopOpacity={0.6}/>
-                                        <stop offset="95%" stopColor={PIE_COLORS.error} stopOpacity={0}/>
-                                    </linearGradient>
-                                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                                        <feGaussianBlur stdDeviation="3" result="blur" />
-                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                    </filter>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                                <XAxis dataKey="date" stroke="#666" fontSize={11} tickLine={false} axisLine={false} dy={10} />
-                                <YAxis stroke="#666" fontSize={11} tickLine={false} axisLine={false} dx={-10} tickFormatter={(value) => `${value}`} />
-                                <RechartsTooltip 
-                                    contentStyle={{ backgroundColor: 'rgba(10, 10, 10, 0.95)', borderColor: 'rgba(212, 175, 55, 0.3)', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 10px rgba(212,175,55,0.1)' }}
-                                    itemStyle={{ color: '#fff', fontSize: '14px', padding: '4px 0' }}
-                                    cursor={{ stroke: 'rgba(212, 175, 55, 0.2)', strokeWidth: 2, strokeDasharray: '4 4' }}
-                                />
-                                <Area type="monotone" dataKey="success" name="عملية ناجحة" stroke={PIE_COLORS.success} strokeWidth={3} fillOpacity={1} fill="url(#colorSuccess)" filter="url(#glow)" activeDot={{ r: 6, fill: PIE_COLORS.success, stroke: '#000', strokeWidth: 2 }} />
-                                <Area type="monotone" dataKey="failed" name="فشل/رفض" stroke={PIE_COLORS.error} strokeWidth={3} fillOpacity={1} fill="url(#colorFailed)" filter="url(#glow)" activeDot={{ r: 6, fill: PIE_COLORS.error, stroke: '#000', strokeWidth: 2 }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Donut Chart: Distribution */}
-                <div className="relative group rounded-3xl overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/5 hover:border-gold/20 transition-all duration-500 shadow-[0_8px_30px_rgb(0,0,0,0.4)] p-6 z-10 flex flex-col items-center">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.05)_0%,transparent_70%)] pointer-events-none" />
-                    
-                    <h4 className="text-lg font-bold text-white w-full mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <span className="w-1.5 h-6 bg-gold rounded-full shadow-[0_0_10px_rgba(212,175,55,0.6)]"></span>
-                            توزيع الحالات
+            <div className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+                <section className="theme-surface-panel rounded-[28px] p-5 sm:p-6">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-theme-faint">السبعة أيام الأخيرة</p>
+                            <h3 className="mt-2 text-xl font-black text-theme">اتجاه نجاح التوليد</h3>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                                يوضح الرسم أين يرتفع الفشل مقارنة بالعمليات الناجحة، حتى يسهل ربطه بالشكاوى أو ضغط الاستخدام.
+                            </p>
                         </div>
-                    </h4>
+                        <span className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-300">
+                            <ShieldCheckIcon className="h-3.5 w-3.5" />
+                            قياس مباشر
+                        </span>
+                    </div>
 
-                    <div className="h-[250px] w-full mt-2 relative flex justify-center items-center">
+                    <div className="mt-6 h-[300px] w-full" dir="ltr">
+                        <MeasuredChart height={300}>
+                            {({ width, height }) => (
+                            <AreaChart width={width} height={height} data={stats.chartData} margin={{ top: 10, right: 10, left: -18, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="dtfSuccess" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.36} />
+                                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="dtfFailed" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={CHART_COLORS.failed} stopOpacity={0.28} />
+                                        <stop offset="95%" stopColor={CHART_COLORS.failed} stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="color-mix(in srgb, var(--wusha-text) 8%, transparent)" vertical={false} />
+                                <XAxis dataKey="date" stroke="color-mix(in srgb, var(--wusha-text) 46%, transparent)" fontSize={11} tickLine={false} axisLine={false} dy={10} />
+                                <YAxis stroke="color-mix(in srgb, var(--wusha-text) 46%, transparent)" fontSize={11} tickLine={false} axisLine={false} dx={-10} />
+                                <RechartsTooltip
+                                    contentStyle={{
+                                        backgroundColor: "var(--wusha-surface)",
+                                        borderColor: "color-mix(in srgb, var(--wusha-text) 14%, transparent)",
+                                        borderRadius: "14px",
+                                        color: "var(--wusha-text)",
+                                        boxShadow: "0 18px 50px rgba(0,0,0,0.18)",
+                                    }}
+                                    itemStyle={{ color: "var(--wusha-text)", fontSize: "13px", padding: "3px 0" }}
+                                    cursor={{ stroke: "color-mix(in srgb, var(--wusha-gold) 28%, transparent)", strokeWidth: 1 }}
+                                />
+                                <Area type="monotone" dataKey="success" name="ناجحة" stroke={CHART_COLORS.success} strokeWidth={2.5} fillOpacity={1} fill="url(#dtfSuccess)" activeDot={{ r: 5, fill: CHART_COLORS.success }} />
+                                <Area type="monotone" dataKey="failed" name="تحتاج متابعة" stroke={CHART_COLORS.failed} strokeWidth={2.5} fillOpacity={1} fill="url(#dtfFailed)" activeDot={{ r: 5, fill: CHART_COLORS.failed }} />
+                            </AreaChart>
+                            )}
+                        </MeasuredChart>
+                    </div>
+                </section>
+
+                <section className="theme-surface-panel rounded-[28px] p-5 sm:p-6">
+                    <div>
+                        <p className="text-xs font-semibold text-theme-faint">توزيع الحالات</p>
+                        <h3 className="mt-2 text-xl font-black text-theme">حالة العمليات</h3>
+                    </div>
+
+                    <div className="mt-5 flex h-[240px] items-center justify-center">
                         {pieData.length > 0 ? (
-                            <>
-                                <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                                    <div className="w-32 h-32 rounded-full border border-gold border-dashed animate-[spin_30s_linear_infinite]" />
-                                </div>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={pieData}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={70}
-                                            outerRadius={95}
-                                            paddingAngle={8}
-                                            cornerRadius={8}
-                                            dataKey="value"
-                                            stroke="transparent"
-                                        >
-                                            {pieData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} style={{ filter: `drop-shadow(0px 0px 8px ${entry.color}40)` }} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip 
-                                            contentStyle={{ backgroundColor: 'rgba(10, 10, 10, 0.95)', borderColor: 'rgba(212, 175, 55, 0.3)', borderRadius: '12px', border: '1px solid', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)' }}
-                                            itemStyle={{ color: '#fff' }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </>
+                            <MeasuredChart height={240}>
+                                {({ width, height }) => (
+                                <PieChart width={width} height={height}>
+                                    <Pie
+                                        data={pieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={64}
+                                        outerRadius={92}
+                                        paddingAngle={5}
+                                        cornerRadius={6}
+                                        dataKey="value"
+                                        stroke="transparent"
+                                    >
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip
+                                        contentStyle={{
+                                            backgroundColor: "var(--wusha-surface)",
+                                            borderColor: "color-mix(in srgb, var(--wusha-text) 14%, transparent)",
+                                            borderRadius: "14px",
+                                            color: "var(--wusha-text)",
+                                        }}
+                                    />
+                                </PieChart>
+                                )}
+                            </MeasuredChart>
                         ) : (
-                            <p className="text-neutral-500 text-sm font-medium bg-black/40 px-4 py-2 rounded-lg border border-white/5">يتم تجميع البيانات...</p>
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-subtle">
+                                لا توجد بيانات كافية للرسم.
+                            </div>
                         )}
                     </div>
 
-                    {/* Legend */}
-                    <div className="flex gap-x-4 gap-y-3 flex-wrap justify-center mt-6 w-full">
-                        {pieData.map((entry, idx) => (
-                           <div key={idx} className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
-                               <span className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color, boxShadow: `0 0 10px ${entry.color}` }}></span>
-                               <span className="text-xs text-neutral-300 font-medium">{entry.name}</span>
-                               <span className="text-xs text-white ml-2 opacity-80" dir="ltr">{entry.value}</span>
-                           </div> 
+                    <div className="mt-5 grid gap-2">
+                        {pieData.map((entry) => (
+                            <div key={entry.name} className="flex items-center justify-between rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                                    <span className="text-sm text-theme-subtle">{entry.name}</span>
+                                </div>
+                                <span className="text-sm font-black tabular-nums text-theme">{entry.value}</span>
+                            </div>
                         ))}
                     </div>
-                </div>
-
+                </section>
             </div>
         </div>
     );

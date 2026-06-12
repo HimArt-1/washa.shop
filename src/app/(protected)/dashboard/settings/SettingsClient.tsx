@@ -318,10 +318,10 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         step1_image: settings.ai_simulation?.step1_image ?? "/images/design/heavy-tshirt-black-front.svg",
         step1_color_name: settings.ai_simulation?.step1_color_name ?? "أسود كلاسيك",
         step1_pattern: settings.ai_simulation?.step1_pattern ?? "بدون نمط",
-        step2_prompt: settings.ai_simulation?.step2_prompt ?? "صمم لي ذئب بستايل سايبربانك مع ألوان نيون وخلفية مظلمة...",
-        step2_art_style: settings.ai_simulation?.step2_art_style ?? "رسم رقمي (Digital Art)",
-        step2_result_image: settings.ai_simulation?.step2_result_image ?? "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&q=80",
-        step3_final_image: settings.ai_simulation?.step3_final_image ?? "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800&q=80",
+        step2_prompt: settings.ai_simulation?.step2_prompt ?? "اكتب عبارة عربية أنيقة مستوحاة من الهوية السعودية مع تفاصيل ذهبية هادئة.",
+        step2_art_style: settings.ai_simulation?.step2_art_style ?? "هوية وشّى للطباعة",
+        step2_result_image: settings.ai_simulation?.step2_result_image ?? "/generated/washa_tshirt.png",
+        step3_final_image: settings.ai_simulation?.step3_final_image ?? "/generated/washa_pos_front.png",
     });
 
     const [brandAssets, setBrandAssets] = useState({
@@ -541,7 +541,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
             <SettingsCard title="Washa AI — حدود التوليد" icon={Sparkles}>
                 <p className="text-theme-subtle text-sm mb-4">
-                    الحد اليومي لتوليد WASHA AI داخل DTF لكل مستخدم مشترك. لا ينطبق على أدوار الإدارة والتطوير.
+                    الحد اليومي لتوليد WASHA AI داخل DTF لكل مستخدم مشترك. لا ينطبق على فرق الإدارة والصيانة.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Field
@@ -963,7 +963,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4 space-y-4">
                             <div className="flex flex-wrap items-start justify-between gap-3">
                                 <div className="space-y-1">
-                                    <h4 className="font-bold text-sm text-theme">محاكاة قبل/بعد</h4>
+                                    <h4 className="font-bold text-sm text-theme">مراجعة أثر التغيير</h4>
                                     <p className="text-xs leading-6 text-theme-subtle">
                                         {ruleChanges.length === 0
                                             ? "المقاييس الحالية لن تغيّر مستوى الإشارات، لكن العتبات الجديدة ستُحفظ كما هي."
@@ -1158,9 +1158,9 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                 </button>
             </SettingsCard>
 
-            {/* ─── 6. AI Simulation Config ─── */}
-            <SettingsCard title="إعدادات محاكاة الذكاء الاصطناعي" icon={Sparkles || Tag}>
-                <p className="text-theme-subtle text-sm mb-4">تتحكم هذه الإعدادات بالصور والنصوص التي تظهر في قسم "اكتشف بذكاء" (محاكاة التصميم) على الصفحة الرئيسية.</p>
+            {/* ─── 6. Smart Design Display Config ─── */}
+            <SettingsCard title="إعدادات تجربة التصميم الذكي" icon={Sparkles || Tag}>
+                <p className="text-theme-subtle text-sm mb-4">تتحكم هذه الإعدادات بالصور والنصوص التي تظهر في قسم "تصميم يبدأ من وصفك" على الصفحة الرئيسية.</p>
                 
                 <div className="space-y-6">
                     {/* Step 1 Settings */}
@@ -1173,17 +1173,17 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                             placeholder="أسود كلاسيك"
                         />
                         <Field
-                            label="النمط (Pattern)"
+                            label="النمط"
                             value={aiSimulation.step1_pattern}
                             onChange={(v) => setAiSimulation({ ...aiSimulation, step1_pattern: v })}
                             placeholder="بدون نمط"
                         />
                         <div>
-                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة القطعة (Garment Image)</label>
+                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة القطعة</label>
                             <div className="flex items-center gap-3">
                                 {aiSimulation.step1_image && (
                                     <div className="w-12 h-12 rounded-lg border border-theme-soft bg-black flex-shrink-0 relative overflow-hidden">
-                                        <img src={aiSimulation.step1_image} alt="Step 1 Preview" className="absolute inset-0 w-full h-full object-contain" />
+                                        <img src={aiSimulation.step1_image} alt="معاينة القطعة" className="absolute inset-0 w-full h-full object-contain" />
                                     </div>
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step1_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
@@ -1198,23 +1198,23 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
                         <h4 className="font-bold text-sm text-theme mb-2">الخطوة 2 و 3: الإلهام والنتيجة</h4>
                         <Field
-                            label="نص الطلب الوهمي (Prompt)"
+                            label="نص الطلب المعروض"
                             value={aiSimulation.step2_prompt}
                             onChange={(v) => setAiSimulation({ ...aiSimulation, step2_prompt: v })}
-                            placeholder="صمم لي ذئب بستايل سايبربانك..."
+                            placeholder="اكتب عبارة عربية أنيقة مستوحاة من الهوية السعودية..."
                         />
                         <Field
-                            label="أسلوب الرسم (Art Style)"
+                            label="أسلوب الرسم"
                             value={aiSimulation.step2_art_style}
                             onChange={(v) => setAiSimulation({ ...aiSimulation, step2_art_style: v })}
-                            placeholder="رسم رقمي (Digital Art)"
+                            placeholder="هوية وشّى للطباعة"
                         />
                         <div>
-                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة التصميم المُولد (Result Image)</label>
+                            <label className="text-xs text-theme-subtle font-medium block mb-2">صورة نتيجة التصميم</label>
                             <div className="flex items-center gap-3">
                                 {aiSimulation.step2_result_image && (
                                     <div className="w-12 h-12 rounded-lg border border-theme-soft bg-black flex-shrink-0 relative overflow-hidden">
-                                        <img src={aiSimulation.step2_result_image} alt="Step 2 Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                        <img src={aiSimulation.step2_result_image} alt="معاينة نتيجة التصميم" className="absolute inset-0 w-full h-full object-cover" />
                                     </div>
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step2_result_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
@@ -1227,17 +1227,17 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
                     {/* Step 3 Settings */}
                     <div className="p-4 rounded-xl border border-theme-subtle bg-theme-faint space-y-4">
-                        <h4 className="font-bold text-sm text-theme mb-2">الخطوة 3: النتيجة النهائية (الموك أب)</h4>
-                        <p className="text-xs text-theme-subtle mb-2">الصورة النهائية التي ستظهر في الخطوة الأخيرة (محاكاة الموك أب الاحترافي).</p>
+                        <h4 className="font-bold text-sm text-theme mb-2">الخطوة 3: معاينة المنتج النهائية</h4>
+                        <p className="text-xs text-theme-subtle mb-2">الصورة النهائية التي تظهر في الخطوة الأخيرة داخل قسم التصميم على الصفحة الرئيسية.</p>
                         <div>
                             <div className="flex items-center gap-3">
                                 {aiSimulation.step3_final_image && (
                                     <div className="w-16 h-16 rounded-lg border border-theme-soft bg-black flex-shrink-0 relative overflow-hidden">
-                                        <img src={aiSimulation.step3_final_image} alt="Step 3 Preview" className="absolute inset-0 w-full h-full object-cover" />
+                                        <img src={aiSimulation.step3_final_image} alt="معاينة المنتج النهائية" className="absolute inset-0 w-full h-full object-cover" />
                                     </div>
                                 )}
                                 <label className={`flex-1 flex items-center justify-center p-3 h-16 border border-dashed rounded-xl cursor-pointer transition-colors ${saving === "uploading_step3_final_image" ? "opacity-50 cursor-not-allowed border-theme-subtle" : "border-gold/30 hover:border-gold hover:bg-gold/5"}`}>
-                                    {saving === "uploading_step3_final_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة الموك أب...</span>}
+                                    {saving === "uploading_step3_final_image" ? <Loader2 className="w-4 h-4 animate-spin text-theme-subtle" /> : <span className="text-sm font-medium text-theme-soft">اختر صورة المعاينة النهائية...</span>}
                                     <input type="file" accept="image/*" className="hidden" disabled={saving === "uploading_step3_final_image"} onChange={(e) => handleImageUpload(e, "step3_final_image")} />
                                 </label>
                             </div>
@@ -1251,7 +1251,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     className="mt-5 btn-gold w-full py-3 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                     {saving === "ai_simulation" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    حفظ إعدادات المحاكاة
+                    حفظ إعدادات العرض الذكي
                 </button>
             </SettingsCard>
 

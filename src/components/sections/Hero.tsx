@@ -579,7 +579,11 @@ export function Hero({
                           animate={{ boxShadow: ["0 2px 8px rgba(206,174,127,0.12)", "0 4px 16px rgba(206,174,127,0.25)", "0 2px 8px rgba(206,174,127,0.12)"] }}
                           transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                         >
-                          <Sparkles className="w-5 h-5" style={{ color: "var(--hero-ai-card-status)" }} />
+                          <span
+                            aria-hidden="true"
+                            className="block h-5 w-6"
+                            style={createIntroLogoMask("var(--hero-ai-card-status)")}
+                          />
                         </motion.div>
                         <span
                           className="text-3xl sm:text-4xl font-alnaseeb italic tracking-widest"

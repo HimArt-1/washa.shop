@@ -660,7 +660,12 @@ export async function createOrder(
 
 export async function confirmOrderPayment(
     orderId: string,
-    options?: { customerEmail?: string; webhookEventId?: string }
+    options?: {
+        customerEmail?: string;
+        webhookEventId?: string;
+        paidAmount?: number | null;
+        paymentProvider?: string;
+    }
 ) {
     try {
         const supabase = getSupabaseAdminClient();
@@ -676,13 +681,32 @@ export async function confirmOrderPayment(
             return { success: false };
         }
 
+        if (
+            typeof options?.paidAmount === "number" &&
+            Number.isFinite(options.paidAmount) &&
+            Math.abs(Number(order.total) - options.paidAmount) > 0.01
+        ) {
+            console.error("[confirmOrderPayment] Payment amount mismatch:", {
+                orderId,
+                orderNumber: order.order_number,
+                expected: order.total,
+                paid: options.paidAmount,
+                provider: options.paymentProvider || "unknown",
+            });
+            return { success: false, error: "مبلغ الدفع لا يطابق إجمالي الطلب" };
+        }
+
         await finalizeOrderPaymentState(
             orderId,
             buildOrderDispatchMetadata(
                 orderId,
                 order.order_number,
                 order.total,
-                options?.webhookEventId ? { webhook_event_id: options.webhookEventId } : undefined
+                {
+                    ...(options?.webhookEventId ? { webhook_event_id: options.webhookEventId } : {}),
+                    ...(options?.paymentProvider ? { payment_provider: options.paymentProvider } : {}),
+                    ...(typeof options?.paidAmount === "number" ? { paid_amount: options.paidAmount } : {}),
+                }
             )
         );
 

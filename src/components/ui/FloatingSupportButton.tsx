@@ -9,18 +9,20 @@ export function FloatingSupportButton() {
     const pathname = usePathname();
     const [visible, setVisible] = useState(false);
 
-    // Show ONLY on specific high-conversion pages
-    const allowedPathPrefixes = ["/store", "/design", "/support"];
-    const isHome = pathname === "/";
-    const isAllowed = isHome || allowedPathPrefixes.some(prefix => pathname?.startsWith(prefix));
+    const supportPathPrefixes = ["/support", "/account/support"];
+    const isSupportPath = supportPathPrefixes.some(prefix => pathname?.startsWith(prefix));
     
-    // Don't show on dashboard or studio
-    const hidden = !isAllowed || pathname?.startsWith("/dashboard") || pathname?.startsWith("/studio");
+    const hidden = !isSupportPath || pathname?.startsWith("/dashboard") || pathname?.startsWith("/studio");
 
     useEffect(() => {
+        if (isSupportPath) {
+            setVisible(true);
+            return;
+        }
+
         const t = setTimeout(() => setVisible(true), 2500);
         return () => clearTimeout(t);
-    }, []);
+    }, [isSupportPath]);
 
     if (hidden) return null;
 

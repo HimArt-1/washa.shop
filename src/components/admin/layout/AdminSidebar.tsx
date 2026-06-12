@@ -8,7 +8,7 @@ import {
     LayoutDashboard, BarChart3, Users, TrendingUp,
     ShoppingCart, Image as ImageIcon, ChevronRight, Shield,
     Menu, X, Package, Mail, Settings, Palette, Wand2, Brush,
-    Bell, Ticket, HeadphonesIcon, History, Home, Store, Truck,
+    Bell, Ticket, HeadphonesIcon, History, Home, Store, Truck, Wifi,
 } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import type { UserRole } from "@/types/database";
@@ -65,37 +65,57 @@ export function AdminSidebar({
             items: [
                 { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
                 { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics", roles: ["admin", "dev", "financial_manager"] },
+                { icon: History, label: "سجل العمليات", href: "/dashboard/activity-log", roles: ["admin", "dev"] },
             ],
         },
         {
-            title: "التجارة",
+            title: "التشغيل التجاري",
             items: [
+                { icon: ShoppingCart, label: "مركز قيادة الطلبات", href: "/dashboard/orders/command-center", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
                 { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
                 { icon: Truck, label: "إدارة الشحن", href: "/dashboard/shipping", roles: ["admin", "dev", "shipping_manager"] },
                 { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory", roles: ["admin", "dev", "shipping_manager"] },
                 { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", roles: ["admin", "dev", "financial_manager"] },
                 { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
+                { icon: Package, label: "الباركود", href: "/dashboard/barcodes", roles: ["admin", "dev", "shipping_manager"] },
             ],
         },
         {
             title: "المحتوى والتصميم",
             items: [
                 { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders, roles: ["admin", "dev", "shipping_manager"] },
+                { icon: Wand2, label: "رادار DTF", href: "/dashboard/design-orders/dtf-monitor", roles: ["admin", "dev", "shipping_manager"] },
                 { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks", roles: ["admin", "dev"] },
                 { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs", roles: ["admin", "dev"] },
                 { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store", roles: ["admin", "dev"] },
+                { icon: Palette, label: "الفئات", href: "/dashboard/categories", roles: ["admin", "dev"] },
+                { icon: Bell, label: "الإعلانات والعروض", href: "/dashboard/announcements", roles: ["admin", "dev"] },
+                { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter", roles: ["admin", "dev"] },
             ],
         },
         {
-            title: "الإدارة",
+            title: "الإدارة والدعم",
             items: [
                 { icon: Users, label: "المستخدمون", href: "/dashboard/users", roles: ["admin", "dev"] },
+                { icon: Shield, label: "مزامنة الهوية", href: "/dashboard/users-clerk", roles: ["admin", "dev"] },
+                { icon: History, label: "سجل الأدوار", href: "/dashboard/users/audit-log", roles: ["admin", "dev"] },
+                { icon: Mail, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps, roles: ["admin", "dev"] },
                 { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets, roles: ["admin", "dev", "support_agent"] },
                 { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications", roles: ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"] },
+                { icon: Wifi, label: "حالة التكاملات", href: "/dashboard/integrations", roles: ["admin", "dev"] },
                 { icon: Settings, label: "الإعدادات", href: "/dashboard/settings", roles: ["admin", "dev"] },
             ],
         },
     ];
+    const visibleNavItems = navGroups.flatMap((group) =>
+        group.items.filter((item) => !item.roles || item.roles.includes(role))
+    );
+    const activeHref = visibleNavItems
+        .filter((item) =>
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
+        )
+        .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
     const sidebarContent = (
         <>
@@ -122,6 +142,7 @@ export function AdminSidebar({
 
                 {/* Desktop: Collapse toggle */}
                 <button
+                    suppressHydrationWarning
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     className="p-2 hover:bg-theme-subtle rounded-lg transition-colors hidden md:block"
                 >
@@ -132,6 +153,7 @@ export function AdminSidebar({
 
                 {/* Mobile: Close button */}
                 <button
+                    suppressHydrationWarning
                     onClick={() => setIsMobileOpen(false)}
                     className="p-2 hover:bg-theme-subtle rounded-lg transition-colors md:hidden"
                 >
@@ -176,8 +198,7 @@ export function AdminSidebar({
                                 <div className="w-8 mx-auto my-1 border-t border-theme-subtle" />
                             )}
                             {filteredItems.map((item) => {
-                                const isActive = pathname === item.href ||
-                                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                                const isActive = activeHref === item.href;
 
                                 return (
                                     <Link
@@ -293,6 +314,7 @@ export function AdminSidebar({
         <>
             {/* Mobile Hamburger Button */}
             <button
+                suppressHydrationWarning
                 onClick={() => setIsMobileOpen(true)}
                 className="fixed right-3 top-3 z-50 rounded-2xl border border-theme-subtle bg-[color-mix(in_srgb,var(--wusha-surface)_92%,transparent)] p-3 text-theme-soft shadow-[0_12px_30px_-18px_rgba(0,0,0,0.5)] backdrop-blur-xl md:hidden"
                 aria-label="فتح القائمة"

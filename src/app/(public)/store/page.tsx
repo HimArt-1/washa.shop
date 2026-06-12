@@ -53,7 +53,7 @@ export default async function StorePage({
     const showFeaturedTile = page === 1 && list.length >= 3;
 
     return (
-        <div className="min-h-[60vh] pb-12 pt-6 sm:pb-16 sm:pt-8" style={{ backgroundColor: "var(--wusha-bg)" }} dir="rtl">
+        <div className="store-page min-h-[60vh] pb-12 pt-6 sm:pb-16 sm:pt-8" dir="rtl">
             {/* JSON-LD Structured Data */}
             {list.length > 0 && (
                 <>
@@ -68,41 +68,39 @@ export default async function StorePage({
                     ])} />
                 </>
             )}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="store-page-shell max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Header — تخطيط غير متماثل على الشاشات الواسعة ─── */}
-                <div className="mb-10 theme-surface-panel rounded-[2rem] px-5 py-8 sm:mb-12 sm:px-8 sm:py-10 lg:px-10">
-                    <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+                <div className="store-hero-panel mb-8 rounded-[2rem] px-5 py-6 sm:mb-10 sm:px-7 sm:py-7 lg:px-8">
+                    <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
                         <div className="min-w-0 text-center lg:text-right">
-                            <p className="mb-3 text-xs font-bold tracking-[0.24em] text-theme-faint">STORE</p>
-                            <h1 className="mb-3 text-3xl font-black sm:text-4xl md:text-5xl" style={{ color: "var(--wusha-text)" }}>
-                                المتجر
+                            <div className="store-kicker mb-3">
+                                <span className="store-brand-mark" aria-hidden />
+                                متجر وشّى
+                            </div>
+                            <h1 className="text-3xl font-black sm:text-4xl md:text-5xl">
+                                منتجات مختارة
                             </h1>
-                            <p className="prose-readable mx-auto mt-1 text-sm text-theme-subtle sm:text-[15px] lg:mx-0">
-                                اكتشف قطع وشّى الفنية بتجربة قراءة أوضح في الفاتح والداكن. لدينا الآن {count || 0} منتجًا فنيًا فريدًا.
-                            </p>
                         </div>
                         <div className="flex flex-wrap items-center justify-center gap-2 text-xs lg:shrink-0 lg:justify-end">
-                            <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 font-semibold text-gold">
+                            <span className="store-count-pill rounded-full px-3 py-1 font-semibold">
                                 {count || 0} منتج متاح الآن
                             </span>
                             <Link
                                 href="/search"
-                                className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                                className="store-pill-link rounded-full px-3 py-1 transition-colors"
                             >
                                 بحث سريع
                             </Link>
                             <Link
                                 href="/design"
-                                className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-theme-subtle transition-colors hover:border-gold/20 hover:text-theme"
+                                className="store-pill-link rounded-full px-3 py-1 transition-colors"
                             >
                                 صمّم قطعتك
                             </Link>
                         </div>
                     </div>
+                    <StoreFilters currentType={type} inStockOnly={inStockOnly} currentSort={sort} />
                 </div>
-
-                {/* ─── Filters (Client Component) ─── */}
-                <StoreFilters currentType={type} inStockOnly={inStockOnly} currentSort={sort} />
 
                 {/* ─── Grid ─── */}
                 {list.length > 0 ? (
@@ -140,8 +138,8 @@ export default async function StorePage({
                                             key={i}
                                             href={`/store?${params.toString()}`}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-medium transition-all border ${page === i + 1
-                                                    ? "bg-[var(--wusha-gold)] text-[var(--wusha-bg)]"
-                                                    : "text-theme-subtle hover:bg-theme-subtle border-theme-strong/10"
+                                                    ? "store-page-link store-page-link--active"
+                                                    : "store-page-link"
                                                 }`}
                                         >
                                             {i + 1}
@@ -152,7 +150,7 @@ export default async function StorePage({
                         )}
                     </>
                 ) : (
-                    <div className="theme-surface-panel rounded-[2rem] px-6 py-16 text-center sm:py-24">
+                    <div className="store-empty-panel rounded-[2rem] px-6 py-16 text-center sm:py-24">
                         <p className="text-base font-semibold text-theme">لا توجد منتجات مطابقة حاليًا</p>
                         <p className="mt-2 text-sm text-theme-subtle">
                             جرّب تغيير النوع أو الترتيب أو توسيع النتائج المتاحة.

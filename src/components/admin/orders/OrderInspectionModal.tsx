@@ -40,7 +40,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
     async function handleWarehousePayment() {
         setIsPaying(true);
         const res = await initiateWarehousePayment(order.id);
-        if (res.success && res.url) {
+        if (res.success) {
             window.open(res.url, "_blank");
             toast.success("تم إنشاء رابط الدفع للمستودع");
         } else {
@@ -69,6 +69,9 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
         }).format(val);
     };
 
+    const warehousePaymentPaid = order.metadata?.fulfillment_paid === true
+        || order.metadata?.warehouse_payment?.status === "paid";
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -89,7 +92,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         className="relative w-full max-w-5xl h-[min(90vh,900px)] bg-[#121212] border border-gold/20 rounded-[40px] shadow-[0_0_100px_-20px_rgba(206,174,127,0.15)] overflow-hidden flex flex-col"
                     >
-                        {/* Tactical HUD Header */}
+                        {/* Modal header */}
                         <div className="relative px-8 py-6 border-b border-white/5 flex items-center justify-between shrink-0">
                             {/* Animated mesh bg for header */}
                             <div className="absolute inset-0 opacity-10 pointer-events-none" 
@@ -104,7 +107,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                         <h2 className="text-2xl font-black text-theme tracking-tight">تفاصيل الطلب #{order.order_number}</h2>
                                         <StatusBadge status={order.status} />
                                     </div>
-                                    <p className="text-xs text-theme-subtle font-mono mt-1 opacity-60">TRANS_ID: {order.id}</p>
+                                    <p className="text-xs text-theme-subtle mt-1 opacity-70">معرف العملية: {order.id}</p>
                                 </div>
                             </div>
 
@@ -132,9 +135,9 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                 <div key={item.id} className="flex items-center gap-6 p-4 rounded-3xl bg-white/5 border border-white/5 hover:border-gold/20 transition-all group">
                                                     <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white/5 border border-white/10 shrink-0 relative">
                                                         {(item.custom_design_url || item.product?.image_url) ? (
-                                                            <Image 
-                                                                src={item.custom_design_url || item.product?.image_url} 
-                                                                alt={item.custom_title || item.product?.title || "Product"} 
+                                                            <Image
+                                                                src={item.custom_design_url || item.product?.image_url}
+                                                                alt={item.custom_title || item.product?.title || "منتج"}
                                                                 fill
                                                                 className="object-cover group-hover:scale-110 transition-transform duration-700"
                                                             />
@@ -149,7 +152,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                         <div className="flex flex-wrap gap-2 mt-2">
                                                             {item.size && (
                                                                 <span className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-bold text-theme-subtle border border-white/10 uppercase">
-                                                                    Size: {item.size}
+                                                                    المقاس: {item.size}
                                                                 </span>
                                                             )}
                                                             {item.custom_garment && (
@@ -159,7 +162,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                             )}
                                                             {item.custom_position && (
                                                                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-[10px] font-bold text-emerald-500 border border-emerald-500/20 uppercase">
-                                                                    Spots: {item.custom_position}
+                                                                    الموضع: {item.custom_position}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -242,7 +245,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                     <section>
                                         <div className="flex items-center gap-2 mb-4">
                                             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                                            <h3 className="text-sm font-bold uppercase tracking-widest text-emerald-400/80">ذكاء التنفيذ — Fulfillment HUD</h3>
+                                            <h3 className="text-sm font-bold tracking-wide text-emerald-400/80">حسابات التجهيز</h3>
                                         </div>
                                         <div className="p-6 rounded-3xl bg-[#0d0d0d] border border-emerald-500/10 relative overflow-hidden group">
                                             {/* Scanning line effect */}
@@ -252,17 +255,17 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                 {isLoadingCalc ? (
                                                     <div className="flex flex-col items-center py-6 gap-3">
                                                         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
-                                                        <p className="text-[10px] font-mono text-emerald-500/50 uppercase tracking-widest text-center">Calculating Fulfillment Cost...</p>
+                                                        <p className="text-[10px] text-emerald-500/70 tracking-wide text-center">جار حساب تكلفة التجهيز...</p>
                                                     </div>
                                                 ) : fulfillmentCalc ? (
                                                     <>
                                                         <div className="grid grid-cols-2 gap-3">
                                                             <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                                                <p className="text-[9px] uppercase tracking-tighter text-theme-faint mb-1">Base Garments</p>
+                                                                <p className="text-[9px] tracking-wide text-theme-faint mb-1">القطع الأساسية</p>
                                                                 <p className="text-sm font-bold text-theme">{formatCurrency(fulfillmentCalc.summary.garmentSubtotal)}</p>
                                                             </div>
                                                             <div className="p-3 rounded-2xl bg-white/5 border border-white/5">
-                                                                <p className="text-[9px] uppercase tracking-tighter text-theme-faint mb-1">Print Ops</p>
+                                                                <p className="text-[9px] tracking-wide text-theme-faint mb-1">تكلفة الطباعة</p>
                                                                 <p className="text-sm font-bold text-theme">{formatCurrency(fulfillmentCalc.summary.printingSubtotal)}</p>
                                                             </div>
                                                         </div>
@@ -272,10 +275,10 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                             <span className="text-xl font-black text-emerald-500">{formatCurrency(fulfillmentCalc.summary.grandTotal)}</span>
                                                         </div>
 
-                                                        {order.metadata?.fulfillment_paid ? (
+                                                        {warehousePaymentPaid ? (
                                                             <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-mono text-[10px]">
                                                                 <Check className="w-3 h-3" />
-                                                                <span>PAID_TO_WAREHOUSE_SUCCESS</span>
+                                                                <span>تم الدفع للمستودع</span>
                                                             </div>
                                                         ) : (
                                                             <button 
@@ -292,7 +295,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <div className="text-center py-4 text-xs text-theme-faint font-mono">CALC_ERROR: FAILED_TO_FETCH_BREAKDOWN</div>
+                                                    <div className="text-center py-4 text-xs text-theme-faint">تعذر جلب تفاصيل تكلفة التجهيز.</div>
                                                 )}
                                             </div>
                                         </div>
@@ -302,7 +305,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                         <section>
                                             <div className="flex items-center gap-2 mb-4">
                                                 <Truck className="w-4 h-4 text-sky-400" />
-                                                <h3 className="text-sm font-bold uppercase tracking-widest text-sky-400/80">معلومات الشحن (Torod)</h3>
+                                                <h3 className="text-sm font-bold tracking-wide text-sky-400/80">معلومات شحنة طرود</h3>
                                             </div>
                                             <div className="p-6 rounded-3xl bg-sky-500/5 border border-sky-500/10 space-y-4">
                                                 <div className="grid grid-cols-2 gap-4">
@@ -362,7 +365,7 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                             </div>
                         </div>
 
-                        {/* Tactical Footer Overlay */}
+                        {/* Footer accent */}
                         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
                     </motion.div>
                 </div>

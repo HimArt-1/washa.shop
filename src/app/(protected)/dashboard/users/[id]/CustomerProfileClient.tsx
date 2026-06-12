@@ -287,7 +287,7 @@ export function CustomerProfileClient({
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Mission Pulse</p>
+                            <p className="text-xs font-medium text-theme-faint">نبض الهوية</p>
                             <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
                         </div>
                     </div>

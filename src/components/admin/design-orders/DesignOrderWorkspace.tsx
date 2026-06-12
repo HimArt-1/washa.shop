@@ -92,6 +92,18 @@ function getMethodLabel(method: CustomDesignOrder["design_method"]) {
     }
 }
 
+function formatPromptForDisplay(prompt: string) {
+    return prompt
+        .replace(/^DTF Studio Request$/gm, "طلب الاستوديو للطباعة")
+        .replace(/^Garment:/gm, "القطعة:")
+        .replace(/^Color:/gm, "اللون:")
+        .replace(/^Style:/gm, "النمط:")
+        .replace(/^Technique:/gm, "التقنية:")
+        .replace(/^Palette:/gm, "الألوان:")
+        .replace(/^Prompt:/gm, "وصف العميل:")
+        .replace(/^Output: print-ready high-quality design asset$/gm, "المخرجات: ملف تصميم عالي الجودة وجاهز للطباعة");
+}
+
 function DetailCard({
     icon: Icon,
     label,
@@ -775,7 +787,7 @@ export function DesignOrderWorkspace({
                 >
                     {(currentOrder.customer_name || currentOrder.customer_email || currentOrder.customer_phone) ? (
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Customer Contact</p>
+                            <p className="text-xs font-semibold text-theme-faint">بيانات العميل</p>
                             <div className="mt-3 flex items-start gap-3">
                                 <UserCircle2 className="mt-1 h-5 w-5 text-gold/70" />
                                 <div className="space-y-1 text-sm text-theme">
@@ -793,7 +805,7 @@ export function DesignOrderWorkspace({
                         <DetailCard icon={Ruler} label="المقاس" value={currentOrder.size_name} />
                         <DetailCard
                             icon={Sparkles}
-                            label="Preset"
+                            label="الحزمة"
                             value={
                                 currentOrder.preset_name
                                     ? currentOrder.preset_fully_aligned
@@ -823,15 +835,15 @@ export function DesignOrderWorkspace({
 
                     {currentOrder.text_prompt ? (
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Customer Brief</p>
+                            <p className="text-xs font-semibold text-theme-faint">وصف العميل</p>
                             <p className="mt-3 text-sm leading-7 text-theme">{currentOrder.text_prompt}</p>
                         </div>
                     ) : null}
 
                     {currentOrder.reference_image_url ? (
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Reference Image</p>
-                            <img src={currentOrder.reference_image_url} alt="Reference" className="mt-3 max-h-72 rounded-2xl object-contain" />
+                            <p className="text-xs font-semibold text-theme-faint">الصورة المرجعية</p>
+                            <img src={currentOrder.reference_image_url} alt="الصورة المرجعية" className="mt-3 max-h-72 rounded-2xl object-contain" />
                         </div>
                     ) : null}
 
@@ -839,7 +851,7 @@ export function DesignOrderWorkspace({
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex items-center gap-2 text-gold">
                                 <Settings2 className="h-4 w-4" />
-                                <p className="text-sm font-bold">AI Prompt</p>
+                                <p className="text-sm font-bold">تعليمات التوليد</p>
                             </div>
                             <button
                                 onClick={handleCopyPrompt}
@@ -850,12 +862,12 @@ export function DesignOrderWorkspace({
                             </button>
                         </div>
                         <pre className="mt-4 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] p-4 text-xs leading-relaxed text-theme-soft">
-                            {currentOrder.ai_prompt}
+                            {formatPromptForDisplay(currentOrder.ai_prompt)}
                         </pre>
                     </div>
 
                     <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                        <label className="block text-xs uppercase tracking-[0.18em] text-theme-faint">Admin Notes</label>
+                        <label className="block text-xs font-semibold text-theme-faint">ملاحظات الإدارة</label>
                         <textarea
                             value={notes}
                             onChange={(event) => setNotes(event.target.value)}
@@ -884,8 +896,8 @@ export function DesignOrderWorkspace({
                             <div className="flex items-center gap-2">
                                 <Printer className="h-4 w-4 text-gold" />
                                 <p className="text-sm font-bold text-theme">معاينة WASHA AI</p>
-                                <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300 uppercase tracking-wider">
-                                    AI Generated
+                                <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                                    منشأ آلياً
                                 </span>
                             </div>
 
@@ -914,7 +926,7 @@ export function DesignOrderWorkspace({
                             <div className="relative overflow-hidden rounded-2xl border border-theme-subtle bg-theme-faint">
                                 <img
                                     src={currentOrder.dtf_mockup_url}
-                                    alt="AI Mockup"
+                                    alt="معاينة التصميم الذكي"
                                     className="h-72 w-full object-contain p-3"
                                 />
                                 <a
@@ -924,7 +936,7 @@ export function DesignOrderWorkspace({
                                     className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-xl border border-gold/30 bg-gold/10 px-3 py-1.5 text-xs font-medium text-gold hover:bg-gold/20 transition-colors"
                                 >
                                     <Download className="h-3 w-3" />
-                                    تحميل الموكب
+                                    تحميل المعاينة
                                 </a>
                             </div>
 
@@ -952,7 +964,7 @@ export function DesignOrderWorkspace({
                                     <div className="flex min-h-[200px] items-center justify-center bg-transparent p-4">
                                         <img
                                             src={currentOrder.dtf_extracted_url}
-                                            alt="DTF Print Template"
+                                            alt="نموذج الطباعة DTF"
                                             className="max-h-56 max-w-full object-contain"
                                         />
                                     </div>
@@ -969,7 +981,7 @@ export function DesignOrderWorkspace({
                     {!currentOrder.skip_results && currentOrder.status !== "cancelled" ? (
                         <div className="space-y-3">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Result Delivery</p>
+                                <p className="text-xs font-semibold text-theme-faint">تسليم المخرجات</p>
                                 <h3 className="mt-2 text-xl font-bold text-theme">مخرجات الطلب</h3>
                             </div>
 

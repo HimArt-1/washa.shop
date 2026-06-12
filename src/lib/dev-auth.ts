@@ -15,8 +15,12 @@ function normalizeEnvFlag(value?: string | null) {
     return value?.trim().toLowerCase() === "true";
 }
 
+function isProductionRuntime() {
+    return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+}
+
 export function isDevAuthBypassEnabled() {
-    return normalizeEnvFlag(process.env.DEV_AUTH_BYPASS);
+    return !isProductionRuntime() && normalizeEnvFlag(process.env.DEV_AUTH_BYPASS);
 }
 
 export function shouldBypassClerkForDashboardPath(pathname: string) {

@@ -123,7 +123,34 @@ export function SupportCaseWorkspace({
     const [isSending, startSending] = useTransition();
     const [isUpdatingStatus, startUpdatingStatus] = useTransition();
     const [error, setError] = useState<string | null>(null);
-    const messages = initialMessages;
+    const messages = useMemo<MessageWithSender[]>(() => {
+        if (initialMessages.length > 0) {
+            return initialMessages;
+        }
+
+        if (!ticket.message) {
+            return [];
+        }
+
+        return [
+            {
+                id: `initial-${ticket.id}`,
+                ticket_id: ticket.id,
+                sender_id: ticket.user_id || "guest",
+                message: ticket.message,
+                is_admin_reply: false,
+                created_at: ticket.created_at,
+                updated_at: ticket.created_at,
+                sender: ticket.profile
+                    ? {
+                          display_name: ticket.profile.display_name,
+                          avatar_url: ticket.profile.avatar_url,
+                          role: ticket.profile.role,
+                      }
+                    : undefined,
+            },
+        ];
+    }, [initialMessages, ticket]);
 
     const statusInfo = getStatusInfo(ticket.status);
     const priorityInfo = getPriorityInfo(ticket.priority);

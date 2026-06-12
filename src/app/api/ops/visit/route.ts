@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { getRequestClientIdentifier } from "@/lib/request-client";
+
+const OPS_VISIT_RATE_LIMIT = 120;
+const OPS_VISIT_RATE_WINDOW_MS = 60_000;
 
 async function hashIp(ip: string): Promise<string> {
     return createHash("sha256").update(ip).digest("hex").slice(0, 32);
@@ -36,6 +41,20 @@ export async function POST(req: NextRequest) {
         const supabase = getSupabaseClient();
         if (!supabase) {
             return NextResponse.json({ ok: false }, { status: 500 });
+        }
+
+        const identifier = getRequestClientIdentifier(req);
+        const rateLimit = await checkRateLimit(`ops-visit:${identifier}`, OPS_VISIT_RATE_LIMIT, OPS_VISIT_RATE_WINDOW_MS);
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { ok: false },
+                {
+                    status: 429,
+                    headers: {
+                        "Retry-After": String(Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000))),
+                    },
+                }
+            );
         }
 
         const body = await req.json().catch(() => ({}));

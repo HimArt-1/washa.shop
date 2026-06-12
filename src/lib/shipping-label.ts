@@ -18,7 +18,7 @@ export const defaultLabelConfig: LabelConfig = {
     showItems: true,
     companyName: "وشّى | WASHA",
     companyPhone: "+966 500 000 000", // Placeholder or dynamic
-    fontFamily: "IBM Plex Sans Arabic",
+    fontFamily: "TheYearOfTheCamel",
 };
 
 export function generateLabelHTML(order: InvoiceOrder, config: LabelConfig = defaultLabelConfig): string {
@@ -34,11 +34,37 @@ export function generateLabelHTML(order: InvoiceOrder, config: LabelConfig = def
     if (addr?.postal_code) addressLines.push(`الرمز البريدي: ${addr.postal_code}`);
 
     const isThermal = config.format === "thermal";
-    const fontImport = config.fontFamily === "Cairo"
-        ? "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
-        : config.fontFamily === "Tajawal"
-            ? "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap"
-            : "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap";
+    const usesWashaFont = config.fontFamily === "TheYearOfTheCamel";
+    const fontImport = usesWashaFont
+        ? ""
+        : config.fontFamily === "Cairo"
+            ? "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
+            : config.fontFamily === "Tajawal"
+                ? "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap"
+                : "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap";
+    const washaFontFaces = usesWashaFont ? `
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-Regular.otf") format("opentype");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-Bold.otf") format("opentype");
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-ExtraBold.otf") format("opentype");
+            font-weight: 800 900;
+            font-style: normal;
+            font-display: swap;
+        }
+    ` : "";
 
     const html = `
 <!DOCTYPE html>
@@ -46,8 +72,9 @@ export function generateLabelHTML(order: InvoiceOrder, config: LabelConfig = def
 <head>
     <meta charset="UTF-8">
     <title>بوليصة #${order.order_number}</title>
-    <link href="${fontImport}" rel="stylesheet">
+    ${fontImport ? `<link href="${fontImport}" rel="stylesheet">` : ""}
     <style>
+        ${washaFontFaces}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: "${config.fontFamily}", Tahoma, sans-serif; 

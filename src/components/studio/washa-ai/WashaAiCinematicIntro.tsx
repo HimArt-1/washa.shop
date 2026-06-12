@@ -293,7 +293,7 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
                             className="text-[13px] font-light"
                             style={{ 
                                 color: "rgba(201, 168, 106, 0.35)",
-                                fontFamily: "var(--font-sans, 'Tajawal', system-ui, sans-serif)",
+                                fontFamily: "var(--font-sans, 'TheYearOfTheCamel', system-ui, sans-serif)",
                             }}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}

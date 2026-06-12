@@ -11,9 +11,29 @@ import { ar } from "date-fns/locale";
 import { createSupportMessage } from "@/app/actions/support-tickets";
 import clsx from "clsx";
 
+function normalizeInitialMessages(ticket: any, messages: any[]) {
+    if (messages.length > 0) {
+        return messages;
+    }
+
+    if (!ticket.message) {
+        return [];
+    }
+
+    return [
+        {
+            id: `initial-${ticket.id}`,
+            message: ticket.message,
+            created_at: ticket.created_at,
+            is_admin_reply: false,
+            sender: null,
+        },
+    ];
+}
+
 export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, initialMessages: any[] }) {
     const router = useRouter();
-    const [messages, setMessages] = useState(initialMessages);
+    const [messages, setMessages] = useState(() => normalizeInitialMessages(ticket, initialMessages));
     const [newMessage, setNewMessage] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
@@ -25,8 +45,8 @@ export function SupportTicketChat({ ticket, initialMessages }: { ticket: any, in
     };
 
     useEffect(() => {
-        setMessages(initialMessages);
-    }, [initialMessages]);
+        setMessages(normalizeInitialMessages(ticket, initialMessages));
+    }, [initialMessages, ticket]);
 
     useEffect(() => {
         scrollToBottom();

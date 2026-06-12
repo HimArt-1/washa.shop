@@ -9,6 +9,12 @@ import { getPaylinkInvoice } from "@/lib/paylink";
 import { confirmOrderPayment } from "@/app/actions/orders";
 import { confirmWarehousePayment } from "@/app/actions/admin";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import {
+    assertPaylinkInvoiceMatchesOrder,
+    getPaylinkInvoiceAmount,
+    getPaylinkInvoiceOrderNumber,
+    isPaylinkInvoicePaid,
+} from "@/lib/paylink-security";
 
 /** Paylink يرسل GET لاختبار الرابط — نرد بـ JSON صالح */
 export async function GET() {
@@ -39,17 +45,27 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true }); // Don't fail — let Paylink retry
         }
 
-        // Verify with Paylink API
-        const invoice = transactionNo
-            ? await getPaylinkInvoice(transactionNo)
-            : null;
+        if (!transactionNo) {
+            console.warn("[Paylink Webhook] Missing transactionNo; cannot verify payment");
+            return NextResponse.json({ received: true });
+        }
 
-        if (!invoice || invoice.orderStatus !== "Paid") {
+        // Verify with Paylink API
+        const invoice = await getPaylinkInvoice(transactionNo);
+
+        if (!isPaylinkInvoicePaid(invoice)) {
             console.log(`[Paylink Webhook] Order not paid yet: ${transactionNo} status=${invoice?.orderStatus}`);
             return NextResponse.json({ received: true });
         }
 
-        const resolvedOrderNumber = orderNumber || invoice.gatewayOrderRequest?.orderNumber;
+        const invoiceOrderNumber = getPaylinkInvoiceOrderNumber(invoice);
+
+        if (orderNumber && invoiceOrderNumber && orderNumber !== invoiceOrderNumber) {
+            console.error(`[Paylink Webhook] Payload orderNumber mismatch: payload=${orderNumber} invoice=${invoiceOrderNumber}`);
+            return NextResponse.json({ received: true });
+        }
+
+        const resolvedOrderNumber = invoiceOrderNumber || orderNumber;
 
         if (!resolvedOrderNumber) {
             console.error("[Paylink Webhook] Cannot resolve orderNumber");
@@ -59,7 +75,12 @@ export async function POST(req: NextRequest) {
         // --- NEW: Warehouse Fulfillment Payment handling ---
         if (resolvedOrderNumber.startsWith("FUL-") || resolvedOrderNumber.startsWith("BATCH-FUL-")) {
             console.log(`[Paylink Webhook] Fulfillment payment detected: ${resolvedOrderNumber}`);
-            await confirmWarehousePayment(resolvedOrderNumber, invoice.amount);
+            const amount = getPaylinkInvoiceAmount(invoice);
+            if (amount === null) {
+                console.error(`[Paylink Webhook] Missing invoice amount for fulfillment payment: ${resolvedOrderNumber}`);
+                return NextResponse.json({ received: true });
+            }
+            await confirmWarehousePayment(resolvedOrderNumber, amount);
             return NextResponse.json({ received: true });
         }
 
@@ -67,7 +88,7 @@ export async function POST(req: NextRequest) {
         const supabase = getSupabaseAdminClient();
         const { data: order } = await supabase
             .from("orders")
-            .select("id, payment_status")
+            .select("id, order_number, total, payment_status, metadata")
             .eq("order_number", resolvedOrderNumber)
             .single();
 
@@ -80,10 +101,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true }); // Already processed (idempotent)
         }
 
-        await confirmOrderPayment(order.id, {
-            customerEmail: invoice.gatewayOrderRequest?.clientEmail,
-            webhookEventId: transactionNo,
+        const validation = assertPaylinkInvoiceMatchesOrder(invoice, order, {
+            expectedTransactionNo: transactionNo,
         });
+
+        if (!validation.ok) {
+            console.error(`[Paylink Webhook] Invoice validation failed for ${resolvedOrderNumber}: ${validation.error}`);
+            return NextResponse.json({ received: true });
+        }
+
+        const result = await confirmOrderPayment(order.id, {
+            customerEmail: validation.clientEmail || undefined,
+            webhookEventId: validation.transactionNo || transactionNo,
+            paidAmount: validation.amount,
+            paymentProvider: "paylink",
+        });
+
+        if (!result.success) {
+            console.error(`[Paylink Webhook] Order confirmation failed for ${resolvedOrderNumber}: ${result.error || "unknown error"}`);
+            return NextResponse.json({ received: true });
+        }
 
         console.log(`[Paylink Webhook] ✓ Customer Order confirmed: ${resolvedOrderNumber}`);
         return NextResponse.json({ received: true });

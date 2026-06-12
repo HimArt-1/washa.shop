@@ -69,7 +69,7 @@ const ageBandOptions = [
 ];
 
 const identityStateLabelMap = {
-    needs_profile: "مقبولون بلا profile",
+    needs_profile: "مقبولون بلا ملف منصة",
     needs_clerk: "مقبولون بلا Clerk",
     ready_identity: "هوية مكتملة",
 } as const;
@@ -78,14 +78,14 @@ const quickFilters = [
     { key: "new_artists", label: "فنانون جدد", filters: { status: "pending", joinType: "artist" } },
     { key: "models_18_24", label: "مودلز 18-24", filters: { joinType: "model", ageBand: "age_18_24" } },
     { key: "interested_customers", label: "عملاء مهتمون", filters: { joinType: "customer" } },
-    { key: "needs_profile", label: "مقبولون بلا profile", filters: { status: "accepted", identityState: "needs_profile" } },
+    { key: "needs_profile", label: "مقبولون بلا ملف منصة", filters: { status: "accepted", identityState: "needs_profile" } },
     { key: "needs_clerk", label: "مقبولون بلا Clerk", filters: { status: "accepted", identityState: "needs_clerk" } },
 ] as const;
 
 const savedViews = [
     {
         key: "talent_radar",
-        title: "Talent Radar",
+        title: "رادار المواهب",
         description: "التقاط الفنانين والمصممين الجدد الذين يحتاجون قرارًا سريعًا.",
         filters: { status: "pending", joinType: "artist" },
     },
@@ -939,7 +939,7 @@ export function ApplicationsClient({
                                 genderLabel !== "غير محدد" ? genderLabel : null,
                                 ageBandLabel,
                                 app.status === "accepted" && !app.hasProfile
-                                    ? "مقبول بلا profile"
+                                    ? "مقبول بلا ملف منصة"
                                     : app.status === "accepted" && app.hasProfile && !app.hasClerkAccount
                                       ? "مقبول بلا Clerk"
                                       : null,

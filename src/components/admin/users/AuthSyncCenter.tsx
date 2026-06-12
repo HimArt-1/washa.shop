@@ -204,7 +204,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                             </h2>
                             <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
                                 هذا المركز يربط بين حساب الدخول في Clerk وملف المنصة الداخلي، ويكشف فقط الحالات التي تحتاج
-                                إصلاحًا: تطابق بالبريد يمكن ربطه، حسابات دخول بلا profile، أو ملفات مؤقتة لم تكتمل بعد.
+                                إصلاحًا: تطابق بالبريد يمكن ربطه، حسابات دخول بلا ملف منصة، أو ملفات مؤقتة لم تكتمل بعد.
                             </p>
                         </div>
 
@@ -217,14 +217,14 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">قابلة للربط</p>
                                 <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.emailMatches}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">نفس الشخص ظاهر في Clerk وprofile ويمكن دمجه بأمان.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">نفس الشخص ظاهر في Clerk وملف المنصة ويمكن دمجه بأمان.</p>
                             </div>
                             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                                 <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">حالات منفصلة</p>
                                 <p className="mt-3 text-3xl font-black text-theme">
                                     {snapshot.stats.clerkOnly + snapshot.stats.tempProfiles}
                                 </p>
-                                <p className="mt-2 text-sm text-theme-subtle">إما حساب دخول بلا profile أو profile مؤقت لم يكتمل.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">إما حساب دخول بلا ملف منصة أو ملف مؤقت لم يكتمل.</p>
                             </div>
                         </div>
                     </div>
@@ -271,7 +271,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                 <SummaryCard
                     title="Linked"
                     value={String(snapshot.stats.linked)}
-                    subtitle="مرتبطة مباشرة بـ profile داخل المنصة."
+                    subtitle="مرتبطة مباشرة بملف داخل المنصة."
                     icon={ShieldCheck}
                     accent="#10b981"
                 />
@@ -283,7 +283,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                     accent="#f59e0b"
                 />
                 <SummaryCard
-                    title="Clerk Only"
+                    title="Clerk فقط"
                     value={String(snapshot.stats.clerkOnly)}
                     subtitle="حسابات دخول بلا ملف منصة حتى الآن."
                     icon={AlertTriangle}
@@ -293,14 +293,14 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
 
             <div className="grid gap-4 md:grid-cols-2">
                 <SummaryCard
-                    title="Duplicate Emails"
+                    title="بريد مكرر"
                     value={String(snapshot.stats.duplicateEmailGroups)}
                     subtitle="عدد مجموعات البريد المكرر داخل ملفات المنصة."
                     icon={ShieldX}
                     accent="#ef4444"
                 />
                 <SummaryCard
-                    title="Profiles in Conflict"
+                    title="ملفات متعارضة"
                     value={String(snapshot.stats.duplicateProfiles)}
                     subtitle="إجمالي الملفات الداخلة في تضارب بريد يجب تنظيفه قبل فرض uniqueness."
                     icon={AlertTriangle}
@@ -324,7 +324,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                                     </p>
                                 </div>
                                 <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-200">
-                                    conflict
+                                    تعارض
                                 </span>
                             </div>
                             <div className="mt-3 space-y-2">
@@ -424,7 +424,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
 
                 <QueueCard
                     title="Clerk بدون منصة"
-                    subtitle="حسابات دخول موجودة لكن لا يوجد لها profile داخل المنصة."
+                    subtitle="حسابات دخول موجودة لكن لا يوجد لها ملف داخل المنصة."
                     emptyState="كل حسابات Clerk لديها ملفات منصة."
                     items={snapshot.clerkOnlyQueue}
                     renderItem={(item: ClerkUserWithProfile) => (
@@ -435,18 +435,18 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                                     <p className="mt-1 truncate text-xs text-theme-subtle">{item.email || "بدون بريد"}</p>
                                 </div>
                                 <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-200">
-                                    بلا profile
+                                    بلا ملف
                                 </span>
                             </div>
                             <p className="mt-3 text-xs leading-6 text-theme-subtle">
-                                يحتاج قرارًا: إنشاء profile أو ربطه لاحقًا بطلب/ملف موجود.
+                                يحتاج قرارًا: إنشاء ملف أو ربطه لاحقًا بطلب/ملف موجود.
                             </p>
                         </div>
                     )}
                 />
 
                 <QueueCard
-                    title="Profiles مؤقتة"
+                    title="ملفات مؤقتة"
                     subtitle="ملفات منصة مرحلية تحمل `app_` وتحتاج ربطًا نهائيًا بحساب Clerk."
                     emptyState="لا توجد ملفات مؤقتة حاليًا."
                     items={snapshot.tempProfilesQueue}

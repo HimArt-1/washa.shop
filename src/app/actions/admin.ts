@@ -16,6 +16,7 @@ import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sy
 import { emitOrderRevenueEscalations } from "@/lib/operational-escalations";
 import { FULFILLMENT_RATES, calculateUnitFulfillmentCost } from "@/config/fulfillment-rates";
 import { createPaylinkInvoice } from "@/lib/paylink";
+import { moneyMatches } from "@/lib/paylink-security";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 
@@ -2150,6 +2151,292 @@ export type BulkFulfillmentCalculationResult =
     | { success: true; grandTotal: number; breakdowns: Record<string, any> }
     | { success: false; error: string };
 
+type SupabaseAdminClient = ReturnType<typeof getSupabaseAdminClient>;
+type WarehousePaymentSource = "manual_admin" | "paylink_webhook";
+
+type WarehousePaymentContext = {
+    source: WarehousePaymentSource;
+    paymentIdentifier?: string;
+    amount?: number | null;
+    batchId?: string;
+};
+
+type WarehousePaymentDispatch = {
+    id: string;
+    status: "processing" | "sent" | "failed";
+    metadata: Record<string, unknown>;
+};
+
+type WarehousePaymentResult =
+    | { success: true; skipped?: boolean }
+    | { success: false; error: string };
+
+type WarehousePaymentInitiationResult =
+    | { success: true; url: string }
+    | { success: false; error: string };
+
+type WarehousePaymentDispatchResult =
+    | { success: true }
+    | { success: false; error: string };
+
+function asPlainRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+}
+
+function getPublicAppUrl() {
+    const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL
+        || process.env.NEXT_PUBLIC_BASE_URL
+        || "https://washa.shop";
+    const trimmed = rawBaseUrl.trim().replace(/\/+$/, "");
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
+function buildWarehousePaymentReturnUrl(status: "success" | "cancelled", ref: string) {
+    const url = new URL("/dashboard/orders/command-center", getPublicAppUrl());
+    url.searchParams.set("warehousePayment", status);
+    url.searchParams.set("ref", ref);
+    return url.toString();
+}
+
+function isWarehousePaymentAlreadyPaid(metadata: unknown) {
+    const warehousePayment = asPlainRecord(asPlainRecord(metadata).warehouse_payment);
+    return warehousePayment.status === "paid";
+}
+
+function normalizeOrderIds(value: unknown) {
+    return Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+        : [];
+}
+
+async function hasWarehouseStockLedger(supabase: SupabaseAdminClient, orderId: string) {
+    const [sales, inventoryTransactions] = await Promise.all([
+        (supabase as any)
+            .from("sales_records")
+            .select("id", { count: "exact", head: true })
+            .eq("order_id", orderId)
+            .neq("status", "refunded"),
+        (supabase as any)
+            .from("inventory_transactions")
+            .select("id", { count: "exact", head: true })
+            .eq("reference_id", orderId)
+            .eq("transaction_type", "sale"),
+    ]);
+
+    if (sales.error) throw sales.error;
+    if (inventoryTransactions.error) throw inventoryTransactions.error;
+
+    return (sales.count ?? 0) > 0 || (inventoryTransactions.count ?? 0) > 0;
+}
+
+async function saveWarehousePaymentFailure(
+    supabase: SupabaseAdminClient,
+    orderId: string,
+    metadata: Record<string, unknown>,
+    context: WarehousePaymentContext,
+    error: string
+) {
+    await supabase
+        .from("orders")
+        .update({
+            metadata: {
+                ...metadata,
+                warehouse_payment: {
+                    ...asPlainRecord(metadata.warehouse_payment),
+                    status: "failed",
+                    source: context.source,
+                    error,
+                    paymentIdentifier: context.paymentIdentifier ?? null,
+                    amount: context.amount ?? null,
+                    failedAt: new Date().toISOString(),
+                },
+            },
+            updated_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+}
+
+async function markAsPaidToWarehouseInternal(
+    supabase: SupabaseAdminClient,
+    orderId: string,
+    context: WarehousePaymentContext
+): Promise<WarehousePaymentResult> {
+    const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .select("id, metadata")
+        .eq("id", orderId)
+        .maybeSingle();
+
+    if (orderError) throw orderError;
+    if (!order) return { success: false, error: "Order not found" };
+
+    const metadata = asPlainRecord(order.metadata);
+    if (isWarehousePaymentAlreadyPaid(metadata)) {
+        return { success: true, skipped: true };
+    }
+
+    const stockAlreadyProcessed = await hasWarehouseStockLedger(supabase, orderId);
+
+    if (!stockAlreadyProcessed) {
+        const { decrementStockForOrder } = await import("@/lib/inventory");
+        const stockResult = await decrementStockForOrder(orderId);
+        if (!stockResult.success) {
+            const errorMessage = stockResult.error || "فشل خصم المخزون لهذا الطلب";
+            await saveWarehousePaymentFailure(supabase, orderId, metadata, context, errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    }
+
+    const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+            status: "processing",
+            metadata: {
+                ...metadata,
+                warehouse_payment: {
+                    ...asPlainRecord(metadata.warehouse_payment),
+                    status: "paid",
+                    source: context.source,
+                    paymentIdentifier: context.paymentIdentifier ?? null,
+                    batchId: context.batchId ?? null,
+                    amount: context.amount ?? null,
+                    stockAlreadyProcessed,
+                    paidAt: new Date().toISOString(),
+                },
+            },
+            updated_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+    if (updateError) throw updateError;
+
+    return { success: true, skipped: false };
+}
+
+async function markBatchAsPaidToWarehouseInternal(
+    supabase: SupabaseAdminClient,
+    orderIds: string[],
+    context: WarehousePaymentContext
+): Promise<WarehousePaymentResult> {
+    const uniqueOrderIds = Array.from(new Set(orderIds));
+    const results = await Promise.all(
+        uniqueOrderIds.map((id) => markAsPaidToWarehouseInternal(supabase, id, context))
+    );
+    const failed = results.find((result) => !result.success);
+
+    if (failed && "error" in failed) {
+        return { success: false, error: failed.error };
+    }
+
+    return { success: true };
+}
+
+async function getWarehousePaymentDispatch(
+    supabase: SupabaseAdminClient,
+    paymentIdentifier: string
+): Promise<WarehousePaymentDispatch | null> {
+    const { data, error } = await (supabase as any)
+        .from("event_dispatches")
+        .select("id, status, metadata")
+        .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    return {
+        id: data.id,
+        status: data.status,
+        metadata: asPlainRecord(data.metadata),
+    };
+}
+
+async function recordWarehousePaymentDispatch(
+    supabase: SupabaseAdminClient,
+    params: {
+        paymentIdentifier: string;
+        eventType: string;
+        resourceType: "order" | "order_batch";
+        resourceId: string;
+        metadata: Record<string, unknown>;
+    }
+): Promise<WarehousePaymentDispatchResult> {
+    const existing = await getWarehousePaymentDispatch(supabase, params.paymentIdentifier);
+
+    if (existing?.status === "sent") {
+        return { success: false, error: "تم تأكيد دفع المستودع لهذه الفاتورة مسبقاً" };
+    }
+
+    const nowIso = new Date().toISOString();
+    const { error } = await (supabase as any)
+        .from("event_dispatches")
+        .upsert({
+            dispatch_key: `paylink:initiate:${params.paymentIdentifier}`,
+            event_type: params.eventType,
+            channel: "warehouse_payment",
+            resource_type: params.resourceType,
+            resource_id: params.resourceId,
+            status: "processing",
+            metadata: {
+                ...asPlainRecord(existing?.metadata),
+                ...params.metadata,
+                paymentIdentifier: params.paymentIdentifier,
+                updatedAt: nowIso,
+            },
+            last_error: null,
+            sent_at: null,
+            updated_at: nowIso,
+        }, { onConflict: "dispatch_key" });
+
+    if (error) throw error;
+
+    return { success: true };
+}
+
+async function updateWarehousePaymentDispatchStatus(
+    supabase: SupabaseAdminClient,
+    paymentIdentifier: string,
+    status: "sent" | "failed",
+    metadata: Record<string, unknown> = {},
+    lastError: string | null = null
+) {
+    const nowIso = new Date().toISOString();
+    await (supabase as any)
+        .from("event_dispatches")
+        .update({
+            status,
+            metadata: {
+                ...metadata,
+                paymentIdentifier,
+                updatedAt: nowIso,
+            },
+            last_error: lastError,
+            sent_at: status === "sent" ? nowIso : null,
+            updated_at: nowIso,
+        })
+        .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`);
+}
+
+function validateWarehousePaymentAmount(expected: unknown, paidAmount: number | undefined):
+    | { ok: true }
+    | { ok: false; error: string } {
+    if (expected === undefined || expected === null) {
+        return { ok: false, error: "سجل الدفع لا يحتوي على مبلغ المستودع المتوقع" };
+    }
+
+    if (paidAmount === undefined || paidAmount === null) {
+        return { ok: false, error: "فاتورة Paylink لا تحتوي على مبلغ مؤكد" };
+    }
+
+    if (!moneyMatches(expected, paidAmount)) {
+        return { ok: false, error: "مبلغ Paylink لا يطابق مبلغ المستودع المسجل" };
+    }
+
+    return { ok: true };
+}
+
 export async function getBulkFulfillmentCalculation(
     orderIds: string[]
 ): Promise<BulkFulfillmentCalculationResult> {
@@ -2174,9 +2461,9 @@ export async function getBulkFulfillmentCalculation(
     }
 }
 
-export async function initiateWarehousePayment(orderId: string) {
+export async function initiateWarehousePayment(orderId: string): Promise<WarehousePaymentInitiationResult> {
     try {
-        const { supabase, profile: adminProfile } = await requireAdmin();
+        const { supabase } = await requireAdmin();
         const calculation = await getFulfillmentCalculation(orderId);
 
         if (!calculation.success || !calculation.breakdown) {
@@ -2185,11 +2472,17 @@ export async function initiateWarehousePayment(orderId: string) {
 
         const { data: order } = await supabase
             .from("orders")
-            .select("order_number")
+            .select("order_number, metadata")
             .eq("id", orderId)
             .single();
 
         if (!order) return { success: false, error: "Order not found" };
+        if (isWarehousePaymentAlreadyPaid(order.metadata)) {
+            return { success: false, error: "تم تسجيل دفع المستودع لهذا الطلب مسبقاً" };
+        }
+
+        const paymentIdentifier = `FUL-${order.order_number}`;
+        const amount = calculation.breakdown.summary.grandTotal;
 
         const products = calculation.breakdown.items.map(item => ({
             title: item.title,
@@ -2205,66 +2498,197 @@ export async function initiateWarehousePayment(orderId: string) {
             });
         }
 
+        const dispatch = await recordWarehousePaymentDispatch(supabase, {
+            paymentIdentifier,
+            eventType: "fulfillment_initiated",
+            resourceType: "order",
+            resourceId: orderId,
+            metadata: {
+                order_id: orderId,
+                order_number: order.order_number,
+                amount,
+                requestedAt: new Date().toISOString(),
+            },
+        });
+
+        if (!dispatch.success) {
+            return dispatch;
+        }
+
         const invoice = await createPaylinkInvoice({
-            orderNumber: `FUL-${order.order_number}`,
+            orderNumber: paymentIdentifier,
             clientName: "Wusha Operations",
             clientMobile: "0555555555",
             clientEmail: "ops@washa.com",
-            callBackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "https://washa.shop"}/dashboard/orders`,
-            amount: calculation.breakdown.summary.grandTotal,
+            callBackUrl: buildWarehousePaymentReturnUrl("success", paymentIdentifier),
+            cancelUrl: buildWarehousePaymentReturnUrl("cancelled", paymentIdentifier),
+            amount,
             products,
         });
 
         if (invoice.url) {
-            // Register as initiated in dispatches for tracking (optional but good for logs)
-            await (getSupabaseAdminClient() as any).from("event_dispatches").insert({
-                dispatch_key: `paylink:initiate:FUL-${order.order_number}`,
-                event_type: "fulfillment_initiated",
-                channel: "warehouse_payment",
-                status: "processing",
-                metadata: { order_id: orderId, amount: calculation.breakdown.summary.grandTotal }
+            await recordWarehousePaymentDispatch(supabase, {
+                paymentIdentifier,
+                eventType: "fulfillment_initiated",
+                resourceType: "order",
+                resourceId: orderId,
+                metadata: {
+                    order_id: orderId,
+                    order_number: order.order_number,
+                    amount,
+                    transactionNo: invoice.transactionNo,
+                    invoiceUrl: invoice.url,
+                    initiatedAt: new Date().toISOString(),
+                },
             });
 
             return { success: true, url: invoice.url };
         }
 
+        await updateWarehousePaymentDispatchStatus(
+            supabase,
+            paymentIdentifier,
+            "failed",
+            { order_id: orderId, order_number: order.order_number, amount },
+            "Paylink URL generation failed"
+        );
         return { success: false, error: "Paylink URL generation failed" };
     } catch (err) {
         return { success: false, error: String(err) };
     }
 }
 
-export async function confirmWarehousePayment(paymentIdentifier: string, amount?: number) {
+export async function confirmWarehousePayment(paymentIdentifier: string, amount?: number): Promise<WarehousePaymentResult> {
     try {
         const supabase = getSupabaseAdminClient();
-        console.log(`[confirmWarehousePayment] Processing: ${paymentIdentifier}`);
+        const normalizedIdentifier = paymentIdentifier.trim();
+        console.log(`[confirmWarehousePayment] Processing: ${normalizedIdentifier}`);
 
-        if (paymentIdentifier.startsWith("FUL-")) {
-            // Single Order
-            const orderNumber = paymentIdentifier.replace("FUL-", "");
-            const { data: order } = await supabase
-                .from("orders")
-                .select("id")
-                .eq("order_number", orderNumber)
-                .single();
+        const dispatch = await getWarehousePaymentDispatch(supabase, normalizedIdentifier);
+        if (!dispatch) {
+            return { success: false, error: "سجل دفع المستودع غير موجود" };
+        }
 
-            if (order) {
-                await markAsPaidToWarehouse(order.id);
-                return { success: true };
+        if (dispatch.status === "sent") {
+            return { success: true, skipped: true };
+        }
+
+        const amountValidation = validateWarehousePaymentAmount(dispatch.metadata.amount, amount);
+        if (!amountValidation.ok) {
+            await updateWarehousePaymentDispatchStatus(
+                supabase,
+                normalizedIdentifier,
+                "failed",
+                {
+                    ...dispatch.metadata,
+                    paidAmount: amount ?? null,
+                    failedAt: new Date().toISOString(),
+                },
+                amountValidation.error
+            );
+            return { success: false, error: amountValidation.error };
+        }
+
+        if (normalizedIdentifier.startsWith("BATCH-FUL-")) {
+            const orderIds = normalizeOrderIds(dispatch.metadata.order_ids);
+            if (orderIds.length === 0) {
+                const error = "سجل الدفعة لا يحتوي على الطلبات المرتبطة";
+                await updateWarehousePaymentDispatchStatus(
+                    supabase,
+                    normalizedIdentifier,
+                    "failed",
+                    { ...dispatch.metadata, paidAmount: amount ?? null },
+                    error
+                );
+                return { success: false, error };
             }
-        } else if (paymentIdentifier.startsWith("BATCH-FUL-")) {
-            // Bulk Batch (event_dispatches not in generated DB types — use loose client)
-            const { data: batch } = await (supabase as any)
-                .from("event_dispatches")
-                .select("metadata")
-                .eq("dispatch_key", `paylink:initiate:${paymentIdentifier}`)
-                .single();
 
-            if (batch?.metadata?.order_ids) {
-                const orderIds = batch.metadata.order_ids as string[];
-                await markBatchAsPaidToWarehouse(orderIds);
-                return { success: true };
+            const result = await markBatchAsPaidToWarehouseInternal(supabase, orderIds, {
+                source: "paylink_webhook",
+                paymentIdentifier: normalizedIdentifier,
+                amount: amount ?? null,
+                batchId: normalizedIdentifier,
+            });
+
+            if (!result.success) {
+                await updateWarehousePaymentDispatchStatus(
+                    supabase,
+                    normalizedIdentifier,
+                    "failed",
+                    { ...dispatch.metadata, paidAmount: amount ?? null },
+                    result.error || "فشل تأكيد دفعة المستودع"
+                );
+                return result;
             }
+
+            await updateWarehousePaymentDispatchStatus(
+                supabase,
+                normalizedIdentifier,
+                "sent",
+                {
+                    ...dispatch.metadata,
+                    paidAmount: amount ?? null,
+                    confirmedAt: new Date().toISOString(),
+                }
+            );
+            return { success: true };
+        }
+
+        if (normalizedIdentifier.startsWith("FUL-")) {
+            let orderId = typeof dispatch.metadata.order_id === "string"
+                ? dispatch.metadata.order_id
+                : null;
+
+            if (!orderId) {
+                const orderNumber = normalizedIdentifier.replace("FUL-", "");
+                const { data: order } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("order_number", orderNumber)
+                    .maybeSingle();
+                orderId = order?.id ?? null;
+            }
+
+            if (!orderId) {
+                const error = "لم يتم العثور على الطلب المرتبط بفاتورة المستودع";
+                await updateWarehousePaymentDispatchStatus(
+                    supabase,
+                    normalizedIdentifier,
+                    "failed",
+                    { ...dispatch.metadata, paidAmount: amount ?? null },
+                    error
+                );
+                return { success: false, error };
+            }
+
+            const result = await markAsPaidToWarehouseInternal(supabase, orderId, {
+                source: "paylink_webhook",
+                paymentIdentifier: normalizedIdentifier,
+                amount: amount ?? null,
+            });
+
+            if (!result.success) {
+                await updateWarehousePaymentDispatchStatus(
+                    supabase,
+                    normalizedIdentifier,
+                    "failed",
+                    { ...dispatch.metadata, paidAmount: amount ?? null },
+                    result.error || "فشل تأكيد دفع المستودع"
+                );
+                return result;
+            }
+
+            await updateWarehousePaymentDispatchStatus(
+                supabase,
+                normalizedIdentifier,
+                "sent",
+                {
+                    ...dispatch.metadata,
+                    paidAmount: amount ?? null,
+                    confirmedAt: new Date().toISOString(),
+                }
+            );
+            return { success: true };
         }
 
         return { success: false, error: "Identifier not recognized or batch missing" };
@@ -2274,26 +2698,17 @@ export async function confirmWarehousePayment(paymentIdentifier: string, amount?
     }
 }
 
-export async function markAsPaidToWarehouse(orderId: string) {
+export async function markAsPaidToWarehouse(orderId: string): Promise<WarehousePaymentResult> {
     try {
         const { supabase } = await requireAdmin();
+        const result = await markAsPaidToWarehouseInternal(supabase, orderId, {
+            source: "manual_admin",
+        });
 
-        // 1. Update order status to processing
-        const { error: statusError } = await supabase
-            .from("orders")
-            .update({
-                status: "processing"
-            })
-            .eq("id", orderId);
-
-        if (statusError) throw statusError;
-
-        // 2. Trigger inventory logic
-        const { decrementStockForOrder } = await import("@/lib/inventory");
-        await decrementStockForOrder(orderId);
-
+        if (!result.success) return result;
         revalidatePath("/dashboard/orders");
-        return { success: true };
+        revalidatePath("/dashboard/orders/command-center");
+        return result;
     } catch (err) {
         return { success: false, error: String(err) };
     }
@@ -2305,7 +2720,7 @@ export async function markAsPaidToWarehouse(orderId: string) {
  * ═══════════════════════════════════════════════════════════
  */
 
-export async function initiateBulkWarehousePayment(orderIds: string[]) {
+export async function initiateBulkWarehousePayment(orderIds: string[]): Promise<WarehousePaymentInitiationResult> {
     try {
         const { supabase } = await requireAdmin();
         const calculation = await getBulkFulfillmentCalculation(orderIds);
@@ -2316,10 +2731,12 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
 
         const batchId = `BATCH-FUL-${Date.now()}`;
         const allProducts = [];
+        const linkedOrderNumbers: string[] = [];
 
         for (const [orderId, breakdown] of Object.entries(calculation.breakdowns || {})) {
             const { data: order } = await supabase.from("orders").select("order_number").eq("id", orderId).single();
             if (order) {
+                linkedOrderNumbers.push(order.order_number);
                 allProducts.push({
                     title: `Fulfillment: #${order.order_number}`,
                     price: (breakdown as any).summary.grandTotal,
@@ -2328,60 +2745,77 @@ export async function initiateBulkWarehousePayment(orderIds: string[]) {
             }
         }
 
+        const dispatch = await recordWarehousePaymentDispatch(supabase, {
+            paymentIdentifier: batchId,
+            eventType: "fulfillment_bulk_initiated",
+            resourceType: "order_batch",
+            resourceId: batchId,
+            metadata: {
+                order_ids: orderIds,
+                order_numbers: linkedOrderNumbers,
+                amount: calculation.grandTotal,
+                requestedAt: new Date().toISOString(),
+            },
+        });
+
+        if (!dispatch.success) {
+            return dispatch;
+        }
+
         const invoice = await createPaylinkInvoice({
             orderNumber: batchId,
             clientName: "Wusha Operations (Batch)",
             clientMobile: "0555555555",
             clientEmail: "ops@washa.com",
-            callBackUrl: `${process.env.NEXT_PUBLIC_BASE_URL || "https://washa.shop"}/dashboard/orders`,
+            callBackUrl: buildWarehousePaymentReturnUrl("success", batchId),
+            cancelUrl: buildWarehousePaymentReturnUrl("cancelled", batchId),
             amount: calculation.grandTotal,
             products: allProducts,
         });
 
         if (invoice.url) {
-            // Register the batch for automated webhook confirmation
-            await (supabase as any).from("event_dispatches").insert({
-                dispatch_key: `paylink:initiate:${batchId}`,
-                event_type: "fulfillment_bulk_initiated",
-                channel: "warehouse_payment",
-                status: "processing",
+            await recordWarehousePaymentDispatch(supabase, {
+                paymentIdentifier: batchId,
+                eventType: "fulfillment_bulk_initiated",
+                resourceType: "order_batch",
+                resourceId: batchId,
                 metadata: {
                     order_ids: orderIds,
-                    amount: calculation.grandTotal
-                }
+                    order_numbers: linkedOrderNumbers,
+                    amount: calculation.grandTotal,
+                    transactionNo: invoice.transactionNo,
+                    invoiceUrl: invoice.url,
+                    initiatedAt: new Date().toISOString(),
+                },
             });
 
             return { success: true, url: invoice.url };
         }
 
+        await updateWarehousePaymentDispatchStatus(
+            supabase,
+            batchId,
+            "failed",
+            { order_ids: orderIds, order_numbers: linkedOrderNumbers, amount: calculation.grandTotal },
+            "Batch URL generation failed"
+        );
         return { success: false, error: "Batch URL generation failed" };
     } catch (err) {
         return { success: false, error: String(err) };
     }
 }
 
-export async function markBatchAsPaidToWarehouse(orderIds: string[]) {
+export async function markBatchAsPaidToWarehouse(orderIds: string[]): Promise<WarehousePaymentResult> {
     try {
         const { supabase } = await requireAdmin();
-        const { decrementStockForOrder } = await import("@/lib/inventory");
-
-        const updatePromises = orderIds.map(async (id) => {
-            const { error } = await supabase
-                .from("orders")
-                .update({
-                    status: "processing"
-                })
-                .eq("id", id);
-
-            if (!error) {
-                await decrementStockForOrder(id);
-            }
+        const result = await markBatchAsPaidToWarehouseInternal(supabase, orderIds, {
+            source: "manual_admin",
         });
 
-        await Promise.all(updatePromises);
-
+        if (!result.success) return result;
         revalidatePath("/dashboard/orders");
-        return { success: true };
+        revalidatePath("/dashboard/orders/command-center");
+        return result;
     } catch (err) {
         return { success: false, error: String(err) };
     }

@@ -62,7 +62,7 @@ export default function RevenueChart({ data, title = "الإيرادات وال�
             </div>
 
             <div className="h-[300px] w-full mt-4" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                     <AreaChart
                         data={data}
                         margin={{ top: 10, right: 10, left: 10, bottom: 0 }}

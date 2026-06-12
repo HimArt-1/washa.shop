@@ -17,6 +17,14 @@
 }
 
 @font-face {
+  font-family: 'Alnaseeb';
+  src: url('/fonts/Alnaseeb-Regular.otf') format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'TheYearOfTheCamel';
   src: url('/fonts/TheYearofTheCamel-ExtraLight.otf') format('opentype');
   font-weight: 200;
@@ -80,7 +88,8 @@
 
   --font-sans: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
   --font-serif: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
-  --font-alnaseeb: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
+  --font-poetry: 'ArabicPoetry', 'TheYearOfTheCamel', serif;
+  --font-alnaseeb: 'Alnaseeb', 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
 }
 
 /* ————— Base ————— */

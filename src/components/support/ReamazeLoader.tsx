@@ -2,15 +2,54 @@
 
 import Script from "next/script";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
-const ALLOWED_PATH_PREFIXES = ["/store", "/design", "/support"];
+const SUPPORT_PATH_PREFIXES = ["/support", "/account/support"];
+
+function setReamazeVisibility(isSupportPath: boolean) {
+    const toggleSelectors = [
+        "[data-reamaze-widget]",
+        "#reamaze-widget",
+        "#reamaze-widget-icon",
+    ];
+    const allSelectors = [
+        ...toggleSelectors,
+        ".reamaze-widget",
+        ".reamaze-shoutbox",
+        "iframe[src*='reamaze']",
+        "[id*='reamaze']",
+        "[class*='reamaze']",
+    ];
+
+    document.querySelectorAll(allSelectors.join(",")).forEach((element) => {
+        if (element instanceof HTMLElement) {
+            element.style.display = isSupportPath ? "" : "none";
+        }
+    });
+
+    document.querySelectorAll(toggleSelectors.join(",")).forEach((element) => {
+        if (element instanceof HTMLElement) {
+            element.style.display = "none";
+        }
+    });
+}
 
 export function ReamazeLoader() {
     const pathname = usePathname();
-    const isHome = pathname === "/";
-    const isAllowed = isHome || ALLOWED_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
+    const isSupportPath = SUPPORT_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
 
-    if (!isAllowed) {
+    useEffect(() => {
+        setReamazeVisibility(isSupportPath);
+
+        const observer = new MutationObserver(() => {
+            setReamazeVisibility(isSupportPath);
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [isSupportPath]);
+
+    if (!isSupportPath) {
         return null;
     }
 

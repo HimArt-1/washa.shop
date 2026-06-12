@@ -216,7 +216,7 @@ export function UsersClient({
     };
 
     const exportToCSV = () => {
-        const headers = ["ID", "Clerk ID", "Name", "Username", "Email", "Phone", "Role", "Wushsha Level", "Verified", "Created At"];
+        const headers = ["المعرف", "معرف Clerk", "الاسم", "اسم المستخدم", "البريد", "الهاتف", "الدور", "مستوى الوشّاي", "موثق", "تاريخ الإنشاء"];
         const rows = users.map(u => [
             u.id, 
             u.clerk_id, 
@@ -226,7 +226,7 @@ export function UsersClient({
             u.phone || "", 
             u.role, 
             u.wushsha_level || "", 
-            u.is_verified ? "Yes" : "No", 
+            u.is_verified ? "نعم" : "لا",
             u.created_at
         ]);
         
@@ -378,8 +378,8 @@ export function UsersClient({
                         <Loader2 className="w-6 h-6 text-gold animate-spin" />
                     </div>
                 )}
-                <div className="overflow-x-auto relative">
-                    <table className="w-full text-sm">
+                <div className="overflow-x-auto relative" dir="ltr">
+                    <table className="min-w-[1080px] w-full text-sm" dir="rtl">
                         <thead>
                             <tr className="border-b border-theme-subtle">
                                 <th className="text-right px-4 py-3.5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
 import { Sparkles, Wand2, Shirt, Stars, CheckCircle2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
@@ -32,6 +32,17 @@ const aiSignals = [
   { value: "02", label: "توليد قابل للمراجعة", detail: "لا ينتقل التصميم للطلب قبل معاينتك." },
   { value: "03", label: "جاهز للطباعة", detail: "المخرجات مرتبطة بتدفق الطلب الفعلي." },
 ];
+
+const wushaIntroMarkMaskStyle: CSSProperties = {
+  WebkitMaskImage: "url('/header-logo-identity.png')",
+  maskImage: "url('/header-logo-identity.png')",
+  WebkitMaskRepeat: "no-repeat",
+  maskRepeat: "no-repeat",
+  WebkitMaskPosition: "center",
+  maskPosition: "center",
+  WebkitMaskSize: "contain",
+  maskSize: "contain",
+};
 
 interface AISectionProps {
   config?: {
@@ -122,7 +133,11 @@ export function AISection({ config }: AISectionProps) {
           >
             <div className="home-panel-inner">
               <div className="home-section-kicker">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                <span
+                  aria-hidden
+                  className="block h-4 w-5 shrink-0 bg-current"
+                  style={wushaIntroMarkMaskStyle}
+                />
                 صممها بنفسك
               </div>
               <h2 className="home-section-title">تصميم يبدأ من وصفك</h2>
@@ -194,10 +209,6 @@ export function AISection({ config }: AISectionProps) {
                     );
                   })}
 
-                  <div className="home-ai-note mt-auto">
-                    <Stars className="h-4 w-4" aria-hidden />
-                    <span>المعاينة هنا توضح التدفق، أما الطلب الحقيقي فيحفظ تفاصيل التصميم داخل حسابك.</span>
-                  </div>
                 </div>
 
                 <div className="home-ai-visual">
@@ -329,7 +340,11 @@ export function AISection({ config }: AISectionProps) {
                         </motion.div>
 
                         <div className="home-ai-status-strip">
-                          <Sparkles className="h-5 w-5 text-gold" aria-hidden />
+                          <span
+                            aria-hidden
+                            className="block h-5 w-6 shrink-0 bg-current text-gold"
+                            style={wushaIntroMarkMaskStyle}
+                          />
                           <span>المعاينة جاهزة للطلب</span>
                         </div>
                       </motion.div>

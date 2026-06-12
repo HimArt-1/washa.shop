@@ -204,17 +204,17 @@ function QueueLane({
                         const assignedAdmin = getAdminName(order.assigned_to);
 
                         return (
-                            <Link key={order.id} href={`/dashboard/design-orders/${order.id}`}>
+                            <Link key={order.id} href={`/dashboard/design-orders/${order.id}`} className="block min-w-0">
                                 <div className={`rounded-2xl border p-4 transition-all hover:border-gold/30 ${toneClass}`}>
-                                    <div className="flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-start justify-between gap-3">
                                         <div className="min-w-0">
                                             <p className="font-mono text-xs font-bold text-gold">#{order.order_number}</p>
                                             <p className="mt-2 truncate text-sm font-bold text-theme">{order.customer_name || "عميل بدون اسم"}</p>
-                                            <p className="mt-1 text-xs text-theme-subtle">
+                                            <p className="mt-1 truncate text-xs text-theme-subtle">
                                                 {order.garment_name} · {order.color_name} · {order.size_name}
                                             </p>
                                         </div>
-                                        <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${statusMeta.className}`}>
+                                        <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-bold ${statusMeta.className}`}>
                                             {statusMeta.label}
                                         </span>
                                     </div>
@@ -225,9 +225,9 @@ function QueueLane({
                                         <span>{formatDistanceToNow(new Date(order.updated_at), { addSuffix: true, locale: ar })}</span>
                                     </div>
 
-                                    <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-theme-faint">
-                                        <span>{assignedAdmin ? `المسؤول: ${assignedAdmin}` : "غير معيّن"}</span>
-                                        <span>{order.final_price ? formatCurrency(order.final_price) : "سعر غير محدد"}</span>
+                                    <div className="mt-4 flex min-w-0 items-center justify-between gap-3 text-[11px] text-theme-faint">
+                                        <span className="min-w-0 truncate">{assignedAdmin ? `المسؤول: ${assignedAdmin}` : "غير معيّن"}</span>
+                                        <span className="shrink-0">{order.final_price ? formatCurrency(order.final_price) : "سعر غير محدد"}</span>
                                     </div>
                                 </div>
                             </Link>
@@ -446,7 +446,7 @@ export function DesignOperationsCenter({ snapshot, clientProps }: DesignOperatio
             >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">Execution Desk</p>
+                        <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
                         <h3 className="mt-2 text-xl font-bold text-theme">مكتب التنفيذ التفصيلي</h3>
                         <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
                             كل أدوات التنفيذ العملية تبقى هنا: الفلترة، التعيين، تحديث الحالة، رفع النتائج، والمراجعة النهائية.

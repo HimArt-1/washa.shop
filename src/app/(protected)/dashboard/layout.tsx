@@ -13,13 +13,9 @@ export default async function DashboardLayout({
         const user = await getCurrentUserOrDevAdmin();
         if (!user) redirect("/sign-in");
 
-        const { supabase, profile, isAdmin, bootstrapped } = await resolveAdminAccess(user);
-        if (bootstrapped) {
-            console.log("[Dashboard] Bootstrapped first admin for clerk_id:", user.id);
-        }
+        const { supabase, profile, isAdmin } = await resolveAdminAccess(user);
 
         if (!profile || !isAdmin) {
-            console.log("[Dashboard] Access denied for clerk_id:", user.id, "role:", profile?.role ?? null);
             redirect("/");
         }
 

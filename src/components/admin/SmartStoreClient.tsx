@@ -380,9 +380,9 @@ function WorkspaceOverview({
 
     const items = workspace === "designPieceLab"
         ? [
-            { label: "منتجات مرجعية", value: studioItems.length, note: "لعرض المنتجات المستهدفة داخل النموذج التجريبي" },
-            { label: "Presets ذكية", value: presets.length, note: "لتسريع اقتراحات النموذج وربطها بالهوية" },
-            { label: "قواعد التوافق", value: compatibilities.length, note: "لتوجيه التوصيات ومنطق المطابقة داخل النموذج" },
+            { label: "منتجات مرجعية", value: studioItems.length, note: "لعرض المنتجات المستهدفة داخل تجربة صمّم قطعتك" },
+            { label: "حزم ذكية", value: presets.length, note: "لتسريع الاقتراحات وربطها بالهوية" },
+            { label: "قواعد التوافق", value: compatibilities.length, note: "لتوجيه التوصيات ومنطق المطابقة داخل التجربة" },
             { label: "كتالوج مشترك", value: garments.length + colors.length + sizes.length, note: "قطع وألوان ومقاسات يتشاركها المساران" },
         ]
         : [
@@ -432,7 +432,7 @@ function DtfCatalogToolbar({
                 <div className="space-y-2">
                     <h3 className="text-lg font-bold text-theme">ضبط مكتبة استوديو DTF</h3>
                     <p className="max-w-3xl text-sm leading-6 text-theme-subtle">
-                        هذه الأداة تعيد كتالوج DTF الأصلي: الأنماط السابقة، أساليب التنفيذ، وباقات الألوان، مع ترتيبها وتفعيلها وعزلها عن نموذج صمم قطعتك التجريبي.
+                        هذه الأداة تعيد كتالوج DTF القياسي: الأنماط السابقة، أساليب التنفيذ، وباقات الألوان، مع ترتيبها وتفعيلها وفصلها عن واجهة صمّم قطعتك.
                     </p>
                     <div className="flex flex-wrap gap-2">
                         {coverage.map((item) => (

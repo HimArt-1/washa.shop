@@ -551,7 +551,7 @@ export function AnalyticsClient({
                     </div>
                     <div className="-mx-2 overflow-x-auto px-2">
                         <div className="h-80 min-w-[640px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                             <ComposedChart data={revenueChartData}>
                                 <defs>
                                     <linearGradient id="financeRevenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -645,7 +645,7 @@ export function AnalyticsClient({
                     </div>
                     <div className="-mx-2 overflow-x-auto px-2">
                         <div className="h-72 min-w-[560px]">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                             <BarChart data={usersChartData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                                 <XAxis dataKey="date" stroke="rgba(255,255,255,0.42)" fontSize={11} />

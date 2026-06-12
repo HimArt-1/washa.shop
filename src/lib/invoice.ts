@@ -69,7 +69,7 @@ export const defaultInvoiceConfig: InvoiceConfig = {
     primaryColor: "#5A3E2B",
     accentColor: "#ceae7f",
     showLogo: true,
-    fontFamily: "IBM Plex Sans Arabic",
+    fontFamily: "TheYearOfTheCamel",
     notes: "نشكركم على تسوقكم من وشّى. نأمل أن تكون قد حظيتم بتجربة مميزة.",
     showWatermark: true,
     showTax: false,
@@ -152,11 +152,37 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
         )
         .join("");
 
-    const fontImport = config.fontFamily === "Cairo"
-        ? "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
-        : config.fontFamily === "Tajawal"
-            ? "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap"
-            : "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap";
+    const usesWashaFont = config.fontFamily === "TheYearOfTheCamel";
+    const fontImport = usesWashaFont
+        ? ""
+        : config.fontFamily === "Cairo"
+            ? "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap"
+            : config.fontFamily === "Tajawal"
+                ? "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap"
+                : "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap";
+    const washaFontFaces = usesWashaFont ? `
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-Regular.otf") format("opentype");
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-Bold.otf") format("opentype");
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: "TheYearOfTheCamel";
+            src: url("/fonts/TheYearofTheCamel-ExtraBold.otf") format("opentype");
+            font-weight: 800 900;
+            font-style: normal;
+            font-display: swap;
+        }
+    ` : "";
 
     const watermarkHtml = config.showWatermark ? `<div class="watermark">WASHA</div>` : "";
     const logoHtml = config.showLogo ? `<img src="/logo.png" class="logo-img" alt="WASHA Logo"/>` : `<div class="logo-text">${config.companyName}</div>`;
@@ -254,8 +280,9 @@ export function generateInvoiceHTML(order: InvoiceOrder, config: InvoiceConfig =
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>فاتورة #${order.order_number}</title>
-    <link href="${fontImport}" rel="stylesheet">
+    ${fontImport ? `<link href="${fontImport}" rel="stylesheet">` : ""}
     <style>
+        ${washaFontFaces}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: "${config.fontFamily}", Tahoma, sans-serif;

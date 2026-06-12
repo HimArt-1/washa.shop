@@ -234,13 +234,27 @@ function printManifest(orders: ShippingOrder[]) {
             <meta charset="utf-8" />
             <title>WASHA Shipping Manifest</title>
             <style>
+                @font-face {
+                    font-family: "TheYearOfTheCamel";
+                    src: url("/fonts/TheYearofTheCamel-Regular.otf") format("opentype");
+                    font-weight: 400;
+                    font-style: normal;
+                    font-display: swap;
+                }
+                @font-face {
+                    font-family: "TheYearOfTheCamel";
+                    src: url("/fonts/TheYearofTheCamel-ExtraBold.otf") format("opentype");
+                    font-weight: 800 900;
+                    font-style: normal;
+                    font-display: swap;
+                }
                 @page { size: A4 landscape; margin: 12mm; }
                 * { box-sizing: border-box; }
                 body {
                     margin: 0;
                     color: #171412;
                     background: #fff;
-                    font-family: "IBM Plex Sans Arabic", "Tajawal", "Arial", sans-serif;
+                    font-family: "TheYearOfTheCamel", "Arial", sans-serif;
                 }
                 .header {
                     display: flex;
@@ -1202,7 +1216,7 @@ export function ShippingClient({
                     <div className="p-5 md:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
-                                <p className="text-[11px] font-black tracking-[0.2em] text-theme-faint">SHIPPING OPS CENTER</p>
+                                <p className="text-[11px] font-bold text-theme-faint">مركز عمليات الشحن</p>
                                 <h2 className="mt-2 text-2xl font-black tracking-tight text-theme md:text-3xl">مركز عمليات الشحن</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
                                     دورة حياة كاملة للحجز، طرود، التتبع، الاستثناءات، البوالص، وتحصيل COD من شاشة واحدة.
@@ -1355,8 +1369,8 @@ export function ShippingClient({
             )}
 
             <div className="theme-surface-panel overflow-hidden rounded-2xl">
-                <div className="overflow-x-auto">
-                    <table className="min-w-[1190px] w-full text-sm">
+                <div className="overflow-x-auto" dir="ltr">
+                    <table className="min-w-[1190px] w-full text-sm" dir="rtl">
                         <thead>
                             <tr className="border-b border-theme-subtle bg-theme-faint">
                                 <th className="w-14 px-3 py-3.5 text-right">

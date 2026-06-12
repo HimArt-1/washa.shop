@@ -3,6 +3,8 @@
 import { type SupportTicketStatus, type SupportTicketPriority } from "@/types/database";
 import { currentUser } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { createAdminNotification } from "@/app/actions/notifications";
+import { revalidatePath } from "next/cache";
 
 interface GenerateTicketInput {
     name: string;
@@ -51,13 +53,44 @@ export async function submitSupportTicket(data: GenerateTicketInput) {
             priority: "normal" as SupportTicketPriority,
         };
 
-        const { error } = await adminSupabase
+        const { data: ticket, error } = await adminSupabase
             .from("support_tickets")
-            .insert(ticketData);
+            .insert(ticketData)
+            .select("id")
+            .single();
 
-        if (error) {
+        if (error || !ticket) {
             console.error("Support Ticket Submission Error:", error);
-            throw error;
+            throw error || new Error("Support ticket was not created");
+        }
+
+        if (resolvedUserId) {
+            const { error: messageError } = await adminSupabase
+                .from("support_messages")
+                .insert({
+                    ticket_id: ticket.id,
+                    sender_id: resolvedUserId,
+                    message,
+                });
+
+            if (messageError) {
+                console.warn("[submitSupportTicket] Initial support message was not mirrored:", messageError);
+            }
+        }
+
+        await createAdminNotification({
+            type: "system_alert",
+            category: "support",
+            severity: "warning",
+            title: "تذكرة دعم جديدة",
+            message: `تذكرة جديدة من ${name}: ${subject}`,
+            link: "/dashboard/support",
+        });
+
+        revalidatePath("/support");
+        revalidatePath("/dashboard/support");
+        if (resolvedUserId) {
+            revalidatePath("/account/support");
         }
 
         return { success: true };

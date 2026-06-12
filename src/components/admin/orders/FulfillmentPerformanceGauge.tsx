@@ -63,7 +63,7 @@ export function FulfillmentPerformanceGauge({ stats }: FulfillmentPerformanceGau
                 </div>
             ))}
             
-            {/* Live Operations Pulse */}
+            {/* Operations status */}
             <div className="p-6 rounded-[32px] border border-gold/10 bg-gold/[0.02] flex flex-col items-center justify-center gap-4 py-8">
                 <div className="relative">
                     <div className="absolute inset-0 rounded-full border border-gold/40 animate-ping opacity-20" />
@@ -72,7 +72,7 @@ export function FulfillmentPerformanceGauge({ stats }: FulfillmentPerformanceGau
                     </div>
                 </div>
                 <div className="text-center">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gold mb-1">Live Operational Pulse</p>
+                    <p className="text-[10px] font-black tracking-[0.16em] text-gold mb-1">مؤشر التشغيل</p>
                     <p className="text-[9px] text-gold/60 font-medium">الأنظمة تعمل بكفاءة قصوى</p>
                 </div>
             </div>
