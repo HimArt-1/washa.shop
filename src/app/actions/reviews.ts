@@ -62,7 +62,7 @@ export async function getProductReviews(productId: string): Promise<ReviewWithUs
     const supabase = getAdminClient();
     const { data } = await supabase
         .from("product_reviews")
-        .select("id, rating, comment, created_at, user:profiles(display_name, avatar_url)")
+        .select("id, rating, comment, created_at, user:profiles!product_reviews_user_id_fkey(display_name, avatar_url)")
         .eq("product_id", productId)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -121,7 +121,7 @@ export async function getArtworkReviews(artworkId: string): Promise<ReviewWithUs
     const supabase = getAdminClient();
     const { data } = await supabase
         .from("artwork_reviews")
-        .select("id, rating, comment, created_at, user:profiles(display_name, avatar_url)")
+        .select("id, rating, comment, created_at, user:profiles!artwork_reviews_user_id_fkey(display_name, avatar_url)")
         .eq("artwork_id", artworkId)
         .order("created_at", { ascending: false })
         .limit(50);

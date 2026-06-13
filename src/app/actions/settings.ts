@@ -486,7 +486,7 @@ export async function getOperationalRulesDiagnostics(): Promise<OperationalRules
             supabase.from("orders").select("total").eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded"),
             supabase.from("orders").select("total").eq("payment_status", "failed").neq("status", "cancelled").neq("status", "refunded"),
             supabase.from("system_logs")
-                .select("id, message, metadata, created_at, user:profiles(display_name, username)")
+                .select("id, message, metadata, created_at, user:profiles!system_logs_user_id_fkey(display_name, username)")
                 .eq("source", "settings.operational_rules.update")
                 .order("created_at", { ascending: false })
                 .limit(6),
@@ -924,7 +924,7 @@ export async function getAdminProducts(page = 1, type = "all") {
 
     let query = supabase
         .from("products")
-        .select("*, artist:profiles!artist_id(id, display_name, username)", { count: "exact" })
+        .select("*, artist:profiles!products_artist_id_fkey(id, display_name, username)", { count: "exact" })
         .order("created_at", { ascending: false })
         .range((page - 1) * perPage, page * perPage - 1);
 

@@ -1,5 +1,9 @@
 import { create } from "zustand";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import {
+    getAdminNotifications,
+    markAllNotificationsRead as markAllAdminNotificationsRead,
+    markNotificationRead as markAdminNotificationRead,
+} from "@/app/actions/notifications";
 import type { AdminNotification } from "@/types/database";
 
 interface NotificationState {
@@ -11,7 +15,7 @@ interface NotificationState {
     addNotification: (notification: AdminNotification) => void;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
-    fetchInitial: () => Promise<void>;
+    fetchInitial: (force?: boolean) => Promise<void>;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -37,8 +41,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }),
 
     markAsRead: async (id: string) => {
-        const supabase = getSupabaseBrowserClient();
-        
         // Optimistic UI update
         set((state) => ({
             notifications: state.notifications.map((n) => 
@@ -47,56 +49,40 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             unreadCount: Math.max(0, state.unreadCount - 1),
         }));
 
-        const { error } = await supabase
-            .from("admin_notifications")
-            .update({ is_read: true })
-            .eq("id", id);
-
-        if (error) {
-            console.error("Failed to mark notification as read", error);
-            // Revert optimistic update here if needed
+        const result = await markAdminNotificationRead(id);
+        if (!result.success) {
+            console.error("Failed to mark notification as read", result.error);
         }
     },
 
     markAllAsRead: async () => {
-        const supabase = getSupabaseBrowserClient();
-        
         // Optimistic UI update
         set((state) => ({
             notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
             unreadCount: 0,
         }));
 
-        const { error } = await supabase
-            .from("admin_notifications")
-            .update({ is_read: true })
-            .eq("is_read", false);
-
-        if (error) {
-            console.error("Failed to mark all as read", error);
+        const result = await markAllAdminNotificationsRead();
+        if (!result.success) {
+            console.error("Failed to mark all as read", result.error);
         }
     },
 
-    fetchInitial: async () => {
-        if (get().isInitialized) return;
+    fetchInitial: async (force = false) => {
+        if (get().isLoading) return;
+        if (!force && get().isInitialized) return;
         
         set({ isLoading: true });
-        const supabase = getSupabaseBrowserClient();
-        
-        const { data, error } = await supabase
-            .from("admin_notifications")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(50);
-
-        if (!error && data) {
+        try {
+            const data = await getAdminNotifications(50);
             set({ 
-                notifications: data as AdminNotification[],
+                notifications: data,
                 unreadCount: data.filter((n) => !n.is_read).length,
                 isInitialized: true,
                 isLoading: false
             });
-        } else {
+        } catch (error) {
+            console.error("Failed to fetch admin notifications", error);
             set({ isLoading: false });
         }
     }

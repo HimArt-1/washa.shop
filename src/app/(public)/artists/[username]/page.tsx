@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,10 +11,10 @@ import { buildPersonSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 // ─── Fetch Artist by Username ───────────────────────────────
 
 async function getArtistByUsername(username: string) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, display_name, username, bio, avatar_url, cover_url, website, social_links, is_verified, total_sales, total_artworks, role")
         .eq("username", username)
         .eq("role", "wushsha")
         .single();
@@ -24,7 +24,7 @@ async function getArtistByUsername(username: string) {
 }
 
 async function getArtistArtworksPublic(artistId: string) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const { data } = await supabase
         .from("artworks")
         .select(`*, category:categories(name_ar, slug)`)

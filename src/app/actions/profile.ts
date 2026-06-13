@@ -1,6 +1,6 @@
 "use server";
 
-import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { profileSchema, type ProfileFormData } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
@@ -33,7 +33,7 @@ export async function updateProfile(
         return { success: false, message: "يجب تسجيل الدخول أولاً" };
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
@@ -126,7 +126,7 @@ export async function uploadProfileImage(
     const { userId } = await auth();
     if (!userId) return { success: false, error: "يجب تسجيل الدخول أولاً" };
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const { data: profile } = await supabase
         .from("profiles")
         .select("id")
@@ -193,7 +193,7 @@ export async function getProfile(): Promise<Profile | null> {
     if (!userId) return null;
 
     try {
-        const supabase = getSupabaseServerClient();
+        const supabase = getSupabaseAdminClient();
         const { data, error } = await supabase
             .from("profiles")
             .select("*")

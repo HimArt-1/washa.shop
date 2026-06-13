@@ -190,7 +190,7 @@ export async function getWishlistProducts() {
     const productIds = wishlistItems.map((r: { product_id: string }) => r.product_id);
     const { data: products } = await supabase
         .from("products")
-        .select("id, title, price, image_url, type, in_stock, artist:profiles(display_name, username)")
+        .select("id, title, price, image_url, type, in_stock, artist:profiles!products_artist_id_fkey(display_name, username)")
         .in("id", productIds);
 
     const orderMap = Object.fromEntries(productIds.map((id: string, i: number) => [id, i]));

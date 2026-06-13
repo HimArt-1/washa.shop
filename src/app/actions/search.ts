@@ -7,14 +7,18 @@
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database, ProductType } from "@/types/database";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 
-// Use anon key for public search queries (no RLS bypass needed for published content)
 function getSearchClient() {
-    return createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    try {
+        return getSupabaseAdminClient();
+    } catch {
+        return createClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { auth: { persistSession: false, autoRefreshToken: false } }
+        );
+    }
 }
 
 // ─── Types ──────────────────────────────────────────────────
@@ -64,7 +68,7 @@ export async function globalSearch(
                 .from("artworks")
                 .select(`
                     *,
-                    artist:profiles(id, display_name, username, avatar_url, is_verified),
+                    artist:profiles!artworks_artist_id_fkey(id, display_name, username, avatar_url, is_verified),
                     category:categories(name_ar, slug)
                 `, { count: "exact" })
                 .eq("status", "published");
@@ -119,7 +123,7 @@ export async function globalSearch(
                 .from("products")
                 .select(`
                     *,
-                    artist:profiles(id, display_name, username, avatar_url)
+                    artist:profiles!products_artist_id_fkey(id, display_name, username, avatar_url)
                 `, { count: "exact" })
                 .eq("in_stock", true);
 

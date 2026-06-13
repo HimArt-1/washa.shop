@@ -173,7 +173,7 @@ export async function getShippingOrders(params: {
             `id, order_number, status, payment_status, total, shipping_cost,
              tracking_number, courier_name, waybill_url, torod_order_id, torod_last_status, metadata,
              shipping_address, created_at, updated_at,
-             buyer:profiles!buyer_id(display_name, avatar_url, username)`,
+             buyer:profiles!orders_buyer_id_fkey(display_name, avatar_url, username)`,
             { count: "exact" }
         )
         .in("status", shippingStatuses)
@@ -286,7 +286,7 @@ export async function bookShipmentAction(orderId: string) {
 
     const { data: order, error: orderError } = await supabase
         .from("orders")
-        .select("*, profile:profiles!buyer_id(email, display_name)")
+        .select("*, profile:profiles!orders_buyer_id_fkey(email, display_name)")
         .eq("id", orderId)
         .single();
 

@@ -6,7 +6,7 @@
 "use server";
 
 import type { ProductType, ApparelSize } from "@/types/database";
-import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import { resolveStudioAccess } from "@/lib/studio-access";
@@ -20,7 +20,7 @@ export async function getProducts(
     sort: SortOption = "newest"
 ) {
     noStore();
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const itemsPerPage = 12;
     const from = (page - 1) * itemsPerPage;
     const to = from + itemsPerPage - 1;
@@ -29,7 +29,7 @@ export async function getProducts(
         .from("products")
         .select(`
       *,
-      artist:profiles(id, display_name, username, avatar_url),
+      artist:profiles!products_artist_id_fkey(id, display_name, username, avatar_url),
       product_skus(
         inventory_levels(quantity)
       )
@@ -69,13 +69,13 @@ export async function getProducts(
 }
 
 export async function getProductById(id: string) {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
     const { data, error } = await supabase
         .from("products")
         .select(`
       *,
-      artist:profiles(id, display_name, username, avatar_url)
+      artist:profiles!products_artist_id_fkey(id, display_name, username, avatar_url)
     `)
         .eq("id", id)
         .single();
@@ -158,7 +158,7 @@ export async function syncProductStockFromERP() {
     const user = await getCurrentUserOrDevAdmin();
     if (!user) return { success: false, error: "Unauthorized", updated: 0 };
 
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
     // التحقق من أن المستخدم أدمن
     const { data: profile } = await supabase

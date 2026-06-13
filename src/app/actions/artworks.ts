@@ -5,7 +5,7 @@
 
 "use server";
 
-import { getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { resolveStudioAccess } from "@/lib/studio-access";
 
@@ -16,13 +16,13 @@ const ALLOWED_ARTWORK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/g
 
 export async function getFeaturedArtworks() {
     noStore();
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
     const { data, error } = await supabase
         .from("artworks")
         .select(`
       *,
-      artist:profiles(id, display_name, username, avatar_url, is_verified)
+      artist:profiles!artworks_artist_id_fkey(id, display_name, username, avatar_url, is_verified)
     `)
         .eq("status", "published")
         .eq("is_featured", true)
@@ -43,7 +43,7 @@ export async function getArtworks(
     search = ""
 ) {
     noStore();
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
     const itemsPerPage = 12;
     const from = (page - 1) * itemsPerPage;
     const to = from + itemsPerPage - 1;
@@ -52,7 +52,7 @@ export async function getArtworks(
         .from("artworks")
         .select(`
       *,
-      artist:profiles(id, display_name, username, avatar_url, is_verified)
+      artist:profiles!artworks_artist_id_fkey(id, display_name, username, avatar_url, is_verified)
     `, { count: "exact" })
         .eq("status", "published");
 
@@ -92,13 +92,13 @@ export async function getArtworks(
 
 export async function getArtworkById(id: string, adminOverride = false) {
     noStore();
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseAdminClient();
 
     let query = supabase
         .from("artworks")
         .select(`
       *,
-      artist:profiles(id, display_name, username, bio, avatar_url, is_verified),
+      artist:profiles!artworks_artist_id_fkey(id, display_name, username, bio, avatar_url, is_verified),
       category:categories(name_ar, slug)
     `)
         .eq("id", id);

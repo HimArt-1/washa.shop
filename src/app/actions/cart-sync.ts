@@ -1,7 +1,7 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import { getSupabaseServerClient } from "@/lib/supabase";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import type { CartItem } from "@/stores/cartStore";
 
 export async function saveUserCart(items: CartItem[]) {
@@ -9,7 +9,7 @@ export async function saveUserCart(items: CartItem[]) {
         const user = await currentUser();
         if (!user) return { success: false };
 
-        const supabase = getSupabaseServerClient();
+        const supabase = getSupabaseAdminClient();
         const { error } = await supabase
             .from("profiles")
             .update({ cart_items: items } as any)
@@ -27,7 +27,7 @@ export async function loadUserCart(): Promise<CartItem[]> {
         const user = await currentUser();
         if (!user) return [];
 
-        const supabase = getSupabaseServerClient();
+        const supabase = getSupabaseAdminClient();
         const { data, error } = await supabase
             .from("profiles")
             .select("cart_items")

@@ -39,8 +39,6 @@ import {
 import type { AdminNotification } from "@/types/database";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
-import { toast } from "sonner";
 
 const COMMAND_ITEMS = [
     { href: "/dashboard", label: "لوحة المؤشرات", icon: LayoutDashboard, description: "نبض المنصة والعمليات اليومية." },
@@ -123,6 +121,8 @@ function getCategoryBadgeClasses(notification: AdminNotification) {
     }
 }
 
+const NOTIFICATION_REFRESH_MS = 45_000;
+
 function getPageMeta(pathname: string) {
     const exactMatch = COMMAND_ITEMS.find((item) => item.href === pathname && !item.external);
     if (exactMatch) {
@@ -175,7 +175,7 @@ export function AdminTopBar() {
     const [searchOpen, setSearchOpen] = useState(false);
     const [query, setQuery] = useState("");
     const [notificationsOpen, setNotificationsOpen] = useState(false);
-    const { notifications, unreadCount, fetchInitial, addNotification, markAsRead, markAllAsRead } = useNotificationStore();
+    const { notifications, unreadCount, fetchInitial, markAsRead, markAllAsRead } = useNotificationStore();
     const notificationSummary = { critical: 0, warning: 0, info: 0 };
     const pageMeta = getPageMeta(pathname);
 
@@ -198,42 +198,24 @@ export function AdminTopBar() {
     }, [pathname]);
 
     useEffect(() => {
-        const supabase = getSupabaseBrowserClient();
-        
-        const channel = supabase
-            .channel('admin_notifications_changes')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'admin_notifications',
-                },
-                (payload) => {
-                    const newNotification = payload.new as AdminNotification;
-                    addNotification(newNotification);
-                    
-                    // Show a toast
-                    toast.success(newNotification.title, {
-                        description: newNotification.message,
-                        duration: 8000,
-                        action: {
-                            label: 'عرض',
-                            onClick: () => {
-                                if (newNotification.link) {
-                                    router.push(newNotification.link);
-                                }
-                            }
-                        }
-                    });
-                }
-            )
-            .subscribe();
+        const refresh = () => {
+            void fetchInitial(true);
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") refresh();
+        };
+
+        const intervalId = window.setInterval(refresh, NOTIFICATION_REFRESH_MS);
+        window.addEventListener("focus", refresh);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
-            supabase.removeChannel(channel);
+            window.clearInterval(intervalId);
+            window.removeEventListener("focus", refresh);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [addNotification, router]);
+    }, [fetchInitial]);
 
     const filtered = query.trim()
         ? COMMAND_ITEMS.filter((i) =>

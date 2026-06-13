@@ -127,7 +127,7 @@ export async function getSupportTicketDetails(ticketId: string) {
     // Fetch Ticket + User Profile
     const { data: ticket, error: ticketError } = await supabase
         .from("support_tickets")
-        .select("*, profile:profiles!user_id(display_name, avatar_url, role)")
+        .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url, role)")
         .eq("id", ticketId)
         .single();
 
@@ -136,7 +136,7 @@ export async function getSupportTicketDetails(ticketId: string) {
     // Fetch Messages
     const { data: messages, error: messagesError } = await supabase
         .from("support_messages")
-        .select("*, sender:profiles!sender_id(display_name, avatar_url, role)")
+        .select("*, sender:profiles!support_messages_sender_id_fkey(display_name, avatar_url, role)")
         .eq("ticket_id", ticketId)
         .order("created_at", { ascending: true });
 
@@ -208,7 +208,7 @@ export async function adminGetSupportTickets() {
         const { sb: supabase } = await requireSupportAdmin();
         const { data, error } = await supabase
             .from("support_tickets")
-            .select("*, profile:profiles!user_id(display_name, avatar_url)")
+            .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url)")
             .order("updated_at", { ascending: false });
 
         if (error) {
@@ -245,24 +245,24 @@ export async function getSupportOperationsSnapshot() {
                 .select("id, created_at, updated_at")
                 .in("status", ["resolved", "closed"]),
             supabase.from("support_tickets")
-                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url)")
                 .eq("priority", "high")
                 .in("status", ["open", "in_progress"])
                 .order("updated_at", { ascending: false })
                 .limit(5),
             supabase.from("support_tickets")
-                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url)")
                 .in("status", ["open", "in_progress"])
                 .lte("created_at", staleThresholdIso)
                 .order("created_at", { ascending: true })
                 .limit(5),
             supabase.from("support_tickets")
-                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url)")
                 .in("status", ["resolved", "closed"])
                 .order("updated_at", { ascending: false })
                 .limit(5),
             supabase.from("support_tickets")
-                .select("*, profile:profiles!user_id(display_name, avatar_url)")
+                .select("*, profile:profiles!support_tickets_user_id_fkey(display_name, avatar_url)")
                 .in("status", ["open", "in_progress"])
                 .order("created_at", { ascending: true })
                 .limit(40),

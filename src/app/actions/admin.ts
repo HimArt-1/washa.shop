@@ -112,7 +112,7 @@ export async function getAdminOverview() {
             supabase.from("newsletter_subscribers").select("id", { count: "exact", head: true }).eq("is_active", true),
             // 9: Recent 5 orders
             supabase.from("orders")
-                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name)")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name)")
                 .order("created_at", { ascending: false })
                 .limit(5),
             // 10: Pending applications list (latest 5)
@@ -375,7 +375,7 @@ export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promis
         ] = await Promise.all([
             supabase
                 .from("orders")
-                .select("id, order_number, total, discount_amount, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .select("id, order_number, total, discount_amount, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, username)")
                 .gte("created_at", startIso)
                 .order("created_at", { ascending: false }),
             supabase
@@ -637,7 +637,7 @@ export async function getAdminInventory(filter: "all" | "low" | "out" = "all") {
         const { supabase } = await requireAdmin();
         const { data, error } = await supabase
             .from("products")
-            .select("id, title, image_url, type, in_stock, stock_quantity, price, artist:profiles(display_name)")
+            .select("id, title, image_url, type, in_stock, stock_quantity, price, artist:profiles!products_artist_id_fkey(display_name)")
             .order("title");
         if (error) throw error;
         const allProducts = data || [];
@@ -1601,17 +1601,17 @@ export async function getOrdersOperationsSnapshot() {
             supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso),
             supabase.from("orders").select("total").eq("payment_status", "paid").gte("created_at", todayStartIso),
             supabase.from("orders")
-                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, username)")
                 .in("status", ["pending", "confirmed"])
                 .order("created_at", { ascending: false })
                 .limit(5),
             supabase.from("orders")
-                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, username)")
                 .in("status", ["processing", "shipped"])
                 .order("created_at", { ascending: false })
                 .limit(5),
             supabase.from("orders")
-                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, username)")
+                .select("id, order_number, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, username)")
                 .eq("payment_status", "pending")
                 .neq("status", "cancelled")
                 .neq("status", "refunded")
@@ -1705,7 +1705,7 @@ export async function getFulfillmentHubData() {
         const { supabase } = await requireAdmin();
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
-        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
+        const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
 
         const [
             { data: paidOrders },
@@ -1717,7 +1717,7 @@ export async function getFulfillmentHubData() {
             supabase.from("orders").select(selectStr).eq("payment_status", "paid").in("status", ["confirmed", "processing"]),
             supabase.from("orders").select(selectStr).in("status", ["processing"]),
             supabase.from("orders").select(selectStr).in("status", ["shipped"]),
-            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
+            supabase.from("orders").select("id, order_number, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, avatar_url, username)").eq("payment_status", "paid").order("created_at", { ascending: false }).limit(10),
             (supabase as any).from("event_dispatches").select("*").in("channel", ["warehouse_payment"]).order("created_at", { ascending: false }).limit(10),
         ]);
 
@@ -1778,7 +1778,7 @@ export async function getAdminOrders({ page = 1, status = "all", search = "" }: 
         // استعلام مبسّط — تجنّب فشل الـ join المعقّد
         const selectQuery = `
             *,
-            buyer:profiles(id, display_name, username, avatar_url, role),
+            buyer:profiles!orders_buyer_id_fkey(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title, custom_design_order_id,
@@ -1829,7 +1829,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
         const { supabase } = await requireAdmin();
         const selectQuery = `
             *,
-            buyer:profiles(id, display_name, username, avatar_url, role),
+            buyer:profiles!orders_buyer_id_fkey(id, display_name, username, avatar_url, role),
             order_items(
                 id, product_id, quantity, size, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title, custom_design_order_id,
@@ -1854,7 +1854,7 @@ export async function bookTorodShipment(orderId: string) {
         // 1. Fetch Order Details
         const { data: order, error: orderError } = await supabase
             .from("orders")
-            .select("*, profile:profiles(email, display_name)")
+            .select("*, profile:profiles!orders_buyer_id_fkey(email, display_name)")
             .eq("id", orderId)
             .single();
 
@@ -3719,7 +3719,7 @@ export async function getAdminArtworks(page = 1, status = "all") {
         .from("artworks")
         .select(`
             *,
-            artist:profiles(id, display_name, username, avatar_url, is_verified),
+            artist:profiles!artworks_artist_id_fkey(id, display_name, username, avatar_url, is_verified),
             category:categories(name_ar)
         `, { count: "exact" });
 
