@@ -8,6 +8,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { createPaylinkInvoice, PAYLINK_ENABLED, type PaylinkProduct } from "@/lib/paylink";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { moneyMatches } from "@/lib/paylink-security";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 
 function buildCheckoutUrl(baseUrl: string, params: Record<string, string>) {
     const url = new URL("/checkout", baseUrl);
@@ -171,6 +173,37 @@ export async function POST(req: NextRequest) {
         if (metadataError) {
             console.warn("[Paylink] failed to persist invoice metadata:", metadataError);
         }
+
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `paylink:${invoice.transactionNo || order.id}:webhook_admin:invoice_created`,
+                eventType: "payment_invoice_created",
+                channel: "webhook_admin",
+                resourceType: "payment_invoice",
+                resourceId: invoice.transactionNo || order.id,
+                metadata: {
+                    order_id: order.id,
+                    order_number: order.order_number,
+                    amount,
+                    provider: "paylink",
+                    transaction_no: invoice.transactionNo ?? null,
+                },
+            },
+            async () => {
+                await sendAdminNotification(
+                    [
+                        "💳 <b>إنشاء طلب دفع</b>",
+                        `المزوّد: Paylink`,
+                        `الطلب: #${escapeAdminNotificationHtml(order.order_number)}`,
+                        `القيمة: ${amount.toLocaleString()} ر.س`,
+                        `رقم العملية: ${escapeAdminNotificationHtml(invoice.transactionNo)}`,
+                        `العميل: ${escapeAdminNotificationHtml(clientName || user.firstName || "عميل وشّى")}`,
+                        `البريد: ${escapeAdminNotificationHtml(clientEmail || user.emailAddresses?.[0]?.emailAddress)}`,
+                        `الجوال: ${escapeAdminNotificationHtml(clientMobile)}`,
+                    ].join("\n")
+                );
+            }
+        ).catch(console.error);
 
         return NextResponse.json({
             success: true,

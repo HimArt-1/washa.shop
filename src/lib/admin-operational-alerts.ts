@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 import type {
     AdminNotificationCategory,
     AdminNotificationSeverity,
@@ -62,6 +63,38 @@ function deriveNotificationType(category: AdminNotificationCategory): AdminNotif
         case "system":
         default:
             return "system_alert";
+    }
+}
+
+function getSeverityLabel(severity: AdminNotificationSeverity) {
+    switch (severity) {
+        case "critical":
+            return "حرج";
+        case "warning":
+            return "تحذير";
+        case "info":
+        default:
+            return "معلومة";
+    }
+}
+
+function getCategoryLabel(category: AdminNotificationCategory) {
+    switch (category) {
+        case "orders":
+            return "الطلبات";
+        case "payments":
+            return "المدفوعات";
+        case "design":
+            return "التصميم";
+        case "support":
+            return "الدعم";
+        case "security":
+            return "الأمان";
+        case "applications":
+            return "طلبات الانضمام";
+        case "system":
+        default:
+            return "النظام";
     }
 }
 
@@ -154,6 +187,34 @@ export async function reportAdminOperationalAlert(params: {
                 }
             }
         );
+
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `${notificationDispatchKey}:webhook`,
+                eventType: `admin_alert_webhook_${params.category}_${params.severity}`,
+                channel: "webhook_admin",
+                resourceType: params.resourceType ?? params.category,
+                resourceId: params.resourceId ?? null,
+                metadata: {
+                    ...metadata,
+                    escalation: "admin_webhook",
+                },
+            },
+            async () => {
+                await sendAdminNotification(
+                    [
+                        `🚨 <b>تنبيه تشغيلي ${escapeAdminNotificationHtml(getSeverityLabel(params.severity))}</b>`,
+                        `القسم: ${escapeAdminNotificationHtml(getCategoryLabel(params.category))}`,
+                        `العنوان: ${escapeAdminNotificationHtml(title)}`,
+                        `التفاصيل: ${escapeAdminNotificationHtml(message)}`,
+                        `المصدر: ${escapeAdminNotificationHtml(source)}`,
+                        link ? `الرابط: ${escapeAdminNotificationHtml(link)}` : null,
+                    ].filter(Boolean).join("\n")
+                );
+            }
+        ).catch((error) => {
+            console.error("[admin-operational-alerts.webhook]", error);
+        });
 
         if (params.severity === "critical") {
             await runIdempotentDispatch(

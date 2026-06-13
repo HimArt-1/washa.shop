@@ -5,6 +5,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { createAdminNotification } from "@/app/actions/notifications";
 import { revalidatePath } from "next/cache";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 
 interface GenerateTicketInput {
     name: string;
@@ -84,8 +86,36 @@ export async function submitSupportTicket(data: GenerateTicketInput) {
             severity: "warning",
             title: "تذكرة دعم جديدة",
             message: `تذكرة جديدة من ${name}: ${subject}`,
-            link: "/dashboard/support",
+            link: `/dashboard/support/${ticket.id}`,
         });
+
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `support_ticket:${ticket.id}:webhook_admin:created`,
+                eventType: "support_ticket_created",
+                channel: "webhook_admin",
+                resourceType: "support_ticket",
+                resourceId: ticket.id,
+                metadata: {
+                    ticket_id: ticket.id,
+                    subject,
+                    email,
+                    source: "public_support",
+                },
+            },
+            async () => {
+                await sendAdminNotification(
+                    [
+                        "🎫 <b>تذكرة دعم جديدة</b>",
+                        `الموضوع: ${escapeAdminNotificationHtml(subject)}`,
+                        `الأولوية: عادي`,
+                        `العميل: ${escapeAdminNotificationHtml(name)}`,
+                        `البريد: ${escapeAdminNotificationHtml(email)}`,
+                        `الرابط: ${escapeAdminNotificationHtml(`/dashboard/support/${ticket.id}`)}`,
+                    ].join("\n")
+                );
+            }
+        ).catch(console.error);
 
         revalidatePath("/support");
         revalidatePath("/dashboard/support");

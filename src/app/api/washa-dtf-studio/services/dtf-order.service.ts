@@ -12,6 +12,7 @@ import {
 } from "@/lib/smart-store-core";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 import {
     releaseSmartStoreSizeReservation,
     reserveSmartStoreSizeStock,
@@ -92,6 +93,29 @@ export class DtfOrderService {
                     if (result.success === false) {
                         throw new Error("Failed to send admin DTF design order email");
                     }
+                }
+            ),
+            runIdempotentDispatch(
+                {
+                    dispatchKey: `dtf_design_order:${params.orderId}:webhook_admin:new_order`,
+                    eventType: "design_order_created",
+                    channel: "webhook_admin",
+                    resourceType: "design_order",
+                    resourceId: params.orderId,
+                    metadata,
+                },
+                async () => {
+                    await sendAdminNotification(
+                        [
+                            "🎨 <b>طلب تصميم جديد</b>",
+                            `الطلب: #${escapeAdminNotificationHtml(params.orderNumber)}`,
+                            `العميل: ${escapeAdminNotificationHtml(params.customerName)}`,
+                            `البريد: ${escapeAdminNotificationHtml(params.customerEmail)}`,
+                            `الجوال: ${escapeAdminNotificationHtml(params.customerPhone)}`,
+                            `المنتج: ${escapeAdminNotificationHtml(params.garmentName)} (${escapeAdminNotificationHtml(params.colorName)})`,
+                            `المصدر: WASHA AI DTF Studio`,
+                        ].join("\n")
+                    );
                 }
             ),
         ]);

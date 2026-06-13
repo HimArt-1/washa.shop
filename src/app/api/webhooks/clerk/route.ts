@@ -10,6 +10,7 @@ import { sendAdminNewUserNotificationEmail, sendAdminUserLoginNotificationEmail,
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 
 const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
 
@@ -185,6 +186,35 @@ export async function POST(req: NextRequest) {
                     )
                 );
 
+                userCreatedSideEffects.push(
+                    runIdempotentDispatch(
+                        {
+                            dispatchKey: `clerk_user:${id}:webhook_admin:user_created`,
+                            eventType: "user_created",
+                            channel: "webhook_admin",
+                            resourceType: "user",
+                            resourceId: ensured.profile?.id ?? id,
+                            metadata: {
+                                clerk_id: id,
+                                profile_id: ensured.profile?.id ?? null,
+                                email,
+                                action: ensured.action,
+                            },
+                        },
+                        async () => {
+                            await sendAdminNotification(
+                                [
+                                    "👤 <b>تسجيل اشتراك جديد</b>",
+                                    `الاسم: ${escapeAdminNotificationHtml(displayName)}`,
+                                    `البريد: ${escapeAdminNotificationHtml(email)}`,
+                                    `الجوال: ${escapeAdminNotificationHtml(phone)}`,
+                                    `الحالة: ${escapeAdminNotificationHtml(ensured.action === "created" ? "مستخدم جديد" : "تحديث ربط موجود")}`,
+                                ].join("\n")
+                            );
+                        }
+                    )
+                );
+
                 const sideEffectResults = await Promise.allSettled(userCreatedSideEffects);
                 for (const result of sideEffectResults) {
                     if (result.status === "rejected") {
@@ -222,44 +252,85 @@ export async function POST(req: NextRequest) {
             const userAgent = evt.event_attributes?.http_request?.user_agent || null;
 
             try {
-                await runIdempotentDispatch(
-                    {
-                        dispatchKey: `clerk_session:${id}:admin_email:session_created`,
-                        eventType: "session_created",
-                        channel: "email_admin",
-                        resourceType: "session",
-                        resourceId: id,
-                        metadata: {
-                            clerk_id: user_id,
-                            session_id: id,
-                            email,
-                            ip_address: ipAddress,
-                            city: latest_activity?.city ?? null,
-                            country: latest_activity?.country ?? null,
-                            device_type: latest_activity?.device_type ?? null,
-                            browser_name: latest_activity?.browser_name ?? null,
+                const sessionSideEffects = [
+                    runIdempotentDispatch(
+                        {
+                            dispatchKey: `clerk_session:${id}:admin_email:session_created`,
+                            eventType: "session_created",
+                            channel: "email_admin",
+                            resourceType: "session",
+                            resourceId: id,
+                            metadata: {
+                                clerk_id: user_id,
+                                session_id: id,
+                                email,
+                                ip_address: ipAddress,
+                                city: latest_activity?.city ?? null,
+                                country: latest_activity?.country ?? null,
+                                device_type: latest_activity?.device_type ?? null,
+                                browser_name: latest_activity?.browser_name ?? null,
+                            },
                         },
-                    },
-                    async () => {
-                        const result = await sendAdminUserLoginNotificationEmail({
-                            name: displayName,
-                            email,
-                            phone,
-                            username: user?.username ?? null,
-                            clerkId: user_id,
-                            sessionId: id,
-                            ipAddress,
-                            userAgent,
-                            city: latest_activity?.city ?? null,
-                            country: latest_activity?.country ?? null,
-                            deviceType: latest_activity?.device_type ?? null,
-                            browserName: latest_activity?.browser_name ?? null,
-                        });
-                        if (result.success === false) {
-                            throw new Error("Failed to send admin user login email");
+                        async () => {
+                            const result = await sendAdminUserLoginNotificationEmail({
+                                name: displayName,
+                                email,
+                                phone,
+                                username: user?.username ?? null,
+                                clerkId: user_id,
+                                sessionId: id,
+                                ipAddress,
+                                userAgent,
+                                city: latest_activity?.city ?? null,
+                                country: latest_activity?.country ?? null,
+                                deviceType: latest_activity?.device_type ?? null,
+                                browserName: latest_activity?.browser_name ?? null,
+                            });
+                            if (result.success === false) {
+                                throw new Error("Failed to send admin user login email");
+                            }
                         }
+                    ),
+                    runIdempotentDispatch(
+                        {
+                            dispatchKey: `clerk_session:${id}:webhook_admin:session_created`,
+                            eventType: "session_created",
+                            channel: "webhook_admin",
+                            resourceType: "session",
+                            resourceId: id,
+                            metadata: {
+                                clerk_id: user_id,
+                                session_id: id,
+                                email,
+                                ip_address: ipAddress,
+                                city: latest_activity?.city ?? null,
+                                country: latest_activity?.country ?? null,
+                                device_type: latest_activity?.device_type ?? null,
+                                browser_name: latest_activity?.browser_name ?? null,
+                            },
+                        },
+                        async () => {
+                            await sendAdminNotification(
+                                [
+                                    "🔐 <b>تسجيل دخول جديد</b>",
+                                    `المستخدم: ${escapeAdminNotificationHtml(displayName)}`,
+                                    `البريد: ${escapeAdminNotificationHtml(email)}`,
+                                    `الدولة/المدينة: ${escapeAdminNotificationHtml([latest_activity?.country, latest_activity?.city].filter(Boolean).join(" / ") || null)}`,
+                                    `الجهاز: ${escapeAdminNotificationHtml(latest_activity?.device_type || null)}`,
+                                    `المتصفح: ${escapeAdminNotificationHtml(latest_activity?.browser_name || null)}`,
+                                    `IP: ${escapeAdminNotificationHtml(ipAddress)}`,
+                                ].join("\n")
+                            );
+                        }
+                    ),
+                ];
+
+                const sessionResults = await Promise.allSettled(sessionSideEffects);
+                for (const result of sessionResults) {
+                    if (result.status === "rejected") {
+                        console.error("[Clerk Webhook] session.created side effect:", result.reason);
                     }
-                );
+                }
             } catch (error) {
                 console.error("[Clerk Webhook] session.created side effect:", error);
             }

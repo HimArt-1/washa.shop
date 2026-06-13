@@ -14,7 +14,7 @@ import { createUserNotification } from "@/app/actions/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
-import { sendAdminNotification } from "@/lib/notifications";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -109,6 +109,7 @@ async function dispatchOrderCreatedSideEffects(params: {
     total: number;
     buyerId: string;
     isCod: boolean;
+    paymentLabel: string;
     customerEmail?: string | null;
     customerName?: string | null;
     emailItems: OrderEmailItem[];
@@ -119,7 +120,7 @@ async function dispatchOrderCreatedSideEffects(params: {
         tax: number;
     };
 }) {
-    const { orderId, orderNumber, total, buyerId, isCod, customerEmail, customerName, emailItems, breakdown } = params;
+    const { orderId, orderNumber, total, buyerId, isCod, paymentLabel, customerEmail, customerName, emailItems, breakdown } = params;
     const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total);
 
     const sideEffects = [
@@ -207,7 +208,7 @@ async function dispatchOrderCreatedSideEffects(params: {
                 metadata,
             },
             async () => {
-                const message = `🛍️ <b>طلب جديد!</b>\nالطلب: #${orderNumber}\nالقيمة: ${total.toLocaleString()} ر.س\nالدفع: ${isCod ? "عند الاستلام" : "إلكتروني (بانتظار الدفع)"}`;
+                const message = `🛍️ <b>طلب جديد!</b>\nالطلب: #${escapeAdminNotificationHtml(orderNumber)}\nالقيمة: ${total.toLocaleString()} ر.س\nالدفع: ${escapeAdminNotificationHtml(paymentLabel)}`;
                 await sendAdminNotification(message);
             }
         ),
@@ -400,7 +401,7 @@ async function dispatchOrderPaymentSideEffects(params: {
                 metadata,
             },
             async () => {
-                const message = `💸 <b>تم استلام الدفع!</b>\nالطلب: #${orderNumber}\nالقيمة: ${total.toLocaleString()} ر.س`;
+                const message = `💸 <b>تم استلام الدفع!</b>\nالطلب: #${escapeAdminNotificationHtml(orderNumber)}\nالقيمة: ${total.toLocaleString()} ر.س`;
                 await sendAdminNotification(message);
             }
         ),
@@ -551,6 +552,17 @@ export async function createOrder(
     const initialStatus = (isCod || isPos) ? "confirmed" : "pending";
     const initialPaymentStatus = isPos ? "paid" : "pending";
     const orderNotes = isPos ? (options?.paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)") : null;
+    const paymentLabel = isCod
+        ? "عند الاستلام"
+        : options?.paymentMethod === "pos_cash"
+            ? "نقطة بيع (كاش)"
+            : options?.paymentMethod === "pos_card"
+                ? "نقطة بيع (شبكة)"
+                : options?.paymentMethod === "stripe"
+                    ? "Stripe (بانتظار الدفع)"
+                    : options?.paymentMethod === "paylink"
+                        ? "Paylink (بانتظار الدفع)"
+                        : "إلكتروني (بانتظار الدفع)";
 
     // 4. Create order
     // COD: مؤكد — الدفع عند الاستلام
@@ -637,6 +649,7 @@ export async function createOrder(
         total,
         buyerId,
         isCod,
+        paymentLabel,
         customerEmail: user.emailAddresses?.[0]?.emailAddress,
         customerName: shippingAddress.name || user.firstName || "عميل",
         emailItems: buildOrderEmailItems(items),

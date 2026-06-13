@@ -1,4 +1,18 @@
+export function escapeAdminNotificationHtml(value: unknown): string {
+    return String(value ?? "—")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
 
+export function getAdminNotificationBotStatus() {
+    return {
+        telegram: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
+        discord: Boolean(process.env.DISCORD_WEBHOOK_URL),
+    };
+}
 
 /**
  * Sends a notification message to the configured admin channels (Telegram / Discord).
@@ -6,7 +20,7 @@
  */
 export async function sendAdminNotification(message: string) {
     try {
-        const promises: Promise<any>[] = [];
+        const promises: Promise<Response>[] = [];
 
         // 1. Telegram
         const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -34,7 +48,7 @@ export async function sendAdminNotification(message: string) {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        content: message,
+                        content: message.replace(/<\/?b>/g, "**"),
                     }),
                 })
             );
@@ -42,7 +56,17 @@ export async function sendAdminNotification(message: string) {
 
         // Wait for all enabled notifications to send
         if (promises.length > 0) {
-            await Promise.allSettled(promises);
+            const results = await Promise.allSettled(promises);
+            for (const result of results) {
+                if (result.status === "rejected") {
+                    console.error("Admin notification request failed:", result.reason);
+                    continue;
+                }
+
+                if (!result.value.ok) {
+                    console.error("Admin notification channel returned error:", result.value.status, result.value.statusText);
+                }
+            }
         }
     } catch (error) {
         console.error("Failed to send admin notification:", error);

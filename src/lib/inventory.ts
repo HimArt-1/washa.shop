@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { sendAdminNotification } from "./notifications";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "./notifications";
 import {
     consumeSmartStoreReservationForOrder,
     restoreSmartStoreStockForOrder,
@@ -166,8 +166,9 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                     .update({ stock_quantity: newQty, in_stock: newQty > 0 })
                     .eq("id", item.product_id);
                 if (newQty <= 5) {
+                    const stockTitle = newQty <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض";
                     void sendAdminNotification(
-                        `⚠️ <b>تنبيه مخزون منخفض:</b> "${product.title}" — الكمية المتبقية: ${newQty}`
+                        `⚠️ <b>${stockTitle}:</b> "${escapeAdminNotificationHtml(product.title)}" — الكمية المتبقية: ${newQty}`
                     );
                 }
             }
@@ -216,8 +217,9 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                 const title = Array.isArray(skuDetails.products)
                     ? (skuDetails.products[0] as any)?.title
                     : (skuDetails.products as any)?.title;
+                const stockTitle = newQuantity <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض";
                 void sendAdminNotification(
-                    `⚠️ <b>تنبيه مخزون منخفض:</b> "${title}" (${item.size || "-"}) — المتبقي: ${newQuantity}`
+                    `⚠️ <b>${stockTitle}:</b> "${escapeAdminNotificationHtml(title)}" (${escapeAdminNotificationHtml(item.size || "-")}) — المتبقي: ${newQuantity}`
                 );
             }
         }

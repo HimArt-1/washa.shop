@@ -94,6 +94,8 @@ import {
     releaseSmartStoreSizeReservation,
     reserveSmartStoreSizeStock,
 } from "@/lib/smart-store-inventory";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
+import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
 
 
 function getSmartStoreSb() {
@@ -1340,6 +1342,38 @@ export async function submitDesignOrder(orderData: {
         input.design_method,
         data.id
     ).catch(err => console.error("Failed to send design order email async", err));
+
+    await runIdempotentDispatch(
+        {
+            dispatchKey: `design_order:${data.id}:webhook_admin:new_order`,
+            eventType: "design_order_created",
+            channel: "webhook_admin",
+            resourceType: "design_order",
+            resourceId: data.id,
+            metadata: {
+                design_order_id: data.id,
+                order_number: data.order_number,
+                customer_email: finalCustomerEmail,
+                garment_name: garmentName,
+                color_name: colorName,
+                design_method: input.design_method,
+                source: "smart_store",
+            },
+        },
+        async () => {
+            await sendAdminNotification(
+                [
+                    "🎨 <b>طلب تصميم جديد</b>",
+                    `الطلب: #${escapeAdminNotificationHtml(data.order_number)}`,
+                    `العميل: ${escapeAdminNotificationHtml(finalCustomerName || "عميل")}`,
+                    `البريد: ${escapeAdminNotificationHtml(finalCustomerEmail)}`,
+                    `الجوال: ${escapeAdminNotificationHtml(finalCustomerPhone)}`,
+                    `المنتج: ${escapeAdminNotificationHtml(garmentName)} (${escapeAdminNotificationHtml(colorName)})`,
+                    `المصدر: المتجر الذكي`,
+                ].join("\n")
+            );
+        }
+    ).catch(console.error);
 
     return {
         success: true,

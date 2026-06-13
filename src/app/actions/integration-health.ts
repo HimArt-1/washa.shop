@@ -118,6 +118,12 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             : ["genai", "gemini", "nanobanana"].includes(aiProvider)
                 ? hasEnv("GEMINI_API_KEY") || hasEnv("GOOGLE_GENERATIVE_AI_API_KEY")
                 : false;
+    const telegramBotReady = hasEnv("TELEGRAM_BOT_TOKEN") && hasEnv("TELEGRAM_CHAT_ID");
+    const discordBotReady = hasEnv("DISCORD_WEBHOOK_URL");
+    const adminBotChannels = [
+        telegramBotReady ? "Telegram" : null,
+        discordBotReady ? "Discord" : null,
+    ].filter(Boolean).join(" + ");
 
     const items: IntegrationHealthItem[] = [
         item({
@@ -237,15 +243,25 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             id: "messages",
             name: "البريد والتنبيهات",
             category: "التواصل",
-            summary: "رسائل البريد والبوش مسؤولة عن إشعارات الطلبات والدعم.",
+            summary: adminBotChannels
+                ? `رسائل البريد والبوش وبوت الأدمن تعمل عبر ${adminBotChannels}.`
+                : "رسائل البريد والبوش تعمل، وبوت الأدمن يحتاج تفعيل قناة Telegram أو Discord.",
             checks: [
                 check("Resend API", "RESEND_API_KEY", false),
                 check("مرسل البريد", "EMAIL_FROM", false, cleanEnvValue("EMAIL_FROM") || "الافتراضي: info@washa.shop"),
                 check("VAPID Public", "VAPID_PUBLIC_KEY", false),
                 check("VAPID Private", "VAPID_PRIVATE_KEY", false),
                 check("VAPID Public للواجهة", "NEXT_PUBLIC_VAPID_PUBLIC_KEY", false),
+                {
+                    label: "بوت تنبيهات الأدمن",
+                    ok: Boolean(adminBotChannels),
+                    required: false,
+                    detail: adminBotChannels || "اضبط Telegram أو Discord",
+                },
             ],
-            action: "فعّل Resend وVAPID قبل تشغيل تنبيهات الإنتاج على نطاق واسع.",
+            action: adminBotChannels
+                ? "اختبر حدث طلب جديد وتأكد من وصول التنبيه إلى قناة الأدمن."
+                : "فعّل Telegram أو Discord مع Resend وVAPID قبل تشغيل تنبيهات الإنتاج على نطاق واسع.",
         }),
     ];
 
