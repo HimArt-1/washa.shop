@@ -47,7 +47,7 @@ export function AdminQuickActions({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-wrap gap-2 justify-end sm:justify-start max-w-full"
+            className="flex w-full min-w-0 flex-wrap justify-start gap-2 lg:justify-end"
             aria-label="اختصارات لوحة الإدارة"
         >
             {actions.map((a) => {
@@ -63,7 +63,7 @@ export function AdminQuickActions({
                         href={a.href + (a.query || "")}
                         target={a.external ? "_blank" : undefined}
                         rel={a.external ? "noopener noreferrer" : undefined}
-                        className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl border border-theme-soft bg-surface/50 hover:bg-surface/80 hover:border-gold/20 transition-all duration-300 group min-w-0"
+                        className="flex min-w-[8.25rem] max-w-full flex-1 items-center gap-2 rounded-xl border border-theme-soft bg-surface/50 px-3.5 py-2.5 transition-all duration-300 hover:border-gold/20 hover:bg-surface/80 active:scale-[0.98] sm:flex-none sm:px-4"
                     >
                         <Icon className="w-4 h-4 shrink-0 text-theme-subtle group-hover:text-gold transition-colors" />
                         <span className="text-sm font-medium text-theme-soft group-hover:text-theme truncate">

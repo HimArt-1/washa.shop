@@ -18,6 +18,7 @@ import {
     MessageSquareMore,
     Search,
     ShieldAlert,
+    SlidersHorizontal,
     Sparkles,
     User,
 } from "lucide-react";
@@ -151,6 +152,42 @@ function SummaryCard({
             </div>
             <p className="text-sm leading-6 text-theme-subtle">{subtitle}</p>
         </motion.div>
+    );
+}
+
+function DecisionRow({
+    icon: Icon,
+    label,
+    value,
+    detail,
+    tone,
+}: {
+    icon: ComponentType<{ className?: string }>;
+    label: string;
+    value: string;
+    detail: string;
+    tone: "critical" | "warning" | "good";
+}) {
+    const toneClass =
+        tone === "critical"
+            ? "border-red-500/20 bg-red-500/[0.05] text-red-200"
+            : tone === "warning"
+              ? "border-amber-500/20 bg-amber-500/[0.05] text-amber-200"
+              : "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-200";
+
+    return (
+        <div className={`rounded-2xl border p-4 ${toneClass}`}>
+            <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                    <p className="text-xs font-bold text-current/75">{label}</p>
+                    <p className="mt-2 text-sm leading-6 text-theme-subtle">{detail}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    <span className="tabular-nums text-xl font-black text-theme">{value}</span>
+                    <Icon className="h-4 w-4" />
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -297,6 +334,20 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
             : missionTone === "warning"
               ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
               : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200";
+    const missionLabel = missionTone === "critical" ? "ضغط حرج" : missionTone === "warning" ? "يتطلب تدخلًا" : "تشغيل مستقر";
+    const missionSummary =
+        missionTone === "critical"
+            ? "ابدأ بالعاجل ومخاطر اتفاقية الخدمة قبل أي فرز آخر."
+            : missionTone === "warning"
+              ? "الطابور تحت السيطرة لكنه يحتاج متابعة مركزة اليوم."
+              : "لا توجد إشارات ضغط واضحة على طابور الدعم الآن.";
+    const filterItems: Array<{ value: FilterValue; label: string; count: number }> = [
+        { value: "all", label: "الكل", count: tickets.length },
+        { value: "open", label: "الجديدة", count: snapshot.stats.open },
+        { value: "in_progress", label: "قيد المعالجة", count: snapshot.stats.inProgress },
+        { value: "resolved", label: "المحلولة", count: snapshot.stats.resolved },
+        { value: "closed", label: "المغلقة", count: snapshot.stats.closed },
+    ];
 
     return (
         <div className="space-y-6">
@@ -306,42 +357,41 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                     animate={{ opacity: 1, y: 0 }}
                     className={`${panelClass} p-5 sm:p-6 md:p-7`}
                 >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(120,119,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.08),transparent_34%)]" />
                     <div className="relative space-y-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
-                                مركز عمليات الدعم
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-semibold text-gold">
+                                مركز الدعم الفني
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
-                                {missionTone === "critical" ? "ضغط حرج" : missionTone === "warning" ? "يتطلب تدخلًا" : "تشغيل مستقر"}
+                                {missionLabel}
                             </span>
                         </div>
 
-                        <div className="max-w-3xl space-y-4">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
-                                غرفة قيادة الدعم لمراقبة الطوابير، أعمار التذاكر، وسرعة الاستجابة من شاشة واحدة.
+                        <div className="max-w-3xl space-y-3">
+                            <h2 className="text-2xl font-black leading-tight text-theme md:text-3xl">
+                                طابور الدعم، مخاطر SLA، والردود العاجلة في شاشة واحدة.
                             </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هذا المركز يفصل بين الضغط الفعلي، التذاكر العاجلة، التذاكر الراكدة، والإنجاز اليومي حتى تتحول
-                                إدارة الدعم من متابعة يدوية إلى تشغيل منضبط ومقاس.
+                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle">
+                                {missionSummary}
                             </p>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="grid gap-3 md:grid-cols-3">
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الضغط الحالي</p>
+                                <p className="text-xs font-bold text-theme-faint">الحمل الحالي</p>
                                 <p className="mt-3 text-3xl font-black text-theme">{serviceLoad}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">يشمل الجديدة، الجاري العمل عليها، العاجلة، والراكدة.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">جديدة، قيد المعالجة، عاجلة، وراكدة.</p>
                             </div>
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">عمر التذاكر النشطة</p>
+                                <p className="text-xs font-bold text-theme-faint">عمر النشط</p>
                                 <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgActiveHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">كلما ارتفع هذا الرقم زاد احتمال تدهور تجربة الدعم.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">متوسط عمر التذاكر المفتوحة والجارية.</p>
                             </div>
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">معدل الإغلاق</p>
+                                <p className="text-xs font-bold text-theme-faint">معدل الإغلاق</p>
                                 <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgResolutionHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">متوسط الزمن التقريبي من فتح التذكرة حتى إغلاقها.</p>
+                                <p className="mt-2 text-sm text-theme-subtle">متوسط الزمن حتى الحل أو الإغلاق.</p>
                             </div>
                         </div>
                     </div>
@@ -357,59 +407,46 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-theme-faint">نبض الدعم</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
+                            <p className="text-xs font-medium text-theme-faint">قرارات اليوم</p>
+                            <h3 className="mt-1 text-lg font-bold text-theme">ابدأ من الأعلى أثراً</h3>
                         </div>
                     </div>
 
                     <div className="mt-6 space-y-3">
-                        <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-red-200">
-                                <Flame className="h-4 w-4" />
-                                <span className="text-sm font-bold">الحرج</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.urgentOpen > 0
-                                    ? `هناك ${snapshot.stats.urgentOpen} تذاكر عاجلة مفتوحة تتطلب ردًا أو تصعيدًا فوريًا.`
-                                    : "لا توجد تذاكر عاجلة مفتوحة حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-fuchsia-500/15 bg-fuchsia-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-fuchsia-200">
-                                <ShieldAlert className="h-4 w-4" />
-                                <span className="text-sm font-bold">اتفاقية الخدمة</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.slaBreached > 0
-                                    ? `${snapshot.stats.slaBreached} تذاكر تجاوزت اتفاقية الخدمة و ${snapshot.stats.slaAtRisk} أخرى على حافة التجاوز.`
+                        <DecisionRow
+                            icon={Flame}
+                            label="العاجل"
+                            value={String(snapshot.stats.urgentOpen)}
+                            detail={snapshot.stats.urgentOpen > 0 ? "رد أو تصعيد فوري قبل أي فرز آخر." : "لا توجد تذاكر عاجلة مفتوحة."}
+                            tone={snapshot.stats.urgentOpen > 0 ? "critical" : "good"}
+                        />
+                        <DecisionRow
+                            icon={ShieldAlert}
+                            label="SLA"
+                            value={String(snapshot.stats.slaAtRisk + snapshot.stats.slaBreached)}
+                            detail={
+                                snapshot.stats.slaBreached > 0
+                                    ? `${snapshot.stats.slaBreached} متجاوزة و ${snapshot.stats.slaAtRisk} على الحافة.`
                                     : snapshot.stats.slaAtRisk > 0
-                                      ? `${snapshot.stats.slaAtRisk} تذاكر تقترب من تجاوز اتفاقية الخدمة وتحتاج ضبط الإيقاع قبل أن تتدهور.`
-                                      : "لا توجد تذاكر معرضة لتجاوز اتفاقية الخدمة حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-amber-200">
-                                <Clock3 className="h-4 w-4" />
-                                <span className="text-sm font-bold">الاختناق</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.staleActive > 0
-                                    ? `${snapshot.stats.staleActive} تذاكر نشطة تجاوزت 24 ساعة دون إغلاق، وهذا مؤشر اختناق مباشر.`
-                                    : "لا توجد تذاكر راكدة تتجاوز 24 ساعة حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-emerald-200">
-                                <Sparkles className="h-4 w-4" />
-                                <span className="text-sm font-bold">الإيقاع</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                تم إنشاء {snapshot.stats.createdToday} تذاكر اليوم، وأُغلقت أو حُلَّت {snapshot.stats.resolvedToday} تذاكر اليوم.
-                            </p>
-                        </div>
+                                      ? "تذاكر تقترب من تجاوز اتفاقية الخدمة."
+                                      : "لا توجد تذاكر في منطقة الخطر."
+                            }
+                            tone={snapshot.stats.slaBreached > 0 ? "critical" : snapshot.stats.slaAtRisk > 0 ? "warning" : "good"}
+                        />
+                        <DecisionRow
+                            icon={Clock3}
+                            label="الركود"
+                            value={String(snapshot.stats.staleActive)}
+                            detail={snapshot.stats.staleActive > 0 ? "تذاكر نشطة تجاوزت 24 ساعة دون إغلاق." : "لا توجد تذاكر راكدة حالياً."}
+                            tone={snapshot.stats.staleActive > 0 ? "warning" : "good"}
+                        />
+                        <DecisionRow
+                            icon={Sparkles}
+                            label="إيقاع اليوم"
+                            value={`${snapshot.stats.resolvedToday}/${snapshot.stats.createdToday}`}
+                            detail="المغلقة أو المحلولة اليوم مقابل الواردة اليوم."
+                            tone={snapshot.stats.resolvedToday >= snapshot.stats.createdToday ? "good" : "warning"}
+                        />
                     </div>
                 </motion.aside>
             </div>
@@ -504,7 +541,7 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                         </p>
                     </div>
 
-                    <div className="flex flex-col gap-3 lg:min-w-[460px]">
+                    <div className="flex flex-col gap-3 lg:min-w-[500px]">
                         <div className="relative">
                             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-theme-faint" />
                             <input
@@ -516,16 +553,10 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
-                            {[
-                                { value: "all", label: "الكل" },
-                                { value: "open", label: "الجديدة" },
-                                { value: "in_progress", label: "قيد المعالجة" },
-                                { value: "resolved", label: "المحلولة" },
-                                { value: "closed", label: "المغلقة" },
-                            ].map((item) => (
+                            {filterItems.map((item) => (
                                 <button
                                     key={item.value}
-                                    onClick={() => setFilter(item.value as FilterValue)}
+                                    onClick={() => setFilter(item.value)}
                                     className={`rounded-full border px-3 py-1.5 text-xs font-bold transition-all ${
                                         filter === item.value
                                             ? "border-gold/35 bg-gold/15 text-gold"
@@ -533,14 +564,15 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                                     }`}
                                 >
                                     {item.label}
+                                    <span className="mr-1 tabular-nums text-[10px] opacity-70">{item.count}</span>
                                 </button>
                             ))}
 
                             <button
                                 onClick={() => setSortBy(sortBy === "recent" ? "priority" : "recent")}
-                                className="mr-auto inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-bold text-theme-subtle transition-all hover:bg-theme-subtle hover:text-theme"
+                                className="mr-auto inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-bold text-theme-subtle transition-all hover:bg-theme-subtle hover:text-theme active:scale-[0.98]"
                             >
-                                <Filter className="h-3.5 w-3.5" />
+                                <SlidersHorizontal className="h-3.5 w-3.5" />
                                 {sortBy === "recent" ? "ترتيب: الأحدث" : "ترتيب: الأولوية"}
                             </button>
                         </div>
@@ -609,6 +641,16 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                         <div className="px-6 py-16 text-center">
                             <Headphones className="mx-auto h-12 w-12 text-theme-faint opacity-40" />
                             <p className="mt-4 text-sm font-medium text-theme-subtle">لا توجد تذاكر تطابق هذا الفلتر حاليًا.</p>
+                            <button
+                                onClick={() => {
+                                    setFilter("all");
+                                    setQuery("");
+                                }}
+                                className="mt-5 inline-flex items-center gap-2 rounded-full border border-gold/25 bg-gold/10 px-4 py-2 text-xs font-bold text-gold transition-colors hover:bg-gold/15"
+                            >
+                                <Filter className="h-3.5 w-3.5" />
+                                إعادة ضبط العرض
+                            </button>
                         </div>
                     )}
                 </div>

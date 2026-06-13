@@ -3,25 +3,18 @@
 import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { 
     Clock, 
     Package, 
     Truck, 
-    CheckCircle2, 
-    ArrowLeft, 
     Search,
-    Filter,
-    ExternalLink,
-    AlertCircle,
-    User,
     CreditCard,
-    ChevronDown,
     Printer,
     Boxes,
     ShoppingCart,
     Warehouse,
     FileText,
-    ShieldCheck,
     Activity
 } from "lucide-react";
 import { OrderInspectionModal } from "./OrderInspectionModal";
@@ -29,7 +22,7 @@ import { InvoiceBuilder } from "@/components/admin/InvoiceBuilder";
 import { ShippingLabelBuilder } from "@/components/admin/ShippingLabelBuilder";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { Lock, CheckSquare, Square, X, BrainCircuit, CreditCard as CardIcon, Zap, Info, XCircle } from "lucide-react";
+import { Lock, CheckSquare, Square, CreditCard as CardIcon, Info, XCircle } from "lucide-react";
 import { FulfillmentLedger } from "./FulfillmentLedger";
 import { toast } from "sonner";
 import {
@@ -39,7 +32,7 @@ import {
     initiateBulkWarehousePayment,
     markBatchAsPaidToWarehouse,
     bookTorodShipment,
-    cancelTorodShipment, // New
+    cancelTorodShipment,
 } from "@/app/actions/admin";
 
 interface OrderItem {
@@ -103,7 +96,6 @@ interface FulfillmentCommandCenterProps {
 }
 
 import { FulfillmentPerformanceGauge } from "./FulfillmentPerformanceGauge";
-import { CyberGlitchText } from "./CyberGlitchText";
 
 export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps) {
     const [activeQueue, setActiveQueue] = useState<keyof typeof data.queues>("confirmed");
@@ -178,16 +170,44 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
         });
     };
 
-    const currentOrders = data.queues[activeQueue].filter(o => 
-        o.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.buyer.display_name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     const queueLabels = {
         confirmed: { label: "بانتظار التجهيز", icon: Boxes, color: "text-amber-400" },
         processing: { label: "جاري التحضير", icon: Clock, color: "text-sky-400" },
         shipped: { label: "تم الشحن", icon: Truck, color: "text-emerald-400" },
     };
+    const currentOrders = data.queues[activeQueue].filter(o =>
+        o.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.buyer.display_name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    const totalQueued =
+        data.stats.confirmedCount +
+        data.stats.processingCount +
+        data.stats.shippedCount;
+    const operatingMode =
+        data.stats.confirmedCount > 0
+            ? {
+                label: "تجهيز مطلوب",
+                detail: `${data.stats.confirmedCount} طلب بانتظار بدء التنفيذ.`,
+                className: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+            }
+            : data.stats.processingCount > 0
+                ? {
+                    label: "قيد التنفيذ",
+                    detail: `${data.stats.processingCount} طلب داخل التجهيز الآن.`,
+                    className: "border-gold/30 bg-gold/10 text-gold",
+                }
+                : data.stats.shippedCount > 0
+                    ? {
+                        label: "متابعة الشحن",
+                        detail: `${data.stats.shippedCount} طلب خرج للشحن ويحتاج متابعة تسليم.`,
+                        className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+                    }
+                    : {
+                        label: "لا يوجد ضغط",
+                        detail: "لا توجد طلبات نشطة في مسارات التنفيذ الحالية.",
+                        className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+                    };
+    const activeQueueLabel = queueLabels[activeQueue].label;
 
     const handleWarehousePayment = async (orderId: string) => {
         startTransition(async () => {
@@ -232,7 +252,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
             const result = await bookTorodShipment(orderId);
             if (result.success) {
                 toast.success(result.is_simulation
-                    ? `تم حجز الشحنة كتجربة: ${result.tracking_number}`
+                    ? `تم تسجيل الشحنة برقم تتبع: ${result.tracking_number}`
                     : `تم حجز الشحنة بنجاح: ${result.tracking_number}`
                 );
             } else {
@@ -255,102 +275,58 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
     };
 
     return (
-        <div className="relative min-h-screen space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20 select-none">
-            {/* Subtle page texture */}
-            <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.03]" 
-                 style={{ backgroundImage: `radial-gradient(var(--wucha-gold) 0.5px, transparent 0.5px)`, backgroundSize: '24px 24px' }} />
-            
-            {/* Scanline Effect */}
-            <div className="fixed inset-0 pointer-events-none z-[60] opacity-[0.04] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] animate-scan" />
-
-            <div className="relative z-10 flex items-center justify-between mb-10">
-                <div className="flex items-center gap-4">
-                    <div className="w-1.5 h-12 bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]" />
-                    <div>
-                        <h2 className="text-xl font-black text-gold tracking-tight">مركز قيادة الطلبات</h2>
-                        <p className="mt-1 text-[11px] text-theme-faint">مراقبة التنفيذ والدفع والشحن من شاشة واحدة</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-6">
-                    <div className="text-left">
-                        <p className="mb-1 text-[10px] font-bold text-theme-faint">استقرار التشغيل</p>
-                        <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map(i => (
-                                <motion.div 
-                                    key={i}
-                                    animate={{ opacity: [0.2, 1, 0.2] }}
-                                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                                    className="w-4 h-1 bg-gold/40"
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Operations summary */}
-            <div className="relative z-10 mb-8 p-4 rounded-[40px] bg-theme-base/50 border border-theme-border/50 backdrop-blur-xl overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-emerald-500/5 opacity-50" />
-                
-                <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 px-4">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-gold/20 flex items-center justify-center border border-gold/30 animate-pulse">
-                            <Zap className="w-6 h-6 text-gold" />
-                        </div>
+        <div className="relative space-y-6 pb-20">
+            <div className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6">
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(206,174,127,0.13),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(34,197,94,0.07),transparent_50%)]" />
+                <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+                    <div className="flex items-start gap-4">
+                        <div className="mt-1 h-12 w-1.5 rounded-full bg-gold" />
                         <div>
-                            <h3 className="text-xl font-black text-theme-base tracking-tighter flex items-center gap-2">
-                                متابعة عمليات التجهيز
-                                <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-                            </h3>
-                            <p className="text-xs text-theme-subtle">مراقبة مباشرة للطوابير والحالات</p>
+                            <p className="text-[11px] font-bold text-theme-faint">تنفيذ الطلبات</p>
+                            <h2 className="mt-1 text-xl font-black text-theme sm:text-2xl">مركز قيادة الطلبات</h2>
+                            <p className="mt-2 max-w-2xl text-sm leading-7 text-theme-subtle">{operatingMode.detail}</p>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-8 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
-                        <div className="flex flex-col items-center border-r border-theme-border/30 pr-8">
-                            <span className="text-2xl font-black text-gold tabular-nums">{data.stats.confirmedCount}</span>
-                            <span className="text-[10px] text-gold/60 font-black uppercase tracking-widest">انتظار تنفيذ</span>
+                    <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-3">
+                        <div className={`col-span-3 rounded-2xl border px-4 py-3 sm:col-span-1 ${operatingMode.className}`}>
+                            <p className="text-[11px] font-bold opacity-75">وضع التشغيل</p>
+                            <p className="mt-1 text-sm font-black">{operatingMode.label}</p>
                         </div>
-                        <div className="flex flex-col items-center border-r border-theme-border/30 pr-8">
-                            <span className="text-2xl font-black text-emerald-400 tabular-nums">{data.stats.processingCount}</span>
-                            <span className="text-[10px] text-emerald-400/60 font-black uppercase tracking-widest">قيد المعالجة</span>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-center">
+                            <p className="text-[11px] text-theme-faint">النشط</p>
+                            <p className="mt-1 text-lg font-black text-theme tabular-nums">{data.stats.totalPendingFulfillment}</p>
                         </div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-xs font-black text-theme-base bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30 flex items-center gap-2">
-                                <ShieldCheck className="w-3 h-3" />
-                                النظام مستقر
-                            </span>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-center">
+                            <p className="text-[11px] text-theme-faint">الطوابير</p>
+                            <p className="mt-1 text-lg font-black text-theme tabular-nums">{totalQueued}</p>
+                        </div>
+                        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-center">
+                            <p className="text-[11px] text-theme-faint">المستودع</p>
+                            <p className="mt-1 text-lg font-black text-gold tabular-nums">{formatCurrency(data.stats.warehouseDebt)}</p>
                         </div>
                     </div>
                 </div>
             </div>
-            <div className="relative z-10 grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div className="md:col-span-1 p-6 rounded-[32px] bg-gold/10 border border-gold/20 flex flex-col justify-between relative overflow-hidden group">
-                    {/* Pulsing Glow */}
-                    <div className="absolute -right-10 -top-10 w-32 h-32 bg-gold/20 blur-[60px] rounded-full animate-pulse" />
-                    
-                    <div className="relative">
-                        <p className="text-[10px] font-black tracking-[0.2em] text-gold uppercase mb-1 flex items-center gap-2">
-                            <span className="w-1 h-1 rounded-full bg-gold animate-ping" />
-                            حالة العمليات النشطة
-                        </p>
-                        <h2 className="text-5xl font-black text-gold tracking-tighter tabular-nums drop-shadow-2xl">
-                            <CyberGlitchText text={data.stats.totalPendingFulfillment.toString()} />
-                        </h2>
-                    </div>
-                </div>
 
-                <div className="md:col-span-1 p-6 rounded-[32px] bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-between relative overflow-hidden group">
-                    <div className="relative">
-                        <p className="text-[10px] font-black tracking-[0.2em] text-emerald-400 uppercase mb-1 flex items-center gap-2">
-                            <Warehouse className="w-3 h-3" />
-                            استحقاق المستودع
-                        </p>
-                        <h2 className="text-4xl font-black text-emerald-400 tracking-tighter tabular-nums">
-                            {formatCurrency(data.stats.warehouseDebt)}
-                        </h2>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+                <div className="theme-surface-panel relative overflow-hidden rounded-[24px] p-5 md:col-span-2">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(206,174,127,0.08),transparent_48%)]" />
+                    <div className="relative flex h-full flex-col justify-between gap-5">
+                        <div>
+                            <p className="text-[11px] font-bold text-theme-faint">إجمالي العمليات النشطة</p>
+                            <p className="mt-3 text-5xl font-black text-gold tabular-nums">{data.stats.totalPendingFulfillment}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2">
+                                <p className="text-theme-faint">بانتظار تجهيز</p>
+                                <p className="mt-1 text-base font-black text-theme tabular-nums">{data.stats.confirmedCount}</p>
+                            </div>
+                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2">
+                                <p className="text-theme-faint">قيد المعالجة</p>
+                                <p className="mt-1 text-base font-black text-theme tabular-nums">{data.stats.processingCount}</p>
+                            </div>
+                        </div>
                     </div>
-                    <p className="text-[9px] text-emerald-400/60 mt-2 font-bold">تقدير مستحقات التجهيز</p>
                 </div>
 
                 <div className="md:col-span-3 grid grid-cols-3 gap-3">
@@ -364,10 +340,10 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 key={key}
                                 onClick={() => setActiveQueue(key as any)}
                                 className={cn(
-                                    "p-5 rounded-[24px] border transition-all duration-300 flex flex-col items-start gap-4 group relative overflow-hidden",
+                                    "rounded-[24px] border p-5 transition-all duration-300 active:scale-[0.98] flex flex-col items-start gap-4 group relative overflow-hidden",
                                     isActive 
-                                        ? "bg-[var(--wusha-surface)] border-gold/40 shadow-xl shadow-gold/5" 
-                                        : "bg-[var(--wusha-surface)]/40 border-theme-soft hover:border-theme-subtle hover:bg-[var(--wusha-surface)]/60"
+                                        ? "bg-gold/10 border-gold/40"
+                                        : "bg-[var(--wusha-surface)]/70 border-theme-soft hover:border-gold/20 hover:bg-[var(--wusha-surface)]"
                                 )}
                             >
                                 <div className={cn("p-2.5 rounded-xl bg-theme-subtle/50 transition-colors", isActive ? "text-gold" : "text-theme-faint group-hover:text-theme")}>
@@ -380,7 +356,7 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 {isActive && (
                                     <motion.div 
                                         layoutId="active-indicator"
-                                        className="absolute bottom-0 left-0 right-0 h-1 bg-gold shadow-[0_0_15px_rgba(212,175,55,0.5)]"
+                                        className="absolute bottom-0 left-0 right-0 h-1 bg-gold"
                                     />
                                 )}
                             </button>
@@ -390,9 +366,9 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
             </div>
 
             {/* Operational View */}
-            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 {/* Main Feed */}
-                <div className="lg:col-span-8 space-y-6">
+                <div className="space-y-5 lg:col-span-8">
                     <div className="flex items-center justify-between gap-4 py-2">
                         <div className="relative flex-1 group">
                             <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-faint group-focus-within:text-gold transition-colors" />
@@ -404,9 +380,10 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 className="w-full bg-[var(--wusha-surface)]/60 border border-theme-soft focus:border-gold/30 rounded-2xl pr-11 py-3.5 text-sm focus:outline-none focus:ring-1 focus:ring-gold/20 transition-all font-medium"
                             />
                         </div>
-                        <button className="p-3.5 rounded-2xl bg-[var(--wusha-surface)]/60 border border-theme-soft text-theme-faint hover:text-theme transition-colors shadow-lg">
-                            <Filter className="w-4 h-4" />
-                        </button>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs text-theme-subtle">
+                        <span>المسار الحالي: <strong className="text-theme">{activeQueueLabel}</strong></span>
+                        <span>{currentOrders.length} طلب ظاهر</span>
                     </div>
 
                     <div className="space-y-5">
@@ -661,10 +638,6 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                             </div>
                                         </div>
 
-                                        {/* HUD Corner Accents */}
-                                        <div className="absolute top-0 right-0 w-12 h-12 pointer-events-none">
-                                            <div className="absolute top-6 right-6 w-2 h-2 bg-gold/20 rounded-full group-hover:bg-gold transition-all duration-500 group-hover:shadow-[0_0_10px_var(--wucha-gold)]" />
-                                        </div>
                                     </motion.div>
                                 ))
                             ) : (
@@ -673,9 +646,8 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                     animate={{ opacity: 1 }}
                                     className="py-40 text-center"
                                 >
-                                    <div className="w-32 h-32 rounded-full bg-theme-soft/20 flex items-center justify-center mx-auto mb-8 border border-theme-soft/30 group relative backdrop-blur-sm">
-                                        <div className="absolute inset-0 rounded-full border-2 border-gold/10 animate-ping duration-[3s]" />
-                                        <Package className="w-14 h-14 text-theme-faint/40 group-hover:text-gold group-hover:scale-110 transition-all duration-700" />
+                                    <div className="mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-full border border-theme-soft/30 bg-theme-soft/20">
+                                        <Package className="h-14 w-14 text-theme-faint/40" />
                                     </div>
                                     <h3 className="text-2xl font-black text-theme tracking-tight">لا توجد طلبات في هذا المسار</h3>
                                     <p className="text-sm text-theme-faint mt-3 max-w-sm mx-auto font-medium opacity-70">كل المهام الحالية مكتملة، وستظهر الطلبات الجديدة هنا عند انتقالها إلى هذا المسار.</p>
@@ -686,31 +658,31 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                 </div>
 
                 {/* Sidebar Operations */}
-                <div className="relative z-10 lg:col-span-4 space-y-8">
+                <div className="space-y-6 lg:col-span-4">
                     {/* Performance Metrics */}
                     <FulfillmentPerformanceGauge stats={data.stats} />
 
                     {/* Recent Payments Watch (Digital Ledger) */}
-                    <div className="bg-[var(--wusha-surface)] border border-theme-soft rounded-[40px] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+                    <div className="theme-surface-panel rounded-[28px] p-5 sm:p-6">
                         <FulfillmentLedger transactions={data.warehouseLedger || []} />
                     </div>
 
                     {/* Quick Access Grid */}
                     <div className="grid grid-cols-2 gap-4">
-                        <button className="p-6 rounded-[32px] bg-[var(--wusha-surface)] border border-theme-soft hover:border-gold hover:shadow-xl hover:shadow-gold/5 transition-all group flex flex-col items-center justify-center text-center">
-                            <div className="p-3 w-fit rounded-2xl bg-theme-faint group-hover:bg-gold/10 transition-colors shadow-inner">
+                        <Link href="/dashboard/analytics" className="group flex flex-col items-center justify-center rounded-[24px] border border-theme-soft bg-[var(--wusha-surface)] p-5 text-center transition-all hover:border-gold/30 active:scale-[0.98]">
+                            <div className="w-fit rounded-2xl bg-theme-faint p-3 transition-colors group-hover:bg-gold/10">
                                 <FileText className="w-5 h-5 text-theme-faint group-hover:text-gold" />
                             </div>
                             <p className="text-[11px] font-black text-theme mt-4 tracking-wide">تقرير العمليات</p>
                             <p className="text-[9px] text-theme-faint mt-1 font-bold">ملخص يومي</p>
-                        </button>
-                        <button className="p-6 rounded-[32px] bg-[var(--wusha-surface)] border border-theme-soft hover:border-gold hover:shadow-xl hover:shadow-gold/5 transition-all group flex flex-col items-center justify-center text-center">
-                            <div className="p-3 w-fit rounded-2xl bg-theme-faint group-hover:bg-gold/10 transition-colors shadow-inner">
+                        </Link>
+                        <Link href="/dashboard/products-inventory?tab=inventory" className="group flex flex-col items-center justify-center rounded-[24px] border border-theme-soft bg-[var(--wusha-surface)] p-5 text-center transition-all hover:border-gold/30 active:scale-[0.98]">
+                            <div className="w-fit rounded-2xl bg-theme-faint p-3 transition-colors group-hover:bg-gold/10">
                                 <Warehouse className="w-5 h-5 text-theme-faint group-hover:text-gold" />
                             </div>
                             <p className="text-[11px] font-black text-theme mt-4 tracking-wide">إدارة المستودع</p>
                             <p className="text-[9px] text-theme-faint mt-1 font-bold">مزامنة المخزون</p>
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -724,25 +696,22 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                         exit={{ y: 100, opacity: 0 }}
                         className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-4xl px-4"
                     >
-                        <div className="bg-[#0a0a0a]/90 border border-gold/30 backdrop-blur-2xl rounded-[32px] p-4 flex items-center justify-between shadow-[0_-20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(212,175,55,0.1)] overflow-hidden">
-                            {/* Accent Glow */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-gold/5 via-transparent to-gold/5" />
-                            
-                            <div className="relative flex items-center gap-6 pl-4">
+                        <div className="theme-surface-panel flex flex-col gap-4 rounded-[28px] border border-gold/25 p-4 shadow-2xl sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-6 pl-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gold/20 flex items-center justify-center border border-gold/30">
-                                        <BrainCircuit className="w-6 h-6 text-gold" />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-gold/30 bg-gold/20">
+                                        <CheckSquare className="w-5 h-5 text-gold" />
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-theme-faint tracking-[0.12em] mb-0.5">إجراءات جماعية</p>
-                                        <h4 className="text-sm font-black text-theme uppercase tracking-widest flex items-center gap-2">
+                                        <h4 className="text-sm font-black text-theme">
                                             {selectedIds.size} طلبات مختارة
                                         </h4>
                                     </div>
                                 </div>
-                                <div className="h-10 w-px bg-white/10" />
+                                <div className="h-10 w-px bg-theme-subtle" />
                                 <div>
-                                    <p className="text-[10px] font-black text-gold/60 uppercase tracking-widest mb-0.5">إجمالي الدفعة</p>
+                                    <p className="text-[10px] font-black text-gold/60 mb-0.5">إجمالي الدفعة</p>
                                     <div className="flex items-center gap-2">
                                         <p className="text-2xl font-black text-gold tracking-tighter tabular-nums">
                                             {formatCurrency(realBatchCalculation?.grandTotal || calculateBatchDebt())}
@@ -757,24 +726,24 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 </div>
                             </div>
 
-                            <div className="relative flex items-center gap-3 pr-2">
+                            <div className="flex flex-wrap items-center gap-3 pr-2">
                                 <button 
                                     onClick={clearSelection}
-                                    className="px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-faint hover:text-white transition-all border border-white/5 uppercase tracking-widest"
+                                    className="rounded-2xl border border-theme-subtle bg-theme-faint px-5 py-2.5 text-[11px] font-black text-theme-faint transition-all hover:border-gold/20 hover:text-theme active:scale-[0.98]"
                                 >
                                     إلغاء
                                 </button>
                                 <button 
                                     disabled={isPending}
                                     onClick={handleBulkMarkAsPaid}
-                                    className="px-5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[11px] font-black text-theme-subtle hover:text-gold transition-all border border-white/5 uppercase tracking-widest disabled:opacity-50"
+                                    className="rounded-2xl border border-theme-subtle bg-theme-faint px-5 py-2.5 text-[11px] font-black text-theme-subtle transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98] disabled:opacity-50"
                                 >
                                     {isPending ? "جاري التأكيد..." : "تأكيد يدوي"}
                                 </button>
                                 <button 
                                     disabled={isPending}
                                     onClick={handleBulkPayment}
-                                    className="px-8 py-3 rounded-2xl bg-gold text-[#0a0a0a] text-xs font-black hover:bg-gold-light transition-all shadow-[0_10px_30px_rgba(212,175,55,0.3)] hover:-translate-y-0.5 active:translate-y-0.5 flex items-center gap-2 uppercase tracking-widest disabled:opacity-50"
+                                    className="flex items-center gap-2 rounded-2xl bg-gold px-8 py-3 text-xs font-black text-[#0a0a0a] transition-all hover:bg-gold-light active:scale-[0.98] disabled:opacity-50"
                                 >
                                     {isPending ? (
                                         <Activity className="w-4 h-4 animate-spin" />
@@ -795,32 +764,32 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
                         <motion.div 
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-[#0a0a0a]/80 backdrop-blur-md"
+                            className="absolute inset-0 bg-[color-mix(in_srgb,var(--wusha-bg)_78%,transparent)] backdrop-blur-md"
                             onClick={() => setShowBreakdownModal(false)}
                         />
                         <motion.div 
                             initial={{ scale: 0.9, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-[40px] shadow-2xl overflow-hidden p-8"
+                            className="theme-surface-panel relative w-full max-w-2xl overflow-hidden rounded-[28px] p-6 shadow-2xl sm:p-8"
                         >
-                            <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-widest flex items-center gap-3">
-                                <Zap className="text-gold w-6 h-6" />
+                            <h2 className="mb-6 flex items-center gap-3 text-xl font-black text-theme sm:text-2xl">
+                                <Info className="h-5 w-5 text-gold" />
                                 تفاصيل الدفعة المالية
                             </h2>
                             
                             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {Object.entries(realBatchCalculation.breakdowns).map(([id, breakdown]: [string, any]) => (
-                                    <div key={id} className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                                    <div key={id} className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                         <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs font-black text-gold uppercase tracking-widest">
+                                            <span className="text-xs font-black text-gold">
                                                 معرف الطلب: {id.slice(-8)}
                                             </span>
-                                            <span className="text-sm font-black text-white">
+                                            <span className="text-sm font-black text-theme">
                                                 {formatCurrency(breakdown.summary.grandTotal)}
                                             </span>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-2 text-[10px] text-white/40 uppercase tracking-tighter">
+                                        <div className="grid grid-cols-2 gap-2 text-[10px] text-theme-faint">
                                             <div className="flex justify-between"><span>القطع</span> <span>{formatCurrency(breakdown.summary.garmentSubtotal)}</span></div>
                                             <div className="flex justify-between"><span>الطباعة</span> <span>{formatCurrency(breakdown.summary.printingSubtotal)}</span></div>
                                             <div className="flex justify-between"><span>التغليف</span> <span>{formatCurrency(breakdown.summary.packagingTotal)}</span></div>
@@ -830,14 +799,14 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                 ))}
                             </div>
 
-                            <div className="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
+                            <div className="mt-8 flex items-center justify-between border-t border-theme-subtle pt-8">
                                 <div>
-                                    <p className="text-[10px] text-white/40 uppercase tracking-widest">الإجمالي النهائي</p>
+                                    <p className="text-[10px] text-theme-faint">الإجمالي النهائي</p>
                                     <p className="text-4xl font-black text-gold tracking-tighter">{formatCurrency(realBatchCalculation.grandTotal)}</p>
                                 </div>
                                 <button 
                                     onClick={() => setShowBreakdownModal(false)}
-                                    className="px-10 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white font-black text-xs transition-all border border-white/10 uppercase tracking-widest"
+                                    className="rounded-2xl border border-theme-subtle bg-theme-faint px-10 py-4 text-xs font-black text-theme transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98]"
                                 >
                                     إغلاق
                                 </button>

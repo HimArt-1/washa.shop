@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
                     const result = await confirmOrderPayment(orderId, {
                         customerEmail: customerEmail || undefined,
                         webhookEventId: event.id,
+                        paymentProvider: "stripe",
                     });
                     if (result.success) {
                         console.log("[Stripe Webhook] تم تأكيد الطلب:", orderId);

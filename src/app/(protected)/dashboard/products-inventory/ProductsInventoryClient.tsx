@@ -147,6 +147,56 @@ function getAutomationPriorityMeta(priority: AutomationPriority) {
     return { label: "مراقبة", className: "border-sky-500/20 bg-sky-500/10 text-sky-300", dot: "bg-sky-400" };
 }
 
+function getOperatingMode({
+    outOfStock,
+    lowStock,
+    syncCount,
+    critical,
+    high,
+    fulfillmentQueue,
+}: {
+    outOfStock: number;
+    lowStock: number;
+    syncCount: number;
+    critical: number;
+    high: number;
+    fulfillmentQueue: number;
+}) {
+    if (outOfStock > 0) {
+        return {
+            label: "توريد عاجل",
+            detail: `${outOfStock} عنصر نافد ويحتاج تعبئة قبل استقبال طلبات إضافية.`,
+            className: "border-red-500/25 bg-red-500/10 text-red-300",
+        };
+    }
+    if (critical > 0 || fulfillmentQueue > 6) {
+        return {
+            label: "ضغط تنفيذ",
+            detail: `${critical} إجراء حرج و${fulfillmentQueue} طلب في مسار التنفيذ.`,
+            className: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+        };
+    }
+    if (lowStock > 0 || high > 0) {
+        return {
+            label: "متابعة مخزون",
+            detail: `${lowStock} عنصر منخفض و${high} إجراء عالي الأولوية تحت المتابعة.`,
+            className: "border-gold/30 bg-gold/10 text-gold",
+        };
+    }
+    if (syncCount > 0) {
+        return {
+            label: "مراجعة مزامنة",
+            detail: `${syncCount} منتج يحتاج مطابقة بين حالة المتجر والكمية الفعلية.`,
+            className: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+        };
+    }
+    return {
+        label: "تشغيل مستقر",
+        detail: "المخزون والتنفيذ في وضع مستقر، ويمكن متابعة العمليات اليومية من نفس الشاشة.",
+        className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    };
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 /** بطاقة KPI مضغوطة بدون نص شرح */
@@ -324,6 +374,14 @@ export function ProductsInventoryClient({
         sync:     automationQueue.filter(i => i.kind === "sync").length,
         restockValue: automationQueue.filter(i => i.kind === "restock").reduce((s, i) => s + i.estimatedRestockValue, 0),
     }), [automationQueue]);
+    const operatingMode = useMemo(() => getOperatingMode({
+        outOfStock: outOfStockCount,
+        lowStock: lowStockCount,
+        syncCount: automationStats.sync,
+        critical: automationStats.critical,
+        high: automationStats.high,
+        fulfillmentQueue: fulfillmentSnapshot.stats.fulfillmentQueue,
+    }), [automationStats.critical, automationStats.high, automationStats.sync, fulfillmentSnapshot.stats.fulfillmentQueue, lowStockCount, outOfStockCount]);
 
     const selectableVisibleIds = useMemo(() => filteredQueue.filter(i => i.kind === "restock" && i.skuId && i.warehouseId && i.recommendedQty > 0).map(i => i.id), [filteredQueue]);
     const selectedRestockActions = useMemo(() => automationQueue.filter(i => selectedActionIds.includes(i.id) && i.kind === "restock" && i.skuId && i.warehouseId && i.recommendedQty > 0), [automationQueue, selectedActionIds]);
@@ -377,14 +435,15 @@ export function ProductsInventoryClient({
 
             {/* ═══ Layer 1: Command Header ═══════════════════════════════════════ */}
             <section className="theme-surface-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(206,174,127,0.13),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(56,189,248,0.08),transparent_45%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(206,174,127,0.14),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(34,197,94,0.07),transparent_48%)]" />
                 <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
 
                     {/* Left — title + health */}
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-                        <div>
-                            <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint uppercase">Operations Center</p>
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-bold text-theme-faint">تشغيل المخزون</p>
                             <h2 className="mt-1 text-xl font-black text-theme sm:text-2xl">مركز التنفيذ والمخزون</h2>
+                            <p className="mt-1 max-w-2xl text-xs leading-6 text-theme-subtle">{operatingMode.detail}</p>
                         </div>
 
                         {/* Health score bar */}
@@ -401,6 +460,9 @@ export function ProductsInventoryClient({
                                 <p className="text-[11px] text-theme-faint">صحة التنفيذ</p>
                             </div>
                         </div>
+                        <span className={`w-fit rounded-full border px-3 py-1.5 text-xs font-bold ${operatingMode.className}`}>
+                            {operatingMode.label}
+                        </span>
                     </div>
 
                     {/* Right — pulse stats + actions */}
@@ -425,14 +487,14 @@ export function ProductsInventoryClient({
                             <button
                                 onClick={handleSyncStock}
                                 disabled={syncing}
-                                className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/15 disabled:opacity-60"
+                                className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-300 transition-all hover:bg-emerald-500/15 active:scale-[0.98] disabled:opacity-60"
                             >
                                 <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                                <span className="hidden sm:inline">{syncing ? "مزامنة..." : "مزامنة ERP"}</span>
+                                <span className="hidden sm:inline">{syncing ? "جارٍ التحديث" : "مزامنة المخزون"}</span>
                             </button>
                             <button
                                 onClick={() => setShowSmartImport(true)}
-                                className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl border border-gold/40 bg-gold/15 px-4 text-sm font-bold text-gold transition-colors hover:bg-gold/20"
+                                className="inline-flex min-h-[42px] items-center gap-2 rounded-2xl border border-gold/40 bg-gold/15 px-4 text-sm font-bold text-gold transition-all hover:bg-gold/20 active:scale-[0.98]"
                             >
                                 <Package className="h-4 w-4" />
                                 <span className="hidden sm:inline">استيراد ذكي</span>
@@ -461,7 +523,7 @@ export function ProductsInventoryClient({
                     title="الوحدات المتاحة"
                     value={String(totalUnits)}
                     icon={Warehouse}
-                    accent="#38bdf8"
+                    accent="#10b981"
                     detail={<span className="text-xs text-theme-faint">{warehouses.length} مستودع</span>}
                 />
                 <KpiTile
@@ -514,8 +576,8 @@ export function ProductsInventoryClient({
                                             </span>
                                         )}
                                         {automationStats.sync > 0 && (
-                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/20 bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold text-purple-300">
-                                                <span className="h-1.5 w-1.5 rounded-full bg-purple-400" />
+                                            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[11px] font-bold text-rose-300">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
                                                 {automationStats.sync} تعارض
                                             </span>
                                         )}
@@ -535,7 +597,11 @@ export function ProductsInventoryClient({
 
                                 {/* Filter + export */}
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <button onClick={exportQueue} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 text-[11px] font-semibold text-gold transition-colors hover:bg-gold/15">
+                                    <button
+                                        onClick={exportQueue}
+                                        disabled={filteredQueue.length === 0}
+                                        className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 text-[11px] font-semibold text-gold transition-all hover:bg-gold/15 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45"
+                                    >
                                         <Download className="h-3.5 w-3.5" />
                                         تصدير
                                     </button>
@@ -545,7 +611,7 @@ export function ProductsInventoryClient({
                                             <button
                                                 key={f}
                                                 onClick={() => setAutomationFilter(f)}
-                                                className={`min-h-[36px] rounded-full border px-3 text-[11px] font-semibold transition-colors ${automationFilter === f ? "border-gold/40 bg-gold/15 text-gold" : "border-theme-subtle bg-theme-faint text-theme-soft hover:border-gold/20 hover:text-gold"}`}
+                                                className={`min-h-[36px] rounded-full border px-3 text-[11px] font-semibold transition-all active:scale-[0.98] ${automationFilter === f ? "border-gold/40 bg-gold/15 text-gold" : "border-theme-subtle bg-theme-faint text-theme-soft hover:border-gold/20 hover:text-gold"}`}
                                             >
                                                 {fLabel}
                                             </button>
@@ -582,11 +648,11 @@ export function ProductsInventoryClient({
                                 </p>
                                 <div className="flex gap-2">
                                     {selectableVisibleIds.length > 0 && (
-                                        <button onClick={toggleSelectVisible} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-semibold text-theme-soft hover:border-gold/20 hover:text-gold">
+                                        <button onClick={toggleSelectVisible} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-semibold text-theme-soft transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98]">
                                             {allVisibleSelected ? "إلغاء الكل" : "تحديد الكل"}
                                         </button>
                                     )}
-                                    <button onClick={() => setShowBulkExecuteModal(true)} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/15">
+                                    <button onClick={() => setShowBulkExecuteModal(true)} className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-500/15 active:scale-[0.98]">
                                         تنفيذ التعبئة
                                     </button>
                                 </div>
@@ -595,7 +661,7 @@ export function ProductsInventoryClient({
                         {selectedRestockActions.length === 0 && selectableVisibleIds.length > 0 && (
                             <div className="mb-4 flex items-center justify-between gap-3 rounded-[20px] border border-theme-subtle bg-theme-faint px-4 py-3">
                                 <p className="text-xs text-theme-subtle">حدد عناصر التعبئة لتنفيذها مباشرةً</p>
-                                <button onClick={toggleSelectVisible} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-semibold text-theme-soft hover:border-gold/20 hover:text-gold">تحديد الكل</button>
+                                <button onClick={toggleSelectVisible} className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-semibold text-theme-soft transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98]">تحديد الكل</button>
                             </div>
                         )}
 
@@ -660,8 +726,29 @@ export function ProductsInventoryClient({
                                     </motion.div>
                                 );
                             }) : (
-                                <div className="rounded-[20px] border border-dashed border-theme-subtle bg-theme-faint py-10 text-center text-sm text-theme-subtle">
-                                    لا توجد عناصر في هذا الفلتر
+                                <div className="rounded-[20px] border border-dashed border-theme-subtle bg-theme-faint px-5 py-10 text-center">
+                                    <p className="text-sm font-bold text-theme">لا توجد إجراءات في هذا العرض</p>
+                                    <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-theme-subtle">
+                                        غيّر الفلتر أو حدّث المزامنة للتأكد من أن حالة المتجر مطابقة للمخزون الفعلي.
+                                    </p>
+                                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                        {automationFilter !== "all" && (
+                                            <button
+                                                onClick={() => setAutomationFilter("all")}
+                                                className="rounded-full border border-theme-subtle bg-theme-subtle px-3 py-2 text-xs font-semibold text-theme-soft transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98]"
+                                            >
+                                                عرض كل الإجراءات
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={handleSyncStock}
+                                            disabled={syncing}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition-all hover:bg-emerald-500/15 active:scale-[0.98] disabled:opacity-50"
+                                        >
+                                            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+                                            تحديث الحالة
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -672,7 +759,7 @@ export function ProductsInventoryClient({
                 <div className="theme-surface-panel rounded-[28px] p-4 sm:p-5">
                     <div className="mb-4 flex items-center justify-between gap-3">
                         <h3 className="text-sm font-black text-theme">مكتب التنفيذ</h3>
-                        <Link href="/dashboard/orders" className="flex items-center gap-1 rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:text-gold">
+                        <Link href="/dashboard/orders" className="flex items-center gap-1 rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] font-medium text-theme-subtle transition-all hover:border-gold/30 hover:text-gold active:scale-[0.98]">
                             الكل <ChevronRight className="h-3 w-3" />
                         </Link>
                     </div>
@@ -714,7 +801,7 @@ export function ProductsInventoryClient({
                     {fulfillmentSnapshot.stats.pendingReview > 0 && (
                         <Link
                             href="/dashboard/orders?status=pending"
-                            className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/[0.06] px-3 py-2.5 text-xs text-sky-300 transition-colors hover:bg-sky-500/10"
+                            className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-gold/20 bg-gold/[0.07] px-3 py-2.5 text-xs text-gold transition-all hover:bg-gold/10 active:scale-[0.98]"
                         >
                             <span className="font-semibold">{fulfillmentSnapshot.stats.pendingReview} طلب بانتظار التأكيد</span>
                             <ChevronRight className="h-3.5 w-3.5" />
@@ -726,12 +813,12 @@ export function ProductsInventoryClient({
             {/* ═══ Layer 4: Sticky Tab Bar ════════════════════════════════════════ */}
             <section className="sticky top-0 z-30 -mb-1 border-b border-theme-faint bg-bg/95 py-3.5 backdrop-blur-md">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex gap-1.5 rounded-2xl border border-theme-subtle bg-theme-faint p-1 w-fit">
+                    <div className="flex w-full gap-1.5 rounded-2xl border border-theme-subtle bg-theme-faint p-1 sm:w-fit">
                         {tabs.map((t) => (
                             <button
                                 key={t.id}
                                 onClick={() => switchTab(t.id)}
-                                className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200 ${tab === t.id ? "border border-gold/30 bg-gold/20 text-gold shadow-[0_2px_12px_rgba(206,174,127,0.15)]" : "text-theme-subtle hover:bg-theme-subtle hover:text-theme"}`}
+                                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2 text-sm font-medium transition-all duration-200 active:scale-[0.98] sm:flex-none ${tab === t.id ? "border border-gold/30 bg-gold/20 text-gold shadow-[0_2px_12px_rgba(206,174,127,0.15)]" : "text-theme-subtle hover:bg-theme-subtle hover:text-theme"}`}
                             >
                                 <t.icon className="h-4 w-4" />
                                 {t.label}
@@ -740,16 +827,16 @@ export function ProductsInventoryClient({
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                         {lowStockCount > 0 && (
-                            <button onClick={() => switchTab("inventory")} className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 font-semibold text-amber-300 hover:bg-amber-500/15">
+                            <button onClick={() => switchTab("inventory")} className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 font-semibold text-amber-300 transition-all hover:bg-amber-500/15 active:scale-[0.98]">
                                 {lowStockCount} منخفض
                             </button>
                         )}
                         {outOfStockCount > 0 && (
-                            <button onClick={() => switchTab("inventory")} className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 font-semibold text-red-300 hover:bg-red-500/15">
+                            <button onClick={() => switchTab("inventory")} className="rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1.5 font-semibold text-red-300 transition-all hover:bg-red-500/15 active:scale-[0.98]">
                                 {outOfStockCount} نافد
                             </button>
                         )}
-                        <Link href="/dashboard/orders" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 font-semibold text-theme-soft hover:border-gold/30 hover:text-gold">
+                        <Link href="/dashboard/orders" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 font-semibold text-theme-soft transition-all hover:border-gold/30 hover:text-gold active:scale-[0.98]">
                             {fulfillmentSnapshot.stats.fulfillmentQueue} في التنفيذ
                         </Link>
                     </div>

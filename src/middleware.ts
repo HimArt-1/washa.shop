@@ -13,6 +13,7 @@ const isPublicRoute = createRouteMatcher([
     '/sign-in(.*)',
     '/sign-up(.*)',
     '/api/webhooks(.*)',
+    '/api/telegram(.*)',
 ]);
 
 // Routes that need auth state available but shouldn't redirect unauthenticated users

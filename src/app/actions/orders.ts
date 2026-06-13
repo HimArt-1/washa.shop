@@ -9,12 +9,11 @@ import { currentUser } from "@clerk/nextjs/server";
 import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, type OrderEmailItem } from "@/lib/email";
 import { sendPushToAdmins } from "@/lib/push";
 import { checkStockAvailability, decrementStockForOrder } from "@/lib/inventory";
-import { createAdminNotification } from "@/app/actions/notifications";
 import { createUserNotification } from "@/app/actions/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { emitOrderCreatedAlert, emitPaymentReceivedAlert } from "@/lib/operational-event-alerts";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -124,28 +123,13 @@ async function dispatchOrderCreatedSideEffects(params: {
     const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total);
 
     const sideEffects = [
-        runIdempotentDispatch(
-            {
-                dispatchKey: `order:${orderId}:admin_notification:new_order`,
-                eventType: "order_created",
-                channel: "admin_notification",
-                resourceType: "order",
-                resourceId: orderId,
-                metadata,
-            },
-            async () => {
-                const result = await createAdminNotification({
-                    type: "order_new",
-                    category: "orders",
-                    severity: "info",
-                    title: "طلب جديد",
-                    message: `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
-                    link: "/dashboard/orders",
-                    metadata,
-                });
-                assertSuccessfulDispatch(result, "Failed to create admin order notification");
-            }
-        ),
+        emitOrderCreatedAlert({
+            orderId,
+            orderNumber,
+            total,
+            paymentLabel,
+            customerName,
+        }),
         runIdempotentDispatch(
             {
                 dispatchKey: `order:${orderId}:user_notification:created`,
@@ -196,20 +180,6 @@ async function dispatchOrderCreatedSideEffects(params: {
                     `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
                     "/dashboard/orders"
                 );
-            }
-        ),
-        runIdempotentDispatch(
-            {
-                dispatchKey: `order:${orderId}:webhook_admin:new_order`,
-                eventType: "order_created",
-                channel: "webhook_admin",
-                resourceType: "order",
-                resourceId: orderId,
-                metadata,
-            },
-            async () => {
-                const message = `🛍️ <b>طلب جديد!</b>\nالطلب: #${escapeAdminNotificationHtml(orderNumber)}\nالقيمة: ${total.toLocaleString()} ر.س\nالدفع: ${escapeAdminNotificationHtml(paymentLabel)}`;
-                await sendAdminNotification(message);
             }
         ),
     ];
@@ -327,6 +297,7 @@ async function dispatchOrderPaymentSideEffects(params: {
     customerEmail?: string | null;
     customerName?: string | null;
     webhookEventId?: string;
+    paymentProvider?: string;
     breakdown?: {
         subtotal: number;
         discount: number;
@@ -334,32 +305,25 @@ async function dispatchOrderPaymentSideEffects(params: {
         tax: number;
     };
 }) {
-    const { orderId, orderNumber, total, buyerId, customerEmail, customerName, webhookEventId, breakdown } = params;
-    const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total, webhookEventId ? { webhook_event_id: webhookEventId } : undefined);
+    const { orderId, orderNumber, total, buyerId, customerEmail, customerName, webhookEventId, paymentProvider, breakdown } = params;
+    const metadata = buildOrderDispatchMetadata(
+        orderId,
+        orderNumber,
+        total,
+        {
+            ...(webhookEventId ? { webhook_event_id: webhookEventId } : {}),
+            ...(paymentProvider ? { payment_provider: paymentProvider } : {}),
+        }
+    );
 
     const sideEffects = [
-        runIdempotentDispatch(
-            {
-                dispatchKey: `order:${orderId}:admin_notification:payment_received`,
-                eventType: "order_payment_received",
-                channel: "admin_notification",
-                resourceType: "order",
-                resourceId: orderId,
-                metadata,
-            },
-            async () => {
-                const result = await createAdminNotification({
-                    type: "payment_received",
-                    category: "orders",
-                    severity: "info",
-                    title: "تم استلام الدفع",
-                    message: `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
-                    link: "/dashboard/orders/command-center",
-                    metadata,
-                });
-                assertSuccessfulDispatch(result, "Failed to create payment admin notification");
-            }
-        ),
+        emitPaymentReceivedAlert({
+            orderId,
+            orderNumber,
+            total,
+            provider: paymentProvider,
+            webhookEventId,
+        }),
         runIdempotentDispatch(
             {
                 dispatchKey: `order:${orderId}:admin_email:payment_received`,
@@ -389,20 +353,6 @@ async function dispatchOrderPaymentSideEffects(params: {
                     `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
                     "/dashboard/orders"
                 );
-            }
-        ),
-        runIdempotentDispatch(
-            {
-                dispatchKey: `order:${orderId}:webhook_admin:payment_received`,
-                eventType: "order_payment_received",
-                channel: "webhook_admin",
-                resourceType: "order",
-                resourceId: orderId,
-                metadata,
-            },
-            async () => {
-                const message = `💸 <b>تم استلام الدفع!</b>\nالطلب: #${escapeAdminNotificationHtml(orderNumber)}\nالقيمة: ${total.toLocaleString()} ر.س`;
-                await sendAdminNotification(message);
             }
         ),
     ];
@@ -661,6 +611,24 @@ export async function createOrder(
         },
     });
 
+    if (isPos) {
+        await dispatchOrderPaymentSideEffects({
+            orderId: order.id,
+            orderNumber: order.order_number,
+            total,
+            buyerId,
+            customerEmail: user.emailAddresses?.[0]?.emailAddress,
+            customerName: shippingAddress.name || user.firstName || "عميل",
+            paymentProvider: options?.paymentMethod,
+            breakdown: {
+                subtotal,
+                shipping: shipping_cost,
+                tax,
+                discount: options?.discountAmount || 0,
+            },
+        });
+    }
+
     return {
         success: true,
         order_number: order.order_number,
@@ -731,6 +699,7 @@ export async function confirmOrderPayment(
             customerEmail: options?.customerEmail || null,
             customerName: getShippingContactName(order.shipping_address),
             webhookEventId: options?.webhookEventId,
+            paymentProvider: options?.paymentProvider,
             breakdown: {
                 total: order.total,
                 subtotal: order.subtotal || 0,

@@ -19,6 +19,7 @@ import {
     type ShippingLifecycle,
 } from "@/lib/shipping/ops";
 import type { ShippingAddress, OrderStatus } from "@/types/database";
+import { emitShippingEventAlert } from "@/lib/operational-event-alerts";
 
 // ─── Auth Guard ───────────────────────────────────────────────
 
@@ -353,6 +354,19 @@ export async function bookShipmentAction(orderId: string) {
             })
             .eq("id", orderId);
 
+        await emitShippingEventAlert({
+            orderId,
+            orderNumber: order.order_number,
+            status: "booking_failed",
+            severity: "warning",
+            source: "shipping.event.booking_failed",
+            message: `فشل حجز شحنة الطلب #${order.order_number}. السبب: ${result.error || "غير محدد"}.`,
+            metadata: {
+                error: result.error || null,
+                provider: "torod",
+            },
+        });
+
         return { success: false, error: result.error || "فشل الحجز مع طرود" };
     }
 
@@ -386,6 +400,24 @@ export async function bookShipmentAction(orderId: string) {
     if (updateError) {
         return { success: false, error: "تم الحجز لكن فشل تحديث قاعدة البيانات" };
     }
+
+    await emitShippingEventAlert({
+        orderId,
+        orderNumber: order.order_number,
+        status: shippingEventStatus,
+        trackingNumber: result.tracking_number,
+        courierName: result.courier_name,
+        torodOrderId: result.torod_order_id,
+        source: "shipping.event.booking_created",
+        message: result.pending_shipment
+            ? `تم إنشاء طلب طرود للطلب #${order.order_number} وينتظر إصدار رقم التتبع.`
+            : `تم حجز شحنة الطلب #${order.order_number}${result.tracking_number ? ` برقم تتبع ${result.tracking_number}` : ""}.`,
+        metadata: {
+            pending_shipment: result.pending_shipment ?? false,
+            is_simulation: result.is_simulation ?? false,
+            provider: "torod",
+        },
+    });
 
     revalidatePath("/dashboard/shipping");
     revalidatePath("/dashboard/orders");
@@ -467,7 +499,7 @@ export async function cancelShipmentAction(orderId: string) {
 
     const { data: order, error: orderError } = await supabase
         .from("orders")
-        .select("tracking_number, torod_order_id, status, metadata")
+        .select("order_number, tracking_number, torod_order_id, status, metadata")
         .eq("id", orderId)
         .single();
 
@@ -507,6 +539,20 @@ export async function cancelShipmentAction(orderId: string) {
         })
         .eq("id", orderId);
 
+    await emitShippingEventAlert({
+        orderId,
+        orderNumber: order.order_number,
+        status: "Cancelled",
+        severity: "warning",
+        trackingNumber: trackingOrOrderId,
+        torodOrderId: order.torod_order_id,
+        source: "shipping.event.cancelled",
+        message: `تم إلغاء شحنة الطلب #${order.order_number} من مركز عمليات الشحن.`,
+        metadata: {
+            cancelled_tracking_or_order_id: trackingOrOrderId,
+        },
+    });
+
     revalidatePath("/dashboard/shipping");
     revalidatePath("/dashboard/orders");
 
@@ -520,7 +566,7 @@ export async function markDeliveredAction(orderId: string, options?: { codCollec
 
     const { data: order, error: orderError } = await supabase
         .from("orders")
-        .select("status, payment_status, tracking_number, metadata")
+        .select("order_number, status, payment_status, tracking_number, metadata")
         .eq("id", orderId)
         .single();
 
@@ -558,6 +604,20 @@ export async function markDeliveredAction(orderId: string, options?: { codCollec
         .eq("id", orderId);
 
     if (error) return { success: false, error: error.message };
+
+    await emitShippingEventAlert({
+        orderId,
+        orderNumber: order.order_number,
+        status: "Delivered",
+        trackingNumber: order.tracking_number,
+        source: "shipping.event.delivered",
+        message: order.payment_status === "pending"
+            ? `تم تسليم الطلب #${order.order_number} وتأكيد تحصيل مبلغ الدفع عند الاستلام.`
+            : `تم تأكيد تسليم الطلب #${order.order_number}.`,
+        metadata: {
+            cod_collected: order.payment_status === "pending",
+        },
+    });
 
     revalidatePath("/dashboard/shipping");
     revalidatePath("/dashboard/orders");

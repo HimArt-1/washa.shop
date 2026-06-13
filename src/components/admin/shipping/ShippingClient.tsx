@@ -63,16 +63,16 @@ const LIFECYCLE_CONFIG: Record<ShippingLifecycle, {
     },
     pending_torod: {
         label: "بانتظار طرود",
-        description: "تم إنشاء طلب طرود وينتظر رقم التتبع أو تحديث webhook",
-        classes: "border-sky-400/20 bg-sky-400/10 text-sky-300",
-        dot: "bg-sky-400",
+        description: "تم إنشاء طلب طرود وينتظر رقم التتبع أو تحديث شركة الشحن",
+        classes: "border-gold/25 bg-gold/10 text-gold",
+        dot: "bg-gold",
         icon: RadioTower,
     },
     in_transit: {
         label: "في الطريق",
         description: "الشحنة خرجت للتوصيل ويمكن تتبعها",
-        classes: "border-cyan-400/20 bg-cyan-400/10 text-cyan-300",
-        dot: "bg-cyan-400",
+        classes: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+        dot: "bg-emerald-400",
         icon: Route,
     },
     delivered: {
@@ -100,7 +100,7 @@ const LIFECYCLE_CONFIG: Record<ShippingLifecycle, {
 
 const PAYMENT_LABEL: Record<string, { label: string; classes: string }> = {
     paid: { label: "مدفوع", classes: "text-emerald-300" },
-    pending: { label: "COD", classes: "text-amber-300" },
+    pending: { label: "تحصيل عند التسليم", classes: "text-amber-300" },
     refunded: { label: "مسترد", classes: "text-red-300" },
     failed: { label: "فشل الدفع", classes: "text-red-300" },
 };
@@ -168,7 +168,7 @@ function exportManifestCsv(orders: ShippingOrder[]) {
         "الحالة",
         "رقم التتبع أو طرود",
         "شركة الشحن",
-        "COD",
+        "تحصيل عند التسليم",
         "عدد المنتجات",
         "آخر حدث",
     ];
@@ -181,7 +181,7 @@ function exportManifestCsv(orders: ShippingOrder[]) {
         [order.shipping_address?.line1, order.shipping_address?.line2].filter(Boolean).join(" "),
         LIFECYCLE_CONFIG[order.lifecycle].label,
         getShipmentReference(order),
-        order.courier_name || "Torod",
+        order.courier_name || "طرود",
         order.cod_amount_due,
         order.items_count,
         getLastEventText(order),
@@ -220,7 +220,7 @@ function printManifest(orders: ShippingOrder[]) {
             </td>
             <td>${htmlEscape(LIFECYCLE_CONFIG[order.lifecycle].label)}</td>
             <td>${htmlEscape(getShipmentReference(order))}</td>
-            <td>${htmlEscape(order.courier_name || "Torod")}</td>
+            <td>${htmlEscape(order.courier_name || "طرود")}</td>
             <td>${htmlEscape(order.cod_amount_due > 0 ? formatCurrency(order.cod_amount_due) : "-")}</td>
             <td>${order.items_count}</td>
         </tr>
@@ -232,7 +232,7 @@ function printManifest(orders: ShippingOrder[]) {
         <html lang="ar" dir="rtl">
         <head>
             <meta charset="utf-8" />
-            <title>WASHA Shipping Manifest</title>
+            <title>كشف شحن وشّى</title>
             <style>
                 @font-face {
                     font-family: "TheYearOfTheCamel";
@@ -324,7 +324,7 @@ function printManifest(orders: ShippingOrder[]) {
             <section class="summary">
                 <div class="metric"><span>عدد الشحنات</span><strong>${orders.length}</strong></div>
                 <div class="metric"><span>بوالص متاحة</span><strong>${waybillsCount}</strong></div>
-                <div class="metric"><span>إجمالي COD</span><strong>${htmlEscape(formatCurrency(totalCod))}</strong></div>
+                <div class="metric"><span>تحصيل عند التسليم</span><strong>${htmlEscape(formatCurrency(totalCod))}</strong></div>
                 <div class="metric"><span>جاهزة للحجز</span><strong>${orders.filter((order) => order.can_book_shipment).length}</strong></div>
             </section>
             <table>
@@ -337,15 +337,15 @@ function printManifest(orders: ShippingOrder[]) {
                         <th>الحالة</th>
                         <th>التتبع</th>
                         <th>الناقل</th>
-                        <th>COD</th>
+                        <th>التحصيل</th>
                         <th>المنتجات</th>
                     </tr>
                 </thead>
                 <tbody>${rows}</tbody>
             </table>
             <section class="footer">
-                <span>تم توليد الكشف من WASHA Shipping Ops Center.</span>
-                <span>المراجعة التشغيلية: الاستلام، البوليصة، COD، والاستثناءات.</span>
+                <span>تم توليد الكشف من مركز شحن وشّى.</span>
+                <span>المراجعة التشغيلية: الاستلام، البوليصة، التحصيل، والاستثناءات.</span>
             </section>
         </body>
         </html>
@@ -519,12 +519,12 @@ const OrderRow = forwardRef<HTMLTableRowElement, OrderRowProps>(function OrderRo
                 <div className="space-y-2">
                     {order.tracking_number ? (
                         <div>
-                            <p className="font-mono text-xs font-bold text-sky-300">{order.tracking_number}</p>
-                            <p className="mt-1 text-[10px] text-theme-faint">{order.courier_name || "Torod"}</p>
+                            <p className="font-mono text-xs font-bold text-gold">{order.tracking_number}</p>
+                            <p className="mt-1 text-[10px] text-theme-faint">{order.courier_name || "طرود"}</p>
                         </div>
                     ) : order.torod_order_id ? (
                         <div>
-                            <p className="font-mono text-xs font-bold text-sky-300">{order.torod_order_id}</p>
+                            <p className="font-mono text-xs font-bold text-gold">{order.torod_order_id}</p>
                             <p className="mt-1 text-[10px] text-theme-faint">طلب طرود بدون تتبع</p>
                         </div>
                     ) : (
@@ -575,7 +575,7 @@ const OrderRow = forwardRef<HTMLTableRowElement, OrderRowProps>(function OrderRo
                     )}
 
                     {order.lifecycle === "pending_torod" && (
-                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-xs font-bold text-sky-300">
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-gold/20 bg-gold/10 px-3 py-2 text-xs font-bold text-gold">
                             <RadioTower className="h-3.5 w-3.5" />
                             بانتظار التتبع
                         </span>
@@ -595,7 +595,7 @@ const OrderRow = forwardRef<HTMLTableRowElement, OrderRowProps>(function OrderRo
                     {order.tracking_number && (
                         <button
                             onClick={() => onTrack(order)}
-                            className="rounded-lg border border-sky-400/20 bg-sky-400/10 p-2 text-sky-300 transition-colors hover:bg-sky-400/20"
+                            className="rounded-lg border border-gold/20 bg-gold/10 p-2 text-gold transition-colors hover:bg-gold/20"
                             title="تتبع الشحنة"
                         >
                             <Eye className="h-3.5 w-3.5" />
@@ -668,12 +668,12 @@ function BulkSelectionBar({
                         <p className="text-[10px] font-bold text-amber-200/80">جاهز للحجز</p>
                         <p className="mt-1 text-lg font-black text-amber-300 tabular-nums">{readyCount}</p>
                     </div>
-                    <div className="rounded-2xl border border-sky-400/15 bg-sky-400/10 px-3 py-2">
-                        <p className="text-[10px] font-bold text-sky-200/80">بوالص</p>
-                        <p className="mt-1 text-lg font-black text-sky-300 tabular-nums">{waybillCount}</p>
+                    <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2">
+                        <p className="text-[10px] font-bold text-emerald-200/80">بوالص</p>
+                        <p className="mt-1 text-lg font-black text-emerald-300 tabular-nums">{waybillCount}</p>
                     </div>
                     <div className="rounded-2xl border border-gold/15 bg-gold/10 px-3 py-2">
-                        <p className="text-[10px] font-bold text-gold/80">COD</p>
+                        <p className="text-[10px] font-bold text-gold/80">التحصيل</p>
                         <p className="mt-1 text-sm font-black text-gold tabular-nums">{formatCurrency(codTotal)}</p>
                     </div>
                 </div>
@@ -693,7 +693,7 @@ function BulkSelectionBar({
                         className="inline-flex items-center gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs font-bold text-theme-subtle transition-colors hover:text-gold disabled:opacity-45"
                     >
                         <Printer className="h-4 w-4" />
-                        Manifest
+                        كشف الشحن
                     </button>
                     <button
                         onClick={onExport}
@@ -701,7 +701,7 @@ function BulkSelectionBar({
                         className="inline-flex items-center gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs font-bold text-theme-subtle transition-colors hover:text-gold disabled:opacity-45"
                     >
                         <Download className="h-4 w-4" />
-                        CSV
+                        ملف CSV
                     </button>
                     <button
                         onClick={onClear}
@@ -776,10 +776,10 @@ function TrackModal({ order, onClose }: { order: ShippingOrder; onClose: () => v
                         </div>
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-[10px] font-bold text-theme-faint">شركة الشحن</p>
-                            <p className="mt-2 text-sm font-bold text-theme">{order.courier_name || "Torod"}</p>
+                            <p className="mt-2 text-sm font-bold text-theme">{order.courier_name || "طرود"}</p>
                         </div>
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                            <p className="text-[10px] font-bold text-theme-faint">COD</p>
+                            <p className="text-[10px] font-bold text-theme-faint">التحصيل</p>
                             <p className="mt-2 text-sm font-bold text-theme">{order.cod_amount_due > 0 ? formatCurrency(order.cod_amount_due) : "لا يوجد"}</p>
                         </div>
                     </div>
@@ -792,7 +792,7 @@ function TrackModal({ order, onClose }: { order: ShippingOrder; onClose: () => v
                             </h4>
                             {order.shipping_history.length === 0 ? (
                                 <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4 text-sm text-theme-subtle">
-                                    لم يصل أي تحديث webhook محفوظ لهذه الشحنة بعد.
+                                    لم يصل أي تحديث محفوظ من شركة الشحن لهذه الشحنة بعد.
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -826,7 +826,7 @@ function TrackModal({ order, onClose }: { order: ShippingOrder; onClose: () => v
                                 <div className="space-y-3">
                                     {remoteTimeline.map((event: any, index: number) => (
                                         <div key={index} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-sky-400" />
+                                            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-gold" />
                                             <div>
                                                 <p className="text-sm font-bold text-theme">{event.status || event.description}</p>
                                                 <p className="mt-1 text-[10px] text-theme-faint">{event.time || event.date || event.date_time || "وقت غير محدد"}</p>
@@ -915,7 +915,7 @@ function ConfirmActionModal({
                                         className="mt-1 h-4 w-4 accent-amber-400"
                                     />
                                     <span className="text-xs font-bold leading-5">
-                                        أؤكد تحصيل مبلغ COD وقدره {formatCurrency(action.order.cod_amount_due)}
+                                        أؤكد تحصيل مبلغ الدفع عند التسليم وقدره {formatCurrency(action.order.cod_amount_due)}
                                     </span>
                                 </label>
                             )}
@@ -1114,7 +1114,7 @@ export function ShippingClient({
         }
 
         exportManifestCsv(selectedOrders);
-        showToast("success", "تم تجهيز ملف CSV للطلبات المحددة");
+        showToast("success", "تم تجهيز ملف التشغيل للطلبات المحددة");
     };
 
     const handlePrintManifest = () => {
@@ -1216,10 +1216,10 @@ export function ShippingClient({
                     <div className="p-5 md:p-6">
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div>
-                                <p className="text-[11px] font-bold text-theme-faint">مركز عمليات الشحن</p>
-                                <h2 className="mt-2 text-2xl font-black tracking-tight text-theme md:text-3xl">مركز عمليات الشحن</h2>
+                                <p className="text-[11px] font-bold text-theme-faint">غرفة الشحن</p>
+                                <h2 className="mt-2 text-2xl font-black tracking-tight text-theme md:text-3xl">مكتب الشحن والتتبع</h2>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
-                                    دورة حياة كاملة للحجز، طرود، التتبع، الاستثناءات، البوالص، وتحصيل COD من شاشة واحدة.
+                                    دورة حياة كاملة للحجز، طرود، التتبع، الاستثناءات، البوالص، وتحصيل الدفع عند التسليم من شاشة واحدة.
                                 </p>
                             </div>
                             <div className={`inline-flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black ${health.classes}`}>
@@ -1240,7 +1240,7 @@ export function ShippingClient({
                                 <p className="mt-1 text-2xl font-black text-red-300 tabular-nums">{stats.exceptions}</p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-theme-faint">COD</p>
+                                <p className="text-[10px] font-bold text-theme-faint">التحصيل</p>
                                 <p className="mt-1 text-lg font-black text-gold tabular-nums">{mounted ? formatCurrency(stats.totalCodAmount) : "..."}</p>
                             </div>
                         </div>
@@ -1250,11 +1250,11 @@ export function ShippingClient({
 
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
                 <StatCard icon={PackageCheck} label="جاهز للحجز" value={stats.readyToBook} color="border-amber-400/20 bg-amber-400/10 text-amber-300" onClick={() => navigate({ status: "ready_to_book", page: "1" })} active={currentStatus === "ready_to_book"} />
-                <StatCard icon={RadioTower} label="بانتظار طرود" value={stats.pendingTorod} color="border-sky-400/20 bg-sky-400/10 text-sky-300" onClick={() => navigate({ status: "pending_torod", page: "1" })} active={currentStatus === "pending_torod"} />
-                <StatCard icon={Route} label="في الطريق" value={stats.inTransit} color="border-cyan-400/20 bg-cyan-400/10 text-cyan-300" onClick={() => navigate({ status: "in_transit", page: "1" })} active={currentStatus === "in_transit"} />
+                <StatCard icon={RadioTower} label="بانتظار طرود" value={stats.pendingTorod} color="border-gold/20 bg-gold/10 text-gold" onClick={() => navigate({ status: "pending_torod", page: "1" })} active={currentStatus === "pending_torod"} />
+                <StatCard icon={Route} label="في الطريق" value={stats.inTransit} color="border-emerald-400/20 bg-emerald-400/10 text-emerald-300" onClick={() => navigate({ status: "in_transit", page: "1" })} active={currentStatus === "in_transit"} />
                 <StatCard icon={CheckCircle2} label="مكتمل" value={stats.delivered} color="border-emerald-400/20 bg-emerald-400/10 text-emerald-300" onClick={() => navigate({ status: "delivered", page: "1" })} active={currentStatus === "delivered"} />
                 <StatCard icon={AlertTriangle} label="استثناءات" value={stats.exceptions} color="border-red-400/20 bg-red-400/10 text-red-300" onClick={() => navigate({ status: "exception", page: "1" })} active={currentStatus === "exception"} />
-                <StatCard icon={Banknote} label="COD معلّق" value={mounted ? formatCurrency(stats.totalCodAmount) : "..."} sub={`${stats.pendingCod} طلب`} color="border-gold/20 bg-gold/10 text-gold" />
+                <StatCard icon={Banknote} label="تحصيل معلّق" value={mounted ? formatCurrency(stats.totalCodAmount) : "..."} sub={`${stats.pendingCod} طلب`} color="border-gold/20 bg-gold/10 text-gold" />
             </div>
 
             <section className="theme-surface-panel rounded-2xl border border-theme-subtle p-5 md:p-6">
@@ -1264,7 +1264,7 @@ export function ShippingClient({
                     </div>
                     <div>
                         <h2 className="text-lg font-black text-theme">تحليلات الشحن والتحصيل</h2>
-                        <p className="text-xs text-theme-soft">مؤشرات مختصرة للأداء، COD، والاستثناءات التشغيلية.</p>
+                        <p className="text-xs text-theme-soft">مؤشرات مختصرة للأداء، التحصيل، والاستثناءات التشغيلية.</p>
                     </div>
                 </div>
 
@@ -1293,7 +1293,7 @@ export function ShippingClient({
 
                     <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                            <span className="text-theme-soft">COD معلق</span>
+                            <span className="text-theme-soft">تحصيل معلق</span>
                             <span className="font-black text-amber-300">{formatCurrency(stats.totalCodAmount)}</span>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-theme-faint">
@@ -1321,7 +1321,7 @@ export function ShippingClient({
                         <button
                             key={tab.value}
                             onClick={() => navigate({ status: tab.value, page: "1" })}
-                            className={`rounded-xl border px-3 py-1.5 text-xs font-black transition-all ${
+                            className={`rounded-xl border px-3 py-1.5 text-xs font-black transition-all active:scale-[0.98] ${
                                 currentStatus === tab.value
                                     ? "border-gold/30 bg-gold/15 text-gold"
                                     : "border-theme-subtle bg-theme-faint text-theme-subtle hover:text-theme"
@@ -1355,7 +1355,7 @@ export function ShippingClient({
 
                 <button
                     onClick={() => router.refresh()}
-                    className="rounded-xl border border-theme-subtle bg-theme-faint p-2.5 text-theme-soft transition-colors hover:text-gold"
+                    className="rounded-xl border border-theme-subtle bg-theme-faint p-2.5 text-theme-soft transition-all hover:text-gold active:scale-[0.98]"
                     title="تحديث"
                 >
                     <RefreshCw className={`h-4 w-4 ${isPending ? "animate-spin" : ""}`} />
@@ -1385,7 +1385,7 @@ export function ShippingClient({
                                         />
                                     </label>
                                 </th>
-                                {["الطلب", "حالة التشغيل", "طرود والتتبع", "الدفع وCOD", "العنوان"].map((heading) => (
+                                {["الطلب", "حالة التشغيل", "طرود والتتبع", "الدفع والتحصيل", "العنوان"].map((heading) => (
                                     <th key={heading} className="px-4 py-3.5 text-right text-xs font-bold text-theme-soft">
                                         {heading}
                                     </th>
@@ -1401,8 +1401,30 @@ export function ShippingClient({
                                     <tr>
                                         <td colSpan={7} className="py-20 text-center">
                                             <Truck className="mx-auto mb-3 h-10 w-10 text-theme-faint" />
-                                            <p className="text-sm font-bold text-theme-subtle">لا توجد شحنات في هذا المسار</p>
-                                            <p className="mt-1 text-xs text-theme-faint">غيّر الفلتر أو ابحث برقم الطلب أو رقم التتبع.</p>
+                                            <p className="text-sm font-bold text-theme">لا توجد شحنات في هذا العرض</p>
+                                            <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-theme-faint">
+                                                غيّر الفلتر، امسح البحث، أو حدّث الصفحة للتأكد من آخر حالة للطلبات والشحنات.
+                                            </p>
+                                            <div className="mt-4 flex flex-wrap justify-center gap-2">
+                                                {(currentStatus !== "all" || currentSearch) && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setSearch("");
+                                                            navigate({ status: "all", search: "", page: "1" });
+                                                        }}
+                                                        className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-2 text-xs font-bold text-theme-subtle transition-all hover:border-gold/20 hover:text-gold active:scale-[0.98]"
+                                                    >
+                                                        عرض كل الشحنات
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => router.refresh()}
+                                                    className="inline-flex items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-3 py-2 text-xs font-bold text-gold transition-all hover:bg-gold/15 active:scale-[0.98]"
+                                                >
+                                                    <RefreshCw className="h-3.5 w-3.5" />
+                                                    تحديث الحالة
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ) : (

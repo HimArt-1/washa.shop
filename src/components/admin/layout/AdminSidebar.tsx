@@ -4,27 +4,15 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    LayoutDashboard, BarChart3, Users, TrendingUp,
-    ShoppingCart, Image as ImageIcon, ChevronRight, Shield,
-    Menu, X, Package, Mail, Settings, Palette, Wand2, Brush,
-    Bell, Ticket, HeadphonesIcon, History, Home, Store, Truck, Wifi,
-} from "lucide-react";
+import { ChevronRight, Home, Menu, Shield, Store, X } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import type { UserRole } from "@/types/database";
-
-interface NavItem {
-    icon: any;
-    label: string;
-    href: string;
-    badge?: number;
-    roles?: UserRole[];
-}
-
-interface NavGroup {
-    title: string;
-    items: NavItem[];
-}
+import {
+    ADMIN_NAV_GROUPS,
+    canViewAdminItem,
+    getAdminActiveHref,
+    type AdminBadgeKey,
+} from "@/lib/admin-navigation";
 
 export function AdminSidebar({ 
     role = "admin",
@@ -58,64 +46,15 @@ export function AdminSidebar({
     }, [isMobileOpen]);
 
     const totalAlerts = pendingApps + pendingDesignOrders + pendingSupportTickets;
-
-    const navGroups: NavGroup[] = [
-        {
-            title: "الرئيسية",
-            items: [
-                { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
-                { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics", roles: ["admin", "dev", "financial_manager"] },
-                { icon: History, label: "سجل العمليات", href: "/dashboard/activity-log", roles: ["admin", "dev"] },
-            ],
-        },
-        {
-            title: "التشغيل التجاري",
-            items: [
-                { icon: ShoppingCart, label: "مركز قيادة الطلبات", href: "/dashboard/orders/command-center", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
-                { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
-                { icon: Truck, label: "إدارة الشحن", href: "/dashboard/shipping", roles: ["admin", "dev", "shipping_manager"] },
-                { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory", roles: ["admin", "dev", "shipping_manager"] },
-                { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", roles: ["admin", "dev", "financial_manager"] },
-                { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
-                { icon: Package, label: "الباركود", href: "/dashboard/barcodes", roles: ["admin", "dev", "shipping_manager"] },
-            ],
-        },
-        {
-            title: "المحتوى والتصميم",
-            items: [
-                { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", badge: pendingDesignOrders, roles: ["admin", "dev", "shipping_manager"] },
-                { icon: Wand2, label: "رادار DTF", href: "/dashboard/design-orders/dtf-monitor", roles: ["admin", "dev", "shipping_manager"] },
-                { icon: ImageIcon, label: "الأعمال الفنية", href: "/dashboard/artworks", roles: ["admin", "dev"] },
-                { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs", roles: ["admin", "dev"] },
-                { icon: Wand2, label: "المتجر الذكي", href: "/dashboard/smart-store", roles: ["admin", "dev"] },
-                { icon: Palette, label: "الفئات", href: "/dashboard/categories", roles: ["admin", "dev"] },
-                { icon: Bell, label: "الإعلانات والعروض", href: "/dashboard/announcements", roles: ["admin", "dev"] },
-                { icon: Mail, label: "النشرة البريدية", href: "/dashboard/newsletter", roles: ["admin", "dev"] },
-            ],
-        },
-        {
-            title: "الإدارة والدعم",
-            items: [
-                { icon: Users, label: "المستخدمون", href: "/dashboard/users", roles: ["admin", "dev"] },
-                { icon: Shield, label: "مزامنة الهوية", href: "/dashboard/users-clerk", roles: ["admin", "dev"] },
-                { icon: History, label: "سجل الأدوار", href: "/dashboard/users/audit-log", roles: ["admin", "dev"] },
-                { icon: Mail, label: "طلبات الانضمام", href: "/dashboard/applications", badge: pendingApps, roles: ["admin", "dev"] },
-                { icon: HeadphonesIcon, label: "الدعم الفني", href: "/dashboard/support", badge: pendingSupportTickets, roles: ["admin", "dev", "support_agent"] },
-                { icon: Bell, label: "الإشعارات", href: "/dashboard/notifications", roles: ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"] },
-                { icon: Wifi, label: "حالة التكاملات", href: "/dashboard/integrations", roles: ["admin", "dev"] },
-                { icon: Settings, label: "الإعدادات", href: "/dashboard/settings", roles: ["admin", "dev"] },
-            ],
-        },
-    ];
-    const visibleNavItems = navGroups.flatMap((group) =>
-        group.items.filter((item) => !item.roles || item.roles.includes(role))
+    const badgeCounts: Record<AdminBadgeKey, number> = {
+        pendingApps,
+        pendingDesignOrders,
+        pendingSupportTickets,
+    };
+    const visibleNavItems = ADMIN_NAV_GROUPS.flatMap((group) =>
+        group.items.filter((item) => canViewAdminItem(item, role))
     );
-    const activeHref = visibleNavItems
-        .filter((item) =>
-            pathname === item.href ||
-            (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`))
-        )
-        .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+    const activeHref = getAdminActiveHref(pathname, visibleNavItems);
 
     const sidebarContent = (
         <>
@@ -181,8 +120,8 @@ export function AdminSidebar({
                         </div>
                     </div>
                 )}
-                {navGroups.map((group, gi) => {
-                    const filteredItems = group.items.filter(item => !item.roles || item.roles.includes(role));
+                {ADMIN_NAV_GROUPS.map((group, gi) => {
+                    const filteredItems = group.items.filter(item => canViewAdminItem(item, role));
                     if (filteredItems.length === 0) return null;
                     
                     return (
@@ -199,6 +138,8 @@ export function AdminSidebar({
                             )}
                             {filteredItems.map((item) => {
                                 const isActive = activeHref === item.href;
+                                const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+                                const Icon = item.icon;
 
                                 return (
                                     <Link
@@ -215,7 +156,7 @@ export function AdminSidebar({
                                         `}
                                         title={isCollapsed ? item.label : undefined}
                                     >
-                                        <item.icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? "text-gold" : "text-theme-subtle group-hover:text-theme-soft"
+                                        <Icon className={`w-[18px] h-[18px] shrink-0 transition-colors ${isActive ? "text-gold" : "text-theme-subtle group-hover:text-theme-soft"
                                             }`} />
 
                                         <AnimatePresence>
@@ -231,12 +172,12 @@ export function AdminSidebar({
                                             )}
                                         </AnimatePresence>
 
-                                        {item.badge && item.badge > 0 && (
+                                        {badge > 0 && (
                                             <span className={`
                                                 ${isCollapsed ? "absolute -top-1 -right-1 w-4 h-4 text-[9px]" : "w-5 h-5 text-[10px]"}
                                                 bg-gold text-bg rounded-full flex items-center justify-center font-bold
                                             `}>
-                                                {item.badge}
+                                                {badge}
                                             </span>
                                         )}
 

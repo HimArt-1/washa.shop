@@ -1,11 +1,11 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "./notifications";
 import {
     consumeSmartStoreReservationForOrder,
     restoreSmartStoreStockForOrder,
 } from "./smart-store-inventory";
+import { emitInventoryStockAlert } from "@/lib/operational-event-alerts";
 
 function getClient() {
     return createClient(
@@ -167,9 +167,17 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                     .eq("id", item.product_id);
                 if (newQty <= 5) {
                     const stockTitle = newQty <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض";
-                    void sendAdminNotification(
-                        `⚠️ <b>${stockTitle}:</b> "${escapeAdminNotificationHtml(product.title)}" — الكمية المتبقية: ${newQty}`
-                    );
+                    void emitInventoryStockAlert({
+                        dispatchKey: `inventory:product:${item.product_id}:stock:${newQty <= 0 ? "out" : "low"}`,
+                        title: stockTitle,
+                        productTitle: product.title,
+                        quantity: newQty,
+                        metadata: {
+                            product_id: item.product_id,
+                            order_id: orderId,
+                            source: "legacy_product_stock",
+                        },
+                    });
                 }
             }
             continue;
@@ -218,9 +226,20 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                     ? (skuDetails.products[0] as any)?.title
                     : (skuDetails.products as any)?.title;
                 const stockTitle = newQuantity <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض";
-                void sendAdminNotification(
-                    `⚠️ <b>${stockTitle}:</b> "${escapeAdminNotificationHtml(title)}" (${escapeAdminNotificationHtml(item.size || "-")}) — المتبقي: ${newQuantity}`
-                );
+                void emitInventoryStockAlert({
+                    dispatchKey: `inventory:sku:${skuId}:stock:${newQuantity <= 0 ? "out" : "low"}`,
+                    title: stockTitle,
+                    productTitle: title,
+                    sku: skuDetails.sku,
+                    size: item.size,
+                    quantity: newQuantity,
+                    metadata: {
+                        sku_id: skuId,
+                        product_id: item.product_id,
+                        order_id: orderId,
+                        source: "erp_inventory_level",
+                    },
+                });
             }
         }
     }

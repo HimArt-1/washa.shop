@@ -1,44 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ChevronLeft, Home, Zap } from "lucide-react";
-
-const ROUTES: Record<string, { label: string; parent?: string }> = {
-    "/dashboard": { label: "نظرة عامة" },
-    "/dashboard/analytics": { label: "المالية والإيرادات", parent: "/dashboard" },
-    "/dashboard/sales": { label: "إدارة المبيعات", parent: "/dashboard" },
-    "/dashboard/products-inventory": { label: "التنفيذ والمخزون", parent: "/dashboard" },
-    "/dashboard/users-clerk": { label: "مزامنة الهوية", parent: "/dashboard" },
-    "/dashboard/users": { label: "المستخدمون", parent: "/dashboard" },
-    "/dashboard/users/audit-log": { label: "سجل تغييرات الأدوار", parent: "/dashboard/users" },
-    "/dashboard/orders": { label: "الطلبات", parent: "/dashboard" },
-    "/dashboard/notifications": { label: "التنبيهات", parent: "/dashboard" },
-    "/dashboard/support": { label: "الدعم الفني", parent: "/dashboard" },
-    "/dashboard/design-orders": { label: "طلبات التصميم", parent: "/dashboard" },
-    "/dashboard/applications": { label: "طلبات الانضمام", parent: "/dashboard" },
-    "/dashboard/artworks": { label: "الأعمال الفنية", parent: "/dashboard" },
-    "/dashboard/categories": { label: "الفئات", parent: "/dashboard" },
-    "/dashboard/exclusive-designs": { label: "تصاميم وشّى الحصرية", parent: "/dashboard" },
-    "/dashboard/newsletter": { label: "النشرة البريدية", parent: "/dashboard" },
-    "/dashboard/settings": { label: "الإعدادات", parent: "/dashboard" },
-};
-
-function getBreadcrumbs(pathname: string) {
-    const exact = ROUTES[pathname];
-    if (exact) {
-        const crumbs: { href: string; label: string }[] = [{ href: "/dashboard", label: "لوحة الإدارة" }];
-        if (pathname !== "/dashboard") {
-            crumbs.push({ href: pathname, label: exact.label });
-        }
-        return crumbs;
-    }
-    const parts = pathname.split("/").filter(Boolean);
-    return parts.map((p, i) => ({
-        href: "/" + parts.slice(0, i + 1).join("/"),
-        label: p === "dashboard" ? "لوحة الإدارة" : p,
-    }));
-}
+import { getAdminBreadcrumbs, getAdminPageMeta } from "@/lib/admin-navigation";
 
 interface AdminHeaderProps {
     title?: string;
@@ -47,30 +12,23 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
-    const [pathname, setPathname] = useState("");
-
-    useEffect(() => {
-        const syncPathname = () => setPathname(window.location.pathname || "");
-        syncPathname();
-        window.addEventListener("popstate", syncPathname);
-        return () => window.removeEventListener("popstate", syncPathname);
-    }, []);
-
-    const crumbs = getBreadcrumbs(pathname);
-    const currentRoute = ROUTES[pathname];
-    const displayTitle = title ?? currentRoute?.label ?? "لوحة الإدارة";
+    const pathname = usePathname();
+    const crumbs = getAdminBreadcrumbs(pathname);
+    const pageMeta = getAdminPageMeta(pathname);
+    const displayTitle = title ?? pageMeta.title;
+    const displaySubtitle = subtitle ?? pageMeta.description;
 
     return (
         <header className="mb-8">
             {/* Breadcrumbs */}
             <nav className="flex items-center gap-2 text-xs text-theme-subtle mb-4 flex-wrap">
-                <Link href="/dashboard" className="hover:text-gold transition-colors flex items-center gap-1">
-                    <Home className="w-3.5 h-3.5" />
-                    الرئيسية
-                </Link>
                 {crumbs.map((c, i) => (
                     <span key={c.href} className="flex items-center gap-2">
-                        <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
+                        {i === 0 ? (
+                            <Home className="w-3.5 h-3.5" />
+                        ) : (
+                            <ChevronLeft className="w-3.5 h-3.5 rotate-180" />
+                        )}
                         {i === crumbs.length - 1 ? (
                             <span className="text-theme font-medium">{c.label}</span>
                         ) : (
@@ -83,8 +41,8 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
             </nav>
 
             {/* Title & Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
                     <h1 className="text-2xl sm:text-3xl font-bold text-theme flex items-center gap-3">
                         {displayTitle}
                         {pathname === "/dashboard" && (
@@ -94,9 +52,13 @@ export function AdminHeader({ title, subtitle, actions }: AdminHeaderProps) {
                             </span>
                         )}
                     </h1>
-                    {subtitle && <p className="text-theme-subtle mt-1 text-sm">{subtitle}</p>}
+                    {displaySubtitle && <p className="text-theme-subtle mt-1 text-sm">{displaySubtitle}</p>}
                 </div>
-                {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+                {actions && (
+                    <div className="w-full min-w-0 lg:w-auto lg:max-w-[min(760px,54vw)]">
+                        {actions}
+                    </div>
+                )}
             </div>
         </header>
     );

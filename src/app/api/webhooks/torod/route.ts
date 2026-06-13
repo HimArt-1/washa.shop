@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { torod } from "@/lib/shipping/torod";
+import { emitShippingEventAlert } from "@/lib/operational-event-alerts";
 
 /**
  * ═══════════════════════════════════════════════════════════
@@ -77,7 +78,7 @@ async function findOrderByTorodIdentifiers(
     for (const target of targets) {
         const { data, error } = await supabase
             .from("orders")
-            .select("id, status, metadata")
+            .select("id, order_number, status, tracking_number, torod_order_id, metadata")
             .eq(target.column, target.value)
             .single();
 
@@ -223,6 +224,27 @@ export async function POST(req: Request) {
         }
 
         console.log(`[Torod Webhook Success] Updated Order #${order.id} status to: ${normalizedStatus}`);
+
+        if (status) {
+            const isException = ["failed", "rto", "damage", "lost", "cancelled"].includes(normalizedStatus);
+            await emitShippingEventAlert({
+                orderId: order.id,
+                orderNumber: order.order_number,
+                status,
+                trackingNumber: tracking_id || order.tracking_number,
+                torodOrderId: torod_order_id || order.torod_order_id,
+                severity: isException ? "warning" : "info",
+                source: "shipping.webhook.torod",
+                message: isException
+                    ? `ورد تحديث شحن استثنائي للطلب #${order.order_number}: ${status}. يحتاج مراجعة من فريق الشحن.`
+                    : `ورد تحديث شحنة للطلب #${order.order_number}: ${status}.`,
+                metadata: {
+                    provider: "torod",
+                    wusha_status: wushaStatus,
+                    raw_status: status,
+                },
+            });
+        }
 
         return NextResponse.json({ success: true });
 

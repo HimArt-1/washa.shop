@@ -15,6 +15,7 @@ import {
     type IntegrationHealthItem,
     type IntegrationHealthStatus,
 } from "@/app/actions/integration-health";
+import { AdminAlertTestPanel } from "./AdminAlertTestPanel";
 
 const statusMeta: Record<IntegrationHealthStatus, {
     label: string;
@@ -194,6 +195,11 @@ export default async function DashboardIntegrationsPage() {
                     </div>
                 </div>
             </section>
+
+            <AdminAlertTestPanel
+                diagnostics={report.adminAlerts}
+                telegramCommandCenter={report.telegramCommandCenter}
+            />
 
             <section className="grid gap-4 xl:grid-cols-2">
                 {report.items.map((integration) => (

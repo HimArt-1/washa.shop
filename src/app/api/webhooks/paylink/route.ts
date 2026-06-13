@@ -15,6 +15,7 @@ import {
     getPaylinkInvoiceOrderNumber,
     isPaylinkInvoicePaid,
 } from "@/lib/paylink-security";
+import { emitPaymentCollectionIssueAlert } from "@/lib/operational-event-alerts";
 
 /** Paylink يرسل GET لاختبار الرابط — نرد بـ JSON صالح */
 export async function GET() {
@@ -22,11 +23,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+    let transactionNo: string | undefined;
+    let orderNumber: string | undefined;
+
     try {
         // Paylink sends form-encoded or JSON body with transactionNo & orderNumber
-        let transactionNo: string | undefined;
-        let orderNumber: string | undefined;
-
         const contentType = req.headers.get("content-type") || "";
 
         if (contentType.includes("application/json")) {
@@ -94,6 +95,19 @@ export async function POST(req: NextRequest) {
 
         if (!order) {
             console.error(`[Paylink Webhook] Standard order not found: ${resolvedOrderNumber}`);
+            await emitPaymentCollectionIssueAlert({
+                dispatchKey: `paylink:order_not_found:${transactionNo}:${resolvedOrderNumber}`,
+                title: "تحصيل Paylink بلا طلب مطابق",
+                orderNumber: resolvedOrderNumber,
+                amount: getPaylinkInvoiceAmount(invoice),
+                provider: "paylink",
+                reason: "لم يتم العثور على الطلب المطابق لرقم الفاتورة.",
+                severity: "warning",
+                metadata: {
+                    transaction_no: transactionNo,
+                    invoice_order_number: invoiceOrderNumber ?? null,
+                },
+            }).catch(console.error);
             return NextResponse.json({ received: true });
         }
 
@@ -107,6 +121,20 @@ export async function POST(req: NextRequest) {
 
         if (!validation.ok) {
             console.error(`[Paylink Webhook] Invoice validation failed for ${resolvedOrderNumber}: ${validation.error}`);
+            await emitPaymentCollectionIssueAlert({
+                dispatchKey: `paylink:validation_failed:${transactionNo}:${resolvedOrderNumber}`,
+                title: "فشل تحقق تحصيل Paylink",
+                orderId: order.id,
+                orderNumber: order.order_number,
+                amount: getPaylinkInvoiceAmount(invoice),
+                provider: "paylink",
+                reason: validation.error,
+                severity: "critical",
+                metadata: {
+                    transaction_no: transactionNo,
+                    invoice_order_number: invoiceOrderNumber ?? null,
+                },
+            }).catch(console.error);
             return NextResponse.json({ received: true });
         }
 
@@ -119,6 +147,20 @@ export async function POST(req: NextRequest) {
 
         if (!result.success) {
             console.error(`[Paylink Webhook] Order confirmation failed for ${resolvedOrderNumber}: ${result.error || "unknown error"}`);
+            await emitPaymentCollectionIssueAlert({
+                dispatchKey: `paylink:confirm_failed:${transactionNo}:${order.id}`,
+                title: "فشل تثبيت تحصيل Paylink",
+                orderId: order.id,
+                orderNumber: order.order_number,
+                amount: validation.amount,
+                provider: "paylink",
+                reason: result.error || "فشل تأكيد الطلب بعد تحقق الفاتورة.",
+                severity: "critical",
+                metadata: {
+                    transaction_no: transactionNo,
+                    validation_transaction_no: validation.transactionNo,
+                },
+            }).catch(console.error);
             return NextResponse.json({ received: true });
         }
 
@@ -126,6 +168,17 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
     } catch (error: any) {
         console.error("[Paylink Webhook] Error:", error);
+        await emitPaymentCollectionIssueAlert({
+            dispatchKey: `paylink:webhook_error:${transactionNo || orderNumber || "unknown"}`,
+            title: "خطأ في Webhook تحصيل Paylink",
+            orderNumber,
+            provider: "paylink",
+            reason: error?.message || "خطأ غير متوقع أثناء معالجة webhook.",
+            severity: "warning",
+            metadata: {
+                transaction_no: transactionNo ?? null,
+            },
+        }).catch(console.error);
         // Return 200 to prevent Paylink from retrying on server errors
         return NextResponse.json({ received: true });
     }

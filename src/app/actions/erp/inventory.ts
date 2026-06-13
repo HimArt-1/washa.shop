@@ -6,6 +6,7 @@ import { Database } from "@/types/database";
 import { generateNextSKU, getUnitSerialsForPrint } from "@/lib/product-identifiers";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import { emitInventoryStockAlert } from "@/lib/operational-event-alerts";
 
 // Create Admin Supabase Client
 function getAdminSb() {
@@ -192,6 +193,35 @@ export async function adjustInventory(
             });
 
         if (txError) throw txError;
+
+        if (newQuantity <= 5) {
+            const { data: skuDetails } = await supabase
+                .from("product_skus")
+                .select("sku, size, product:products(title)")
+                .eq("id", skuId)
+                .single();
+
+            const product = Array.isArray((skuDetails as any)?.product)
+                ? (skuDetails as any).product[0]
+                : (skuDetails as any)?.product;
+
+            await emitInventoryStockAlert({
+                dispatchKey: `erp:inventory:${skuId}:${warehouseId}:stock:${newQuantity <= 0 ? "out" : "low"}`,
+                title: newQuantity <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض",
+                productTitle: product?.title,
+                sku: skuDetails?.sku,
+                size: skuDetails?.size,
+                quantity: newQuantity,
+                metadata: {
+                    sku_id: skuId,
+                    warehouse_id: warehouseId,
+                    transaction_type: transactionType,
+                    quantity_change: quantityChange,
+                    previous_quantity: previousQuantity,
+                    source: "erp_manual_adjustment",
+                },
+            });
+        }
 
         return { success: true, newQuantity };
     } catch (e: unknown) {

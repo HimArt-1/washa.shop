@@ -4,12 +4,10 @@ import { SupportTicketPriority, SupportTicketStatus } from "@/types/database";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createUserNotification } from "./user-notifications";
-import { createAdminNotification } from "./notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getSupportTicketAccess, requireSupportAdmin } from "@/lib/support-ticket-access";
 import { emitSupportServiceEscalations } from "@/lib/operational-escalations";
-import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { emitSupportTicketCreatedAlert } from "@/lib/operational-event-alerts";
 
 export async function createSupportTicket(data: { subject: string; message: string; priority: SupportTicketPriority }) {
     const user = await currentUser();
@@ -57,43 +55,13 @@ export async function createSupportTicket(data: { subject: string; message: stri
         return { success: false, error: "تعذر إنشاء الرسالة الأولى داخل التذكرة. حاول مرة أخرى." };
     }
 
-    // Notify admin about new support ticket
-    await createAdminNotification({
-        type: "system_alert",
-        category: "support",
-        severity: "warning",
-        title: "تذكرة دعم جديدة 🎫",
-        message: `تذكرة جديدة من ${user.firstName || "مستخدم"}: ${subject}`,
-        link: `/dashboard/support/${ticket.id}`,
-    });
-
-    await runIdempotentDispatch(
-        {
-            dispatchKey: `support_ticket:${ticket.id}:webhook_admin:created`,
-            eventType: "support_ticket_created",
-            channel: "webhook_admin",
-            resourceType: "support_ticket",
-            resourceId: ticket.id,
-            metadata: {
-                ticket_id: ticket.id,
-                priority: data.priority,
-                subject,
-                profile_id: profile.id,
-            },
-        },
-        async () => {
-            await sendAdminNotification(
-                [
-                    "🎫 <b>تذكرة دعم جديدة</b>",
-                    `الموضوع: ${escapeAdminNotificationHtml(subject)}`,
-                    `الأولوية: ${escapeAdminNotificationHtml(data.priority)}`,
-                    `العميل: ${escapeAdminNotificationHtml(user.firstName || user.username || "مستخدم")}`,
-                    `البريد: ${escapeAdminNotificationHtml(user.emailAddresses?.[0]?.emailAddress)}`,
-                    `الرابط: ${escapeAdminNotificationHtml(`/dashboard/support/${ticket.id}`)}`,
-                ].join("\n")
-            );
-        }
-    ).catch(console.error);
+    await emitSupportTicketCreatedAlert({
+        ticketId: ticket.id,
+        subject,
+        priority: data.priority,
+        customerName: user.firstName || user.username || "مستخدم",
+        customerEmail: user.emailAddresses?.[0]?.emailAddress,
+    }).catch(console.error);
 
     revalidatePath("/account/support");
     return { success: true, ticketId: ticket.id };

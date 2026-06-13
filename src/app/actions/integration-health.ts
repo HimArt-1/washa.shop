@@ -1,7 +1,22 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { unstable_noStore as noStore } from "next/cache";
+import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
+import {
+    getAdminNotificationBotStatus,
+    type AdminNotificationSendResult,
+} from "@/lib/notifications";
+import {
+    getTelegramBotConfig,
+    getTelegramBotDiagnostics,
+    setTelegramWebhook,
+    syncTelegramBotCommands,
+    type TelegramApiCallResult,
+    type TelegramBotDiagnostics,
+} from "@/lib/telegram-bot";
+import { getTelegramCommandList } from "@/lib/telegram-command-center";
 
 export type IntegrationHealthStatus = "ready" | "warning" | "missing";
 
@@ -29,6 +44,51 @@ export type IntegrationHealthReport = {
     environment: string;
     totals: Record<IntegrationHealthStatus, number>;
     items: IntegrationHealthItem[];
+    adminAlerts: AdminAlertDiagnostics;
+    telegramCommandCenter: TelegramBotDiagnostics;
+};
+
+export type AdminAlertDiagnostics = {
+    channels: Array<{
+        id: "telegram" | "discord";
+        label: string;
+        configured: boolean;
+        detail: string;
+    }>;
+    lastNotification: {
+        title: string;
+        category: string;
+        severity: string;
+        createdAt: string;
+    } | null;
+    lastWebhookDispatch: {
+        eventType: string;
+        status: string;
+        updatedAt: string;
+        sentAt: string | null;
+        lastError: string | null;
+    } | null;
+};
+
+export type AdminAlertTestResult = {
+    ok: boolean;
+    message: string;
+    generatedAt: string;
+    configuredChannels: Array<"telegram" | "discord">;
+    channelResults: AdminNotificationSendResult[];
+    notificationSkipped: boolean;
+    webhookSkipped: boolean;
+};
+
+export type TelegramBotSetupSyncResult = {
+    ok: boolean;
+    message: string;
+    generatedAt: string;
+    commandsCount: number;
+    webhookUrl: string;
+    commands: TelegramApiCallResult;
+    webhook: TelegramApiCallResult & { skipped?: boolean };
+    warnings: string[];
 };
 
 function cleanEnvValue(name: string) {
@@ -86,7 +146,77 @@ async function requireIntegrationAccess() {
     const access = await resolveAdminAccess(user);
     if (!access.profile || !access.isAdmin) throw new Error("Forbidden");
 
-    return access;
+    return {
+        supabase: access.supabase,
+        profile: access.profile,
+        isAdmin: access.isAdmin,
+        bootstrapped: access.bootstrapped,
+        user,
+    };
+}
+
+async function getAdminAlertDiagnostics(supabase: any): Promise<AdminAlertDiagnostics> {
+    const botStatus = getAdminNotificationBotStatus();
+    const channels: AdminAlertDiagnostics["channels"] = [
+        {
+            id: "telegram",
+            label: "Telegram",
+            configured: botStatus.telegram,
+            detail: botStatus.telegram ? "مضبوط" : "TELEGRAM_BOT_TOKEN و TELEGRAM_CHAT_ID غير مكتملين",
+        },
+        {
+            id: "discord",
+            label: "Discord",
+            configured: botStatus.discord,
+            detail: botStatus.discord ? "مضبوط" : "DISCORD_WEBHOOK_URL غير مضبوط",
+        },
+    ];
+
+    const [lastNotificationResult, lastWebhookDispatchResult] = await Promise.allSettled([
+        supabase
+            .from("admin_notifications")
+            .select("title, category, severity, created_at")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        supabase
+            .from("event_dispatches")
+            .select("event_type, status, updated_at, sent_at, last_error")
+            .eq("channel", "webhook_admin")
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+    ]);
+
+    const lastNotificationData =
+        lastNotificationResult.status === "fulfilled" && !lastNotificationResult.value.error
+            ? lastNotificationResult.value.data
+            : null;
+    const lastWebhookDispatchData =
+        lastWebhookDispatchResult.status === "fulfilled" && !lastWebhookDispatchResult.value.error
+            ? lastWebhookDispatchResult.value.data
+            : null;
+
+    return {
+        channels,
+        lastNotification: lastNotificationData
+            ? {
+                title: String(lastNotificationData.title || "تنبيه"),
+                category: String(lastNotificationData.category || "system"),
+                severity: String(lastNotificationData.severity || "info"),
+                createdAt: String(lastNotificationData.created_at),
+            }
+            : null,
+        lastWebhookDispatch: lastWebhookDispatchData
+            ? {
+                eventType: String(lastWebhookDispatchData.event_type || "webhook_admin"),
+                status: String(lastWebhookDispatchData.status || "unknown"),
+                updatedAt: String(lastWebhookDispatchData.updated_at),
+                sentAt: lastWebhookDispatchData.sent_at ? String(lastWebhookDispatchData.sent_at) : null,
+                lastError: lastWebhookDispatchData.last_error ? String(lastWebhookDispatchData.last_error) : null,
+            }
+            : null,
+    };
 }
 
 export async function getIntegrationHealthReport(): Promise<IntegrationHealthReport> {
@@ -118,6 +248,8 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             : ["genai", "gemini", "nanobanana"].includes(aiProvider)
                 ? hasEnv("GEMINI_API_KEY") || hasEnv("GOOGLE_GENERATIVE_AI_API_KEY")
                 : false;
+    const telegramCommands = getTelegramCommandList();
+    const telegramCommandCenter = getTelegramBotDiagnostics(telegramCommands.length);
     const telegramBotReady = hasEnv("TELEGRAM_BOT_TOKEN") && hasEnv("TELEGRAM_CHAT_ID");
     const discordBotReady = hasEnv("DISCORD_WEBHOOK_URL");
     const adminBotChannels = [
@@ -263,6 +395,58 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
                 ? "اختبر حدث طلب جديد وتأكد من وصول التنبيه إلى قناة الأدمن."
                 : "فعّل Telegram أو Discord مع Resend وVAPID قبل تشغيل تنبيهات الإنتاج على نطاق واسع.",
         }),
+        item({
+            id: "telegram-command-center",
+            name: "بوت أوامر Telegram",
+            category: "التشغيل والتنبيهات",
+            summary: telegramCommandCenter.readyForCommands
+                ? `بوت الأوامر جاهز مع ${telegramCommandCenter.commandCount} أمراً تشغيلياً.`
+                : "بوت الأوامر يحتاج ضبط webhook والصلاحيات قبل الاعتماد عليه.",
+            checks: [
+                {
+                    label: "Bot Token",
+                    ok: telegramCommandCenter.tokenConfigured,
+                    required: true,
+                    detail: telegramCommandCenter.tokenConfigured ? "مضبوط" : "TELEGRAM_BOT_TOKEN غير مضبوط",
+                },
+                {
+                    label: "Chat ID",
+                    ok: telegramCommandCenter.chatConfigured,
+                    required: true,
+                    detail: telegramCommandCenter.chatConfigured ? "مضبوط" : "TELEGRAM_CHAT_ID غير مضبوط",
+                },
+                {
+                    label: "Webhook Secret",
+                    ok: telegramCommandCenter.webhookSecretConfigured,
+                    required: true,
+                    detail: telegramCommandCenter.webhookSecretConfigured ? "مضبوط" : "TELEGRAM_WEBHOOK_SECRET غير مضبوط",
+                },
+                {
+                    label: "مشرفو Telegram",
+                    ok: telegramCommandCenter.adminUsersConfigured,
+                    required: true,
+                    detail: telegramCommandCenter.adminUsersConfigured
+                        ? `${telegramCommandCenter.adminUserCount} مشرف مصرح`
+                        : "TELEGRAM_ADMIN_USER_IDS غير مضبوط",
+                },
+                {
+                    label: "رابط HTTPS عام",
+                    ok: telegramCommandCenter.appUrlIsPublicHttps,
+                    required: true,
+                    detail: telegramCommandCenter.appUrl,
+                },
+                {
+                    label: "الأوامر",
+                    ok: telegramCommandCenter.commandCount > 0,
+                    required: true,
+                    detail: `${telegramCommandCenter.commandCount} أمر`,
+                },
+            ],
+            endpoints: [{ label: "Telegram Webhook", url: telegramCommandCenter.webhookUrl }],
+            action: telegramCommandCenter.readyForCommands
+                ? "زامن أوامر البوت من لوحة التكاملات ثم اختبر /status داخل مجموعة Telegram."
+                : "أكمل متغيرات TELEGRAM_WEBHOOK_SECRET وTELEGRAM_ADMIN_USER_IDS وتأكد من رابط HTTPS عام قبل تفعيل webhook.",
+        }),
     ];
 
     const totals = items.reduce<Record<IntegrationHealthStatus, number>>(
@@ -279,5 +463,150 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
         environment: process.env.NODE_ENV || "development",
         totals,
         items,
+        adminAlerts: await getAdminAlertDiagnostics(supabase),
+        telegramCommandCenter,
+    };
+}
+
+export async function syncTelegramBotSetup(): Promise<TelegramBotSetupSyncResult> {
+    noStore();
+
+    await requireIntegrationAccess();
+
+    const generatedAt = new Date().toISOString();
+    const commands = getTelegramCommandList();
+    const config = getTelegramBotConfig();
+    const warnings: string[] = [];
+
+    if (!config.token) {
+        return {
+            ok: false,
+            message: "لا يمكن مزامنة بوت Telegram لأن TELEGRAM_BOT_TOKEN غير مضبوط.",
+            generatedAt,
+            commandsCount: commands.length,
+            webhookUrl: config.webhookUrl,
+            commands: { ok: false, error: "TELEGRAM_BOT_TOKEN is not configured" },
+            webhook: { ok: false, skipped: true, error: "Skipped because bot token is missing" },
+            warnings,
+        };
+    }
+
+    if (!config.chatId) warnings.push("TELEGRAM_CHAT_ID غير مضبوط؛ التنبيهات والأوامر لن تكتمل بدون محادثة مستهدفة.");
+    if (!config.webhookSecret) warnings.push("TELEGRAM_WEBHOOK_SECRET غير مضبوط؛ تم تخطي تفعيل webhook.");
+    if (config.adminUserIds.length === 0) warnings.push("TELEGRAM_ADMIN_USER_IDS غير مضبوط؛ يفضّل تقييد الأوامر على مشرفين محددين.");
+    if (!config.appUrlIsPublicHttps) warnings.push("رابط التطبيق ليس HTTPS عاماً؛ تم تخطي تفعيل webhook.");
+
+    const commandsResult = await syncTelegramBotCommands(commands);
+    const webhookResult: TelegramBotSetupSyncResult["webhook"] = config.webhookSecret && config.appUrlIsPublicHttps
+        ? await setTelegramWebhook()
+        : {
+            ok: false,
+            skipped: true,
+            error: "Webhook skipped until TELEGRAM_WEBHOOK_SECRET and public HTTPS app URL are configured",
+        };
+
+    revalidatePath("/dashboard/integrations");
+
+    const ok = commandsResult.ok && (webhookResult.ok || webhookResult.skipped === true);
+
+    return {
+        ok,
+        message: ok
+            ? webhookResult.skipped
+                ? "تمت مزامنة قائمة الأوامر، وتم تخطي webhook حتى تكتمل إعداداته."
+                : "تمت مزامنة أوامر البوت وتفعيل webhook بنجاح."
+            : "تعذرت مزامنة إعدادات بوت Telegram بالكامل.",
+        generatedAt,
+        commandsCount: commands.length,
+        webhookUrl: config.webhookUrl,
+        commands: commandsResult,
+        webhook: webhookResult,
+        warnings,
+    };
+}
+
+export async function sendAdminAlertTest(): Promise<AdminAlertTestResult> {
+    noStore();
+
+    const { user, profile } = await requireIntegrationAccess();
+    const generatedAt = new Date().toISOString();
+    const botStatus = getAdminNotificationBotStatus();
+    const configuredChannels = [
+        botStatus.telegram ? "telegram" as const : null,
+        botStatus.discord ? "discord" as const : null,
+    ].filter((channel): channel is "telegram" | "discord" => Boolean(channel));
+
+    const alertResult = await reportAdminOperationalAlert({
+        dispatchKey: `integrations:admin_alert_test:${user.id}:${Date.now()}`,
+        type: "system_alert",
+        category: "system",
+        severity: "info",
+        title: "اختبار تنبيهات الأدمن",
+        message: "تم تنفيذ اختبار تنبيهات الأدمن من مركز حالة التكاملات.",
+        source: "integrations.admin_alert_test",
+        link: "/dashboard/integrations",
+        resourceType: "integration",
+        resourceId: "admin-alerts",
+        metadata: {
+            test: true,
+            requested_by: user.id,
+            requested_by_profile_id: profile.id,
+            configured_channels: configuredChannels,
+            generated_at: generatedAt,
+        },
+    });
+
+    revalidatePath("/dashboard/integrations");
+    revalidatePath("/dashboard/notifications");
+
+    const channelResults = alertResult?.webhookChannels ?? [];
+    const failedChannels = channelResults.filter((channel) => !channel.ok);
+    const notificationSkipped = alertResult?.notification?.skipped === true;
+    const webhookSkipped = alertResult?.webhook?.skipped === true;
+
+    if (configuredChannels.length === 0) {
+        return {
+            ok: false,
+            message: "تم إنشاء تنبيه داخلي، لكن لا توجد قناة Telegram أو Discord مفعلة.",
+            generatedAt,
+            configuredChannels,
+            channelResults,
+            notificationSkipped,
+            webhookSkipped,
+        };
+    }
+
+    if (channelResults.length === 0) {
+        return {
+            ok: false,
+            message: "تم تسجيل التنبيه، لكن لم ترجع قناة خارجية نتيجة إرسال.",
+            generatedAt,
+            configuredChannels,
+            channelResults,
+            notificationSkipped,
+            webhookSkipped,
+        };
+    }
+
+    if (failedChannels.length > 0) {
+        return {
+            ok: false,
+            message: "وصل الاختبار إلى مسار التنبيهات، لكن قناة أو أكثر فشلت في الإرسال.",
+            generatedAt,
+            configuredChannels,
+            channelResults,
+            notificationSkipped,
+            webhookSkipped,
+        };
+    }
+
+    return {
+        ok: true,
+        message: "تم إرسال اختبار تنبيهات الأدمن بنجاح.",
+        generatedAt,
+        configuredChannels,
+        channelResults,
+        notificationSkipped,
+        webhookSkipped,
     };
 }

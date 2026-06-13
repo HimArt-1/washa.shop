@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import {
+    escapeAdminNotificationHtml,
+    sendAdminNotification,
+    type AdminNotificationSendResult,
+} from "@/lib/notifications";
 import type {
     AdminNotificationCategory,
     AdminNotificationSeverity,
@@ -8,6 +12,15 @@ import type {
 } from "@/types/database";
 
 type OpsLogType = "error" | "warning" | "info" | "security";
+type DispatchResult = Awaited<ReturnType<typeof runIdempotentDispatch>>;
+
+export type AdminOperationalAlertResult = {
+    logged: boolean;
+    notification?: DispatchResult;
+    webhook?: DispatchResult;
+    webhookChannels: AdminNotificationSendResult[];
+    push?: DispatchResult;
+};
 
 const MAX_DISPATCH_KEY_LENGTH = 240;
 const MAX_TITLE_LENGTH = 160;
@@ -128,8 +141,12 @@ export async function reportAdminOperationalAlert(params: {
     resourceId?: string | null;
     bucketMs?: number;
 }) {
+    const result: AdminOperationalAlertResult = {
+        logged: false,
+        webhookChannels: [],
+    };
     const supabase = getOpsAdminClient();
-    if (!supabase) return;
+    if (!supabase) return result;
 
     const title = normalizeText(params.title, MAX_TITLE_LENGTH);
     const message = normalizeText(params.message, MAX_MESSAGE_LENGTH);
@@ -155,6 +172,7 @@ export async function reportAdminOperationalAlert(params: {
             metadata,
             user_id: null,
         });
+        result.logged = true;
     } catch (error) {
         console.error("[admin-operational-alerts.log]", error);
     }
@@ -162,7 +180,7 @@ export async function reportAdminOperationalAlert(params: {
     try {
         const notificationDispatchKey = buildDispatchKey(params.dispatchKey, params.bucketMs);
 
-        await runIdempotentDispatch(
+        result.notification = await runIdempotentDispatch(
             {
                 dispatchKey: notificationDispatchKey,
                 eventType: `admin_alert_${params.category}_${params.severity}`,
@@ -188,36 +206,43 @@ export async function reportAdminOperationalAlert(params: {
             }
         );
 
-        await runIdempotentDispatch(
-            {
-                dispatchKey: `${notificationDispatchKey}:webhook`,
-                eventType: `admin_alert_webhook_${params.category}_${params.severity}`,
-                channel: "webhook_admin",
-                resourceType: params.resourceType ?? params.category,
-                resourceId: params.resourceId ?? null,
-                metadata: {
-                    ...metadata,
-                    escalation: "admin_webhook",
+        try {
+            result.webhook = await runIdempotentDispatch(
+                {
+                    dispatchKey: `${notificationDispatchKey}:webhook`,
+                    eventType: `admin_alert_webhook_${params.category}_${params.severity}`,
+                    channel: "webhook_admin",
+                    resourceType: params.resourceType ?? params.category,
+                    resourceId: params.resourceId ?? null,
+                    metadata: {
+                        ...metadata,
+                        escalation: "admin_webhook",
+                    },
                 },
-            },
-            async () => {
-                await sendAdminNotification(
-                    [
-                        `🚨 <b>تنبيه تشغيلي ${escapeAdminNotificationHtml(getSeverityLabel(params.severity))}</b>`,
-                        `القسم: ${escapeAdminNotificationHtml(getCategoryLabel(params.category))}`,
-                        `العنوان: ${escapeAdminNotificationHtml(title)}`,
-                        `التفاصيل: ${escapeAdminNotificationHtml(message)}`,
-                        `المصدر: ${escapeAdminNotificationHtml(source)}`,
-                        link ? `الرابط: ${escapeAdminNotificationHtml(link)}` : null,
-                    ].filter(Boolean).join("\n")
-                );
-            }
-        ).catch((error) => {
+                async () => {
+                    result.webhookChannels = await sendAdminNotification(
+                        [
+                            `🚨 <b>تنبيه تشغيلي ${escapeAdminNotificationHtml(getSeverityLabel(params.severity))}</b>`,
+                            `القسم: ${escapeAdminNotificationHtml(getCategoryLabel(params.category))}`,
+                            `العنوان: ${escapeAdminNotificationHtml(title)}`,
+                            `التفاصيل: ${escapeAdminNotificationHtml(message)}`,
+                            `المصدر: ${escapeAdminNotificationHtml(source)}`,
+                            link ? `الرابط: ${escapeAdminNotificationHtml(link)}` : null,
+                        ].filter(Boolean).join("\n")
+                    );
+                }
+            );
+        } catch (error) {
             console.error("[admin-operational-alerts.webhook]", error);
-        });
+            result.webhookChannels = [{
+                channel: "telegram",
+                ok: false,
+                error: error instanceof Error ? error.message : String(error),
+            }];
+        }
 
         if (params.severity === "critical") {
-            await runIdempotentDispatch(
+            result.push = await runIdempotentDispatch(
                 {
                     dispatchKey: `${notificationDispatchKey}:push`,
                     eventType: `admin_alert_push_${params.category}_${params.severity}`,
@@ -242,4 +267,6 @@ export async function reportAdminOperationalAlert(params: {
     } catch (error) {
         console.error("[admin-operational-alerts.notification]", error);
     }
+
+    return result;
 }

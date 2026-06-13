@@ -7,27 +7,13 @@ import {
     Search,
     Command,
     ExternalLink,
-    LayoutDashboard,
-    Users,
     ShoppingCart,
     FileText,
     Package,
     Palette,
-    Settings,
-    Sparkles,
     CreditCard,
     ShieldAlert,
     CheckCheck,
-    Truck,
-    TrendingUp,
-    Ticket,
-    HeadphonesIcon,
-    Bell,
-    Mail,
-    History,
-    Brush,
-    Wand2,
-    Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
@@ -39,37 +25,7 @@ import {
 import type { AdminNotification } from "@/types/database";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
 import { useNotificationStore } from "@/stores/notificationStore";
-
-const COMMAND_ITEMS = [
-    { href: "/dashboard", label: "لوحة المؤشرات", icon: LayoutDashboard, description: "نبض المنصة والعمليات اليومية." },
-    { href: "/dashboard/analytics", label: "المالية والإيرادات", icon: CreditCard, description: "الإيرادات، الطلبات المدفوعة، ومؤشرات المال." },
-    { href: "/dashboard/activity-log", label: "سجل العمليات", icon: History, description: "تتبع الإجراءات الحساسة داخل الإدارة." },
-    { href: "/dashboard/orders/command-center", label: "مركز قيادة الطلبات", icon: ShoppingCart, description: "مكتب تشغيل الطلبات من الفرز حتى التنفيذ." },
-    { href: "/dashboard/orders", label: "الطلبات", icon: ShoppingCart, description: "قائمة الطلبات وإجراءات المتابعة." },
-    { href: "/dashboard/shipping", label: "إدارة الشحن", icon: Truck, description: "الشحنات، التتبع، ومزودي التوصيل." },
-    { href: "/dashboard/products-inventory", label: "المنتجات والمخزون", icon: Package, description: "المنتجات، المخزون، الجرد، والباركود في مركز واحد." },
-    { href: "/dashboard/sales", label: "المبيعات", icon: TrendingUp, description: "نقاط البيع وسجل الحركة التجارية." },
-    { href: "/dashboard/coupons", label: "الكوبونات", icon: Ticket, description: "حملات الخصم والاستخدامات." },
-    { href: "/dashboard/barcodes", label: "الباركود", icon: Package, description: "رموز SKU وربط المنتجات بالمستودع." },
-    { href: "/dashboard/design-orders", label: "طلبات التصميم", icon: Brush, description: "طلبات DTF والتسليمات والملفات." },
-    { href: "/dashboard/design-orders/dtf-monitor", label: "رادار DTF", icon: Wand2, description: "مراقبة توليد التصميم واستهلاك النظام." },
-    { href: "/dashboard/artworks", label: "الأعمال الفنية", icon: Palette, description: "إدارة أعمال الفنانين ومحتوى المعرض." },
-    { href: "/dashboard/exclusive-designs", label: "التصاميم الحصرية", icon: Palette, description: "تصاميم المتجر الحصرية وتنظيم عرضها." },
-    { href: "/dashboard/smart-store", label: "المتجر الذكي", icon: Sparkles, description: "كتالوج صمّم قطعتك واستوديو DTF." },
-    { href: "/dashboard/categories", label: "الفئات", icon: FileText, description: "تصنيف المنتجات والأعمال داخل المنصة." },
-    { href: "/dashboard/announcements", label: "الإعلانات والعروض", icon: Bell, description: "حملات الواجهة، الرسائل، وجدولة الظهور." },
-    { href: "/dashboard/newsletter", label: "النشرة البريدية", icon: Mail, description: "المشتركين وقوائم التواصل." },
-    { href: "/dashboard/users", label: "المستخدمون", icon: Users, description: "العملاء، الأدوار، وسجل الحسابات." },
-    { href: "/dashboard/users-clerk", label: "مزامنة الهوية", icon: ShieldAlert, description: "مزامنة حسابات Clerk مع قاعدة البيانات." },
-    { href: "/dashboard/users/audit-log", label: "سجل الأدوار", icon: History, description: "تغيرات الصلاحيات والأدوار." },
-    { href: "/dashboard/applications", label: "طلبات الانضمام", icon: FileText, description: "طلبات الفنانين والعملاء والمرشحين." },
-    { href: "/dashboard/support", label: "الدعم الفني", icon: HeadphonesIcon, description: "التذاكر والمحادثات وحالات الدعم." },
-    { href: "/dashboard/notifications", label: "الإشعارات", icon: Bell, description: "تنبيهات الإدارة وقنوات المتابعة." },
-    { href: "/dashboard/integrations", label: "حالة التكاملات", icon: Wifi, description: "فحص الدفع والشحن والهوية والذكاء والتنبيهات." },
-    { href: "/dashboard/settings", label: "الإعدادات", icon: Settings, description: "إعدادات المنصة والذكاء والربط التشغيلي." },
-    { href: "/store", label: "المتجر العام", icon: ExternalLink, external: true, description: "فتح واجهة المتجر للزوار." },
-    { href: "/studio", label: "الاستوديو", icon: Sparkles, description: "فتح تجربة التصميم العامة." },
-];
+import { ADMIN_COMMAND_ITEMS, getAdminPageMeta, type AdminNavItem } from "@/lib/admin-navigation";
 
 function getAdminNotificationIcon(notification: AdminNotification) {
     switch (notification.category) {
@@ -123,49 +79,6 @@ function getCategoryBadgeClasses(notification: AdminNotification) {
 
 const NOTIFICATION_REFRESH_MS = 45_000;
 
-function getPageMeta(pathname: string) {
-    const exactMatch = COMMAND_ITEMS.find((item) => item.href === pathname && !item.external);
-    if (exactMatch) {
-        return {
-            title: exactMatch.label,
-            description: exactMatch.description,
-        };
-    }
-
-    if (pathname.startsWith("/dashboard/support/")) {
-        return {
-            title: "مساحة تذكرة الدعم",
-            description: "راجع الحالة والحوار والإجراءات من شاشة واحدة.",
-        };
-    }
-
-    if (pathname.startsWith("/dashboard/design-orders/")) {
-        return {
-            title: "مساحة طلب التصميم",
-            description: "تابع التنفيذ وأرسل النتائج وتحرك بين الحالات دون فقد السياق.",
-        };
-    }
-
-    if (pathname.startsWith("/dashboard/applications/")) {
-        return {
-            title: "مراجعة طلب الانضمام",
-            description: "اعتماد أو رفض الطلبات مع رؤية أوضح للبيانات والمرفقات.",
-        };
-    }
-
-    if (pathname.startsWith("/dashboard/users/")) {
-        return {
-            title: "ملف المستخدم",
-            description: "نظرة مركزة على الحساب والهوية والنشاط من شاشة واحدة.",
-        };
-    }
-
-    return {
-        title: "لوحة الإدارة",
-        description: "ملاحة تشغيلية أنظف بين الطلبات والدعم والمنتجات والإعدادات.",
-    };
-}
-
 import { OrderRadar } from "@/components/admin/orders/OrderRadar";
 
 export function AdminTopBar() {
@@ -177,7 +90,7 @@ export function AdminTopBar() {
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const { notifications, unreadCount, fetchInitial, markAsRead, markAllAsRead } = useNotificationStore();
     const notificationSummary = { critical: 0, warning: 0, info: 0 };
-    const pageMeta = getPageMeta(pathname);
+    const pageMeta = getAdminPageMeta(pathname);
 
     useEffect(() => {
         setMounted(true);
@@ -218,10 +131,11 @@ export function AdminTopBar() {
     }, [fetchInitial]);
 
     const filtered = query.trim()
-        ? COMMAND_ITEMS.filter((i) =>
-            i.label.toLowerCase().includes(query.toLowerCase())
-        )
-        : COMMAND_ITEMS;
+        ? ADMIN_COMMAND_ITEMS.filter((item) => {
+            const needle = query.trim().toLowerCase();
+            return `${item.label} ${item.description} ${item.href}`.toLowerCase().includes(needle);
+        })
+        : ADMIN_COMMAND_ITEMS;
 
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
@@ -239,7 +153,7 @@ export function AdminTopBar() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [handleKeyDown]);
 
-    const selectItem = (item: (typeof COMMAND_ITEMS)[0]) => {
+    const selectItem = (item: AdminNavItem) => {
         if (item.external) {
             window.open(item.href, "_blank");
         } else {

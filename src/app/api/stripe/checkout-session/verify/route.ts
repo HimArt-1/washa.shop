@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
 
         const result = await confirmOrderPayment(order.id, {
             customerEmail: session.customer_email || session.customer_details?.email || undefined,
+            paymentProvider: "stripe",
         });
 
         if (!result.success) {

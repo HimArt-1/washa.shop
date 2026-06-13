@@ -86,13 +86,13 @@ function getGrowthTone(value: number) {
 function getOrderStatusTone(status: string) {
     switch (status) {
         case "pending":
-            return "border-blue-500/20 bg-blue-500/10 text-blue-300";
+            return "border-amber-500/20 bg-amber-500/10 text-amber-300";
         case "confirmed":
-            return "border-sky-500/20 bg-sky-500/10 text-sky-300";
+            return "border-gold/20 bg-gold/10 text-gold";
         case "processing":
             return "border-amber-500/20 bg-amber-500/10 text-amber-300";
         case "shipped":
-            return "border-indigo-500/20 bg-indigo-500/10 text-indigo-300";
+            return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
         case "delivered":
             return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
         case "cancelled":
@@ -176,7 +176,7 @@ function MetricCard({
         <div className={`${subtlePanelClass} p-4 sm:p-5`}>
             <div className="mb-5 flex items-start justify-between gap-4">
                 <div>
-                    <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">{title}</p>
+                    <p className="text-xs font-bold text-theme-faint">{title}</p>
                     <p className="mt-3 text-xl font-black text-theme sm:text-2xl">{value}</p>
                 </div>
                 <div
@@ -234,7 +234,7 @@ function FinanceQueueCard({
                 </div>
                 <Link
                     href="/dashboard/orders"
-                    className="inline-flex min-h-[38px] items-center rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
+                    className="inline-flex min-h-[38px] items-center rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-xs font-medium text-theme-subtle transition-all hover:border-gold/30 hover:bg-theme-subtle hover:text-gold active:scale-[0.98]"
                 >
                     فتح الطلبات
                 </Link>
@@ -273,8 +273,9 @@ function FinanceQueueCard({
                         </div>
                     ))
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-8 text-center text-sm text-theme-subtle">
-                        {emptyState}
+                    <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-8 text-center">
+                        <p className="text-sm font-bold text-theme">{emptyState}</p>
+                        <p className="mt-2 text-xs leading-6 text-theme-faint">تظهر الطلبات هنا تلقائيًا عند تغيّر حالة الدفع أو اكتمال الطلبات.</p>
                     </div>
                 )}
             </div>
@@ -322,8 +323,9 @@ function MixBars({
                         </div>
                     ))
                 ) : (
-                    <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-8 text-center text-sm text-theme-subtle">
-                        لا توجد بيانات كافية في الفترة المحددة.
+                    <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-8 text-center">
+                        <p className="text-sm font-bold text-theme">لا توجد بيانات كافية في هذه الفترة</p>
+                        <p className="mt-2 text-xs leading-6 text-theme-faint">جرّب فترة أوسع أو انتظر اكتمال مزيد من الطلبات المدفوعة.</p>
                     </div>
                 )}
             </div>
@@ -363,6 +365,30 @@ export function AnalyticsClient({
         date: formatDate(day.date),
         users: day.count,
     }));
+    const financeMode =
+        data.finance.failedPayments > 0
+            ? {
+                label: "تحصيل متعثر",
+                detail: `${data.finance.failedPayments} دفعة متعثرة بقيمة ${formatCurrency(data.finance.atRiskRevenue)} تحتاج متابعة.`,
+                className: "border-red-500/25 bg-red-500/10 text-red-300",
+            }
+            : data.finance.pendingPayments > 0
+                ? {
+                    label: "متابعة تحصيل",
+                    detail: `${data.finance.pendingPayments} طلب بانتظار الدفع بقيمة ${formatCurrency(data.finance.outstandingRevenue)}.`,
+                    className: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+                }
+                : data.finance.todayRevenue > 0
+                    ? {
+                        label: "إيراد نشط",
+                        detail: `${data.finance.todayOrders} طلب اليوم بإيراد ${formatCurrency(data.finance.todayRevenue)}.`,
+                        className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+                    }
+                    : {
+                        label: "مراقبة هادئة",
+                        detail: "لا توجد مخاطر تحصيل ظاهرة في الفترة الحالية.",
+                        className: "border-gold/25 bg-gold/10 text-gold",
+                    };
 
     const exportCSV = () => {
         const rows: string[][] = [
@@ -426,19 +452,19 @@ export function AnalyticsClient({
                                 <Wallet className="h-3.5 w-3.5" />
                                 غرفة التحصيل والإيراد
                             </span>
-                            <h2 className="mt-4 text-2xl font-black text-theme sm:text-3xl">
-                                صورة مالية يومية تُظهر أين يدخل الإيراد وأين يتعثر.
-                            </h2>
+                            <h2 className="mt-4 text-2xl font-black text-theme sm:text-3xl">مركز قرار مالي للإيراد والتحصيل.</h2>
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هذه الصفحة لم تعد مجرد رسوم. هي مركز تشغيل مالي يوضح الفجوة بين المدفوع والمعلّق، قيمة
-                                المخاطر، وأثر الخصومات والطلب اليومي من زاوية تنفيذية واحدة.
+                                {financeMode.detail}
                             </p>
                         </div>
 
                         <div className="flex flex-wrap gap-2 xl:justify-end">
+                            <span className={`inline-flex min-h-[42px] items-center rounded-full border px-4 py-2 text-sm font-bold ${financeMode.className}`}>
+                                {financeMode.label}
+                            </span>
                             <button
                                 onClick={exportCSV}
-                                className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-soft transition-colors hover:border-gold/30 hover:bg-theme-subtle hover:text-gold"
+                                className="inline-flex min-h-[42px] items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-4 py-2 text-sm font-medium text-theme-soft transition-all hover:border-gold/30 hover:bg-theme-subtle hover:text-gold active:scale-[0.98]"
                             >
                                 <Download className="h-4 w-4" />
                                 تصدير التقرير
@@ -448,7 +474,7 @@ export function AnalyticsClient({
                                     key={option.id}
                                     onClick={() => handlePeriodChange(option.id)}
                                     disabled={loading}
-                                    className={`min-h-[42px] rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                                    className={`min-h-[42px] rounded-full border px-4 py-2 text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-60 ${
                                         period === option.id
                                             ? "border-gold/40 bg-gold/15 text-gold"
                                             : "border-theme-subtle bg-theme-faint text-theme-soft hover:border-gold/20 hover:bg-theme-subtle hover:text-gold"
@@ -462,7 +488,7 @@ export function AnalyticsClient({
 
                     <div className="grid gap-4 md:grid-cols-3">
                         <div className={`${subtlePanelClass} p-4 sm:p-5`}>
-                            <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">إيراد اليوم</p>
+                            <p className="text-xs font-bold text-theme-faint">إيراد اليوم</p>
                             <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{formatCurrency(data.finance.todayRevenue)}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 {data.finance.todayOrders} طلبًا دخل إلى خط الإيراد منذ بداية اليوم.
@@ -470,7 +496,7 @@ export function AnalyticsClient({
                         </div>
 
                         <div className={`${subtlePanelClass} p-4 sm:p-5`}>
-                            <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">معدل التحصيل</p>
+                            <p className="text-xs font-bold text-theme-faint">معدل التحصيل</p>
                             <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{formatPercent(data.finance.collectionRate)}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 نسبة الطلبات المدفوعة فعليًا من إجمالي الطلبات خلال الفترة.
@@ -478,7 +504,7 @@ export function AnalyticsClient({
                         </div>
 
                         <div className={`${subtlePanelClass} p-4 sm:p-5`}>
-                            <p className="text-xs font-medium tracking-[0.18em] text-theme-faint uppercase">حجم المتابعة</p>
+                            <p className="text-xs font-bold text-theme-faint">حجم المتابعة</p>
                             <p className="mt-3 text-2xl font-black text-theme sm:text-3xl">{data.finance.activeRevenueQueue}</p>
                             <p className="mt-2 text-sm text-theme-subtle">
                                 طلبات تحتاج متابعة دفع مباشرة بين معلّق ومتعثّر.
@@ -524,14 +550,14 @@ export function AnalyticsClient({
                     value={formatCurrency(data.finance.discountGranted)}
                     subtitle="قيمة الخصومات التي أثرت مباشرة على صافي الفاتورة في الفترة."
                     icon={TrendingUp}
-                    accent="#8b5cf6"
+                    accent="#b7791f"
                 />
                 <MetricCard
                     title="متوسط الفاتورة المدفوعة"
                     value={formatCurrency(data.summary.avgOrderValue)}
                     subtitle={`تم تسليم ${formatCompact(data.finance.deliveredOrders)} طلبًا وانتهى ${formatCompact(data.finance.cancelledOrRefunded)} إلى إلغاء أو استرداد.`}
                     icon={Package}
-                    accent="#38bdf8"
+                    accent="#10b981"
                 />
             </section>
 
@@ -550,8 +576,8 @@ export function AnalyticsClient({
                         </div>
                     </div>
                     <div className="-mx-2 overflow-x-auto px-2">
-                        <div className="h-80 min-w-[640px]">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                        <div className="min-w-[640px]">
+                        <ResponsiveContainer width="100%" height={320} minWidth={1}>
                             <ComposedChart data={revenueChartData}>
                                 <defs>
                                     <linearGradient id="financeRevenueGradient" x1="0" y1="0" x2="0" y2="1">
@@ -600,7 +626,7 @@ export function AnalyticsClient({
                         title="توزيع حالات الدفع"
                         subtitle="قراءة مركزة لخط التحصيل الحالي بين المدفوع والمعلّق والمتعثر."
                         items={data.mixes.paymentStatus}
-                        color="linear-gradient(90deg,#22c55e,#38bdf8)"
+                        color="linear-gradient(90deg,#22c55e,#ceae7f)"
                     />
                 </div>
             </section>
@@ -644,8 +670,8 @@ export function AnalyticsClient({
                         </div>
                     </div>
                     <div className="-mx-2 overflow-x-auto px-2">
-                        <div className="h-72 min-w-[560px]">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                        <div className="min-w-[560px]">
+                        <ResponsiveContainer width="100%" height={288} minWidth={1}>
                             <BarChart data={usersChartData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                                 <XAxis dataKey="date" stroke="rgba(255,255,255,0.42)" fontSize={11} />
