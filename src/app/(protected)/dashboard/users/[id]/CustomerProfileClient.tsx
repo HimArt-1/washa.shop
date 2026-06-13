@@ -287,8 +287,8 @@ export function CustomerProfileClient({
                             <ShieldAlert className="h-5 w-5 text-gold" />
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-theme-faint">نبض الهوية</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
+                            <p className="text-xs font-medium text-theme-faint">مراجعة الهوية</p>
+                            <h3 className="mt-1 text-lg font-bold text-theme">حالة الربط والبيانات</h3>
                         </div>
                     </div>
 
@@ -300,7 +300,7 @@ export function CustomerProfileClient({
                             </div>
                             <p className="mt-2 text-sm leading-6 text-theme-subtle">
                                 {identity.isTempProfile
-                                    ? "الملف ما زال يحمل clerk_id مؤقتًا ويحتاج إكمال الربط."
+                                    ? "الملف يحمل معرفًا مؤقتًا؛ راجع الربط من مركز الهوية."
                                     : "ربط Clerk مستقر داخل هذا الملف."}
                             </p>
                         </div>
@@ -313,7 +313,7 @@ export function CustomerProfileClient({
                             <p className="mt-2 text-sm leading-6 text-theme-subtle">
                                 {identity.hasContactInfo
                                     ? "بيانات التواصل مكتملة."
-                                    : "الملف يحتاج استكمال البريد أو الهاتف قبل الاعتماد التشغيلي الكامل."}
+                                    : "استكمل البريد أو الهاتف قبل الاعتماد التشغيلي الكامل."}
                             </p>
                         </div>
 

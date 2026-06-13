@@ -7,14 +7,9 @@ import { ar } from "date-fns/locale";
 import {
     AlertTriangle,
     Clock3,
-    FolderClock,
-    Palette,
-    Send,
     Sparkles,
     TrendingUp,
     UserCircle2,
-    Users,
-    WandSparkles,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { DesignOrdersClient } from "@/components/admin/DesignOrdersClient";
@@ -70,9 +65,6 @@ interface DesignOperationsCenterProps {
     };
 }
 
-const panelClass =
-    "theme-surface-panel relative overflow-hidden rounded-[28px]";
-
 const subtlePanelClass =
     "theme-surface-panel rounded-[24px]";
 
@@ -82,14 +74,6 @@ function formatCurrency(value: number) {
         currency: "SAR",
         maximumFractionDigits: 0,
     }).format(value || 0);
-}
-
-function formatHours(value: number) {
-    if (!value) return "—";
-    if (value < 24) return `${value}س`;
-
-    const days = Math.round((value / 24) * 10) / 10;
-    return `${days}ي`;
 }
 
 function getStatusMeta(status: CustomDesignOrder["status"]) {
@@ -161,6 +145,15 @@ function SummaryCard({
             </div>
             <p className="text-sm leading-6 text-theme-subtle">{subtitle}</p>
         </motion.div>
+    );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }) {
+    return (
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2 text-center">
+            <p className="text-lg font-black tabular-nums text-theme">{value}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-theme-faint">{label}</p>
+        </div>
     );
 }
 
@@ -265,106 +258,42 @@ export function DesignOperationsCenter({ snapshot, clientProps }: DesignOperatio
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(147,51,234,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
-                    <div className="relative space-y-6">
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-violet-200 uppercase">
-                                Design Operations Center
+                            <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-semibold text-violet-200">
+                                طلبات التصميم
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
-                                {missionTone === "critical" ? "ضغط تعديلات حرج" : missionTone === "warning" ? "مراجعة وتعيين مطلوب" : "تدفق التصميم مستقر"}
+                                {missionTone === "critical" ? "ضغط تعديلات" : missionTone === "warning" ? "تحتاج متابعة" : "مستقرة"}
                             </span>
                         </div>
-
-                        <div className="max-w-3xl space-y-4">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
-                                غرفة تشغيل التصميم لمراقبة الوارد، التنفيذ، المراجعة، والتسليم من زاوية واحدة.
-                            </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هنا نرى اختناق طابور التصميم بوضوح: ما دخل اليوم، ما ينتظر مراجعة، ما لا يزال بلا مسؤول، وما تم
-                                إنجازه وإرساله للعميل.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الضغط النشط</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.activeLoad}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">يشمل الجديد، الجاري، المراجعة، والتعديلات.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">العمر النشط</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgActiveHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">متوسط عمر الطلبات غير المنتهية حاليًا.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">إيقاع الإنجاز</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgCompletionHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">متوسط الزمن من إنشاء الطلب حتى اكتماله.</p>
-                            </div>
-                        </div>
+                        <h2 className="mt-3 text-2xl font-black text-theme md:text-3xl">مكتب التنفيذ التفصيلي</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                            فلترة الطلبات، تعيين المسؤول، تحديث الحالة، رفع النتائج، والمراجعة النهائية.
+                        </p>
                     </div>
-                </motion.section>
-
-                <motion.aside
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${subtlePanelClass} p-6`}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-theme-subtle bg-theme-faint">
-                            <WandSparkles className="h-5 w-5 text-gold" />
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">Studio Pulse</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">قرارات التشغيل الآن</h3>
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                        <MetricPill label="جديد" value={snapshot.stats.new} />
+                        <MetricPill label="قيد التنفيذ" value={snapshot.stats.in_progress} />
+                        <MetricPill label="مراجعة" value={snapshot.stats.awaiting_review + snapshot.stats.modification_requested} />
+                        <MetricPill label="جاهز للإرسال" value={snapshot.stats.readyToSend} />
                     </div>
+                </div>
+            </motion.section>
 
-                    <div className="mt-6 space-y-3">
-                        <div className="rounded-2xl border border-violet-500/15 bg-violet-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-violet-200">
-                                <Palette className="h-4 w-4" />
-                                <span className="text-sm font-bold">الوارد الجديد</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                دخل اليوم {snapshot.stats.createdToday} طلبات تصميم جديدة، بينما يقف {snapshot.stats.new} في طابور
-                                الاستقبال الحالي.
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-amber-200">
-                                <FolderClock className="h-4 w-4" />
-                                <span className="text-sm font-bold">مكتب المراجعة</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.awaiting_review + snapshot.stats.modification_requested > 0
-                                    ? `هناك ${snapshot.stats.awaiting_review + snapshot.stats.modification_requested} طلبات تنتظر مراجعة أو تعديل.`
-                                    : "لا يوجد ازدحام حالي في مكتب المراجعة."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-red-200">
-                                <Users className="h-4 w-4" />
-                                <span className="text-sm font-bold">التعيين والتسليم</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.unassignedActive > 0
-                                    ? `${snapshot.stats.unassignedActive} طلبات نشطة بلا مسؤول، و${snapshot.stats.readyToSend} طلبات مكتملة لم تُرسل بعد.`
-                                    : `الطلبات غير المعيّنة تحت السيطرة، و${snapshot.stats.readyToSend} طلبات مكتملة تنتظر الإرسال.`}
-                            </p>
-                        </div>
-                    </div>
-                </motion.aside>
-            </div>
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <DesignOrdersClient {...clientProps} hideStatsSummary />
+            </motion.section>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <SummaryCard
@@ -439,31 +368,6 @@ export function DesignOperationsCenter({ snapshot, clientProps }: DesignOperatio
                 />
             </div>
 
-            <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${subtlePanelClass} p-5`}
-            >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
-                        <h3 className="mt-2 text-xl font-bold text-theme">مكتب التنفيذ التفصيلي</h3>
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
-                            كل أدوات التنفيذ العملية تبقى هنا: الفلترة، التعيين، تحديث الحالة، رفع النتائج، والمراجعة النهائية.
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme-subtle">
-                        <div className="flex items-center gap-2">
-                            <Send className="h-4 w-4 text-gold" />
-                            <span>{snapshot.stats.readyToSend} طلبات مكتملة لم تُرسل للعميل بعد</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-6">
-                    <DesignOrdersClient {...clientProps} hideStatsSummary />
-                </div>
-            </motion.section>
         </div>
     );
 }

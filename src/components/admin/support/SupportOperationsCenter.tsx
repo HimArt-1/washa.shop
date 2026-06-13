@@ -9,9 +9,7 @@ import { ar } from "date-fns/locale";
 import {
     AlertTriangle,
     CheckCircle2,
-    Clock3,
     Filter,
-    Flame,
     Headphones,
     Inbox,
     LifeBuoy,
@@ -51,19 +49,8 @@ interface SupportOperationsCenterProps {
 type FilterValue = "all" | "open" | "in_progress" | "resolved" | "closed";
 type SortValue = "recent" | "priority";
 
-const panelClass =
-    "theme-surface-panel relative overflow-hidden rounded-[28px]";
-
 const subtlePanelClass =
     "theme-surface-panel rounded-[24px]";
-
-function formatHours(value: number) {
-    if (!value) return "—";
-    if (value < 24) return `${value}س`;
-
-    const days = Math.round((value / 24) * 10) / 10;
-    return `${days}ي`;
-}
 
 function getStatusMeta(status: string) {
     switch (status) {
@@ -155,38 +142,11 @@ function SummaryCard({
     );
 }
 
-function DecisionRow({
-    icon: Icon,
-    label,
-    value,
-    detail,
-    tone,
-}: {
-    icon: ComponentType<{ className?: string }>;
-    label: string;
-    value: string;
-    detail: string;
-    tone: "critical" | "warning" | "good";
-}) {
-    const toneClass =
-        tone === "critical"
-            ? "border-red-500/20 bg-red-500/[0.05] text-red-200"
-            : tone === "warning"
-              ? "border-amber-500/20 bg-amber-500/[0.05] text-amber-200"
-              : "border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-200";
-
+function MetricPill({ label, value }: { label: string; value: number }) {
     return (
-        <div className={`rounded-2xl border p-4 ${toneClass}`}>
-            <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <p className="text-xs font-bold text-current/75">{label}</p>
-                    <p className="mt-2 text-sm leading-6 text-theme-subtle">{detail}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                    <span className="tabular-nums text-xl font-black text-theme">{value}</span>
-                    <Icon className="h-4 w-4" />
-                </div>
-            </div>
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2 text-center">
+            <p className="text-lg font-black tabular-nums text-theme">{value}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-theme-faint">{label}</p>
         </div>
     );
 }
@@ -320,8 +280,6 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
         return result.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     }, [filter, query, sortBy, tickets]);
 
-    const serviceLoad =
-        snapshot.stats.open + snapshot.stats.inProgress + snapshot.stats.urgentOpen + snapshot.stats.staleActive;
     const missionTone =
         snapshot.stats.slaBreached > 0 || snapshot.stats.urgentOpen > 0
             ? "critical"
@@ -335,12 +293,6 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
               ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
               : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200";
     const missionLabel = missionTone === "critical" ? "ضغط حرج" : missionTone === "warning" ? "يتطلب تدخلًا" : "تشغيل مستقر";
-    const missionSummary =
-        missionTone === "critical"
-            ? "ابدأ بالعاجل ومخاطر اتفاقية الخدمة قبل أي فرز آخر."
-            : missionTone === "warning"
-              ? "الطابور تحت السيطرة لكنه يحتاج متابعة مركزة اليوم."
-              : "لا توجد إشارات ضغط واضحة على طابور الدعم الآن.";
     const filterItems: Array<{ value: FilterValue; label: string; count: number }> = [
         { value: "all", label: "الكل", count: tickets.length },
         { value: "open", label: "الجديدة", count: snapshot.stats.open },
@@ -351,181 +303,34 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-5 sm:p-6 md:p-7`}
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,175,55,0.14),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(52,211,153,0.08),transparent_34%)]" />
-                    <div className="relative space-y-6">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-semibold text-gold">
-                                مركز الدعم الفني
+                                الدعم الفني
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
                                 {missionLabel}
                             </span>
                         </div>
-
-                        <div className="max-w-3xl space-y-3">
-                            <h2 className="text-2xl font-black leading-tight text-theme md:text-3xl">
-                                طابور الدعم، مخاطر SLA، والردود العاجلة في شاشة واحدة.
-                            </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle">
-                                {missionSummary}
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs font-bold text-theme-faint">الحمل الحالي</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{serviceLoad}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">جديدة، قيد المعالجة، عاجلة، وراكدة.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs font-bold text-theme-faint">عمر النشط</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgActiveHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">متوسط عمر التذاكر المفتوحة والجارية.</p>
-                            </div>
-                            <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
-                                <p className="text-xs font-bold text-theme-faint">معدل الإغلاق</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{formatHours(snapshot.stats.avgResolutionHours)}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">متوسط الزمن حتى الحل أو الإغلاق.</p>
-                            </div>
-                        </div>
+                        <h2 className="mt-3 text-2xl font-black text-theme md:text-3xl">فهرس الدعم الكامل</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                            بحث وفرز ومتابعة التذاكر حسب الأولوية والحالة.
+                        </p>
                     </div>
-                </motion.section>
-
-                <motion.aside
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${subtlePanelClass} p-6`}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-theme-subtle bg-theme-faint">
-                            <ShieldAlert className="h-5 w-5 text-gold" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-theme-faint">قرارات اليوم</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">ابدأ من الأعلى أثراً</h3>
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                        <MetricPill label="مفتوح" value={snapshot.stats.open} />
+                        <MetricPill label="قيد المعالجة" value={snapshot.stats.inProgress} />
+                        <MetricPill label="عاجل" value={snapshot.stats.urgentOpen} />
+                        <MetricPill label="SLA" value={snapshot.stats.slaAtRisk + snapshot.stats.slaBreached} />
                     </div>
-
-                    <div className="mt-6 space-y-3">
-                        <DecisionRow
-                            icon={Flame}
-                            label="العاجل"
-                            value={String(snapshot.stats.urgentOpen)}
-                            detail={snapshot.stats.urgentOpen > 0 ? "رد أو تصعيد فوري قبل أي فرز آخر." : "لا توجد تذاكر عاجلة مفتوحة."}
-                            tone={snapshot.stats.urgentOpen > 0 ? "critical" : "good"}
-                        />
-                        <DecisionRow
-                            icon={ShieldAlert}
-                            label="SLA"
-                            value={String(snapshot.stats.slaAtRisk + snapshot.stats.slaBreached)}
-                            detail={
-                                snapshot.stats.slaBreached > 0
-                                    ? `${snapshot.stats.slaBreached} متجاوزة و ${snapshot.stats.slaAtRisk} على الحافة.`
-                                    : snapshot.stats.slaAtRisk > 0
-                                      ? "تذاكر تقترب من تجاوز اتفاقية الخدمة."
-                                      : "لا توجد تذاكر في منطقة الخطر."
-                            }
-                            tone={snapshot.stats.slaBreached > 0 ? "critical" : snapshot.stats.slaAtRisk > 0 ? "warning" : "good"}
-                        />
-                        <DecisionRow
-                            icon={Clock3}
-                            label="الركود"
-                            value={String(snapshot.stats.staleActive)}
-                            detail={snapshot.stats.staleActive > 0 ? "تذاكر نشطة تجاوزت 24 ساعة دون إغلاق." : "لا توجد تذاكر راكدة حالياً."}
-                            tone={snapshot.stats.staleActive > 0 ? "warning" : "good"}
-                        />
-                        <DecisionRow
-                            icon={Sparkles}
-                            label="إيقاع اليوم"
-                            value={`${snapshot.stats.resolvedToday}/${snapshot.stats.createdToday}`}
-                            detail="المغلقة أو المحلولة اليوم مقابل الواردة اليوم."
-                            tone={snapshot.stats.resolvedToday >= snapshot.stats.createdToday ? "good" : "warning"}
-                        />
-                    </div>
-                </motion.aside>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                <SummaryCard
-                    title="الوارد المفتوح"
-                    value={String(snapshot.stats.open)}
-                    subtitle="التذاكر الجديدة التي لم تتحول بعد إلى معالجة نشطة."
-                    icon={Inbox}
-                    accent="#60a5fa"
-                />
-                <SummaryCard
-                    title="عمل نشط"
-                    value={String(snapshot.stats.inProgress)}
-                    subtitle="التذاكر التي يتعامل معها الفريق حاليًا."
-                    icon={LifeBuoy}
-                    accent="#f59e0b"
-                />
-                <SummaryCard
-                    title="الطابور العاجل"
-                    value={String(snapshot.stats.urgentOpen)}
-                    subtitle="القناة الحرجة التي يجب أن تبقى قصيرة ومراقبة دائمًا."
-                    icon={AlertTriangle}
-                    accent="#f87171"
-                />
-                <SummaryCard
-                    title="مراقبة اتفاقية الخدمة"
-                    value={String(snapshot.stats.slaAtRisk + snapshot.stats.slaBreached)}
-                    subtitle="التذاكر التي تحتاج تدخلًا قبل أو بعد تجاوز اتفاقية الخدمة."
-                    icon={ShieldAlert}
-                    accent="#e879f9"
-                />
-                <SummaryCard
-                    title="أُغلق اليوم"
-                    value={String(snapshot.stats.resolvedToday)}
-                    subtitle="التذاكر التي خرجت من خط التشغيل خلال اليوم الحالي."
-                    icon={Sparkles}
-                    accent="#34d399"
-                />
-                <SummaryCard
-                    title="مغلق"
-                    value={String(snapshot.stats.resolved + snapshot.stats.closed)}
-                    subtitle="ناتج الحل والإغلاق ضمن السجل التشغيلي الحالي."
-                    icon={CheckCircle2}
-                    accent="#34d399"
-                />
-            </div>
-
-            <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-4">
-                <QueueLane
-                    title="الطابور العاجل"
-                    subtitle="أعلى الحالات خطورة، ويجب أن تبقى قريبة من الصفر."
-                    emptyState="لا توجد تذاكر عاجلة تحتاج تدخلًا الآن."
-                    items={snapshot.urgentQueue}
-                    tone="critical"
-                />
-                <QueueLane
-                    title="مخاطر اتفاقية الخدمة"
-                    subtitle="تذاكر تقترب من تجاوز اتفاقية الخدمة أو تجاوزته فعلًا، ويجب أن تكون تحت أعين الفريق."
-                    emptyState="لا توجد تذاكر في منطقة الخطر الخاصة باتفاقية الخدمة."
-                    items={snapshot.slaQueue}
-                    tone="critical"
-                />
-                <QueueLane
-                    title="التذاكر الراكدة"
-                    subtitle="حالات مفتوحة أو قيد المعالجة عمرها التشغيلي تجاوز 24 ساعة."
-                    emptyState="الطابور الراكِد نظيف حاليًا."
-                    items={snapshot.staleQueue}
-                    tone="warning"
-                />
-                <QueueLane
-                    title="آخر ما أُغلق"
-                    subtitle="آخر التذاكر التي خرجت من خط التشغيل لمراجعة جودة الإيقاع."
-                    emptyState="لا توجد تذاكر محلولة في السجل حتى الآن."
-                    items={snapshot.recentlyResolved}
-                    tone="calm"
-                />
-            </div>
+                </div>
+            </motion.section>
 
             <motion.section
                 initial={{ opacity: 0, y: 12 }}
@@ -535,9 +340,9 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div>
                         <p className="text-xs font-medium text-theme-faint">فهرس التذاكر</p>
-                        <h3 className="mt-2 text-xl font-bold text-theme">فهرس الدعم الكامل</h3>
+                        <h3 className="mt-2 text-xl font-bold text-theme">التذاكر</h3>
                         <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
-                            ابحث، صفّ، وراقب التذاكر من نفس مركز العمليات بدل القفز بين صفحات متعددة.
+                            استخدم البحث والفلاتر للوصول السريع للحالة المطلوبة.
                         </p>
                     </div>
 
@@ -660,6 +465,89 @@ export function SupportOperationsCenter({ snapshot, tickets }: SupportOperations
                     <span>إجمالي المغلق والمحلول: {snapshot.stats.resolved + snapshot.stats.closed}</span>
                 </div>
             </motion.section>
+
+            <section className="space-y-5">
+                <div>
+                    <p className="text-xs font-bold text-theme-faint">مراجعة الدعم</p>
+                    <h3 className="mt-2 text-xl font-black text-theme">المؤشرات والطوابير</h3>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                    <SummaryCard
+                        title="الوارد المفتوح"
+                        value={String(snapshot.stats.open)}
+                        subtitle="التذاكر الجديدة التي لم تتحول بعد إلى معالجة نشطة."
+                        icon={Inbox}
+                        accent="#60a5fa"
+                    />
+                    <SummaryCard
+                        title="عمل نشط"
+                        value={String(snapshot.stats.inProgress)}
+                        subtitle="التذاكر التي يتعامل معها الفريق حاليًا."
+                        icon={LifeBuoy}
+                        accent="#f59e0b"
+                    />
+                    <SummaryCard
+                        title="الطابور العاجل"
+                        value={String(snapshot.stats.urgentOpen)}
+                        subtitle="عدد التذاكر المصنفة كعاجلة."
+                        icon={AlertTriangle}
+                        accent="#f87171"
+                    />
+                    <SummaryCard
+                        title="مراقبة اتفاقية الخدمة"
+                        value={String(snapshot.stats.slaAtRisk + snapshot.stats.slaBreached)}
+                        subtitle="تذاكر قريبة من تجاوز اتفاقية الخدمة أو تجاوزتها."
+                        icon={ShieldAlert}
+                        accent="#e879f9"
+                    />
+                    <SummaryCard
+                        title="أُغلق اليوم"
+                        value={String(snapshot.stats.resolvedToday)}
+                        subtitle="التذاكر التي خرجت من خط التشغيل خلال اليوم الحالي."
+                        icon={Sparkles}
+                        accent="#34d399"
+                    />
+                    <SummaryCard
+                        title="مغلق"
+                        value={String(snapshot.stats.resolved + snapshot.stats.closed)}
+                        subtitle="إجمالي التذاكر المحلولة والمغلقة."
+                        icon={CheckCircle2}
+                        accent="#34d399"
+                    />
+                </div>
+
+                <div className="grid gap-5 xl:grid-cols-2 2xl:grid-cols-4">
+                    <QueueLane
+                        title="الطابور العاجل"
+                        subtitle="أعلى الحالات خطورة في الطابور."
+                        emptyState="لا توجد تذاكر عاجلة تحتاج تدخلًا الآن."
+                        items={snapshot.urgentQueue}
+                        tone="critical"
+                    />
+                    <QueueLane
+                        title="مخاطر اتفاقية الخدمة"
+                        subtitle="تذاكر اقتربت من تجاوز اتفاقية الخدمة أو تجاوزتها."
+                        emptyState="لا توجد تذاكر في منطقة الخطر الخاصة باتفاقية الخدمة."
+                        items={snapshot.slaQueue}
+                        tone="critical"
+                    />
+                    <QueueLane
+                        title="التذاكر الراكدة"
+                        subtitle="حالات مفتوحة أو قيد المعالجة عمرها التشغيلي تجاوز 24 ساعة."
+                        emptyState="الطابور الراكِد نظيف حاليًا."
+                        items={snapshot.staleQueue}
+                        tone="warning"
+                    />
+                    <QueueLane
+                        title="آخر ما أُغلق"
+                        subtitle="آخر التذاكر التي خرجت من خط التشغيل."
+                        emptyState="لا توجد تذاكر محلولة في السجل حتى الآن."
+                        items={snapshot.recentlyResolved}
+                        tone="calm"
+                    />
+                </div>
+            </section>
         </div>
     );
 }

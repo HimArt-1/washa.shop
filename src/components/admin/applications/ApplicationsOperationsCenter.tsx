@@ -8,7 +8,6 @@ import { useEffect, useState, type ComponentType } from "react";
 import {
     BadgeCheck,
     ClipboardCheck,
-    Clock3,
     ShieldAlert,
     Sparkles,
     UserPlus,
@@ -52,9 +51,6 @@ interface ApplicationsOperationsCenterProps {
         currentIdentityState: string;
     };
 }
-
-const panelClass =
-    "theme-surface-panel relative overflow-hidden rounded-[28px]";
 
 const subtlePanelClass =
     "theme-surface-panel rounded-[24px]";
@@ -137,6 +133,15 @@ function SummaryCard({
             </div>
             <p className="text-sm leading-6 text-theme-subtle">{subtitle}</p>
         </motion.div>
+    );
+}
+
+function MetricPill({ label, value }: { label: string; value: number }) {
+    return (
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint px-3 py-2 text-center">
+            <p className="text-lg font-black tabular-nums text-theme">{value}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-theme-faint">{label}</p>
+        </div>
     );
 }
 
@@ -349,112 +354,50 @@ export function ApplicationsOperationsCenter({
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(92,184,255,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
-                    <div className="relative space-y-6">
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
-                                مركز عمليات الانضمام
+                                طلبات الانضمام
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
-                                {missionTone === "critical" ? "تعطّل في الهوية" : missionTone === "warning" ? "قرارات معلقة" : "الطابور منضبط"}
+                                {missionTone === "critical" ? "تعطّل في الهوية" : missionTone === "warning" ? "قرارات معلقة" : "منضبط"}
                             </span>
                         </div>
-
-                        <div className="max-w-3xl space-y-4">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
-                                مركز تشغيل طلبات الانضمام لمراقبة الوارد، قرارات القبول، وربط الحسابات من شاشة واحدة.
-                            </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هذه الطبقة تفصل بين ضغط الطلبات الجديدة، الطلبات المقبولة التي لم تكتمل هويتها بعد،
-                                وآخر القرارات المتخذة حتى تصبح إدارة الانضمام مسار تشغيل واضحًا لا مجرد بطاقات مبعثرة.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">القرار المعلّق</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.waitingDecision}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات ما زالت بين الفرز والمراجعة الفعلية.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">تعطّل الهوية</p>
-                                <p className="mt-3 text-3xl font-black text-theme">
-                                    {snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk}
-                                </p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات مقبولة لم تكتمل على مستوى profile أو Clerk بعد.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الوارد اليوم</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.createdToday}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">عدد الطلبات الجديدة المسجلة خلال اليوم الحالي.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:col-span-3">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الضغط عالي الأولوية</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.highPriority}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات تحتاج تدخلاً قريبًا وفق درجة الأثر والزمن والاكتمال.</p>
-                            </div>
-                        </div>
+                        <h2 className="mt-3 text-2xl font-black text-theme md:text-3xl">مكتب تنفيذ القرارات</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                            مراجعة الطلبات، قبولها أو رفضها، وتجهيز حسابات المستخدمين من نفس الشاشة.
+                        </p>
                     </div>
-                </motion.section>
-
-                <motion.aside
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${subtlePanelClass} p-6`}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                            <ShieldAlert className="h-5 w-5 text-gold" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-theme-faint">نبض القرار</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
-                        </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                        <MetricPill label="معلّق" value={snapshot.stats.pending} />
+                        <MetricPill label="مراجعة" value={snapshot.stats.reviewing} />
+                        <MetricPill label="مقبول" value={snapshot.stats.accepted} />
+                        <MetricPill label="اليوم" value={snapshot.stats.createdToday} />
                     </div>
+                </div>
+            </motion.section>
 
-                    <div className="mt-6 space-y-3">
-                        <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-red-200">
-                                <UserPlus className="h-4 w-4" />
-                                <span className="text-sm font-bold">ربط الحسابات</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk > 0
-                                    ? `هناك ${snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk} طلبات مقبولة تحتاج استكمال هوية أو حساب دخول.`
-                                    : "جميع الطلبات المقبولة مرتبطة بهوية قابلة للتشغيل حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-amber-200">
-                                <Clock3 className="h-4 w-4" />
-                                <span className="text-sm font-bold">طابور القرار</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.waitingDecision > 0
-                                    ? `${snapshot.stats.waitingDecision} طلبات ما زالت بانتظار فرز أو مراجعة فعلية.`
-                                    : "لا توجد طلبات عالقة في مسار القرار حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-emerald-200">
-                                <Sparkles className="h-4 w-4" />
-                                <span className="text-sm font-bold">إيقاع الانضمام</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                إجمالي الطلبات {snapshot.stats.total}، منها {snapshot.stats.accepted} مقبولة و{snapshot.stats.rejected} مرفوضة حتى الآن.
-                            </p>
-                        </div>
-                    </div>
-                </motion.aside>
-            </div>
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <ApplicationsClient
+                    applications={clientProps.applications}
+                    count={clientProps.count}
+                    currentStatus={clientProps.currentStatus}
+                    currentJoinType={clientProps.currentJoinType}
+                    currentGender={clientProps.currentGender}
+                    currentAgeBand={clientProps.currentAgeBand}
+                    currentIdentityState={clientProps.currentIdentityState}
+                />
+            </motion.section>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <SummaryCard
@@ -564,29 +507,6 @@ export function ApplicationsOperationsCenter({
                 />
             </div>
 
-            <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${subtlePanelClass} p-5`}
-            >
-                <div className="mb-5">
-                    <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
-                    <h3 className="mt-2 text-xl font-bold text-theme">مكتب تنفيذ القرارات</h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
-                        هنا تبقى إجراءات القبول والرفض وإنشاء المستخدم كما هي، لكن ضمن سياق تشغيلي أوضح.
-                    </p>
-                </div>
-
-                <ApplicationsClient
-                    applications={clientProps.applications}
-                    count={clientProps.count}
-                    currentStatus={clientProps.currentStatus}
-                    currentJoinType={clientProps.currentJoinType}
-                    currentGender={clientProps.currentGender}
-                    currentAgeBand={clientProps.currentAgeBand}
-                    currentIdentityState={clientProps.currentIdentityState}
-                />
-            </motion.section>
         </div>
     );
 }

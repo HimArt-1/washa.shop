@@ -7,12 +7,9 @@ import { ar } from "date-fns/locale";
 import type { ComponentType } from "react";
 import {
     BadgeCheck,
-    Clock3,
     MailWarning,
-    ShieldAlert,
     Sparkles,
     UserCog,
-    UserPlus,
     Users,
 } from "lucide-react";
 import { UsersClient } from "@/components/admin/UsersClient";
@@ -45,9 +42,6 @@ interface IdentityOperationsCenterProps {
         stats: { total: number; wushsha: number; subscriber: number; admin: number };
     };
 }
-
-const panelClass =
-    "theme-surface-panel relative overflow-hidden rounded-[28px]";
 
 const subtlePanelClass =
     "theme-surface-panel rounded-[24px]";
@@ -207,116 +201,52 @@ export function IdentityOperationsCenter({
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
-                    <div className="relative space-y-6">
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold tracking-[0.18em] text-sky-200 uppercase">
-                                Identity Operations Center
+                            <span className="rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
+                                تشغيل الهوية
                             </span>
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
-                                {missionTone === "critical" ? "تعطّل في الهوية" : missionTone === "warning" ? "نظافة البيانات تحتاج تدخلًا" : "هوية مستقرة"}
+                                {missionTone === "critical" ? "تعطّل في الهوية" : missionTone === "warning" ? "تحتاج مراجعة" : "مستقرة"}
                             </span>
                         </div>
-
-                        <div className="max-w-3xl space-y-4">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
-                                مركز تشغيل الهوية لربط الطلبات المقبولة، ملفات المستخدمين، وحالة البيانات من شاشة واحدة.
-                            </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هذه الطبقة تكشف أين تتوقف رحلة المستخدم بعد القبول: ملفات مؤقتة، نقص بيانات تواصل،
-                                وحسابات تحتاج ربطًا أو إكمالًا قبل أن تصبح قابلة للتشغيل الكامل.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">تعطّل القبول</p>
-                                <p className="mt-3 text-3xl font-black text-theme">
-                                    {snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk}
-                                </p>
-                                <p className="mt-2 text-sm text-theme-subtle">طلبات مقبولة لم تصل بعد إلى هوية تشغيلية مكتملة.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">نظافة البيانات</p>
-                                <p className="mt-3 text-3xl font-black text-theme">
-                                    {snapshot.stats.tempProfiles + snapshot.stats.missingContact}
-                                </p>
-                                <p className="mt-2 text-sm text-theme-subtle">ملفات مؤقتة أو ملفات ينقصها البريد أو الهاتف.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">النمو الحديث</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.recent7d}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">عدد الملفات التي انضمت خلال آخر 7 أيام.</p>
-                            </div>
-                        </div>
+                        <h2 className="mt-3 text-2xl font-black text-theme md:text-3xl">مكتب المستخدمين</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                            إدارة الأدوار، المستويات، البحث، التصدير، وربط ملفات المستخدمين.
+                        </p>
                     </div>
-                </motion.section>
+                    <Link
+                        href="/dashboard/users-clerk"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gold/25 bg-gold/10 px-4 py-3 text-sm font-bold text-gold transition-colors hover:bg-gold/15"
+                    >
+                        مستخدمو Clerk
+                        <UserCog className="h-4 w-4" />
+                    </Link>
+                </div>
+            </motion.section>
 
-                <motion.aside
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${subtlePanelClass} p-6`}
-                >
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                            <ShieldAlert className="h-5 w-5 text-gold" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-theme-faint">نبض الهوية</p>
-                            <h3 className="mt-1 text-lg font-bold text-theme">ما الذي يحتاج قرارًا الآن؟</h3>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 space-y-3">
-                        <div className="rounded-2xl border border-red-500/15 bg-red-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-red-200">
-                                <UserPlus className="h-4 w-4" />
-                                <span className="text-sm font-bold">تسليم القبول</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk > 0
-                                    ? `هناك ${snapshot.stats.acceptedWithoutProfile + snapshot.stats.acceptedWithoutClerk} طلبات مقبولة لم تُستكمل هويتها بعد.`
-                                    : "كل الطلبات المقبولة انتقلت إلى هوية تشغيلية مكتملة."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-amber-200">
-                                <MailWarning className="h-4 w-4" />
-                                <span className="text-sm font-bold">جودة البيانات</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                {snapshot.stats.missingContact > 0 || snapshot.stats.tempProfiles > 0
-                                    ? `${snapshot.stats.missingContact} ملفات ناقصة التواصل و${snapshot.stats.tempProfiles} ملفات مؤقتة تحتاج تنظيفًا.`
-                                    : "لا توجد ملفات مؤقتة أو بيانات تواصل ناقصة حاليًا."}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/[0.04] p-4">
-                            <div className="flex items-center gap-2 text-emerald-200">
-                                <Sparkles className="h-4 w-4" />
-                                <span className="text-sm font-bold">الرؤية الموحدة</span>
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-theme-subtle">
-                                يمكنك من هنا متابعة ملفات المستخدمين ثم الانتقال إلى Clerk لإدارة نظام المصادقة نفسه.
-                            </p>
-                            <Link
-                                href="/dashboard/users-clerk"
-                                className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-gold hover:text-gold-light"
-                            >
-                                فتح مستخدمي Clerk
-                                <UserCog className="h-4 w-4" />
-                            </Link>
-                        </div>
-                    </div>
-                </motion.aside>
-            </div>
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${subtlePanelClass} p-5`}
+            >
+                <UsersClient
+                    users={clientProps.users}
+                    count={clientProps.count}
+                    totalPages={clientProps.totalPages}
+                    currentPage={clientProps.currentPage}
+                    currentRole={clientProps.currentRole}
+                    currentSearch={clientProps.currentSearch}
+                    stats={clientProps.stats}
+                    hideStatsSummary
+                />
+            </motion.section>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <SummaryCard
@@ -383,30 +313,6 @@ export function IdentityOperationsCenter({
                 />
             </div>
 
-            <motion.section
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${subtlePanelClass} p-5`}
-            >
-                <div className="mb-5">
-                    <p className="text-xs font-medium text-theme-faint">مكتب التنفيذ</p>
-                    <h3 className="mt-2 text-xl font-bold text-theme">مكتب تشغيل المستخدمين</h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
-                        جدول التنفيذ الكامل يبقى هنا: تعديل الأدوار، المستويات، البحث، التصدير، وإدارة الملفات.
-                    </p>
-                </div>
-
-                <UsersClient
-                    users={clientProps.users}
-                    count={clientProps.count}
-                    totalPages={clientProps.totalPages}
-                    currentPage={clientProps.currentPage}
-                    currentRole={clientProps.currentRole}
-                    currentSearch={clientProps.currentSearch}
-                    stats={clientProps.stats}
-                    hideStatsSummary
-                />
-            </motion.section>
         </div>
     );
 }

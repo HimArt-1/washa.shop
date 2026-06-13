@@ -31,13 +31,12 @@ export default function CreatePage() {
                 <div className="theme-surface-panel p-6 rounded-2xl space-y-4">
                     <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-[11px] font-bold tracking-[0.24em] text-gold">
                         <Sparkles className="w-3.5 h-3.5" />
-                        CONCEPT LAB
+                        أدوات الإنشاء
                     </div>
                     <div>
-                        <h3 className="font-bold text-theme mb-2">هذه المساحة قيد التطوير</h3>
+                        <h3 className="font-bold text-theme mb-2">ابدأ من المسار الجاهز</h3>
                         <p className="text-sm leading-7 text-theme-subtle">
-                            واجهة التوليد المباشر من النص لم تُربط بعد بمحرك إنتاجي. أبقينا الصفحة كمختبر أفكار فقط
-                            حتى لا نظهر لك نتيجة وهمية أو سلوكًا غير جاهز.
+                            اكتب فكرتك كمذكرة إبداعية، ثم انتقل إلى تصميم قطعتك أو ارفع عملًا فنيًا لإكمال الطلب.
                         </p>
                     </div>
                     <div className="space-y-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4">
@@ -46,8 +45,7 @@ export default function CreatePage() {
                             <div>
                                 <p className="text-sm font-semibold text-theme">البديل الجاهز الآن</p>
                                 <p className="text-xs leading-6 text-theme-subtle">
-                                    استخدم أدوات التصميم الحالية أو ارفع أعمالك إلى الاستوديو، ثم نكمل ربط هذا المختبر
-                                    بمحرك توليد فعلي لاحقًا.
+                                    مسار التصميم ورفع الأعمال هما المساران المعتمدان لاستلام الطلبات ومتابعتها.
                                 </p>
                             </div>
                         </div>
@@ -86,12 +84,11 @@ export default function CreatePage() {
                     <div className="w-full max-w-2xl rounded-[2rem] border border-theme-subtle bg-[radial-gradient(circle_at_top,rgba(202,160,82,0.14),transparent_52%),var(--wusha-surface)] p-8 shadow-[0_30px_100px_rgba(0,0,0,0.08)]">
                         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] font-bold tracking-[0.22em] text-theme-subtle">
                             <ImageIcon className="h-3.5 w-3.5 text-gold" />
-                            GENERATIVE STUDIO ROADMAP
+                            WASHA STUDIO
                         </div>
-                        <h3 className="text-2xl font-bold text-theme">مختبر التوليد سيعود عندما يكون جاهزًا فعلًا</h3>
+                        <h3 className="text-2xl font-bold text-theme">حوّل فكرتك إلى طلب تصميم</h3>
                         <p className="mt-4 text-sm leading-8 text-theme-subtle">
-                            بدل عرض صورة ثابتة توهم المستخدم بأن التوليد يعمل، أصبحت هذه الصفحة تعلن الحالة الحقيقية:
-                            الفكرة محفوظة، لكن محرك الإنتاج لم يُفعّل بعد.
+                            اختر المسار المناسب: تصميم حسب الطلب للمنتجات، أو رفع عمل فني لإدارته داخل الاستوديو.
                         </p>
                         <div className="mt-8 grid gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
@@ -103,7 +100,7 @@ export default function CreatePage() {
                             <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                                 <p className="text-sm font-semibold text-theme">بناء مكتبة أعمالك</p>
                                 <p className="mt-2 text-xs leading-6 text-theme-subtle">
-                                    ارفع أعمالك إلى الاستوديو، ثم سنربط المختبر لاحقًا بمحرك يولد ويصنف ويعرض النتائج.
+                                    ارفع أعمالك إلى الاستوديو لتنظيمها وتجهيزها للعرض أو الطلبات.
                                 </p>
                             </div>
                         </div>

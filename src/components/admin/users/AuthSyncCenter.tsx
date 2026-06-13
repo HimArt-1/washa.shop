@@ -29,13 +29,11 @@ const subtlePanelClass =
 function SummaryCard({
     title,
     value,
-    subtitle,
     icon: Icon,
     accent,
 }: {
     title: string;
     value: string;
-    subtitle: string;
     icon: ComponentType<{ className?: string }>;
     accent: string;
 }) {
@@ -43,25 +41,24 @@ function SummaryCard({
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${subtlePanelClass} p-5`}
+            className="rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3"
         >
-            <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-theme-faint">{title}</p>
-                    <p className="mt-3 text-2xl font-black text-theme">{value}</p>
+            <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                    <p className="truncate text-xs font-bold text-theme-faint">{title}</p>
+                    <p className="mt-1 text-2xl font-black text-theme tabular-nums">{value}</p>
                 </div>
                 <div
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl border"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
                     style={{
                         backgroundColor: `${accent}18`,
                         borderColor: `${accent}33`,
                         color: accent,
                     }}
                 >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                 </div>
             </div>
-            <p className="text-sm leading-6 text-theme-subtle">{subtitle}</p>
         </motion.div>
     );
 }
@@ -174,144 +171,108 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
             : missionTone === "warning"
               ? "border-amber-500/20 bg-amber-500/10 text-amber-200"
               : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200";
+    const reviewCount =
+        snapshot.stats.emailMatches +
+        snapshot.stats.clerkOnly +
+        snapshot.stats.tempProfiles +
+        snapshot.stats.duplicateEmailGroups;
 
     return (
         <div className="space-y-6">
-            <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`${panelClass} p-6 md:p-7`}
-                >
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(212,175,55,0.14),transparent_32%)]" />
-                    <div className="relative space-y-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
-                                Auth Sync Center
-                            </span>
-                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${missionToneClass}`}>
+            <motion.section
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`${panelClass} p-5 md:p-6`}
+            >
+                <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-bold ${missionToneClass}`}>
                                 {missionTone === "critical"
-                                    ? "يوجد انفصال في الهوية"
+                                    ? "تحتاج مراجعة"
                                     : missionTone === "warning"
-                                      ? "يمكن توحيد الحسابات بأمان"
-                                      : "الهوية متزامنة"}
+                                      ? "قابلة للربط"
+                                      : "متزامنة"}
+                            </span>
+                            <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] font-bold text-theme-subtle">
+                                {reviewCount > 0 ? `${reviewCount} حالة متابعة` : "لا توجد حالات مفتوحة"}
                             </span>
                         </div>
-
-                        <div className="max-w-3xl space-y-4">
-                            <h2 className="text-3xl font-black leading-tight text-theme md:text-4xl">
-                                الشخص الواحد يجب أن يرى هوية واحدة، لا حسابين متفرقين.
-                            </h2>
-                            <p className="max-w-2xl text-sm leading-7 text-theme-subtle md:text-base">
-                                هذا المركز يربط بين حساب الدخول في Clerk وملف المنصة الداخلي، ويكشف فقط الحالات التي تحتاج
-                                إصلاحًا: تطابق بالبريد يمكن ربطه، حسابات دخول بلا ملف منصة، أو ملفات مؤقتة لم تكتمل بعد.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">الحسابات المرتبطة</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.linked}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">هذه الحسابات تعمل كهوية موحّدة سليمة داخل المنصة.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">قابلة للربط</p>
-                                <p className="mt-3 text-3xl font-black text-theme">{snapshot.stats.emailMatches}</p>
-                                <p className="mt-2 text-sm text-theme-subtle">نفس الشخص ظاهر في Clerk وملف المنصة ويمكن دمجه بأمان.</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">حالات منفصلة</p>
-                                <p className="mt-3 text-3xl font-black text-theme">
-                                    {snapshot.stats.clerkOnly + snapshot.stats.tempProfiles}
-                                </p>
-                                <p className="mt-2 text-sm text-theme-subtle">إما حساب دخول بلا ملف منصة أو ملف مؤقت لم يكتمل.</p>
-                            </div>
-                        </div>
+                        <h2 className="text-2xl font-black text-theme">مزامنة الهوية</h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-subtle">
+                            راجع حسابات الدخول واربطها بملفات المنصة عند الحاجة.
+                        </p>
                     </div>
-                </motion.section>
 
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className={`${subtlePanelClass} p-5`}
-                >
-                    <div className="mb-5 flex items-center gap-2">
-                        <ShieldCheck className="h-5 w-5 text-emerald-300" />
-                        <h3 className="text-lg font-bold text-theme">سياسة الهوية</h3>
+                    <Link
+                        href="/dashboard/users"
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm font-bold text-theme transition hover:border-gold/30 hover:text-gold"
+                    >
+                        <UserCog className="h-4 w-4" />
+                        مركز الهوية
+                    </Link>
+                </div>
+            </motion.section>
+
+            <ClerkUsersClient {...clientProps} hideSummary />
+
+            <section className={`${panelClass} p-5 md:p-6`}>
+                <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <h3 className="text-xl font-black text-theme">مراجعة الحالات</h3>
+                        <p className="mt-2 text-sm leading-6 text-theme-subtle">
+                            ملخص مختصر للحالات التي قد تحتاج ربطًا أو تنظيفًا.
+                        </p>
                     </div>
-                    <div className="space-y-4 text-sm leading-7 text-theme-subtle">
-                        <p>Clerk ليس حسابًا ثانيًا للمستخدم. هو طبقة الدخول فقط، بينما profile هو سجل العمل داخل المنصة.</p>
-                        <p>المشكلة ليست وجود الجدولين، بل فقدان الربط بينهما. لذلك الحل الصحيح هو توحيد العرض والإدارة والربط.</p>
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <p className="text-xs uppercase tracking-[0.18em] text-theme-faint">إجراء الإدارة التالي</p>
-                            <p className="mt-3 text-base font-bold text-theme">
-                                نظّف البريد المكرر أولًا، ثم اربط الحالات المطابقة بالبريد، ثم عالج الملفات المؤقتة.
-                            </p>
-                        </div>
-                        <Link
-                            href="/dashboard/users"
-                            className="inline-flex items-center gap-2 text-sm font-medium text-gold hover:text-gold/80"
-                        >
-                            <UserCog className="h-4 w-4" />
-                            فتح مركز الهوية العام
-                        </Link>
-                    </div>
-                </motion.section>
-            </div>
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs font-bold text-theme-subtle">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+                        {snapshot.stats.linked} مرتبطة
+                    </span>
+                </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <SummaryCard
-                    title="Clerk Users"
-                    value={String(snapshot.stats.totalClerkUsers)}
-                    subtitle="إجمالي حسابات الدخول المرئية في Clerk."
-                    icon={Users}
-                    accent="#d4af37"
-                />
-                <SummaryCard
-                    title="Linked"
-                    value={String(snapshot.stats.linked)}
-                    subtitle="مرتبطة مباشرة بملف داخل المنصة."
-                    icon={ShieldCheck}
-                    accent="#10b981"
-                />
-                <SummaryCard
-                    title="Email Match"
-                    value={String(snapshot.stats.emailMatches)}
-                    subtitle="مطابقة بالبريد ويمكن ربطها آليًا بأمان."
-                    icon={Link2}
-                    accent="#f59e0b"
-                />
-                <SummaryCard
-                    title="Clerk فقط"
-                    value={String(snapshot.stats.clerkOnly)}
-                    subtitle="حسابات دخول بلا ملف منصة حتى الآن."
-                    icon={AlertTriangle}
-                    accent="#ef4444"
-                />
-            </div>
+                <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                    <SummaryCard
+                        title="حسابات الدخول"
+                        value={String(snapshot.stats.totalClerkUsers)}
+                        icon={Users}
+                        accent="#d4af37"
+                    />
+                    <SummaryCard
+                        title="مرتبطة"
+                        value={String(snapshot.stats.linked)}
+                        icon={ShieldCheck}
+                        accent="#10b981"
+                    />
+                    <SummaryCard
+                        title="قابلة للربط"
+                        value={String(snapshot.stats.emailMatches)}
+                        icon={Link2}
+                        accent="#f59e0b"
+                    />
+                    <SummaryCard
+                        title="بدون ملف"
+                        value={String(snapshot.stats.clerkOnly)}
+                        icon={AlertTriangle}
+                        accent="#ef4444"
+                    />
+                    <SummaryCard
+                        title="بريد مكرر"
+                        value={String(snapshot.stats.duplicateEmailGroups)}
+                        icon={ShieldX}
+                        accent="#ef4444"
+                    />
+                    <SummaryCard
+                        title="ملفات مؤقتة"
+                        value={String(snapshot.stats.tempProfiles)}
+                        icon={UserPlus}
+                        accent="#38bdf8"
+                    />
+                </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-                <SummaryCard
-                    title="بريد مكرر"
-                    value={String(snapshot.stats.duplicateEmailGroups)}
-                    subtitle="عدد مجموعات البريد المكرر داخل ملفات المنصة."
-                    icon={ShieldX}
-                    accent="#ef4444"
-                />
-                <SummaryCard
-                    title="ملفات متعارضة"
-                    value={String(snapshot.stats.duplicateProfiles)}
-                    subtitle="إجمالي الملفات الداخلة في تضارب بريد يجب تنظيفه قبل فرض uniqueness."
-                    icon={AlertTriangle}
-                    accent="#f97316"
-                />
-            </div>
-
-            <div className="grid gap-5 xl:grid-cols-3">
+                <div className="grid gap-5 xl:grid-cols-3">
                 <QueueCard
                     title="تضارب البريد"
-                    subtitle="ملفات منصة متعددة تستخدم نفس البريد. هذه أهم حالات التنظيف قبل فرض uniqueness."
+                    subtitle="أكثر من ملف يستخدم البريد نفسه."
                     emptyState="لا توجد تضاربات بريدية مرئية حاليًا."
                     items={snapshot.duplicateEmailQueue}
                     renderItem={(item: DuplicateEmailGroup) => (
@@ -391,8 +352,8 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                 />
 
                 <QueueCard
-                    title="طابور الربط الآمن"
-                    subtitle="حسابات Clerk التي تطابق profile بالبريد ويمكن توحيدها من نفس الشاشة."
+                    title="قابلة للربط"
+                    subtitle="حسابات دخول لها ملف مطابق بالبريد."
                     emptyState="لا توجد حالات قابلة للربط الآن."
                     items={snapshot.recoverableQueue}
                     renderItem={(item: ClerkUserWithProfile) => (
@@ -423,9 +384,9 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                 />
 
                 <QueueCard
-                    title="Clerk بدون منصة"
-                    subtitle="حسابات دخول موجودة لكن لا يوجد لها ملف داخل المنصة."
-                    emptyState="كل حسابات Clerk لديها ملفات منصة."
+                    title="بدون ملف منصة"
+                    subtitle="حسابات دخول لم ترتبط بملف منصة."
+                    emptyState="كل حسابات الدخول لديها ملفات منصة."
                     items={snapshot.clerkOnlyQueue}
                     renderItem={(item: ClerkUserWithProfile) => (
                         <div key={item.id} className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-4">
@@ -439,7 +400,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                                 </span>
                             </div>
                             <p className="mt-3 text-xs leading-6 text-theme-subtle">
-                                يحتاج قرارًا: إنشاء ملف أو ربطه لاحقًا بطلب/ملف موجود.
+                                يحتاج مراجعة: إنشاء ملف أو ربطه بطلب/ملف موجود.
                             </p>
                         </div>
                     )}
@@ -447,7 +408,7 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
 
                 <QueueCard
                     title="ملفات مؤقتة"
-                    subtitle="ملفات منصة مرحلية تحمل `app_` وتحتاج ربطًا نهائيًا بحساب Clerk."
+                    subtitle="ملفات تحتاج ربطًا نهائيًا بحساب دخول."
                     emptyState="لا توجد ملفات مؤقتة حاليًا."
                     items={snapshot.tempProfilesQueue}
                     renderItem={(item) => (
@@ -461,10 +422,10 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                                     <p className="truncate text-sm font-bold text-theme">
                                         {item.display_name || item.username || "ملف مؤقت"}
                                     </p>
-                                    <p className="mt-1 truncate text-xs text-theme-subtle">{item.email || item.clerk_id || "app profile"}</p>
+                                    <p className="mt-1 truncate text-xs text-theme-subtle">{item.email || item.clerk_id || "بدون بريد"}</p>
                                 </div>
                                 <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-200">
-                                    temp
+                                    مؤقت
                                 </span>
                             </div>
                             <p className="mt-3 text-xs leading-6 text-theme-subtle">
@@ -473,9 +434,8 @@ export function AuthSyncCenter({ snapshot, clientProps }: AuthSyncCenterProps) {
                         </Link>
                     )}
                 />
-            </div>
-
-            <ClerkUsersClient {...clientProps} hideSummary />
+                </div>
+            </section>
         </div>
     );
 }
