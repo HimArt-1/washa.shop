@@ -7,6 +7,7 @@ const FloatingWhatsAppButton = dynamic(() => import("@/components/ui/FloatingWha
 const FloatingSupportButton = dynamic(() => import("@/components/ui/FloatingSupportButton").then(m => m.FloatingSupportButton), { ssr: false });
 import { VisitLogger } from "@/components/ops/VisitLogger";
 import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
+import MarketingPixels from "@/components/ops/MarketingPixels";
 import { AnnouncementLoader } from "@/components/ui/AnnouncementLoader";
 import { ServiceWorkerRegister } from "@/components/notifications/ServiceWorkerRegister";
 import { CartSyncProvider } from "@/components/store/CartSyncProvider";
@@ -458,6 +459,7 @@ export default async function RootLayout({
             <CartSyncProvider />
             <ProfileBootstrapper />
             <VisitLogger />
+            <MarketingPixels />
             <ClientErrorLogger />
             <main id="main-content" className="min-h-[100svh] min-h-[100dvh]">
               {children}

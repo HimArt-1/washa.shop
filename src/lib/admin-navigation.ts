@@ -10,6 +10,7 @@ import {
     History,
     LayoutDashboard,
     Mail,
+    Megaphone,
     Package,
     Palette,
     Settings,
@@ -49,6 +50,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         items: [
             { icon: LayoutDashboard, label: "لوحة المؤشرات", href: "/dashboard", description: "نبض المنصة والعمليات اليومية.", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
             { icon: BarChart3, label: "المالية والإيرادات", href: "/dashboard/analytics", description: "الإيرادات، الطلبات المدفوعة، ومؤشرات المال.", roles: ["admin", "dev", "financial_manager"] },
+            { icon: Megaphone, label: "مركز التسويق", href: "/dashboard/marketing", description: "شرائح الجمهور، الحملات البريدية، وتحليل قمع التحويل.", roles: ["admin", "dev"] },
             { icon: History, label: "سجل العمليات", href: "/dashboard/activity-log", description: "تتبع الإجراءات الحساسة داخل الإدارة.", roles: ["admin", "dev"] },
         ],
     },
@@ -135,6 +137,13 @@ export function getAdminPageMeta(pathname: string) {
         return {
             title: "مراجعة طلب الانضمام",
             description: "اعتماد أو رفض الطلبات مع رؤية أوضح للبيانات والمرفقات.",
+        };
+    }
+
+    if (pathname.startsWith("/dashboard/marketing")) {
+        return {
+            title: "مركز التسويق",
+            description: "شرائح الجمهور، الحملات البريدية، وتتبع سلوك المستخدم.",
         };
     }
 
