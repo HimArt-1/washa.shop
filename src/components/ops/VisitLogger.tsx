@@ -20,6 +20,22 @@ export function VisitLogger() {
             sid = "";
         }
 
+        const sp = new URLSearchParams(window.location.search);
+        const utm = {
+            utm_source:   sp.get("utm_source")   || null,
+            utm_medium:   sp.get("utm_medium")   || null,
+            utm_campaign: sp.get("utm_campaign") || null,
+            utm_content:  sp.get("utm_content")  || null,
+            utm_term:     sp.get("utm_term")     || null,
+        };
+        // persist first-touch UTM per session
+        if (utm.utm_source && !sessionStorage.getItem("wusha_utm")) {
+            sessionStorage.setItem("wusha_utm", JSON.stringify(utm));
+        }
+        const storedUtm = (() => {
+            try { return JSON.parse(sessionStorage.getItem("wusha_utm") || "{}"); } catch { return {}; }
+        })();
+
         fetch("/api/ops/visit", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -28,6 +44,7 @@ export function VisitLogger() {
                 fullUrl: window.location.href,
                 referrer: document.referrer || null,
                 sessionId: sid,
+                ...storedUtm,
             }),
         }).catch(() => {});
     }, [pathname]);

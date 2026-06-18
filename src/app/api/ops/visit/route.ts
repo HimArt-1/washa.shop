@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json().catch(() => ({}));
-        const { path, fullUrl, referrer, sessionId } = body;
+        const { path, fullUrl, referrer, sessionId,
+                utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body;
 
         if (!path || typeof path !== "string" || !path.startsWith("/")) {
             return NextResponse.json({ ok: false }, { status: 400 });
@@ -73,14 +74,22 @@ export async function POST(req: NextRequest) {
         const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "";
         const ipHash = ip ? (await hashIp(ip)) : null;
         const userId = await getAuthenticatedProfileId();
+        const str = (v: unknown, max = 200) =>
+            typeof v === "string" ? v.slice(0, max) : null;
+
         await supabase.from("page_visits").insert({
             path: path.slice(0, 500),
-            full_url: typeof fullUrl === "string" ? fullUrl.slice(0, 1000) : null,
-            referrer: typeof referrer === "string" ? referrer.slice(0, 500) : null,
+            full_url: str(fullUrl, 1000),
+            referrer: str(referrer, 500),
             user_agent: req.headers.get("user-agent")?.slice(0, 500) || null,
             ip_hash: ipHash,
             user_id: userId,
-            session_id: typeof sessionId === "string" ? sessionId.slice(0, 64) : null,
+            session_id: str(sessionId, 64),
+            utm_source:   str(utm_source),
+            utm_medium:   str(utm_medium),
+            utm_campaign: str(utm_campaign),
+            utm_content:  str(utm_content),
+            utm_term:     str(utm_term),
         });
 
         return NextResponse.json({ ok: true });

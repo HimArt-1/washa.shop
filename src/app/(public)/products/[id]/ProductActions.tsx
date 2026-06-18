@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import Link from "next/link";
 import { useTrackEvent } from "@/components/ops/EventTracker";
+import { pixelViewContent, pixelAddToCart } from "@/lib/meta-pixel";
 
 export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes }: { product: any, isCurrentlyInStock?: boolean, erpAvailableSizes?: string[] }) {
     const addItem = useCartStore((s) => s.addItem);
@@ -46,6 +47,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             entityId: product.id,
             metadata: { title: product.title, price: Number(product.price) },
         });
+        pixelViewContent({ contentId: product.id, contentName: product.title, value: Number(product.price) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -166,6 +168,7 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                             entityId: product.id,
                             metadata: { title: product.title, price: Number(product.price), size: selectedSize || null },
                         });
+                        pixelAddToCart({ contentId: product.id, contentName: product.title, value: Number(product.price) });
                     }}
                     disabled={!inStock}
                     className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"

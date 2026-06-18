@@ -18,6 +18,7 @@ import { SignedIn } from "@clerk/nextjs";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 import { useTrackEvent } from "@/components/ops/EventTracker";
+import { pixelAddToCart } from "@/lib/meta-pixel";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -151,6 +152,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             entityId: product.id,
             metadata: { title: product.title, price: Number(product.price), size: size ?? null },
         });
+        pixelAddToCart({ contentId: product.id, contentName: product.title, value: Number(product.price) });
         setShowSizePicker(false);
         setPendingSize("");
     };

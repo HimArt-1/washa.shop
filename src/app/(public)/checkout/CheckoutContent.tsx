@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTrackEvent } from "@/components/ops/EventTracker";
+import { pixelInitiateCheckout } from "@/lib/meta-pixel";
 import { useCartStore } from "@/stores/cartStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Loader2, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
@@ -87,7 +88,9 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const [couponError, setCouponError] = useState<string | null>(null);
 
     useEffect(() => {
+        const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
         trackEvent("checkout_start", { metadata: { itemCount: items.length } });
+        pixelInitiateCheckout({ numItems: items.length, value: subtotal });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

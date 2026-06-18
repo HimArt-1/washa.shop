@@ -1,4 +1,10 @@
 {
     "buildCommand": "npm run build -- --no-lint",
-    "framework": "nextjs"
+    "framework": "nextjs",
+    "crons": [
+        {
+            "path": "/api/cron/cart-abandon",
+            "schedule": "0 * * * *"
+        }
+    ]
 }

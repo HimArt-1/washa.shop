@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef } from "react";
 import { useTrackEvent } from "@/components/ops/EventTracker";
+import { pixelPurchase } from "@/lib/meta-pixel";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cartStore";
 import { motion } from "framer-motion";
@@ -38,6 +39,7 @@ function CheckoutSuccessContent() {
     if (!trackedRef.current) {
       trackedRef.current = true;
       trackEvent("checkout_complete", { metadata: { orderId: orderId ?? undefined } });
+      pixelPurchase({ orderId: orderId ?? "unknown", value: 0 });
     }
     clearCart();
     setIsVerifying(false);
