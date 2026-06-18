@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { SignedIn } from "@clerk/nextjs";
 import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -54,6 +55,7 @@ interface ProductCardProps {
 export function ProductCard({ product, featured = false }: ProductCardProps) {
     const router = useRouter();
     const addToCart = useCartStore((state) => state.addItem);
+    const trackEvent = useTrackEvent();
 
     // ── Stock calculation ────────────────────────────────────────────────
     const skus = product.product_skus ?? [];
@@ -143,6 +145,11 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             artist_name: product.artist?.display_name || "وشّى",
             size: size ?? null,
             type: "product",
+        });
+        trackEvent("add_to_cart", {
+            entityType: "product",
+            entityId: product.id,
+            metadata: { title: product.title, price: Number(product.price), size: size ?? null },
         });
         setShowSizePicker(false);
         setPendingSize("");

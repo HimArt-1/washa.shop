@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCartStore } from "@/stores/cartStore";
 import { motion } from "framer-motion";
@@ -12,6 +13,8 @@ function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { clearCart } = useCartStore();
+  const trackEvent = useTrackEvent();
+  const trackedRef = useRef(false);
   const [isVerifying, setIsVerifying] = useState(true);
 
   const sessionId = searchParams.get("session_id");
@@ -32,7 +35,10 @@ function CheckoutSuccessContent() {
       colors: ['#CAA052', '#866B36', '#ffffff']
     });
 
-    // Clear the cart securely since checkout originated here
+    if (!trackedRef.current) {
+      trackedRef.current = true;
+      trackEvent("checkout_complete", { metadata: { orderId: orderId ?? undefined } });
+    }
     clearCart();
     setIsVerifying(false);
   }, [sessionId, router, clearCart]);

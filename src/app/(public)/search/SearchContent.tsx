@@ -8,6 +8,7 @@ import { globalSearch, getCategories, type SearchTab, type SearchFilters, type S
 import { useCartStore } from "@/stores/cartStore";
 import Image from "next/image";
 import Link from "next/link";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 
 // ─── Tab Config ─────────────────────────────────────────────
 const tabs: { id: SearchTab; label: string; icon: any }[] = [
@@ -211,6 +212,7 @@ export default function SearchContent() {
     const searchParams = useSearchParams();
     const initialQuery = searchParams.get("q") || "";
     const initialTab = (searchParams.get("tab") as SearchTab) || "artworks";
+    const trackEvent = useTrackEvent();
 
     const [query, setQuery] = useState(initialQuery);
     const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
@@ -245,8 +247,12 @@ export default function SearchContent() {
             startTransition(async () => {
                 const data = await globalSearch(q, tab, p, f);
                 setResults(data);
+                if (q.trim().length >= 2) {
+                    trackEvent("search_query", { metadata: { query: q.trim(), tab } });
+                }
             });
         },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         []
     );
 

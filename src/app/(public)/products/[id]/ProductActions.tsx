@@ -16,10 +16,12 @@ import {
 import { useRouter } from "next/navigation";
 import { SignedIn, SignedOut } from "@clerk/nextjs";
 import Link from "next/link";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 
 export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes }: { product: any, isCurrentlyInStock?: boolean, erpAvailableSizes?: string[] }) {
     const addItem = useCartStore((s) => s.addItem);
     const router = useRouter();
+    const trackEvent = useTrackEvent();
 
     // Fall back to product.sizes if ERP sizes aren't explicitly provided (or empty)
     const sizesToUse = erpAvailableSizes && erpAvailableSizes.length > 0 ? erpAvailableSizes : product.sizes || [];
@@ -39,6 +41,12 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
 
     useEffect(() => {
         setMounted(true);
+        trackEvent("product_view", {
+            entityType: "product",
+            entityId: product.id,
+            metadata: { title: product.title, price: Number(product.price) },
+        });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -142,16 +150,23 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             {/* Buttons */}
             <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
                 <motion.button
-                    onClick={() => addItem({
-                        id: product.id,
-                        title: product.title,
-                        price: Number(product.price),
-                        image_url: product.image_url,
-                        artist_name: product.artist?.display_name || "فنان وشّى",
-                        type: "product",
-                        size: selectedSize || null,
-                        maxQuantity: product.stock_quantity || 99,
-                    })}
+                    onClick={() => {
+                        addItem({
+                            id: product.id,
+                            title: product.title,
+                            price: Number(product.price),
+                            image_url: product.image_url,
+                            artist_name: product.artist?.display_name || "فنان وشّى",
+                            type: "product",
+                            size: selectedSize || null,
+                            maxQuantity: product.stock_quantity || 99,
+                        });
+                        trackEvent("add_to_cart", {
+                            entityType: "product",
+                            entityId: product.id,
+                            metadata: { title: product.title, price: Number(product.price), size: selectedSize || null },
+                        });
+                    }}
                     disabled={!inStock}
                     className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"
                     whileHover={inStock ? { scale: 1.02 } : {}}

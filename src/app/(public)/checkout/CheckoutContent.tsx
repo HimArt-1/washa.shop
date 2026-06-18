@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 import { useCartStore } from "@/stores/cartStore";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Check, Loader2, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
@@ -74,6 +75,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const { items, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
     const searchParams = useSearchParams();
     const verifiedPaymentKeyRef = useRef<string | null>(null);
+    const trackEvent = useTrackEvent();
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
@@ -83,6 +85,11 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
+
+    useEffect(() => {
+        trackEvent("checkout_start", { metadata: { itemCount: items.length } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Auto-verify on return from Paylink
     useEffect(() => {

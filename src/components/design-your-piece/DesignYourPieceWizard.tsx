@@ -6,7 +6,8 @@
 //  Design Your Piece — Interactive Multi-Step Wizard
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useTrackEvent } from "@/components/ops/EventTracker";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     ArrowRight,
@@ -179,6 +180,8 @@ export function DesignYourPieceWizard({
 }: Props) {
     const { isSignedIn } = useAuth();
     const { addItem, toggleCart } = useCartStore();
+    const trackEvent = useTrackEvent();
+    const startTrackedRef = useRef(false);
     const [state, setState] = useState<WizardState>(INITIAL_STATE);
     const [colors, setColors] = useState<CustomDesignColor[]>([]);
     const [sizes, setSizes] = useState<CustomDesignSize[]>([]);
@@ -291,6 +294,14 @@ export function DesignYourPieceWizard({
             submissionError: null,
         }));
     }, [artStyles, colorPackages, garments, studioItems, styles]);
+
+    useEffect(() => {
+        if (!startTrackedRef.current) {
+            startTrackedRef.current = true;
+            trackEvent("design_order_start");
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Check for existing active order on mount
     useEffect(() => {
@@ -416,6 +427,7 @@ export function DesignYourPieceWizard({
                     return;
                 }
                 studioOrderId = result.orderId;
+                trackEvent("design_order_submit", { entityType: "design_order", entityId: studioOrderId, metadata: { method: "studio" } });
             } catch (err) {
                 console.error("submitDesignOrder (studio) failed:", err);
                 setState((s) => ({
@@ -513,6 +525,7 @@ export function DesignYourPieceWizard({
             storeOrderId(result.orderId, result.trackerToken);
             orderNumber = result.orderNumber;
             setActiveOrderId(result.orderId);
+            trackEvent("design_order_submit", { entityType: "design_order", entityId: result.orderId, metadata: { method: state.method ?? "custom" } });
         } catch (err) {
             console.error("submitDesignOrder failed:", err);
             setState((s) => ({ ...s, isSending: false, submissionError: "تعذر إرسال الطلب الآن. حاول مرة أخرى." }));
