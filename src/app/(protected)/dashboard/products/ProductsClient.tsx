@@ -1000,7 +1000,7 @@ function ProductFormModal({
             setForm({
                 artist_id: artists[0]?.id || "", title: "", description: "", type: "print",
                 price: "", image_url: "", in_stock: true, stock_quantity: "",
-                store_name: "WASHA.STOR", sizes: "",
+                store_name: "WASHA.SHOP", sizes: "",
             });
             setExistingImages([]);
         }
@@ -1260,7 +1260,7 @@ function ProductFormModal({
                             <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المتجر</label>
                             <input type="text" value={form.store_name}
                                 onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
-                                placeholder="WASHA.STOR"
+                                placeholder="WASHA.SHOP"
                                 className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>
                     </div>

@@ -186,8 +186,16 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
                         <h1 className="mb-3 text-2xl font-bold text-theme sm:text-3xl md:text-4xl">{product.title}</h1>
 
-                        {/* Artist */}
-                        {product.artist && (
+                        {/* Author / Store */}
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {(product as any).store_name ? (
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center">
+                                    <span className="text-[8px] font-black text-gold">W</span>
+                                </div>
+                                <span className="text-sm text-theme-subtle">{(product as any).store_name}</span>
+                            </div>
+                        ) : product.artist ? (
                             <Link
                                 href={`/artists/${product.artist.username}`}
                                 className="flex items-center gap-2 mb-6 text-theme-subtle hover:text-gold transition-colors"
@@ -199,6 +207,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 )}
                                 <span className="text-sm">بواسطة {product.artist.display_name}</span>
                             </Link>
+                        ) : (
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center">
+                                    <span className="text-[8px] font-black text-gold">W</span>
+                                </div>
+                                <span className="text-sm text-theme-subtle">وشّى | WASHA.SHOP</span>
+                            </div>
                         )}
 
                         {/* Description */}
