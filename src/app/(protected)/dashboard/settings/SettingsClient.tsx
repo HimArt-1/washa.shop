@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Eye, EyeOff, Globe, Truck, Save, Loader2, Tag, QrCode,
     Instagram, Twitter, Mail, Phone, Sparkles, Image as ImageIcon, ShieldAlert, History, Activity, RotateCcw, type LucideIcon,
+    Trash2, AlertTriangle, CheckCircle, XCircle,
 } from "lucide-react";
+import { purgeTestData, type PurgeScope } from "@/app/actions/data-management";
 import {
     updateSiteSetting,
     uploadExclusiveDesignImage,
@@ -1497,6 +1499,255 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     حفظ نصوص البطاقات
                 </button>
             </SettingsCard>
+
+            {/* ══════════════════════════════════════════════════════ */}
+            {/* ⚠️  DANGER ZONE — حذف البيانات التجريبية              */}
+            {/* ══════════════════════════════════════════════════════ */}
+            <DangerZone />
         </div>
+    );
+}
+
+// ─── Danger Zone Component ────────────────────────────────────────────────────
+
+const CONFIRM_PHRASE = "احذف البيانات التجريبية";
+
+const SCOPE_OPTIONS: { key: keyof PurgeScope; label: string; desc: string }[] = [
+    { key: "orders",             label: "الطلبات والمبيعات",     desc: "orders + order_items + إعادة تعيين عدادات الكوبونات" },
+    { key: "behavioralEvents",   label: "الأحداث السلوكية",      desc: "behavioral_events — مشاهدات، إضافات للسلة، البحث..." },
+    { key: "pageVisits",         label: "سجل الزيارات",           desc: "page_visits — تاريخ تصفح الصفحات" },
+    { key: "marketingCampaigns", label: "سجل الحملات التسويقية", desc: "marketing_campaigns — الحملات البريدية المُرسلة" },
+];
+
+function DangerZone() {
+    const [open, setOpen] = useState(false);
+    const [scope, setScope] = useState<PurgeScope>({
+        orders: true,
+        behavioralEvents: true,
+        pageVisits: true,
+        marketingCampaigns: true,
+    });
+    const [confirmText, setConfirmText] = useState("");
+    const [step, setStep] = useState<"idle" | "confirm" | "running" | "done" | "error">("idle");
+    const [result, setResult] = useState<{ deleted: Record<string, number>; error?: string } | null>(null);
+
+    const nothingSelected = !Object.values(scope).some(Boolean);
+    const confirmed = confirmText.trim() === CONFIRM_PHRASE;
+
+    const handleOpen = () => {
+        setStep("idle");
+        setConfirmText("");
+        setResult(null);
+        setOpen(true);
+    };
+    const handleClose = () => {
+        if (step === "running") return;
+        setOpen(false);
+    };
+
+    const handlePurge = async () => {
+        if (!confirmed || nothingSelected) return;
+        setStep("running");
+        const res = await purgeTestData(scope);
+        setResult({ deleted: res.deleted, error: res.error });
+        setStep(res.success ? "done" : "error");
+    };
+
+    const totalDeleted = result
+        ? Object.values(result.deleted).reduce((s, n) => s + n, 0)
+        : 0;
+
+    return (
+        <>
+            {/* ── Trigger card ── */}
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 overflow-hidden">
+                <div className="px-6 py-4 border-b border-red-500/20 flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-red-500/15">
+                        <AlertTriangle className="w-4 h-4 text-red-400" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-red-400 text-sm">منطقة الخطر</h3>
+                        <p className="text-xs text-red-400/60 mt-0.5">إجراءات لا يمكن التراجع عنها</p>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="flex items-start gap-4 p-4 rounded-xl border border-red-500/20 bg-red-500/5">
+                        <Trash2 className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="font-bold text-sm text-red-300">حذف البيانات التجريبية</p>
+                            <p className="text-xs text-red-400/70 mt-1 leading-relaxed">
+                                يحذف الطلبات والمبيعات وسجل الزيارات والأحداث السلوكية وسجل الحملات. <br />
+                                <strong>لا يمس</strong> المنتجات، الأعمال الفنية، المستخدمين، الإعدادات، أو أي بيانات النظام.
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleOpen}
+                            className="shrink-0 px-4 py-2 rounded-xl border border-red-500/40 bg-red-500/10 text-red-300 text-sm font-bold hover:bg-red-500/20 transition-colors"
+                        >
+                            تنفيذ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* ── Modal ── */}
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        style={{ backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+                        onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                            transition={{ type: "spring", bounce: 0.2, duration: 0.35 }}
+                            className="w-full max-w-lg rounded-2xl border border-red-500/40 overflow-hidden"
+                            style={{ background: "var(--wusha-surface)" }}
+                            dir="rtl"
+                        >
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-red-500/20 flex items-center justify-between bg-red-500/10">
+                                <div className="flex items-center gap-2.5">
+                                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                                    <h2 className="font-black text-red-300">حذف البيانات التجريبية</h2>
+                                </div>
+                                {step !== "running" && (
+                                    <button onClick={handleClose} className="text-theme-faint hover:text-theme-soft transition-colors">
+                                        <XCircle className="w-5 h-5" />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="p-6 space-y-5">
+                                {/* Result states */}
+                                {step === "done" && (
+                                    <div className="flex flex-col items-center gap-3 py-4 text-center">
+                                        <CheckCircle className="w-12 h-12 text-emerald-400" />
+                                        <p className="font-bold text-emerald-300 text-lg">تم الحذف بنجاح</p>
+                                        <p className="text-sm text-theme-faint">
+                                            {totalDeleted > 0
+                                                ? `حُذف ${totalDeleted} سجل من قاعدة البيانات`
+                                                : "لم تكن هناك بيانات للحذف"}
+                                        </p>
+                                        <div className="w-full mt-2 space-y-1">
+                                            {Object.entries(result?.deleted ?? {}).map(([k, v]) => (
+                                                <div key={k} className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-theme-subtle">
+                                                    <span className="text-theme-faint font-mono">{k}</span>
+                                                    <span className="font-bold text-theme-soft">{v} سجل</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <button
+                                            onClick={handleClose}
+                                            className="mt-2 btn-gold px-8 py-2"
+                                        >
+                                            إغلاق
+                                        </button>
+                                    </div>
+                                )}
+
+                                {step === "error" && (
+                                    <div className="flex flex-col items-center gap-3 py-4 text-center">
+                                        <XCircle className="w-12 h-12 text-red-400" />
+                                        <p className="font-bold text-red-300">فشل الحذف</p>
+                                        <p className="text-sm text-theme-faint">{result?.error}</p>
+                                        <button onClick={() => setStep("idle")} className="mt-2 px-6 py-2 rounded-xl border border-theme-soft text-sm">
+                                            إعادة المحاولة
+                                        </button>
+                                    </div>
+                                )}
+
+                                {step === "running" && (
+                                    <div className="flex flex-col items-center gap-4 py-8">
+                                        <Loader2 className="w-10 h-10 text-red-400 animate-spin" />
+                                        <p className="font-bold text-theme-soft">جارٍ حذف البيانات...</p>
+                                        <p className="text-xs text-theme-faint">لا تغلق النافذة</p>
+                                    </div>
+                                )}
+
+                                {(step === "idle") && (
+                                    <>
+                                        {/* Warning */}
+                                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2.5">
+                                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                            <p className="text-xs text-amber-300 leading-relaxed">
+                                                هذه العملية <strong>لا يمكن التراجع عنها</strong>. تأكد أنك في بيئة تجريبية قبل المتابعة. لن تُحذف أي إعدادات أو منتجات أو حسابات مستخدمين.
+                                            </p>
+                                        </div>
+
+                                        {/* Scope checkboxes */}
+                                        <div>
+                                            <p className="text-xs font-bold text-theme-faint mb-2">اختر ما تريد حذفه:</p>
+                                            <div className="space-y-2">
+                                                {SCOPE_OPTIONS.map((opt) => (
+                                                    <label
+                                                        key={opt.key}
+                                                        className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
+                                                            scope[opt.key]
+                                                                ? "border-red-500/40 bg-red-500/10"
+                                                                : "border-theme-soft bg-theme-faint hover:border-theme-soft"
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={scope[opt.key]}
+                                                            onChange={(e) => setScope({ ...scope, [opt.key]: e.target.checked })}
+                                                            className="mt-0.5 w-4 h-4 rounded accent-red-500"
+                                                        />
+                                                        <div>
+                                                            <p className="text-sm font-bold text-theme-soft">{opt.label}</p>
+                                                            <p className="text-xs text-theme-faint mt-0.5">{opt.desc}</p>
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Confirmation phrase */}
+                                        <div>
+                                            <label className="block text-xs text-theme-faint mb-1.5">
+                                                لتأكيد الحذف، اكتب بالضبط:{" "}
+                                                <span className="font-mono font-bold text-red-400">{CONFIRM_PHRASE}</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={confirmText}
+                                                onChange={(e) => setConfirmText(e.target.value)}
+                                                placeholder={CONFIRM_PHRASE}
+                                                className="input-dark w-full text-sm font-mono"
+                                                dir="rtl"
+                                            />
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex gap-3 pt-1">
+                                            <button
+                                                onClick={handleClose}
+                                                className="flex-1 px-4 py-2.5 rounded-xl border border-theme-soft text-sm text-theme-faint hover:text-theme-soft transition-colors"
+                                            >
+                                                إلغاء
+                                            </button>
+                                            <button
+                                                onClick={handlePurge}
+                                                disabled={!confirmed || nothingSelected}
+                                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                                حذف نهائي
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 }
