@@ -433,8 +433,8 @@ export function Hero({
           transition={{ duration: 0.9, delay: 0.5 }}
         >
           <p
-            className="font-alnaseeb text-4xl font-bold text-glow-gold sm:text-5xl md:text-6xl"
-            style={{ color: "var(--hero-subtitle)", letterSpacing: 0, fontWeight: 700 }}
+            className="font-arabic text-4xl text-glow-gold sm:text-5xl md:text-6xl"
+            style={{ color: "var(--hero-subtitle)", letterSpacing: 0, fontWeight: 400 }}
           >
             فنٌ يُرتدى
           </p>
