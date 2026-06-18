@@ -6,6 +6,7 @@ import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access
 
 export interface PurgeScope {
     orders: boolean;
+    designOrders: boolean;
     behavioralEvents: boolean;
     pageVisits: boolean;
     marketingCampaigns: boolean;
@@ -53,6 +54,21 @@ export async function purgeTestData(scope: PurgeScope): Promise<PurgeResult> {
                 .from("discount_coupons")
                 .update({ usage_count: 0 })
                 .neq("id", "00000000-0000-0000-0000-000000000000");
+        }
+
+        if (scope.designOrders) {
+            // Delete messages first (FK), then orders
+            const { count: msgsCount } = await sb
+                .from("design_order_messages")
+                .delete({ count: "exact" })
+                .neq("id", "00000000-0000-0000-0000-000000000000");
+            deleted.design_order_messages = msgsCount ?? 0;
+
+            const { count: doCount } = await sb
+                .from("custom_design_orders")
+                .delete({ count: "exact" })
+                .neq("id", "00000000-0000-0000-0000-000000000000");
+            deleted.custom_design_orders = doCount ?? 0;
         }
 
         if (scope.behavioralEvents) {

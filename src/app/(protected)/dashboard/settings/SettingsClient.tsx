@@ -1514,6 +1514,7 @@ const CONFIRM_PHRASE = "احذف البيانات التجريبية";
 
 const SCOPE_OPTIONS: { key: keyof PurgeScope; label: string; desc: string }[] = [
     { key: "orders",             label: "الطلبات والمبيعات",     desc: "orders + order_items + إعادة تعيين عدادات الكوبونات" },
+    { key: "designOrders",       label: "طلبات التصميم",          desc: "custom_design_orders + design_order_messages" },
     { key: "behavioralEvents",   label: "الأحداث السلوكية",      desc: "behavioral_events — مشاهدات، إضافات للسلة، البحث..." },
     { key: "pageVisits",         label: "سجل الزيارات",           desc: "page_visits — تاريخ تصفح الصفحات" },
     { key: "marketingCampaigns", label: "سجل الحملات التسويقية", desc: "marketing_campaigns — الحملات البريدية المُرسلة" },
@@ -1523,6 +1524,7 @@ function DangerZone() {
     const [open, setOpen] = useState(false);
     const [scope, setScope] = useState<PurgeScope>({
         orders: true,
+        designOrders: true,
         behavioralEvents: true,
         pageVisits: true,
         marketingCampaigns: true,
