@@ -15,9 +15,24 @@ function getClient() {
     );
 }
 
+function normalizeVariantValue(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim().toLowerCase() : null;
+}
+
+function normalizeColorVariantValue(value: unknown) {
+    const normalized = normalizeVariantValue(value);
+    if (!normalized) return null;
+    return normalized.startsWith("#") ? normalized : `#${normalized}`;
+}
+
+function getSkuQuantity(sku: any) {
+    const levels = Array.isArray(sku?.inventory_levels) ? sku.inventory_levels : [];
+    return levels.reduce((sum: number, level: any) => sum + (Number(level?.quantity) || 0), 0);
+}
+
 /** التحقق من توفر المخزون — batch query لتقليل الـ round-trips */
 export async function checkStockAvailability(
-    items: { product_id: string | null; quantity: number }[]
+    items: { product_id: string | null; quantity: number; size?: string | null; color_code?: string | null }[]
 ): Promise<{ ok: boolean; error?: string; product?: string }> {
     const supabase = getClient();
 
@@ -28,7 +43,13 @@ export async function checkStockAvailability(
 
     const { data: products, error } = await supabase
         .from("products")
-        .select("id, title, stock_quantity, in_stock")
+        .select(`
+            id, title, stock_quantity, in_stock,
+            product_skus(
+                id, size, color_code, is_active,
+                inventory_levels(quantity)
+            )
+        `)
         .in("id", ids);
 
     if (error) return { ok: false, error: "خطأ في التحقق من المخزون" };
@@ -39,6 +60,61 @@ export async function checkStockAvailability(
         const product = productMap.get(item.product_id!);
         if (!product) return { ok: false, error: "منتج غير موجود", product: item.product_id! };
         if (!product.in_stock) return { ok: false, error: `المنتج "${product.title}" غير متوفر`, product: product.title };
+
+        const rawSkus = Array.isArray((product as any).product_skus) ? (product as any).product_skus : [];
+        const skus = rawSkus.filter((sku: any) => sku.is_active !== false);
+        if (rawSkus.length > 0) {
+            if (skus.length === 0) {
+                return { ok: false, error: `لا توجد خيارات نشطة للمنتج "${product.title}"`, product: product.title };
+            }
+            const hasSizeVariants = skus.some((sku: any) => normalizeVariantValue(sku.size));
+            const hasColorVariants = skus.some((sku: any) => normalizeColorVariantValue(sku.color_code));
+            const requestedSize = normalizeVariantValue(item.size);
+            const requestedColor = normalizeColorVariantValue(item.color_code);
+
+            if (hasSizeVariants && !requestedSize) {
+                return { ok: false, error: `اختر مقاس المنتج "${product.title}"`, product: product.title };
+            }
+
+            if (hasColorVariants && !requestedColor) {
+                return { ok: false, error: `اختر لون المنتج "${product.title}"`, product: product.title };
+            }
+
+            if (!hasColorVariants && requestedColor) {
+                return { ok: false, error: `اللون المحدد غير متاح للمنتج "${product.title}"`, product: product.title };
+            }
+
+            const matchingSkus = skus.filter((sku: any) => {
+                const skuSize = normalizeVariantValue(sku.size);
+                const skuColor = normalizeColorVariantValue(sku.color_code);
+                return (!hasSizeVariants || skuSize === requestedSize)
+                    && (!hasColorVariants || skuColor === requestedColor);
+            });
+
+            if (matchingSkus.length === 0) {
+                return { ok: false, error: `الخيار المحدد غير متاح للمنتج "${product.title}"`, product: product.title };
+            }
+
+            const available = matchingSkus.reduce((sum: number, sku: any) => sum + getSkuQuantity(sku), 0);
+            if (available < item.quantity) {
+                const optionLabel = [
+                    item.size ? `المقاس ${item.size}` : null,
+                    item.color_code ? `اللون ${item.color_code}` : null,
+                ].filter(Boolean).join("، ");
+                return {
+                    ok: false,
+                    error: `الكمية المطلوبة من "${product.title}" ${optionLabel ? `(${optionLabel}) ` : ""}تتجاوز المخزون (${available})`,
+                    product: product.title,
+                };
+            }
+
+            continue;
+        }
+
+        if (item.color_code) {
+            return { ok: false, error: `اللون المحدد غير متاح للمنتج "${product.title}"`, product: product.title };
+        }
+
         if (product.stock_quantity != null && product.stock_quantity < item.quantity) {
             return {
                 ok: false,
@@ -60,7 +136,8 @@ async function safeDecrementInventoryLevel(
     warehouseId: string,
     qty: number,
     orderId: string,
-    itemSize: string | null
+    itemSize: string | null,
+    itemColor: string | null
 ): Promise<{ newQuantity: number; prevQuantity: number } | { error: string }> {
     for (let attempt = 0; attempt < 3; attempt++) {
         const { data: level } = await supabase
@@ -73,7 +150,11 @@ async function safeDecrementInventoryLevel(
         const prevQty = level ? Number(level.quantity) : 0;
 
         if (prevQty < qty) {
-            return { error: `المخزون غير كافٍ — المقاس ${itemSize || "-"} متاح: ${prevQty}، مطلوب: ${qty}` };
+            const optionLabel = [
+                itemSize ? `المقاس ${itemSize}` : null,
+                itemColor ? `اللون ${itemColor}` : null,
+            ].filter(Boolean).join("، ");
+            return { error: `المخزون غير كافٍ${optionLabel ? ` — ${optionLabel}` : ""} متاح: ${prevQty}، مطلوب: ${qty}` };
         }
 
         const newQty = prevQty - qty;
@@ -113,7 +194,7 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
 
     const { data: items } = await supabase
         .from("order_items")
-        .select("product_id, quantity, size, unit_price, total_price, custom_design_order_id")
+        .select("product_id, quantity, size, color_code, unit_price, total_price, custom_design_order_id")
         .eq("order_id", orderId);
 
     if (!items?.length) return { success: true };
@@ -146,10 +227,14 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
         if (!defaultWh) return { success: false, error: "لا يوجد مستودع مسجل" };
 
         // ─── Find SKU ────────────────────────────────────────────────────
-        let skuQuery = supabase.from("product_skus").select("id").eq("product_id", item.product_id);
+        let skuQuery = supabase.from("product_skus").select("id, color_code").eq("product_id", item.product_id).eq("is_active", true);
         if (item.size) skuQuery = skuQuery.ilike("size", item.size);
 
-        const { data: skus } = await skuQuery;
+        const { data: skuRows } = await skuQuery;
+        const requestedColor = normalizeColorVariantValue(item.color_code);
+        const skus = requestedColor
+            ? (skuRows || []).filter((sku: any) => normalizeColorVariantValue(sku.color_code) === requestedColor)
+            : skuRows;
         const skuId = skus && skus.length > 0 ? skus[0].id : null;
 
         // ─── Legacy fallback (no SKU) ────────────────────────────────────
@@ -190,7 +275,8 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
             defaultWh.id,
             item.quantity,
             orderId,
-            item.size
+            item.size,
+            item.color_code
         );
 
         if ("error" in result) return { success: false, error: result.error };
@@ -232,13 +318,14 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                     productTitle: title,
                     sku: skuDetails.sku,
                     size: item.size,
-                    quantity: newQuantity,
                     metadata: {
                         sku_id: skuId,
                         product_id: item.product_id,
                         order_id: orderId,
+                        color_code: item.color_code ?? null,
                         source: "erp_inventory_level",
                     },
+                    quantity: newQuantity,
                 });
             }
         }
@@ -253,7 +340,7 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
 
     const { data: items } = await supabase
         .from("order_items")
-        .select("product_id, quantity, size, custom_design_order_id")
+        .select("product_id, quantity, size, color_code, custom_design_order_id")
         .eq("order_id", orderId);
 
     if (!items?.length) return { success: true };
@@ -280,10 +367,14 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
         if (!defaultWh) continue;
 
         // ─── Find SKU ────────────────────────────────────────────────────
-        let skuQuery = supabase.from("product_skus").select("id").eq("product_id", item.product_id);
+        let skuQuery = supabase.from("product_skus").select("id, color_code").eq("product_id", item.product_id);
         if (item.size) skuQuery = skuQuery.ilike("size", item.size);
 
-        const { data: skus } = await skuQuery;
+        const { data: skuRows } = await skuQuery;
+        const requestedColor = normalizeColorVariantValue(item.color_code);
+        const skus = requestedColor
+            ? (skuRows || []).filter((sku: any) => normalizeColorVariantValue(sku.color_code) === requestedColor)
+            : skuRows;
         const skuId = skus && skus.length > 0 ? skus[0].id : null;
 
         // ─── Legacy fallback ─────────────────────────────────────────────

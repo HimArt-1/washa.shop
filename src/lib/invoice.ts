@@ -7,6 +7,7 @@ export interface InvoiceOrderItem {
     id: string;
     quantity: number;
     size?: string | null;
+    color_code?: string | null;
     unit_price: number;
     total_price: number;
     custom_title?: string | null;

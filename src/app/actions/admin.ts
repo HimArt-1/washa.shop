@@ -1172,7 +1172,7 @@ export async function getCustomerProfile(userId: string) {
     const [profileRes, ordersRes, ticketsRes] = await Promise.allSettled([
         supabase.from("profiles").select("*").eq("id", userId).single(),
         supabase.from("orders")
-            .select("id, order_number, total, status, payment_status, created_at, order_items(id, quantity, unit_price, total_price, size, product:products(title, image_url), custom_title)")
+            .select("id, order_number, total, status, payment_status, created_at, order_items(id, quantity, unit_price, total_price, size, color_code, product:products(title, image_url), custom_title)")
             .eq("buyer_id", userId)
             .order("created_at", { ascending: false })
             .limit(50),
@@ -1786,7 +1786,7 @@ export async function getAdminOrders({ page = 1, status = "all", search = "" }: 
             *,
             buyer:profiles!orders_buyer_id_fkey(id, display_name, username, avatar_url, role),
             order_items(
-                id, product_id, quantity, size, unit_price, total_price,
+                id, product_id, quantity, size, color_code, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title, custom_design_order_id,
                 product:products(id, title, image_url)
             ),
@@ -1837,7 +1837,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
             *,
             buyer:profiles!orders_buyer_id_fkey(id, display_name, username, avatar_url, role),
             order_items(
-                id, product_id, quantity, size, unit_price, total_price,
+                id, product_id, quantity, size, color_code, unit_price, total_price,
                 custom_design_url, custom_garment, custom_title, custom_design_order_id,
                 product:products(id, title, image_url)
             ),

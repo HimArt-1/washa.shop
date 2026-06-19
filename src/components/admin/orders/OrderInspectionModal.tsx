@@ -155,6 +155,12 @@ export function OrderInspectionModal({ order, isOpen, onClose }: OrderInspection
                                                                     المقاس: {item.size}
                                                                 </span>
                                                             )}
+                                                            {item.color_code && (
+                                                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-bold text-theme-subtle border border-white/10 uppercase">
+                                                                    <span className="h-2.5 w-2.5 rounded-full border border-white/20" style={{ backgroundColor: item.color_code }} aria-hidden />
+                                                                    اللون: {item.color_code}
+                                                                </span>
+                                                            )}
                                                             {item.custom_garment && (
                                                                 <span className="px-2 py-0.5 rounded-md bg-gold/10 text-[10px] font-bold text-gold border border-gold/20">
                                                                     {item.custom_garment}

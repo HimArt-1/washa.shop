@@ -53,6 +53,9 @@ export async function createSKU(input: {
     sku?: string;
     size?: string | null;
     color_code?: string | null;
+    color_image_url?: string | null;
+    initial_quantity?: number;
+    is_active?: boolean;
 }) {
     const { isAdmin } = await verifyAdmin();
     if (!isAdmin) return { error: "غير مصرح" };
@@ -72,11 +75,85 @@ export async function createSKU(input: {
 
     const supabase = getAdminSb();
     const { data, error } = await supabase.from("product_skus")
-        .insert({ product_id: input.product_id, sku: skuValue!, size: input.size ?? null, color_code: input.color_code ?? null })
+        .insert({
+            product_id: input.product_id,
+            sku: skuValue!,
+            size: input.size ?? null,
+            color_code: input.color_code ?? null,
+            ...(input.color_image_url !== undefined ? { color_image_url: input.color_image_url?.trim() || null } : {}),
+            is_active: input.is_active ?? true,
+        })
         .select()
         .single();
 
     if (error) return { error: error.message };
+
+    const initialQuantity = Number(input.initial_quantity) || 0;
+    if (data?.id && initialQuantity > 0) {
+        const { data: warehouse } = await supabase
+            .from("warehouses")
+            .select("id")
+            .eq("is_active", true)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (warehouse?.id) {
+            await supabase.from("inventory_levels").insert({
+                sku_id: data.id,
+                warehouse_id: warehouse.id,
+                quantity: initialQuantity,
+            });
+            await supabase.from("inventory_transactions").insert({
+                sku_id: data.id,
+                warehouse_id: warehouse.id,
+                transaction_type: "addition",
+                quantity_change: initialQuantity,
+                previous_quantity: 0,
+                new_quantity: initialQuantity,
+                notes: "Initial stock from SKU manager",
+            });
+        }
+    }
+
+    revalidatePath("/dashboard/products-inventory");
+    revalidatePath("/store");
+    return { sku: data };
+}
+
+export async function updateSKU(input: {
+    id: string;
+    sku?: string;
+    size?: string | null;
+    color_code?: string | null;
+    color_image_url?: string | null;
+    is_active?: boolean;
+}) {
+    const { isAdmin } = await verifyAdmin();
+    if (!isAdmin) return { error: "غير مصرح" };
+
+    const skuValue = input.sku?.trim();
+    if (!input.id) return { error: "SKU غير محدد" };
+    if (!skuValue) return { error: "رمز SKU مطلوب" };
+
+    const supabase = getAdminSb();
+    const { data, error } = await supabase
+        .from("product_skus")
+        .update({
+            sku: skuValue,
+            size: input.size?.trim() || null,
+            color_code: input.color_code?.trim() || null,
+            ...(input.color_image_url !== undefined ? { color_image_url: input.color_image_url?.trim() || null } : {}),
+            ...(input.is_active !== undefined ? { is_active: input.is_active } : {}),
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+
+    if (error) return { error: error.message };
+
+    revalidatePath("/dashboard/products-inventory");
+    revalidatePath("/store");
     return { sku: data };
 }
 

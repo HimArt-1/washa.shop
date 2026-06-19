@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS order_items (
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL DEFAULT 1,
   size TEXT,
+  color_code TEXT,
   unit_price NUMERIC(12, 2) NOT NULL,
   total_price NUMERIC(12, 2) NOT NULL
 );

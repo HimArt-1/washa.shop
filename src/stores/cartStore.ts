@@ -12,6 +12,7 @@ export interface CartItem {
     artist_name: string;
     quantity: number;
     size?: string | null;
+    colorCode?: string | null;
     type: "product" | "artwork" | "custom_design";
     maxQuantity?: number; // Stock limit
     // للتصاميم المخصصة فقط
@@ -26,8 +27,8 @@ interface CartState {
     isOpen: boolean;
     coupon: DiscountCoupon | null;
     addItem: (item: Omit<CartItem, "quantity">) => void;
-    removeItem: (id: string, size?: string | null) => void;
-    updateQuantity: (id: string, quantity: number, size?: string | null) => void;
+    removeItem: (id: string, size?: string | null, colorCode?: string | null) => void;
+    updateQuantity: (id: string, quantity: number, size?: string | null, colorCode?: string | null) => void;
     clearCart: () => void;
     toggleCart: (open?: boolean) => void;
 
@@ -52,7 +53,10 @@ export const useCartStore = create<CartState>()(
             addItem: (newItem) => {
                 set((state) => {
                     const existingItemIndex = state.items.findIndex(
-                        (item) => item.id === newItem.id && item.size === newItem.size
+                        (item) =>
+                            item.id === newItem.id &&
+                            (item.size ?? null) === (newItem.size ?? null) &&
+                            (item.colorCode ?? null) === (newItem.colorCode ?? null)
                     );
 
                     if (existingItemIndex > -1) {
@@ -79,18 +83,27 @@ export const useCartStore = create<CartState>()(
                 });
             },
 
-            removeItem: (id, size) => {
+            removeItem: (id, size, colorCode) => {
                 set((state) => ({
                     items: state.items.filter(
-                        (item) => !(item.id === id && item.size === size)
+                        (item) =>
+                            !(
+                                item.id === id &&
+                                (item.size ?? null) === (size ?? null) &&
+                                (item.colorCode ?? null) === (colorCode ?? null)
+                            )
                     ),
                 }));
             },
 
-            updateQuantity: (id, quantity, size) => {
+            updateQuantity: (id, quantity, size, colorCode) => {
                 set((state) => ({
                     items: state.items.map((item) => {
-                        if (item.id === id && item.size === size) {
+                        if (
+                            item.id === id &&
+                            (item.size ?? null) === (size ?? null) &&
+                            (item.colorCode ?? null) === (colorCode ?? null)
+                        ) {
                             const max = item.maxQuantity || 99;
                             return { ...item, quantity: Math.min(Math.max(1, quantity), max) };
                         }

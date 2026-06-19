@@ -974,6 +974,7 @@ export async function updateProduct(id: string, updates: Partial<{
     in_stock: boolean;
     is_featured: boolean;
     stock_quantity: number | null;
+    sizes: string[] | null;
     badge: string | null;
     store_name: string | null;
 }>) {
@@ -995,6 +996,132 @@ export async function updateProduct(id: string, updates: Partial<{
     revalidatePath("/dashboard/products-inventory");
     revalidatePath("/store");
     return { success: true };
+}
+
+function normalizeVariantSize(value?: string | null) {
+    const token = value?.trim().replace(/\s+/g, " ");
+    if (!token) return null;
+    return /^[a-z0-9]+$/i.test(token) ? token.toUpperCase() : token;
+}
+
+function normalizeVariantColor(value?: string | null) {
+    const token = value?.trim();
+    if (!token) return null;
+    return token.startsWith("#") ? token.toLowerCase() : `#${token.toLowerCase()}`;
+}
+
+function variantKey(size?: string | null, color?: string | null) {
+    return `${normalizeVariantSize(size) || "∅"}::${normalizeVariantColor(color) || "∅"}`;
+}
+
+export async function syncProductVariantSkus(input: {
+    product_id: string;
+    sizes?: string[];
+    colors?: string[];
+    colorImages?: Record<string, string | null>;
+}) {
+    await requireAdmin();
+    const supabase = getAdminSupabase();
+
+    const { data: product, error: productError } = await supabase
+        .from("products")
+        .select("id, type")
+        .eq("id", input.product_id)
+        .single();
+
+    if (productError || !product) {
+        return { success: false, error: productError?.message || "المنتج غير موجود" };
+    }
+
+    const sizes = Array.from(new Set((input.sizes || []).map(normalizeVariantSize).filter(Boolean) as string[]));
+    const colors = Array.from(new Set((input.colors || []).map(normalizeVariantColor).filter(Boolean) as string[]));
+    const colorImageEntries = Object.entries(input.colorImages || {}).map(([color, imageUrl]) => [
+        normalizeVariantColor(color),
+        typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : null,
+    ] as const);
+    const colorImages = new Map(colorImageEntries.filter(([color]) => Boolean(color)) as Array<[string, string | null]>);
+    const sizesToSync = sizes.length > 0 ? sizes : [null];
+    const colorsToSync = colors.length > 0 ? colors : [null];
+    const desiredVariants = sizesToSync.flatMap((size) => colorsToSync.map((color) => ({ size, color })));
+    const desiredKeys = new Set(desiredVariants.map((variant) => variantKey(variant.size, variant.color)));
+
+    const { data: existingRows, error: existingError } = await supabase
+        .from("product_skus")
+        .select("id, sku, size, color_code, is_active")
+        .eq("product_id", input.product_id);
+
+    if (existingError) return { success: false, error: existingError.message };
+
+    const existing = existingRows || [];
+    const existingByKey = new Map<string, any>();
+    existing.forEach((row: any) => {
+        const key = variantKey(row.size, row.color_code);
+        if (!existingByKey.has(key)) existingByKey.set(key, row);
+    });
+
+    let createdCount = 0;
+    let reactivatedCount = 0;
+    let disabledCount = 0;
+
+    for (const variant of desiredVariants) {
+        const key = variantKey(variant.size, variant.color);
+        const row = existingByKey.get(key);
+        const imageUpdate = variant.color ? colorImages.get(normalizeVariantColor(variant.color) || "") : undefined;
+        if (row) {
+            const updates: Record<string, any> = {};
+            if (row.is_active === false) {
+                updates.size = variant.size;
+                updates.color_code = variant.color;
+                updates.is_active = true;
+            }
+            if (imageUpdate !== undefined) {
+                updates.color_image_url = imageUpdate;
+            }
+            if (Object.keys(updates).length > 0) {
+                const { error } = await supabase
+                    .from("product_skus")
+                    .update(updates)
+                    .eq("id", row.id);
+                if (error) return { success: false, error: error.message };
+                if (updates.is_active) reactivatedCount++;
+            }
+            continue;
+        }
+
+        const skuResult = await generateNextSKU(product.type, variant.size || undefined, variant.color?.replace(/^#/, ""));
+        if ("error" in skuResult) return { success: false, error: skuResult.error };
+
+        const insertRow: Record<string, any> = {
+            product_id: input.product_id,
+            sku: skuResult.sku,
+            size: variant.size,
+            color_code: variant.color,
+            is_active: true,
+        };
+        if (imageUpdate !== undefined) insertRow.color_image_url = imageUpdate;
+
+        const { error } = await supabase.from("product_skus").insert(insertRow);
+
+        if (error) return { success: false, error: error.message };
+        createdCount++;
+    }
+
+    for (const row of existing) {
+        if (row.is_active === false) continue;
+        if (desiredKeys.has(variantKey(row.size, row.color_code))) continue;
+
+        const { error } = await supabase
+            .from("product_skus")
+            .update({ is_active: false })
+            .eq("id", row.id);
+        if (error) return { success: false, error: error.message };
+        disabledCount++;
+    }
+
+    revalidatePath("/dashboard/products-inventory");
+    revalidatePath("/store");
+    revalidatePath(`/products/${input.product_id}`);
+    return { success: true, createdCount, reactivatedCount, disabledCount };
 }
 
 export async function deleteProduct(id: string) {
@@ -1022,6 +1149,8 @@ export async function createProductAdmin(data: {
     image_url: string;
     images?: string[];
     sizes?: string[];
+    colors?: string[];
+    colorImages?: Record<string, string | null>;
     in_stock?: boolean;
     stock_quantity?: number;
     store_name?: string;
@@ -1060,42 +1189,57 @@ export async function createProductAdmin(data: {
     // ERP: Auto-generate SKUs & Initial Inventory
     if (productId) {
         const sizesToCreate = data.sizes && data.sizes.length > 0 ? data.sizes : [null];
+        const colorsToCreate = data.colors && data.colors.length > 0 ? data.colors : [null];
+        const variantCount = Math.max(1, sizesToCreate.length * colorsToCreate.length);
         const totalQty = data.stock_quantity != null ? data.stock_quantity : (data.in_stock ? 100 : 0);
-        const qtyPerSku = Math.floor(totalQty / sizesToCreate.length);
+        const qtyPerSku = Math.floor(totalQty / variantCount);
+        const remainder = totalQty % variantCount;
 
         let warehouseId = null;
         const { data: wh } = await supabase.from("warehouses").select("id").limit(1).single();
         if (wh) warehouseId = wh.id;
 
+        let variantIndex = 0;
         for (const size of sizesToCreate) {
-            const skuResult = await generateNextSKU(data.type, size || undefined, undefined);
-            if ("error" in skuResult) {
-                console.error("[createProductAdmin] SKU generation failed:", skuResult.error);
-                continue;
-            }
-            const finalSku = skuResult.sku;
+            for (const color of colorsToCreate) {
+                const colorForSku = color ? color.replace(/^#/, "") : undefined;
+                const skuResult = await generateNextSKU(data.type, size || undefined, colorForSku);
+                if ("error" in skuResult) {
+                    console.error("[createProductAdmin] SKU generation failed:", skuResult.error);
+                    continue;
+                }
+                const finalSku = skuResult.sku;
+                const quantity = qtyPerSku + (variantIndex < remainder ? 1 : 0);
+                variantIndex++;
 
-            const { data: newSku } = await supabase.from("product_skus").insert({
-                product_id: productId,
-                sku: finalSku,
-                size: size ? size.trim() : null,
-            }).select("id").single();
+                const colorImageUrl = color ? data.colorImages?.[normalizeVariantColor(color) || ""] : undefined;
+                const skuInsert: Record<string, any> = {
+                    product_id: productId,
+                    sku: finalSku,
+                    size: size ? size.trim() : null,
+                    color_code: color ?? null,
+                    is_active: true,
+                };
+                if (colorImageUrl !== undefined) skuInsert.color_image_url = colorImageUrl || null;
 
-            if (newSku && warehouseId && qtyPerSku > 0) {
-                await supabase.from("inventory_levels").insert({
-                    sku_id: newSku.id,
-                    warehouse_id: warehouseId,
-                    quantity: qtyPerSku
-                });
-                await supabase.from("inventory_transactions").insert({
-                    sku_id: newSku.id,
-                    warehouse_id: warehouseId,
-                    transaction_type: 'addition',
-                    quantity_change: qtyPerSku,
-                    previous_quantity: 0,
-                    new_quantity: qtyPerSku,
-                    notes: 'Initial stock creation from Admin Product Form'
-                });
+                const { data: newSku } = await supabase.from("product_skus").insert(skuInsert).select("id").single();
+
+                if (newSku && warehouseId && quantity > 0) {
+                    await supabase.from("inventory_levels").insert({
+                        sku_id: newSku.id,
+                        warehouse_id: warehouseId,
+                        quantity
+                    });
+                    await supabase.from("inventory_transactions").insert({
+                        sku_id: newSku.id,
+                        warehouse_id: warehouseId,
+                        transaction_type: 'addition',
+                        quantity_change: quantity,
+                        previous_quantity: 0,
+                        new_quantity: quantity,
+                        notes: 'Initial stock creation from Admin Product Form'
+                    });
+                }
             }
         }
     }

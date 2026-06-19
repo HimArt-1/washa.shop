@@ -207,7 +207,7 @@ export function generateLabelHTML(order: InvoiceOrder, config: LabelConfig = def
                 <div class="box-title">محتويات الشحنة</div>
                 ${items.map(item => `
                     <div class="item-row">
-                        <span>${item.product?.title || item.custom_title || "منتج"} ${item.size ? `(${item.size})` : ""}</span>
+                        <span>${item.product?.title || item.custom_title || "منتج"} ${[item.size, item.color_code].filter(Boolean).length ? `(${[item.size, item.color_code].filter(Boolean).join(" · ")})` : ""}</span>
                         <span style="font-weight: 700;">x${item.quantity}</span>
                     </div>
                 `).join("")}

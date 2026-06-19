@@ -325,6 +325,7 @@ export interface OrderEmailItem {
     title: string;
     quantity: number;
     size?: string | null;
+    color_code?: string | null;
     unit_price: number;
 }
 
@@ -354,7 +355,7 @@ export async function sendOrderConfirmationEmail(
           </tr>
           ${items.map(item => `<tr>
             <td style="color:#f0ebe3;font-size:13px;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);">
-              ${sanitizeText(item.title, 120, "منتج")}${item.size ? ` <span style="color:#ceae7f;font-size:11px;">(${sanitizeText(item.size, 30, "")})</span>` : ""}
+              ${sanitizeText(item.title, 120, "منتج")}${item.size || item.color_code ? ` <span style="color:#ceae7f;font-size:11px;">(${[item.size ? `مقاس ${sanitizeText(item.size, 30, "")}` : "", item.color_code ? `لون ${sanitizeText(item.color_code, 30, "")}` : ""].filter(Boolean).join(" · ")})</span>` : ""}
             </td>
             <td style="color:rgba(240,235,227,0.5);font-size:13px;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);text-align:center;">${item.quantity}</td>
             <td style="color:#ceae7f;font-size:13px;font-weight:600;padding:9px 0;border-bottom:1px solid rgba(240,235,227,0.04);text-align:left;" dir="ltr">${(item.unit_price * item.quantity).toLocaleString()} ر.س</td>

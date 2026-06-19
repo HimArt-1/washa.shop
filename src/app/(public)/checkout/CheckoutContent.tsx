@@ -304,6 +304,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                 product_id: item.id,
                 quantity: item.quantity,
                 size: item.size || null,
+                color_code: item.colorCode || null,
                 unit_price: item.price,
             };
         });
@@ -747,7 +748,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
 
                             <div className="mb-6 space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar sm:max-h-[320px]">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size}`} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
+                                    <div key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -763,6 +764,17 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                             <h4 className="line-clamp-2 text-sm font-medium">{item.title}</h4>
                                             <p className="text-theme-subtle text-xs">{item.artist_name}</p>
                                             {item.size && <p className="text-theme-subtle text-xs mt-0.5">الحجم: {item.size}</p>}
+                                            {item.colorCode && (
+                                                <p className="mt-0.5 inline-flex items-center gap-1.5 text-theme-subtle text-xs">
+                                                    اللون:
+                                                    <span
+                                                        className="h-3 w-3 rounded-full border border-theme-soft"
+                                                        style={{ backgroundColor: item.colorCode }}
+                                                        aria-hidden
+                                                    />
+                                                    <span dir="ltr">{item.colorCode}</span>
+                                                </p>
+                                            )}
                                             <p className="text-gold text-sm font-bold mt-1">{(item.price * item.quantity).toLocaleString()} ر.س</p>
                                         </div>
                                     </div>

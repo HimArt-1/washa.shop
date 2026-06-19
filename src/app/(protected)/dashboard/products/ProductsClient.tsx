@@ -9,9 +9,9 @@ import {
     Printer, CheckSquare, Square, MoreHorizontal, Filter, Tags, GripVertical, ImagePlus,
 } from "lucide-react";
 import {
-    updateProduct, deleteProduct, createProductAdmin, uploadProductImage,
+    updateProduct, deleteProduct, createProductAdmin, uploadProductImage, syncProductVariantSkus,
 } from "@/app/actions/settings";
-import { createSKU, getUnitSerials } from "@/app/actions/erp/inventory";
+import { createSKU, getUnitSerials, updateSKU } from "@/app/actions/erp/inventory";
 import Image from "next/image";
 import Link from "next/link";
 import Barcode from 'react-barcode';
@@ -26,6 +26,555 @@ const typeOptions = [
     { value: "print", label: "مطبوعات" }, { value: "apparel", label: "ملابس" },
     { value: "digital", label: "رقمي" }, { value: "nft", label: "NFT" }, { value: "original", label: "أصلي" },
 ];
+
+function parseCommaList(value: string) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeSizeToken(value: string) {
+    const token = value.trim().replace(/\s+/g, " ");
+    return /^[a-z0-9]+$/i.test(token) ? token.toUpperCase() : token;
+}
+
+function parseSizeList(value: string) {
+    return parseCommaList(value).map(normalizeSizeToken);
+}
+
+const SIZE_PRESET_GROUPS = [
+    { key: "apparel", label: "ملابس", sizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"] },
+    { key: "numeric", label: "أرقام", sizes: ["36", "38", "40", "42", "44", "46", "48", "50", "52", "54", "56", "58", "60"] },
+    { key: "kids", label: "أطفال", sizes: ["2Y", "4Y", "6Y", "8Y", "10Y", "12Y", "14Y"] },
+    { key: "prints", label: "طباعات", sizes: ["A5", "A4", "A3", "A2", "50x70", "70x100"] },
+];
+
+function sizeGroupForProductType(type: string) {
+    return type === "print" ? "prints" : "apparel";
+}
+
+function uniqueSizes(sizes: string[]) {
+    const seen = new Set<string>();
+    return sizes
+        .map((size) => normalizeSizeToken(size))
+        .filter(Boolean)
+        .filter((size) => {
+            const key = size.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+}
+
+function sizesToFieldValue(sizes: string[]) {
+    return uniqueSizes(sizes).join(", ");
+}
+
+function sameSize(a?: string | null, b?: string | null) {
+    if (!a || !b) return false;
+    return normalizeSizeToken(a).toLowerCase() === normalizeSizeToken(b).toLowerCase();
+}
+
+function addSizeToFieldValue(current: string, size: string) {
+    return sizesToFieldValue([...parseSizeList(current), size]);
+}
+
+function removeSizeFromFieldValue(current: string, size: string) {
+    return sizesToFieldValue(parseSizeList(current).filter((item) => !sameSize(item, size)));
+}
+
+function toggleSizeInFieldValue(current: string, size: string) {
+    const sizes = parseSizeList(current);
+    return sizes.some((item) => sameSize(item, size))
+        ? removeSizeFromFieldValue(current, size)
+        : sizesToFieldValue([...sizes, size]);
+}
+
+function SizePickerField({
+    value,
+    onChange,
+    preferredGroupKey = "apparel",
+    helperText,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    preferredGroupKey?: string;
+    helperText?: string;
+}) {
+    const [activeGroupKey, setActiveGroupKey] = useState(preferredGroupKey);
+    const [customSize, setCustomSize] = useState("");
+    const selectedSizes = parseSizeList(value);
+    const activeGroup = SIZE_PRESET_GROUPS.find((group) => group.key === activeGroupKey) || SIZE_PRESET_GROUPS[0];
+
+    useEffect(() => {
+        setActiveGroupKey(preferredGroupKey);
+    }, [preferredGroupKey]);
+
+    const addCustomSize = () => {
+        const normalized = normalizeSizeToken(customSize);
+        if (!normalized) return;
+        onChange(addSizeToFieldValue(value, normalized));
+        setCustomSize("");
+    };
+
+    return (
+        <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-medium text-theme-subtle">المقاسات</label>
+                <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">
+                    {selectedSizes.length || 0} مقاس
+                </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {SIZE_PRESET_GROUPS.map((group) => (
+                    <button
+                        key={group.key}
+                        type="button"
+                        onClick={() => setActiveGroupKey(group.key)}
+                        className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all active:scale-[0.98] ${activeGroup.key === group.key
+                            ? "border-gold/60 bg-gold/10 text-gold"
+                            : "border-theme-subtle bg-theme-faint text-theme-subtle hover:border-gold/30 hover:text-theme"
+                            }`}
+                    >
+                        {group.label}
+                    </button>
+                ))}
+            </div>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {activeGroup.sizes.map((size) => {
+                    const selected = selectedSizes.some((item) => sameSize(item, size));
+                    return (
+                        <button
+                            key={size}
+                            type="button"
+                            onClick={() => onChange(toggleSizeInFieldValue(value, size))}
+                            aria-pressed={selected}
+                            className={`min-h-[42px] rounded-xl border px-2 py-2 text-xs font-bold transition-all active:scale-[0.98] ${selected
+                                ? "border-gold/60 bg-gold/10 text-gold"
+                                : "border-theme-subtle bg-theme-faint text-theme-subtle hover:border-gold/30 hover:text-theme"
+                                }`}
+                        >
+                            {size}
+                        </button>
+                    );
+                })}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+                <input
+                    type="text"
+                    value={customSize}
+                    onChange={(event) => setCustomSize(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                            event.preventDefault();
+                            addCustomSize();
+                        }
+                    }}
+                    placeholder="مقاس مخصص"
+                    className="input-dark min-w-0 flex-1 rounded-xl px-4 py-2.5 text-sm"
+                    dir="ltr"
+                />
+                <button
+                    type="button"
+                    onClick={addCustomSize}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-2.5 text-xs font-bold text-theme-subtle transition-colors hover:border-gold/30 hover:text-gold"
+                >
+                    <Plus className="h-4 w-4" />
+                    إضافة مقاس
+                </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+                {selectedSizes.length === 0 ? (
+                    <span className="rounded-lg border border-dashed border-theme-subtle px-2 py-1 text-[10px] text-theme-faint">لم يتم اختيار مقاسات</span>
+                ) : selectedSizes.map((size) => (
+                    <button
+                        key={size}
+                        type="button"
+                        onClick={() => onChange(removeSizeFromFieldValue(value, size))}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-theme-subtle bg-theme-faint px-2 py-1 text-[10px] font-mono text-theme-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                        dir="ltr"
+                        title={`إزالة ${size}`}
+                    >
+                        {size}
+                        <X className="h-3 w-3" />
+                    </button>
+                ))}
+            </div>
+            {helperText && <p className="text-[10px] leading-5 text-theme-subtle">{helperText}</p>}
+        </div>
+    );
+}
+
+function normalizeColorToken(value: string) {
+    const match = value.match(/#?[0-9a-fA-F]{3,8}/);
+    const token = match ? match[0] : value.trim();
+    if (/^#?[0-9a-fA-F]{3,8}$/.test(token)) {
+        return `#${token.replace(/^#/, "").toLowerCase()}`;
+    }
+    return token;
+}
+
+function parseColorList(value: string) {
+    return parseCommaList(value).map(normalizeColorToken);
+}
+
+const PRODUCT_COLOR_PALETTE = [
+    { name: "أسود", hex: "#111111" },
+    { name: "أبيض", hex: "#f8f7f2" },
+    { name: "كريمي", hex: "#eadfc8" },
+    { name: "رمادي", hex: "#8b8f93" },
+    { name: "كحلي", hex: "#172033" },
+    { name: "أزرق", hex: "#2f6fbd" },
+    { name: "أخضر", hex: "#2f7d54" },
+    { name: "زيتوني", hex: "#6d7447" },
+    { name: "أحمر", hex: "#b23a3a" },
+    { name: "عنابي", hex: "#6f2436" },
+    { name: "ذهبي", hex: "#c7a45b" },
+    { name: "بني", hex: "#7b5336" },
+    { name: "وردي", hex: "#d28ca3" },
+    { name: "بنفسجي", hex: "#77619a" },
+    { name: "برتقالي", hex: "#c96b3c" },
+];
+
+function uniqueColors(colors: string[]) {
+    const seen = new Set<string>();
+    return colors
+        .map((color) => normalizeColorToken(color))
+        .filter(Boolean)
+        .filter((color) => {
+            const key = color.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+}
+
+function colorsToFieldValue(colors: string[]) {
+    return uniqueColors(colors).join(", ");
+}
+
+function sameColor(a?: string | null, b?: string | null) {
+    if (!a || !b) return false;
+    return normalizeColorToken(a).toLowerCase() === normalizeColorToken(b).toLowerCase();
+}
+
+function addColorToFieldValue(current: string, color: string) {
+    return colorsToFieldValue([...parseColorList(current), color]);
+}
+
+function removeColorFromFieldValue(current: string, color: string) {
+    return colorsToFieldValue(parseColorList(current).filter((item) => !sameColor(item, color)));
+}
+
+function toggleColorInFieldValue(current: string, color: string) {
+    const colors = parseColorList(current);
+    return colors.some((item) => sameColor(item, color))
+        ? removeColorFromFieldValue(current, color)
+        : colorsToFieldValue([...colors, color]);
+}
+
+function toColorInputValue(value?: string | null) {
+    const normalized = value ? normalizeColorToken(value) : "";
+    const hex = normalized.replace(/^#/, "");
+    if (/^[0-9a-fA-F]{3}$/.test(hex)) {
+        return `#${hex.split("").map((part) => part + part).join("").toLowerCase()}`;
+    }
+    if (/^[0-9a-fA-F]{6,8}$/.test(hex)) {
+        return `#${hex.slice(0, 6).toLowerCase()}`;
+    }
+    return "#c7a45b";
+}
+
+function colorLabelFor(value?: string | null) {
+    const match = PRODUCT_COLOR_PALETTE.find((color) => sameColor(color.hex, value));
+    return match?.name || "لون مخصص";
+}
+
+function ColorPaletteField({
+    value,
+    onChange,
+    label = "اللون",
+    compact = false,
+    allowClear = true,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    label?: string;
+    compact?: boolean;
+    allowClear?: boolean;
+}) {
+    const selectedValue = value ? normalizeColorToken(value) : "";
+    const customInputValue = toColorInputValue(selectedValue);
+
+    return (
+        <div className={compact ? "space-y-2" : "space-y-2.5"}>
+            <div className="flex items-center justify-between gap-3">
+                <label className="text-xs font-medium text-theme-subtle">{label}</label>
+                {selectedValue ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] font-mono text-theme-subtle" dir="ltr">
+                        <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: selectedValue }} aria-hidden />
+                        {selectedValue}
+                    </span>
+                ) : (
+                    <span className="text-[10px] text-theme-faint">بدون لون</span>
+                )}
+            </div>
+            <div className={`grid gap-2 ${compact ? "grid-cols-5 sm:grid-cols-8" : "grid-cols-4 sm:grid-cols-6"}`}>
+                {PRODUCT_COLOR_PALETTE.map((color) => {
+                    const selected = sameColor(selectedValue, color.hex);
+                    return (
+                        <button
+                            key={color.hex}
+                            type="button"
+                            onClick={() => onChange(color.hex)}
+                            aria-pressed={selected}
+                            title={color.name}
+                            className={`group flex min-h-[48px] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[10px] transition-all active:scale-[0.98] ${selected
+                                ? "border-gold/60 bg-gold/10 text-gold"
+                                : "border-theme-subtle bg-theme-faint text-theme-subtle hover:border-gold/30 hover:text-theme"
+                                }`}
+                        >
+                            <span className={`h-5 w-5 rounded-full border ${selected ? "border-gold" : "border-theme-soft"}`} style={{ backgroundColor: color.hex }} aria-hidden />
+                            <span className="max-w-full truncate">{color.name}</span>
+                        </button>
+                    );
+                })}
+                <label
+                    title="لون مخصص"
+                    className="relative flex min-h-[48px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-theme-subtle bg-theme-faint px-2 py-2 text-[10px] text-theme-subtle transition-all hover:border-gold/30 hover:text-theme active:scale-[0.98]"
+                >
+                    <input
+                        type="color"
+                        value={customInputValue}
+                        onChange={(event) => onChange(event.target.value)}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        aria-label="اختيار لون مخصص"
+                    />
+                    <span className="h-5 w-5 rounded-full border border-theme-soft" style={{ backgroundColor: customInputValue }} aria-hidden />
+                    <span>مخصص</span>
+                </label>
+                {allowClear && (
+                    <button
+                        type="button"
+                        onClick={() => onChange("")}
+                        className="flex min-h-[48px] flex-col items-center justify-center gap-1 rounded-xl border border-theme-subtle bg-theme-faint px-2 py-2 text-[10px] text-theme-subtle transition-all hover:bg-theme-subtle active:scale-[0.98]"
+                    >
+                        <X className="h-4 w-4" />
+                        <span>بدون</span>
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+type ProductSkuRow = {
+    id: string;
+    sku?: string | null;
+    size?: string | null;
+    color_code?: string | null;
+    color_image_url?: string | null;
+    is_active?: boolean;
+};
+
+function variantMatrixKey(size?: string | null, color?: string | null) {
+    return `${normalizeSizeToken(size || "") || "∅"}::${normalizeColorToken(color || "") || "∅"}`;
+}
+
+function buildVariantMatrix(sizes: string[], colors: string[]) {
+    const matrixSizes = sizes.length > 0 ? sizes : [null];
+    const matrixColors = colors.length > 0 ? colors : [null];
+    return matrixSizes.flatMap((size) => matrixColors.map((color) => ({ size, color })));
+}
+
+function findSkuForVariant(skus: ProductSkuRow[], size?: string | null, color?: string | null) {
+    const key = variantMatrixKey(size, color);
+    return skus.find((sku) => sku.is_active !== false && variantMatrixKey(sku.size, sku.color_code) === key);
+}
+
+function VariantMatrixPreview({
+    sizes,
+    colors,
+    skus = [],
+    mode,
+}: {
+    sizes: string[];
+    colors: string[];
+    skus?: ProductSkuRow[];
+    mode: "add" | "edit";
+}) {
+    const variants = buildVariantMatrix(sizes, colors);
+    const desiredKeys = new Set(variants.map((variant) => variantMatrixKey(variant.size, variant.color)));
+    const activeSkus = skus.filter((sku) => sku.is_active !== false);
+    const inactiveSkus = skus.filter((sku) => sku.is_active === false);
+    const outsideSkus = activeSkus.filter((sku) => !desiredKeys.has(variantMatrixKey(sku.size, sku.color_code)));
+    const existingCount = variants.filter((variant) => findSkuForVariant(activeSkus, variant.size, variant.color)).length;
+    const missingCount = variants.length - existingCount;
+
+    return (
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p className="text-xs font-bold text-theme">شبكة المقاسات والألوان</p>
+                    <p className="mt-1 text-[10px] leading-5 text-theme-subtle">
+                        كل تقاطع بين مقاس ولون يمثل SKU واحداً يظهر في المتجر ويرتبط بالمخزون.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">{variants.length} متغير</span>
+                    {mode === "edit" && (
+                        <>
+                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">{existingCount} موجود</span>
+                            {missingCount > 0 && <span className="rounded-full border border-gold/20 bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{missingCount} جديد</span>}
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-3 max-h-56 space-y-2 overflow-y-auto pr-1 styled-scrollbar">
+                {variants.map((variant) => {
+                    const sku = findSkuForVariant(activeSkus, variant.size, variant.color);
+                    const label = [
+                        variant.size || "بدون مقاس",
+                        variant.color ? colorLabelFor(variant.color) : "بدون لون",
+                    ].join(" / ");
+                    return (
+                        <div key={variantMatrixKey(variant.size, variant.color)} className="grid grid-cols-[1fr_auto] gap-3 rounded-xl border border-theme-subtle bg-[color:var(--wusha-surface)] px-3 py-2">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] font-mono text-theme-subtle" dir="ltr">
+                                        {variant.size || "NO-SIZE"}
+                                    </span>
+                                    {variant.color ? (
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] text-theme-subtle">
+                                            <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: variant.color }} aria-hidden />
+                                            {colorLabelFor(variant.color)}
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] text-theme-subtle">بدون لون</span>
+                                    )}
+                                </div>
+                                <p className="mt-1 truncate text-[10px] text-theme-faint">{label}</p>
+                            </div>
+                            <div className="flex items-center">
+                                {sku ? (
+                                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-mono text-emerald-300" dir="ltr">
+                                        {sku.sku}
+                                    </span>
+                                ) : (
+                                    <span className="rounded-full border border-gold/20 bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
+                                        {mode === "add" ? "سيُنشأ" : "سيُنشأ عند الحفظ"}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {mode === "edit" && outsideSkus.length > 0 && (
+                <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+                    <p className="text-[10px] font-bold text-amber-300">SKUs خارج الشبكة الحالية</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                        {outsideSkus.slice(0, 8).map((sku) => (
+                            <span key={sku.id} className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[10px] font-mono text-amber-200" dir="ltr">
+                                {sku.sku}
+                            </span>
+                        ))}
+                        {outsideSkus.length > 8 && <span className="text-[10px] text-amber-200">+{outsideSkus.length - 8}</span>}
+                    </div>
+                    <p className="mt-2 text-[10px] leading-5 text-amber-200/80">
+                        سيتم تعطيلها من خيارات المتجر عند الحفظ، مع بقاء سجل الجرد والطلبات محفوظاً.
+                    </p>
+                </div>
+            )}
+
+            {mode === "edit" && inactiveSkus.length > 0 && (
+                <p className="mt-2 text-[10px] text-theme-faint">
+                    يوجد {inactiveSkus.length} SKU معطل محفوظ للأرشفة والجرد السابق.
+                </p>
+            )}
+        </div>
+    );
+}
+
+function ColorImagesManager({
+    colors,
+    imageUrls,
+    previews,
+    onPick,
+    onRemove,
+}: {
+    colors: string[];
+    imageUrls: Record<string, string | null>;
+    previews: Record<string, string>;
+    onPick: (color: string) => void;
+    onRemove: (color: string) => void;
+}) {
+    if (colors.length === 0) {
+        return (
+            <div className="rounded-xl border border-dashed border-theme-subtle bg-theme-faint px-4 py-3 text-[10px] text-theme-faint">
+                اختر لوناً أولاً حتى تتمكن من إضافة صورة خاصة به.
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+            <div className="flex items-center justify-between gap-3">
+                <div>
+                    <p className="text-xs font-bold text-theme">صور الألوان</p>
+                    <p className="mt-1 text-[10px] leading-5 text-theme-subtle">
+                        عند اختيار العميل لوناً في المتجر ستنتقل صورة القطعة إلى صورة هذا اللون.
+                    </p>
+                </div>
+                <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">
+                    {colors.length} لون
+                </span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {colors.map((color) => {
+                    const imageUrl = previews[color] || imageUrls[color] || "";
+                    return (
+                        <div key={color} className="grid grid-cols-[64px_1fr] gap-3 rounded-xl border border-theme-subtle bg-[color:var(--wusha-surface)] p-2">
+                            <div className="relative h-16 w-16 overflow-hidden rounded-lg border border-theme-subtle bg-theme-subtle">
+                                {imageUrl ? (
+                                    <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="flex h-full w-full items-center justify-center">
+                                        <span className="h-7 w-7 rounded-full border border-theme-soft" style={{ backgroundColor: color }} aria-hidden />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: color }} aria-hidden />
+                                    <span className="truncate text-[10px] font-mono text-theme-subtle" dir="ltr">{color}</span>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    <button
+                                        type="button"
+                                        onClick={() => onPick(color)}
+                                        className="rounded-lg border border-theme-subtle bg-theme-faint px-2 py-1 text-[10px] font-bold text-theme-subtle transition-colors hover:border-gold/30 hover:text-gold"
+                                    >
+                                        {imageUrl ? "تغيير الصورة" : "إضافة صورة"}
+                                    </button>
+                                    {imageUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemove(color)}
+                                            className="rounded-lg border border-red-500/20 bg-red-500/10 px-2 py-1 text-[10px] font-bold text-red-300 transition-colors hover:bg-red-500/15"
+                                        >
+                                            إزالة
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 type SortKey = "title" | "price" | "stock_quantity" | "created_at" | "type" | "sold";
 type SortDir = "asc" | "desc";
@@ -268,8 +817,8 @@ export function ProductsClient({
         router.push(`${basePath}?${params.toString()}`);
     };
 
-    // ─── Get SKU for product
-    const getProductSku = (productId: string) => skus.find((s: any) => s.product_id === productId);
+    // ─── Get SKUs for product
+    const getProductSkus = (productId: string) => skus.filter((s: any) => s.product_id === productId);
 
     return (
         <div className="space-y-4">
@@ -408,7 +957,8 @@ export function ProductsClient({
                         </thead>
                         <tbody>
                             {filteredProducts.length > 0 ? filteredProducts.map((product: any) => {
-                                const sku = getProductSku(product.id);
+                                const productSkus = getProductSkus(product.id);
+                                const firstSku = productSkus[0];
                                 return (
                                     <tr key={product.id} className={`border-b border-theme-faint transition-colors ${selectedIds.has(product.id) ? "bg-gold/[0.03]" : "hover:bg-theme-faint"}`}>
                                         {/* Checkbox */}
@@ -493,10 +1043,12 @@ export function ProductsClient({
                                         </td>
                                         {/* SKU / Barcode */}
                                         <td className="px-3 py-3 text-center">
-                                            {sku ? (
+                                            {firstSku ? (
                                                 <button onClick={() => setBarcodeProductId(product.id)} className="group flex flex-col items-center gap-0.5" title="عرض الباركود">
                                                     <QrCode className="w-4 h-4 text-theme-faint group-hover:text-gold transition-colors" />
-                                                    <span className="text-[9px] font-mono text-theme-faint group-hover:text-gold/60 transition-colors">{sku.sku?.slice(0, 8)}</span>
+                                                    <span className="text-[9px] font-mono text-theme-faint group-hover:text-gold/60 transition-colors">
+                                                        {productSkus.length} SKU
+                                                    </span>
                                                 </button>
                                             ) : (
                                                 <button onClick={() => setBarcodeProductId(product.id)}
@@ -598,7 +1150,7 @@ export function ProductsClient({
                 {barcodeProductId && (
                     <BarcodeModal
                         product={products.find((p) => p.id === barcodeProductId)}
-                        sku={getProductSku(barcodeProductId)}
+                        skus={getProductSkus(barcodeProductId)}
                         onClose={() => setBarcodeProductId(null)}
                         onCreated={() => { showToast("تم إنشاء SKU ✓"); router.refresh(); }}
                         onError={(msg) => setError(msg)}
@@ -609,6 +1161,7 @@ export function ProductsClient({
             {/* ─── Add Modal ─── */}
             <ProductFormModal
                 open={showAddModal} mode="add" artists={artists} categories={categories}
+                skus={[]}
                 onClose={() => setShowAddModal(false)}
                 onSuccess={() => { setShowAddModal(false); showToast("تم إضافة المنتج ✓"); router.refresh(); }}
                 onError={(msg) => setError(msg)}
@@ -617,6 +1170,7 @@ export function ProductsClient({
             {/* ─── Edit Modal ─── */}
             <ProductFormModal
                 open={!!editingProduct} mode="edit" product={editingProduct} artists={artists} categories={categories}
+                skus={editingProduct ? getProductSkus(editingProduct.id) : []}
                 onClose={() => setEditingProduct(null)}
                 onSuccess={() => { setEditingProduct(null); showToast("تم تحديث المنتج ✓"); router.refresh(); }}
                 onError={(msg) => setError(msg)}
@@ -672,19 +1226,45 @@ export function ProductsClient({
 //  Barcode Modal — عرض وإنشاء وطباعة الباركود
 // ═══════════════════════════════════════════════════════════
 
-function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
-    product: any; sku: any; onClose: () => void; onCreated: () => void; onError?: (msg: string) => void;
+function BarcodeModal({ product, skus, onClose, onCreated, onError }: {
+    product: any; skus: any[]; onClose: () => void; onCreated: () => void; onError?: (msg: string) => void;
 }) {
     const [loading, setLoading] = useState(false);
     const [codeType, setCodeType] = useState<"barcode" | "qr">("barcode");
     const [batchCount, setBatchCount] = useState("");
     const [batchPrinting, setBatchPrinting] = useState(false);
+    const [savingSkuId, setSavingSkuId] = useState<string | null>(null);
+    const [selectedSkuId, setSelectedSkuId] = useState<string | null>(skus[0]?.id ?? null);
+    const [editingSkuId, setEditingSkuId] = useState<string | null>(null);
+    const [editSkuValue, setEditSkuValue] = useState("");
+    const [editSize, setEditSize] = useState("");
+    const [editColorCode, setEditColorCode] = useState("");
     const printRef = useRef<HTMLDivElement>(null);
 
     // For manual creation
     const [size, setSize] = useState("");
     const [colorCode, setColorCode] = useState("");
     const [customSku, setCustomSku] = useState("");
+    const [initialQuantity, setInitialQuantity] = useState("");
+    const sku = skus.find((item) => item.id === selectedSkuId) || skus[0] || null;
+
+    const syncProductSizesFromSkus = async (rows: ProductSkuRow[]) => {
+        const activeSizes = uniqueSizes(
+            rows
+                .filter((row) => row && row.is_active !== false && row.size)
+                .map((row) => row.size as string)
+        );
+        const result = await updateProduct(product.id, {
+            sizes: activeSizes.length > 0 ? activeSizes : null,
+        });
+        return result.success ? null : (result.error || "فشل مزامنة مقاسات المنتج مع SKU");
+    };
+
+    useEffect(() => {
+        if (!skus.some((item) => item.id === selectedSkuId)) {
+            setSelectedSkuId(skus[0]?.id ?? null);
+        }
+    }, [selectedSkuId, skus]);
 
     const handleCreate = async () => {
         setLoading(true);
@@ -692,15 +1272,63 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
             product_id: product.id,
             sku: customSku.trim() || undefined,
             size: size || null,
-            color_code: colorCode || null
+            color_code: colorCode || null,
+            initial_quantity: initialQuantity ? parseInt(initialQuantity, 10) : undefined,
         });
         setLoading(false);
         if (result.error) {
             onError?.(result.error);
             return;
         }
+        const syncError = await syncProductSizesFromSkus([...skus, result.sku as ProductSkuRow].filter(Boolean));
+        if (syncError) {
+            onError?.(syncError);
+            return;
+        }
+        setSize("");
+        setColorCode("");
+        setCustomSku("");
+        setInitialQuantity("");
         onCreated();
-        onClose();
+    };
+
+    const startEditSku = (row: any) => {
+        setEditingSkuId(row.id);
+        setEditSkuValue(row.sku || "");
+        setEditSize(row.size || "");
+        setEditColorCode(row.color_code || "");
+    };
+
+    const cancelEditSku = () => {
+        setEditingSkuId(null);
+        setEditSkuValue("");
+        setEditSize("");
+        setEditColorCode("");
+    };
+
+    const handleSaveSku = async () => {
+        if (!editingSkuId) return;
+        setSavingSkuId(editingSkuId);
+        const result = await updateSKU({
+            id: editingSkuId,
+            sku: editSkuValue,
+            size: editSize || null,
+            color_code: editColorCode || null,
+        });
+        setSavingSkuId(null);
+        if (result.error) {
+            onError?.(result.error);
+            return;
+        }
+        const syncError = await syncProductSizesFromSkus(
+            skus.map((row) => row.id === editingSkuId ? result.sku as ProductSkuRow : row)
+        );
+        if (syncError) {
+            onError?.(syncError);
+            return;
+        }
+        cancelEditSku();
+        onCreated();
     };
 
     const handlePrint = () => {
@@ -786,12 +1414,12 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
             onClick={onClose}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
                 onClick={(e) => e.stopPropagation()}
-                className="theme-surface-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
+                className="theme-surface-panel styled-scrollbar w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl space-y-5">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-bold text-theme flex items-center gap-2">
                         <QrCode className="w-5 h-5 text-gold" />
-                        {sku ? "باركود المنتج" : "إنشاء SKU"}
+                        إدارة SKU والألوان
                     </h3>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle"><X className="w-5 h-5" /></button>
                 </div>
@@ -809,51 +1437,96 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                     </div>
                 </div>
 
-                {/* SKU Generator Inputs (Only if no SKU yet) */}
-                {!sku ? (
-                    <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">المقاس (اختياري)</label>
-                                <input type="text" value={size} onChange={e => setSize(e.target.value)}
-                                    placeholder="مثال: XL"
-                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">اللون (اختياري)</label>
-                                <input type="text" value={colorCode} onChange={e => setColorCode(e.target.value)}
-                                    placeholder="مثال: blu"
-                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm" />
-                            </div>
-                        </div>
+                {/* Add SKU */}
+                <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gold mb-1.5">الرقم التسلسلي (SKU)</label>
-                            <input type="text" value={customSku}
-                                onChange={(e) => setCustomSku(e.target.value)} dir="ltr"
-                                placeholder="اتركه فارغاً للتوليد التلقائي (WSH-P-00001-NA-NA)"
-                                className="w-full rounded-xl border border-gold/20 bg-gold/10 px-4 py-2.5 text-sm font-mono tracking-wider text-gold focus:outline-none focus:border-gold/40 placeholder:text-gold/35" />
-                            <p className="text-[10px] text-theme-subtle mt-1.5 leading-relaxed">
-                                اترك الحقل فارغاً لاستخدام القالب التلقائي، أو أدخل رمزاً مخصصاً. القالب: WSH-{'{'}النوع{'}'}-{'{'}تسلسل{'}'}-{'{'}المقاس{'}'}-{'{'}اللون{'}'}
-                            </p>
+                            <p className="text-xs font-bold text-theme">إضافة مقاس/لون</p>
+                            <p className="mt-0.5 text-[10px] text-theme-subtle">كل صف هنا يظهر للعميل كلون أو مقاس قابل للاختيار في المتجر.</p>
                         </div>
                     </div>
-                ) : (
-                    <div className="space-y-4 pt-2">
-                        {/* Current SKU Info */}
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs font-medium text-theme-subtle mb-1.5">رمز SKU الحالي</label>
-                                <input type="text" value={sku.sku} readOnly dir="ltr"
-                                    className="input-dark w-full rounded-xl px-4 py-2 text-sm font-mono tracking-wider opacity-60" />
-                            </div>
-                            <div className="flex gap-2">
-                                {sku.size && <span className="px-2 py-1 text-xs bg-theme-subtle rounded-md border border-theme-soft text-theme-soft">المقاس: {sku.size}</span>}
-                                {sku.color_code && <span className="px-2 py-1 text-xs bg-theme-subtle rounded-md border border-theme-soft text-theme-soft">اللون: {sku.color_code}</span>}
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                        <input type="text" value={size} onChange={e => setSize(e.target.value)}
+                            placeholder="المقاس: XL"
+                            className="input-dark rounded-xl px-4 py-2 text-sm" />
+                        <input type="number" min="0" value={initialQuantity} onChange={e => setInitialQuantity(e.target.value)}
+                            placeholder="كمية ابتدائية"
+                            className="input-dark rounded-xl px-4 py-2 text-sm" dir="ltr" />
+                        <button onClick={handleCreate} disabled={loading}
+                            className="rounded-xl bg-gold px-4 py-2 text-sm font-bold text-[var(--wusha-bg)] transition-colors hover:bg-gold-light disabled:opacity-50">
+                            {loading ? <Loader2 className="mx-auto w-4 h-4 animate-spin" /> : "إضافة SKU"}
+                        </button>
+                    </div>
+                    <div className="mt-3">
+                        <ColorPaletteField value={colorCode} onChange={setColorCode} label="لون SKU" />
+                    </div>
+                    <input type="text" value={customSku}
+                        onChange={(e) => setCustomSku(e.target.value)} dir="ltr"
+                        placeholder="SKU مخصص اختياري، اتركه فارغاً للتوليد التلقائي"
+                        className="mt-3 w-full rounded-xl border border-gold/20 bg-gold/10 px-4 py-2.5 text-sm font-mono tracking-wider text-gold focus:outline-none focus:border-gold/40 placeholder:text-gold/35" />
+                </div>
 
-                        {/* Format Toggle */}
-                        <div className="flex gap-2 border-t border-theme-faint pt-4">
+                {/* Existing SKUs */}
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-theme-faint tracking-widest uppercase">SKU Variants</p>
+                        <span className="rounded-full border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] text-theme-subtle">{skus.length} متغير</span>
+                    </div>
+                    {skus.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-theme-subtle p-4 text-center text-xs text-theme-subtle">
+                            لا توجد SKUs لهذا المنتج بعد. أضف مقاساً/لوناً من النموذج أعلاه.
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {skus.map((row) => {
+                                const isEditing = editingSkuId === row.id;
+                                const isSelected = sku?.id === row.id;
+                                return (
+                                    <div key={row.id} className={`rounded-xl border p-3 ${isSelected ? "border-gold/30 bg-gold/5" : "border-theme-subtle bg-theme-faint"}`}>
+                                        {isEditing ? (
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_0.8fr_auto_auto]">
+                                                    <input value={editSkuValue} onChange={(e) => setEditSkuValue(e.target.value)} className="input-dark rounded-lg px-3 py-2 text-xs font-mono" dir="ltr" />
+                                                    <input value={editSize} onChange={(e) => setEditSize(e.target.value)} className="input-dark rounded-lg px-3 py-2 text-xs" placeholder="المقاس" />
+                                                    <button onClick={handleSaveSku} disabled={savingSkuId === row.id} className="rounded-lg bg-gold px-3 py-2 text-xs font-bold text-[var(--wusha-bg)] disabled:opacity-50">
+                                                        {savingSkuId === row.id ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : "حفظ"}
+                                                    </button>
+                                                    <button onClick={cancelEditSku} className="rounded-lg border border-theme-subtle px-3 py-2 text-xs text-theme-subtle hover:bg-theme-subtle">إلغاء</button>
+                                                </div>
+                                                <ColorPaletteField value={editColorCode} onChange={setEditColorCode} label="لون SKU" compact />
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-xs font-mono font-bold text-theme" dir="ltr">{row.sku}</p>
+                                                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                                        <span className="rounded-md border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">المقاس: {row.size || "—"}</span>
+                                                        {row.color_code ? (
+                                                            <span className="inline-flex items-center gap-1.5 rounded-md border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] font-mono text-theme-subtle">
+                                                                <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: row.color_code }} aria-hidden />
+                                                                {row.color_code}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="rounded-md border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">بدون لون</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex shrink-0 gap-2">
+                                                    <button onClick={() => setSelectedSkuId(row.id)} className="rounded-lg border border-theme-subtle px-3 py-2 text-xs text-theme-subtle hover:border-gold/30 hover:text-gold">معاينة</button>
+                                                    <button onClick={() => startEditSku(row)} className="rounded-lg bg-gold/10 px-3 py-2 text-xs font-bold text-gold hover:bg-gold/20">تعديل</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {sku && (
+                    <div className="space-y-4 border-t border-theme-faint pt-4">
+                        <div className="flex gap-2">
                             <button onClick={() => setCodeType("barcode")}
                                 className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors border ${codeType === "barcode" ? "bg-gold/10 text-gold border-gold/30" : "bg-theme-faint border-theme-subtle text-theme-subtle"}`}>
                                 Code 128
@@ -864,60 +1537,33 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                             </button>
                         </div>
 
-                        {/* Visual Preview */}
-                        <div className="bg-white text-black p-4 rounded-xl flex flex-col items-center w-[50mm] min-h-[30mm] transform scale-[1.2] origin-top mx-auto pointer-events-none my-2 shadow-inner">
-                            <div className="text-[8px] font-bold mb-[2px] text-center w-full truncate relative z-10">
-                                {product?.title || 'WASHA Product'}
-                            </div>
+                        <div className="bg-white text-black p-4 rounded-xl flex flex-col items-center w-[50mm] min-h-[30mm] transform scale-[1.1] origin-top mx-auto pointer-events-none my-2 shadow-inner">
+                            <div className="text-[8px] font-bold mb-[2px] text-center w-full truncate relative z-10">{product?.title || 'WASHA Product'}</div>
                             {(sku.size || sku.color_code) && (
                                 <div className="text-[7px] mb-[2px] text-center w-full relative z-10">
-                                    {sku.size ? `Size: ${sku.size} ` : ''}
-                                    {sku.color_code ? `Color: ${sku.color_code}` : ''}
+                                    {sku.size ? `Size: ${sku.size} ` : ''}{sku.color_code ? `Color: ${sku.color_code}` : ''}
                                 </div>
                             )}
                             <div className="flex-1 flex items-center justify-center mt-1 relative z-10">
-                                {codeType === "barcode" ? (
-                                    <Barcode value={sku.sku} format="CODE128" width={1.2} height={30} displayValue={true} fontSize={10} background="transparent" margin={0} />
-                                ) : (
-                                    <div className="flex flex-col items-center gap-1">
-                                        <QRCodeSVG value={sku.sku} size={64} level="M" />
-                                        <span className="text-[8px] font-mono tracking-widest mt-1">{sku.sku}</span>
-                                    </div>
-                                )}
+                                {codeType === "barcode"
+                                    ? <Barcode value={sku.sku} format="CODE128" width={1.2} height={30} displayValue={true} fontSize={10} background="transparent" margin={0} />
+                                    : <div className="flex flex-col items-center gap-1"><QRCodeSVG value={sku.sku} size={64} level="M" /><span className="text-[8px] font-mono tracking-widest mt-1">{sku.sku}</span></div>}
                             </div>
                         </div>
 
-                        {/* Hidden Print Container */}
                         <div className="hidden">
                             <div ref={printRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '50mm', height: '30mm', overflow: 'hidden', backgroundColor: 'white' }}>
-                                <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '2px', textAlign: 'center', whiteSpace: 'nowrap', width: '100%', textOverflow: 'ellipsis', overflow: 'hidden', color: 'black' }}>
-                                    {product?.title || 'WASHA Product'}
-                                </div>
-                                {(sku.size || sku.color_code) && (
-                                    <div style={{ fontSize: '7px', marginBottom: '2px', color: 'black' }}>
-                                        {sku.size ? `Size: ${sku.size} ` : ''}
-                                        {sku.color_code ? `Color: ${sku.color_code}` : ''}
-                                    </div>
-                                )}
+                                <div style={{ fontSize: '8px', fontWeight: 'bold', marginBottom: '2px', textAlign: 'center', whiteSpace: 'nowrap', width: '100%', textOverflow: 'ellipsis', overflow: 'hidden', color: 'black' }}>{product?.title || 'WASHA Product'}</div>
+                                {(sku.size || sku.color_code) && <div style={{ fontSize: '7px', marginBottom: '2px', color: 'black' }}>{sku.size ? `Size: ${sku.size} ` : ''}{sku.color_code ? `Color: ${sku.color_code}` : ''}</div>}
                                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    {codeType === "barcode" ? (
-                                        <Barcode value={sku.sku} format="CODE128" width={1.2} height={30} displayValue={true} fontSize={10} background="transparent" margin={0} />
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <QRCodeSVG value={sku.sku} size={64} level="M" />
-                                            <span style={{ fontSize: '8px', fontFamily: 'monospace', letterSpacing: '2px', marginTop: '4px', color: 'black' }}>{sku.sku}</span>
-                                        </div>
-                                    )}
+                                    {codeType === "barcode"
+                                        ? <Barcode value={sku.sku} format="CODE128" width={1.2} height={30} displayValue={true} fontSize={10} background="transparent" margin={0} />
+                                        : <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}><QRCodeSVG value={sku.sku} size={64} level="M" /><span style={{ fontSize: '8px', fontFamily: 'monospace', letterSpacing: '2px', marginTop: '4px', color: 'black' }}>{sku.sku}</span></div>}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
 
-                {/* Actions */}
-                <div className="flex flex-col gap-3 pt-2">
-                    {sku ? (
-                        <>
+                        <div className="flex flex-col gap-3 pt-2">
                             <div className="flex gap-3">
                                 <button onClick={handlePrint}
                                     className="flex-1 py-2.5 rounded-xl bg-gold/10 text-gold font-bold flex items-center justify-center gap-2 hover:bg-gold/20 transition-all text-sm">
@@ -932,22 +1578,16 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
                                 <span className="text-xs text-theme-soft shrink-0">طباعة مجموعة:</span>
                                 <input type="number" min={1} max={999} placeholder="عدد الملصقات"
                                     value={batchCount} onChange={(e) => setBatchCount(e.target.value)}
-                                    className="input-dark w-20 rounded-lg px-2 py-1.5 text-sm" />
+                                    className="input-dark w-24 rounded-lg px-2 py-1.5 text-sm" />
                                 <button onClick={handleBatchPrint} disabled={batchPrinting}
                                     className="py-1.5 px-4 rounded-lg bg-gold/10 text-gold text-sm font-medium hover:bg-gold/20 disabled:opacity-50 flex items-center gap-1">
                                     {batchPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
                                     طباعة
                                 </button>
                             </div>
-                        </>
-                    ) : (
-                        <button onClick={handleCreate} disabled={loading}
-                            className="flex-1 py-2.5 rounded-xl bg-gold text-[var(--wusha-bg)] font-bold flex items-center justify-center gap-2 hover:bg-gold-light transition-all disabled:opacity-50 text-sm">
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                            إنشاء SKU
-                        </button>
-                    )}
-                </div>
+                        </div>
+                    </div>
+                )}
             </motion.div>
         </motion.div>
     );
@@ -958,25 +1598,31 @@ function BarcodeModal({ product, sku, onClose, onCreated, onError }: {
 // ═══════════════════════════════════════════════════════════
 
 function ProductFormModal({
-    open, mode, product, artists, categories = [], onClose, onSuccess, onError,
+    open, mode, product, artists, categories = [], skus = [], onClose, onSuccess, onError,
 }: {
     open: boolean; mode: "add" | "edit"; product?: any;
     artists: { id: string; display_name: string; username: string }[];
     categories?: { id: string; name_ar: string; name_en: string; slug: string }[];
+    skus?: ProductSkuRow[];
     onClose: () => void; onSuccess: () => void; onError: (msg: string) => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const extraFileInputRef = useRef<HTMLInputElement>(null);
+    const colorImageInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(false);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [pendingColorImage, setPendingColorImage] = useState<string | null>(null);
+    const [colorImageFiles, setColorImageFiles] = useState<Record<string, File>>({});
+    const [colorImagePreviews, setColorImagePreviews] = useState<Record<string, string>>({});
+    const [colorImageUrls, setColorImageUrls] = useState<Record<string, string | null>>({});
     // ─── Multi-image state
     const [extraFiles, setExtraFiles] = useState<File[]>([]);
     const [extraPreviews, setExtraPreviews] = useState<string[]>([]);
     const [existingImages, setExistingImages] = useState<string[]>([]);
     const [form, setForm] = useState({
         artist_id: "", title: "", description: "", type: "print", price: "",
-        image_url: "", in_stock: true, stock_quantity: "", store_name: "", sizes: "",
+        image_url: "", in_stock: true, stock_quantity: "", store_name: "", sizes: "", colors: "",
     });
 
     useEffect(() => {
@@ -985,7 +1631,30 @@ function ProductFormModal({
         setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
         setExtraFiles([]);
         setExtraPreviews((prev) => { prev.forEach((u) => URL.revokeObjectURL(u)); return []; });
+        setPendingColorImage(null);
+        setColorImageFiles({});
+        setColorImagePreviews((prev) => { Object.values(prev).forEach((u) => URL.revokeObjectURL(u)); return {}; });
         if (mode === "edit" && product) {
+            const activeSkuColors = uniqueColors(
+                skus
+                    .filter((sku) => sku.is_active !== false && sku.color_code)
+                    .map((sku) => sku.color_code as string)
+            );
+            const activeSkuColorImages: Record<string, string | null> = {};
+            skus
+                .filter((sku) => sku.is_active !== false && sku.color_code)
+                .forEach((sku) => {
+                    const color = normalizeColorToken(sku.color_code || "");
+                    if (color && sku.color_image_url && !activeSkuColorImages[color]) {
+                        activeSkuColorImages[color] = sku.color_image_url;
+                    }
+                });
+            const activeSkuSizes = uniqueSizes([
+                ...(Array.isArray(product.sizes) ? product.sizes : []),
+                ...skus
+                    .filter((sku) => sku.is_active !== false && sku.size)
+                    .map((sku) => sku.size as string),
+            ]);
             setForm({
                 artist_id: product.artist_id || "", title: product.title || "",
                 description: product.description || "", type: product.type || "print",
@@ -993,18 +1662,21 @@ function ProductFormModal({
                 in_stock: product.in_stock ?? true,
                 stock_quantity: product.stock_quantity != null ? String(product.stock_quantity) : "",
                 store_name: product.store_name || "",
-                sizes: product.sizes ? product.sizes.join(", ") : "",
+                sizes: activeSkuSizes.join(", "),
+                colors: activeSkuColors.join(", "),
             });
+            setColorImageUrls(activeSkuColorImages);
             setExistingImages(product.images || []);
         } else if (mode === "add") {
             setForm({
                 artist_id: artists[0]?.id || "", title: "", description: "", type: "print",
                 price: "", image_url: "", in_stock: true, stock_quantity: "",
-                store_name: "WASHA.SHOP", sizes: "",
+                store_name: "WASHA.SHOP", sizes: "", colors: "",
             });
+            setColorImageUrls({});
             setExistingImages([]);
         }
-    }, [open, mode, product?.id, artists]);
+    }, [open, mode, product?.id, artists, skus]);
 
 
 
@@ -1031,6 +1703,47 @@ function ProductFormModal({
         e.target.value = "";
     };
 
+    const handleColorImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const color = pendingColorImage;
+        const file = e.target.files?.[0] || null;
+        if (!color || !file) {
+            e.target.value = "";
+            return;
+        }
+        if (!(file.size <= 5 * 1024 * 1024 && /^image\/(jpeg|png|webp|gif)$/.test(file.type))) {
+            queueMicrotask(() => onError("صورة اللون غير مدعومة أو أكبر من 5 ميجابايت"));
+            e.target.value = "";
+            return;
+        }
+        setColorImageFiles((prev) => ({ ...prev, [color]: file }));
+        setColorImagePreviews((prev) => {
+            if (prev[color]) URL.revokeObjectURL(prev[color]);
+            return { ...prev, [color]: URL.createObjectURL(file) };
+        });
+        setPendingColorImage(null);
+        e.target.value = "";
+    };
+
+    const requestColorImage = (color: string) => {
+        setPendingColorImage(color);
+        colorImageInputRef.current?.click();
+    };
+
+    const removeColorImage = (color: string) => {
+        setColorImageFiles((prev) => {
+            const next = { ...prev };
+            delete next[color];
+            return next;
+        });
+        setColorImagePreviews((prev) => {
+            if (prev[color]) URL.revokeObjectURL(prev[color]);
+            const next = { ...prev };
+            delete next[color];
+            return next;
+        });
+        setColorImageUrls((prev) => ({ ...prev, [color]: null }));
+    };
+
     const removeExtraFile = (idx: number) => {
         setExtraFiles((prev) => prev.filter((_, i) => i !== idx));
         setExtraPreviews((prev) => { URL.revokeObjectURL(prev[idx]); return prev.filter((_, i) => i !== idx); });
@@ -1052,7 +1765,8 @@ function ProductFormModal({
         if (mode === "add" && !form.artist_id) { onError("اختر الوشّاي"); return; }
         if (isNaN(price) || price < 0) { onError("السعر غير صالح"); return; }
 
-        const parsedSizes = form.sizes ? form.sizes.split(",").map((s) => s.trim()).filter((s) => s.length > 0) : undefined;
+        const parsedSizes = form.sizes ? parseSizeList(form.sizes) : undefined;
+        const parsedColors = form.colors ? parseColorList(form.colors) : undefined;
         setLoading(true);
         onError("");
 
@@ -1075,12 +1789,29 @@ function ProductFormModal({
             if (r.success) allImages.push(r.url);
         }
 
+        const colorImages: Record<string, string | null> = {};
+        for (const color of parsedColors || []) {
+            if (colorImageFiles[color]) {
+                const fd = new FormData();
+                fd.append("file", colorImageFiles[color]);
+                const uploadResult = await uploadProductImage(fd);
+                if (!uploadResult.success) {
+                    setLoading(false);
+                    onError(uploadResult.error || `فشل رفع صورة اللون ${color}`);
+                    return;
+                }
+                colorImages[color] = uploadResult.url;
+            } else if (Object.prototype.hasOwnProperty.call(colorImageUrls, color)) {
+                colorImages[color] = colorImageUrls[color] || null;
+            }
+        }
+
         if (mode === "add") {
             const result = await createProductAdmin({
                 artist_id: form.artist_id, title, description: form.description || undefined,
                 type: form.type, price, image_url: imageUrl, images: allImages, in_stock: form.in_stock,
                 stock_quantity: form.stock_quantity ? parseInt(form.stock_quantity, 10) : undefined,
-                store_name: form.store_name.trim() || undefined, sizes: parsedSizes,
+                store_name: form.store_name.trim() || undefined, sizes: parsedSizes, colors: parsedColors, colorImages,
             });
             setLoading(false);
             result.success ? onSuccess() : onError(result.error || "فشل الإضافة");
@@ -1089,10 +1820,22 @@ function ProductFormModal({
                 title, description: form.description || null, type: form.type, price,
                 image_url: imageUrl || product.image_url, images: allImages, artist_id: form.artist_id,
                 in_stock: form.in_stock,
+                sizes: parsedSizes && parsedSizes.length > 0 ? parsedSizes : null,
                 store_name: form.store_name.trim() || null,
             });
+            if (!result.success) {
+                setLoading(false);
+                onError(result.error || "فشل التحديث");
+                return;
+            }
+            const syncResult = await syncProductVariantSkus({
+                product_id: product.id,
+                sizes: parsedSizes || [],
+                colors: parsedColors || [],
+                colorImages,
+            });
             setLoading(false);
-            result.success ? onSuccess() : onError(result.error || "فشل التحديث");
+            syncResult.success ? onSuccess() : onError(syncResult.error || "فشل مزامنة المقاسات والألوان مع SKU");
         }
     };
 
@@ -1100,11 +1843,23 @@ function ProductFormModal({
     const artistOptions = isEdit && product?.artist_id && !artists.find((a) => a.id === product.artist_id) && product.artist
         ? [...artists, { id: product.artist_id, display_name: product.artist.display_name || "—", username: product.artist.username || "" }]
         : artists;
+    const selectedProductSizes = parseSizeList(form.sizes);
+    const selectedProductColors = parseColorList(form.colors);
+    const customProductColorValue = toColorInputValue(selectedProductColors[selectedProductColors.length - 1]);
+    const toggleProductColor = (color: string) => {
+        setForm((current) => ({ ...current, colors: toggleColorInFieldValue(current.colors, color) }));
+    };
+    const addProductColor = (color: string) => {
+        setForm((current) => ({ ...current, colors: addColorToFieldValue(current.colors, color) }));
+    };
+    const removeProductColor = (color: string) => {
+        setForm((current) => ({ ...current, colors: removeColorFromFieldValue(current.colors, color) }));
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--wusha-bg)_60%,transparent)] backdrop-blur-sm" onClick={onClose}>
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={(e) => e.stopPropagation()}
-                className="theme-surface-panel styled-scrollbar w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+                className="theme-surface-panel styled-scrollbar w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-theme-subtle sticky top-0 bg-[color:var(--wusha-surface)] z-10">
                     <h2 className="text-lg font-bold text-theme">{isEdit ? "تعديل المنتج" : "إضافة منتج جديد"}</h2>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-theme-subtle text-theme-subtle"><X className="w-5 h-5" /></button>
@@ -1247,23 +2002,109 @@ function ProductFormModal({
                             className="input-dark w-full rounded-xl px-4 py-2.5 text-sm resize-none" />
                     </div>
 
-                    {/* Sizes + Store Name */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">المقاسات</label>
-                            <input type="text" value={form.sizes}
-                                onChange={(e) => setForm((f) => ({ ...f, sizes: e.target.value }))}
-                                placeholder="S, M, L, XL"
-                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المتجر</label>
-                            <input type="text" value={form.store_name}
-                                onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
-                                placeholder="WASHA.SHOP"
-                                className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
-                        </div>
+                    {/* Sizes */}
+                    <SizePickerField
+                        value={form.sizes}
+                        onChange={(sizes) => setForm((f) => ({ ...f, sizes }))}
+                        preferredGroupKey={sizeGroupForProductType(form.type)}
+                        helperText={mode === "add"
+                            ? "اختر المقاسات من اللوحة. عند الحفظ يتم إنشاء SKU لكل مقاس مختار مع الألوان المختارة."
+                            : "تغيير المقاسات هنا يحدث قائمة المنتج. كميات وتوفر كل مقاس تُدار من نافذة SKU."}
+                    />
+
+                    {/* Store Name */}
+                    <div>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">اسم المتجر</label>
+                        <input type="text" value={form.store_name}
+                            onChange={(e) => setForm((f) => ({ ...f, store_name: e.target.value }))}
+                            placeholder="WASHA.SHOP"
+                            className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                     </div>
+
+                    {/* Variant Colors */}
+                    <div>
+                        <label className="block text-xs font-medium text-theme-subtle mb-1.5">الألوان المتاحة</label>
+                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                            {PRODUCT_COLOR_PALETTE.map((color) => {
+                                const selected = selectedProductColors.some((item) => sameColor(item, color.hex));
+                                return (
+                                    <button
+                                        key={color.hex}
+                                        type="button"
+                                        onClick={() => toggleProductColor(color.hex)}
+                                        aria-pressed={selected}
+                                        title={color.name}
+                                        className={`flex min-h-[48px] flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[10px] transition-all active:scale-[0.98] ${selected
+                                            ? "border-gold/60 bg-gold/10 text-gold"
+                                            : "border-theme-subtle bg-theme-faint text-theme-subtle hover:border-gold/30 hover:text-theme"
+                                            }`}
+                                    >
+                                        <span className={`h-5 w-5 rounded-full border ${selected ? "border-gold" : "border-theme-soft"}`} style={{ backgroundColor: color.hex }} aria-hidden />
+                                        <span className="max-w-full truncate">{color.name}</span>
+                                    </button>
+                                );
+                            })}
+                            <label
+                                title="لون مخصص"
+                                className="relative flex min-h-[48px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-theme-subtle bg-theme-faint px-2 py-2 text-[10px] text-theme-subtle transition-all hover:border-gold/30 hover:text-theme active:scale-[0.98]"
+                            >
+                                <input
+                                    type="color"
+                                    value={customProductColorValue}
+                                    onChange={(event) => addProductColor(event.target.value)}
+                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    aria-label="إضافة لون مخصص"
+                                />
+                                <span className="h-5 w-5 rounded-full border border-theme-soft" style={{ backgroundColor: customProductColorValue }} aria-hidden />
+                                <span>مخصص</span>
+                            </label>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                            {selectedProductColors.length === 0 ? (
+                                <span className="rounded-lg border border-dashed border-theme-subtle px-2 py-1 text-[10px] text-theme-faint">لم يتم اختيار ألوان</span>
+                            ) : selectedProductColors.map((color) => (
+                                <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => removeProductColor(color)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-theme-subtle bg-theme-faint px-2 py-1 text-[10px] font-mono text-theme-subtle transition-colors hover:border-red-400/30 hover:text-red-300"
+                                    dir="ltr"
+                                    title={`إزالة ${colorLabelFor(color)}`}
+                                >
+                                    <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: color }} aria-hidden />
+                                    {color}
+                                    <X className="h-3 w-3" />
+                                </button>
+                            ))}
+                        </div>
+                        <p className="mt-1.5 text-[10px] leading-5 text-theme-subtle">
+                            {mode === "add"
+                                ? "اختر لوناً أو أكثر من اللوحة. عند الحفظ يتم إنشاء SKU لكل مقاس × لون وتوزيع المخزون الابتدائي بينها."
+                                : "تعديل الألوان هنا يعيد بناء شبكة SKU للمنتج؛ الناقص يُنشأ، والخارج عن الشبكة يُعطل من المتجر دون حذف سجله."}
+                        </p>
+                    </div>
+
+                    <input
+                        ref={colorImageInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handleColorImageSelect}
+                        className="hidden"
+                    />
+                    <ColorImagesManager
+                        colors={selectedProductColors}
+                        imageUrls={colorImageUrls}
+                        previews={colorImagePreviews}
+                        onPick={requestColorImage}
+                        onRemove={removeColorImage}
+                    />
+
+                    <VariantMatrixPreview
+                        sizes={selectedProductSizes}
+                        colors={selectedProductColors}
+                        skus={skus}
+                        mode={mode}
+                    />
 
                     {/* Stock Controls */}
                     <div className="space-y-3">

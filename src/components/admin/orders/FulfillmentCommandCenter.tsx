@@ -42,6 +42,7 @@ interface OrderItem {
     unit_price: number;
     total_price: number;
     size: string | null;
+    color_code?: string | null;
     custom_title: string | null;
     custom_design_url?: string;
     custom_design_order_id?: string | null;
@@ -515,6 +516,15 @@ export function FulfillmentCommandCenter({ data }: FulfillmentCommandCenterProps
                                                                 <p className="text-sm font-bold text-theme truncate group-hover:text-gold transition-colors">{title}</p>
                                                                 <div className="flex items-center gap-2.5 mt-1.5">
                                                                     <span className="px-1.5 py-0.5 rounded-md bg-gold/10 text-[9px] font-black uppercase text-gold border border-gold/10 tracking-widest">{item.size || "STD"}</span>
+                                                                    {item.color_code && (
+                                                                        <>
+                                                                            <span className="w-1 h-1 rounded-full bg-theme-soft" />
+                                                                            <span className="inline-flex items-center gap-1 rounded-md border border-theme-subtle bg-theme-subtle px-1.5 py-0.5 text-[9px] font-black uppercase text-theme-subtle">
+                                                                                <span className="h-2.5 w-2.5 rounded-full border border-theme-soft" style={{ backgroundColor: item.color_code }} aria-hidden />
+                                                                                {item.color_code}
+                                                                            </span>
+                                                                        </>
+                                                                    )}
                                                                     <span className="w-1 h-1 rounded-full bg-theme-soft" />
                                                                     <span className="text-[10px] font-bold text-theme-faint uppercase font-mono">QTY: {item.quantity}</span>
                                                                 </div>

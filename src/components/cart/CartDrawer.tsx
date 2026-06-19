@@ -149,7 +149,7 @@ export function CartDrawer() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      key={`${item.id}-${item.size || "default"}`}
+                      key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`}
                       className="flex gap-4 p-4 rounded-2xl theme-surface-panel group"
                     >
                       {/* Image */}
@@ -168,7 +168,7 @@ export function CartDrawer() {
                           <div className="flex justify-between items-start gap-2">
                             <h3 className="font-bold text-theme-strong line-clamp-1">{item.title}</h3>
                             <button
-                              onClick={() => removeItem(item.id, item.size)}
+                              onClick={() => removeItem(item.id, item.size, item.colorCode)}
                               className="text-theme-faint hover:text-red-500 transition-colors p-1"
                               aria-label="إزالة العنصر"
                             >
@@ -186,6 +186,19 @@ export function CartDrawer() {
                                 </span>
                               </>
                             )}
+                            {item.colorCode && (
+                              <>
+                                <span className="w-1 h-1 rounded-full bg-theme-faint" />
+                                <span className="inline-flex items-center gap-1.5 text-xs bg-theme-subtle border border-theme-subtle text-theme px-2 py-0.5 rounded-md font-mono font-bold">
+                                  <span
+                                    className="h-3 w-3 rounded-full border border-theme-soft"
+                                    style={{ backgroundColor: item.colorCode }}
+                                    aria-hidden
+                                  />
+                                  {item.colorCode}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
 
@@ -197,7 +210,7 @@ export function CartDrawer() {
                           {/* Quantity Controls */}
                           <div className="flex items-center bg-theme-faint border border-theme-subtle rounded-full overflow-hidden">
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity - 1, item.size)}
+                              onClick={() => updateQuantity(item.id, item.quantity - 1, item.size, item.colorCode)}
                               className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
                               disabled={item.quantity <= 1}
                             >
@@ -207,7 +220,7 @@ export function CartDrawer() {
                               {item.quantity}
                             </span>
                             <button
-                              onClick={() => updateQuantity(item.id, item.quantity + 1, item.size)}
+                              onClick={() => updateQuantity(item.id, item.quantity + 1, item.size, item.colorCode)}
                               className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
                               disabled={item.quantity >= (item.maxQuantity || 99)}
                             >

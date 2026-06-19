@@ -337,7 +337,7 @@ export function OrdersClient({
                                                     <div className="flex-1 min-w-0">
                                                         <p className="line-clamp-2 text-sm text-theme sm:line-clamp-1">{title}</p>
                                                         <p className="text-[10px] text-theme-faint">
-                                                            {item.quantity}× · {item.size && `مقاس ${item.size} · `}{formatStableNumber(item.unit_price)} ر.س
+                                                            {item.quantity}× · {item.size && `مقاس ${item.size} · `}{item.color_code && `لون ${item.color_code} · `}{formatStableNumber(item.unit_price)} ر.س
                                                         </p>
                                                     </div>
                                                     <span className="shrink-0 text-xs font-bold text-theme-subtle">{formatStableNumber(item.total_price)} ر.س</span>

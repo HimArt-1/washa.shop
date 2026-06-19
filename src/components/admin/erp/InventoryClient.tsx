@@ -90,7 +90,8 @@ export default function InventoryClient({
                 item.sku?.sku?.toLowerCase().includes(q) ||
                 item.sku?.product?.title?.toLowerCase().includes(q) ||
                 item.warehouse?.name?.toLowerCase().includes(q) ||
-                item.sku?.size?.toLowerCase().includes(q)
+                item.sku?.size?.toLowerCase().includes(q) ||
+                item.sku?.color_code?.toLowerCase().includes(q)
             );
         }
 
@@ -230,7 +231,7 @@ export default function InventoryClient({
                         <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-theme-subtle" />
                         <input
                             type="text"
-                            placeholder="بحث بالاسم، SKU، المقاس أو المستودع..."
+                            placeholder="بحث بالاسم، SKU، المقاس، اللون أو المستودع..."
                             className="w-full pl-4 pr-10 py-2.5 bg-surface/50 border border-theme-soft rounded-xl text-sm focus:outline-none focus:border-gold/50 transition-colors"
                             value={searchQuery}
                             onChange={d => setSearchQuery(d.target.value)}
@@ -289,7 +290,7 @@ export default function InventoryClient({
                                 </th>
                                 <th className="px-4 py-3.5 font-medium">
                                     <button onClick={() => handleSort("size")} className="flex items-center gap-1.5 hover:text-gold transition-colors">
-                                        المقاس <SortIcon col="size" />
+                                        المقاس/اللون <SortIcon col="size" />
                                     </button>
                                 </th>
                                 <th className="px-4 py-3.5 font-medium text-center w-[180px]">
@@ -343,7 +344,15 @@ export default function InventoryClient({
                                         </td>
                                         {/* Size */}
                                         <td className="px-4 py-3.5">
-                                            <span className="text-xs text-theme-soft">{item.sku?.size || "—"}</span>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="text-xs text-theme-soft">{item.sku?.size || "—"}</span>
+                                                {item.sku?.color_code && (
+                                                    <span className="inline-flex items-center gap-1 rounded-md border border-theme-subtle bg-theme-subtle px-1.5 py-0.5 text-[10px] font-mono text-theme-subtle">
+                                                        <span className="h-2.5 w-2.5 rounded-full border border-theme-soft" style={{ backgroundColor: item.sku.color_code }} aria-hidden />
+                                                        {item.sku.color_code}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                         {/* Quantity with bar */}
                                         <td className="px-4 py-3.5">

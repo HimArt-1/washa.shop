@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useCartStore } from "@/stores/cartStore";
 import { ShoppingBag, Share2, Heart, Bookmark } from "lucide-react";
 import { motion } from "framer-motion";
@@ -19,14 +19,75 @@ import Link from "next/link";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelViewContent, pixelAddToCart } from "@/lib/meta-pixel";
 
-export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes }: { product: any, isCurrentlyInStock?: boolean, erpAvailableSizes?: string[] }) {
+type ProductVariant = {
+    id: string;
+    size: string | null;
+    color_code: string | null;
+    color_image_url?: string | null;
+    quantity: number;
+};
+
+function normalizeSize(value?: string | null) {
+    return value?.trim().toUpperCase() || null;
+}
+
+function normalizeColor(value?: string | null) {
+    const valueOrNull = value?.trim();
+    if (!valueOrNull) return null;
+    return valueOrNull.startsWith("#") ? valueOrNull.toLowerCase() : `#${valueOrNull.toLowerCase()}`;
+}
+
+function isCssColor(value?: string | null) {
+    return Boolean(value && /^#[0-9a-fA-F]{3,8}$/.test(value));
+}
+
+function sumVariantQuantity(variants: ProductVariant[], size: string | null, color: string | null) {
+    return variants
+        .filter((variant) => {
+            const variantSize = normalizeSize(variant.size);
+            const variantColor = normalizeColor(variant.color_code);
+            return (!size || variantSize === size) && (!color || variantColor === color);
+        })
+        .reduce((sum, variant) => sum + (Number(variant.quantity) || 0), 0);
+}
+
+export function ProductActions({
+    product,
+    isCurrentlyInStock,
+    erpVariants = [],
+}: {
+    product: any;
+    isCurrentlyInStock?: boolean;
+    erpVariants?: ProductVariant[];
+}) {
     const addItem = useCartStore((s) => s.addItem);
     const router = useRouter();
     const trackEvent = useTrackEvent();
 
-    // Fall back to product.sizes if ERP sizes aren't explicitly provided (or empty)
-    const sizesToUse = erpAvailableSizes && erpAvailableSizes.length > 0 ? erpAvailableSizes : product.sizes || [];
-    const [selectedSize, setSelectedSize] = useState<string>(sizesToUse[0] || "");
+    const hasErpVariants = erpVariants.length > 0;
+    const legacySizes = useMemo(
+        () => Array.isArray(product.sizes) ? product.sizes.map(normalizeSize).filter(Boolean) as string[] : [],
+        [product.sizes]
+    );
+    const erpSizes = useMemo(
+        () => erpVariants.map((variant) => normalizeSize(variant.size)).filter(Boolean) as string[],
+        [erpVariants]
+    );
+    const sizeValues = useMemo(() => Array.from(new Set([...(legacySizes || []), ...erpSizes])), [legacySizes, erpSizes]);
+    const colorValues = useMemo(
+        () => Array.from(new Set(erpVariants.map((variant) => normalizeColor(variant.color_code)).filter(Boolean) as string[])),
+        [erpVariants]
+    );
+
+    const legacyStock = product.in_stock === false ? 0 : (product.stock_quantity ?? 99);
+    const sizeOptions = useMemo(() => sizeValues.map((size) => {
+        const quantity = hasErpVariants ? sumVariantQuantity(erpVariants, size, null) : legacyStock;
+        return { size, quantity, available: quantity > 0 };
+    }), [erpVariants, hasErpVariants, legacyStock, sizeValues]);
+
+    const firstAvailableSize = sizeOptions.find((option) => option.available)?.size || sizeOptions[0]?.size || "";
+    const [selectedSize, setSelectedSize] = useState<string>(firstAvailableSize);
+    const [selectedColor, setSelectedColor] = useState<string>("");
 
     // Fall back to product.in_stock if ERP flag isn't provided
     const inStock = isCurrentlyInStock !== undefined ? isCurrentlyInStock : product.in_stock;
@@ -39,6 +100,24 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
     const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
     const utilityButtonBase =
         "inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-4 text-theme-subtle transition-colors hover:bg-theme-subtle sm:w-auto";
+
+    const colorOptions = useMemo(() => colorValues.map((color) => {
+        const quantity = hasErpVariants ? sumVariantQuantity(erpVariants, selectedSize || null, color) : legacyStock;
+        return { color, quantity, available: quantity > 0 };
+    }), [colorValues, erpVariants, hasErpVariants, legacyStock, selectedSize]);
+    const selectedVariantStock = hasErpVariants
+        ? sumVariantQuantity(erpVariants, selectedSize || null, selectedColor || null)
+        : legacyStock;
+    const selectedColorImage = useMemo(() => {
+        if (!selectedColor) return null;
+        return erpVariants.find((variant) =>
+            normalizeColor(variant.color_code) === selectedColor && variant.color_image_url
+        )?.color_image_url || null;
+    }, [erpVariants, selectedColor]);
+    const canAddToCart = Boolean(inStock)
+        && (!sizeOptions.length || sizeOptions.some((option) => option.size === selectedSize && option.available))
+        && (!colorOptions.length || colorOptions.some((option) => option.color === selectedColor && option.available))
+        && selectedVariantStock > 0;
 
     useEffect(() => {
         setMounted(true);
@@ -64,6 +143,35 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             });
         }
     }, [mounted, product.id]);
+
+    useEffect(() => {
+        const nextSize = sizeOptions.find((option) => option.available)?.size || sizeOptions[0]?.size || "";
+        if (nextSize && selectedSize !== nextSize && (!selectedSize || !sizeOptions.some((option) => option.size === selectedSize && option.available))) {
+            setSelectedSize(nextSize);
+        }
+    }, [selectedSize, sizeOptions]);
+
+    useEffect(() => {
+        if (!colorOptions.length) {
+            if (selectedColor) setSelectedColor("");
+            return;
+        }
+        if (!colorOptions.some((option) => option.color === selectedColor && option.available)) {
+            const nextColor = colorOptions.find((option) => option.available)?.color || colorOptions[0]?.color || "";
+            if (nextColor && nextColor !== selectedColor) setSelectedColor(nextColor);
+        }
+    }, [selectedColor, colorOptions]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.dispatchEvent(new CustomEvent("wusha:product-color-change", {
+            detail: {
+                productId: product.id,
+                colorCode: selectedColor || null,
+                imageUrl: selectedColorImage,
+            },
+        }));
+    }, [product.id, selectedColor, selectedColorImage]);
 
     const handleShare = async () => {
         if (typeof window === "undefined") return;
@@ -112,7 +220,9 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                         <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint">ORDER SNAPSHOT</p>
                         <p className="mt-2 text-sm text-theme-subtle">
                             {inStock
-                                ? "اختر المقاس المناسب ثم أضف القطعة مباشرة إلى السلة."
+                                ? colorOptions.length > 0
+                                    ? "اختر المقاس واللون المتوفرين، ثم أضف القطعة إلى السلة."
+                                    : "اختر المقاس المناسب ثم أضف القطعة مباشرة إلى السلة."
                                 : "هذه القطعة غير متوفرة حاليًا، لكن يمكنك حفظها أو مشاركة رابطها."}
                         </p>
                     </div>
@@ -129,20 +239,53 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
             </div>
 
             {/* Size Selector */}
-            {sizesToUse.length > 0 && (
+            {sizeOptions.length > 0 && (
                 <div>
                     <label className="text-xs text-theme-faint mb-2 block">اختر المقاس</label>
                     <div className="flex gap-2 flex-wrap">
-                        {sizesToUse.map((size: string) => (
+                        {sizeOptions.map((option) => (
                             <button
-                                key={size}
-                                onClick={() => setSelectedSize(size)}
-                                className={`min-h-[44px] rounded-xl border px-4 py-2 text-sm font-medium transition-all ${selectedSize === size
+                                key={option.size}
+                                onClick={() => option.available && setSelectedSize(option.size)}
+                                disabled={!option.available}
+                                className={`min-h-[48px] rounded-xl border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-45 ${selectedSize === option.size
                                     ? "bg-gold/10 border-gold/40 text-gold"
                                     : "border-theme-soft bg-theme-faint text-theme-subtle hover:border-gold/20 hover:bg-theme-subtle"
                                     }`}
                             >
-                                {size}
+                                <span className="block">{option.size}</span>
+                                <span className="mt-0.5 block text-[10px] opacity-75">
+                                    {option.available ? `${option.quantity} متاح` : "نفد"}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Color Selector */}
+            {colorOptions.length > 0 && (
+                <div>
+                    <label className="text-xs text-theme-faint mb-2 block">اختر اللون</label>
+                    <div className="flex gap-2 flex-wrap">
+                        {colorOptions.map((option) => (
+                            <button
+                                key={option.color}
+                                onClick={() => option.available && setSelectedColor(option.color)}
+                                disabled={!option.available}
+                                className={`flex min-h-[48px] items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-45 ${
+                                    selectedColor === option.color
+                                        ? "border-gold/40 bg-gold/10 text-gold"
+                                        : "border-theme-soft bg-theme-faint text-theme-subtle hover:border-gold/20 hover:bg-theme-subtle"
+                                }`}
+                            >
+                                <span
+                                    className="h-5 w-5 rounded-full border border-theme-soft"
+                                    style={{ backgroundColor: isCssColor(option.color) ? option.color : undefined }}
+                                    aria-hidden
+                                />
+                                <span dir="ltr">{option.color}</span>
+                                <span className="text-[10px] opacity-70">{option.available ? option.quantity : "نفد"}</span>
                             </button>
                         ))}
                     </div>
@@ -157,26 +300,27 @@ export function ProductActions({ product, isCurrentlyInStock, erpAvailableSizes 
                             id: product.id,
                             title: product.title,
                             price: Number(product.price),
-                            image_url: product.image_url,
+                            image_url: selectedColorImage || product.image_url,
                             artist_name: product.artist?.display_name || "فنان وشّى",
                             type: "product",
                             size: selectedSize || null,
-                            maxQuantity: product.stock_quantity || 99,
+                            colorCode: selectedColor || null,
+                            maxQuantity: selectedVariantStock || product.stock_quantity || 99,
                         });
                         trackEvent("add_to_cart", {
                             entityType: "product",
                             entityId: product.id,
-                            metadata: { title: product.title, price: Number(product.price), size: selectedSize || null },
+                            metadata: { title: product.title, price: Number(product.price), size: selectedSize || null, color_code: selectedColor || null },
                         });
                         pixelAddToCart({ contentId: product.id, contentName: product.title, value: Number(product.price) });
                     }}
-                    disabled={!inStock}
+                    disabled={!canAddToCart}
                     className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"
-                    whileHover={inStock ? { scale: 1.02 } : {}}
-                    whileTap={inStock ? { scale: 0.98 } : {}}
+                    whileHover={canAddToCart ? { scale: 1.02 } : {}}
+                    whileTap={canAddToCart ? { scale: 0.98 } : {}}
                 >
                     <ShoppingBag className="w-4 h-4" />
-                    {inStock ? "أضف للسلة" : "غير متوفر"}
+                    {canAddToCart ? "أضف للسلة" : "غير متوفر"}
                 </motion.button>
 
                 <SignedIn>

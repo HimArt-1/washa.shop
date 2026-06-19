@@ -28,7 +28,10 @@ function buildInvoiceProducts(orderNumber: string, total: number, items: any[]):
     const titles = items
         .map((item) => {
             const product = Array.isArray(item.product) ? item.product[0] : item.product;
-            return product?.title || item.custom_title;
+            const title = product?.title || item.custom_title;
+            if (!title) return null;
+            const options = [item.size, item.color_code].filter(Boolean).join(" · ");
+            return options ? `${title} (${options})` : title;
         })
         .filter((title): title is string => typeof title === "string" && title.trim().length > 0)
         .slice(0, 4);
@@ -112,7 +115,7 @@ export async function POST(req: NextRequest) {
 
         const { data: orderItems } = await supabase
             .from("order_items")
-            .select("quantity, unit_price, size, custom_title, product:products(title)")
+            .select("quantity, unit_price, size, color_code, custom_title, product:products(title)")
             .eq("order_id", order.id);
 
         const amount = Math.round(Number(order.total) * 100) / 100;

@@ -20,6 +20,11 @@ const TYPE_LABELS: Record<string, string> = {
     nft: "NFT",
 };
 function typeLabel(type: string) { return TYPE_LABELS[type] ?? type; }
+function normalizeColorCode(value?: string | null) {
+    const trimmed = value?.trim();
+    if (!trimmed) return null;
+    return trimmed.startsWith("#") ? trimmed.toLowerCase() : `#${trimmed.toLowerCase()}`;
+}
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
@@ -71,33 +76,56 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
     // Fetch Live ERP Inventory for SKUs
     const supabase = getSupabaseServerClient();
-    const { data: skuData } = await supabase
+    const skuWithColorImages = await supabase
         .from("product_skus")
         .select(`
-            id, size, color_code,
+            id, size, color_code, color_image_url, is_active,
             inventory_levels(quantity)
         `)
         .eq("product_id", id);
+    let skuData = skuWithColorImages.data;
+
+    if (skuWithColorImages.error && skuWithColorImages.error.message.includes("color_image_url")) {
+        const fallbackSkus = await supabase
+            .from("product_skus")
+            .select(`
+                id, size, color_code, is_active,
+                inventory_levels(quantity)
+            `)
+            .eq("product_id", id);
+        skuData = (fallbackSkus.data || []).map((sku: any) => ({ ...sku, color_image_url: null }));
+    }
 
     let hasErpStock = false;
     let erpTotalStock = 0;
-    const availableSizes = new Set<string>();
+    const variantSummaries: Array<{
+        id: string;
+        size: string | null;
+        color_code: string | null;
+        color_image_url: string | null;
+        quantity: number;
+    }> = [];
+
+    const activeSkuData = (skuData || []).filter((sku: any) => sku.is_active !== false);
 
     if (skuData && skuData.length > 0) {
-        skuData.forEach((sku: any) => {
+        activeSkuData.forEach((sku: any) => {
             const skuStock = sku.inventory_levels?.reduce((sum: number, level: any) => sum + (level.quantity || 0), 0) || 0;
+            const size = typeof sku.size === "string" && sku.size.trim() ? sku.size.trim().toUpperCase() : null;
+            const colorCode = normalizeColorCode(sku.color_code);
             erpTotalStock += skuStock;
-            if (skuStock > 0 && sku.size) {
-                availableSizes.add(sku.size.toUpperCase());
-            }
+            variantSummaries.push({
+                id: sku.id,
+                size,
+                color_code: colorCode,
+                color_image_url: typeof sku.color_image_url === "string" && sku.color_image_url.trim() ? sku.color_image_url.trim() : null,
+                quantity: skuStock,
+            });
         });
         hasErpStock = erpTotalStock > 0;
     } else {
         // Fallback to old system if no SKUs
-        hasErpStock = product.in_stock && (product.stock_quantity ?? 0) > 0;
-        if (hasErpStock && product.sizes) {
-            product.sizes.forEach((s: string) => availableSizes.add(s.toUpperCase()));
-        }
+        hasErpStock = product.in_stock && (product.stock_quantity == null || product.stock_quantity > 0);
     }
 
     // Determine final stock status
@@ -165,6 +193,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         images={product.images || []}
                         title={product.title}
                         type={product.type}
+                        productId={product.id}
+                        colorImages={variantSummaries
+                            .filter((variant) => variant.color_code && variant.color_image_url)
+                            .map((variant) => ({
+                                color_code: variant.color_code as string,
+                                image_url: variant.color_image_url as string,
+                            }))}
                     />
 
                     {/* Info */}
@@ -215,33 +250,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             </div>
                         )}
 
-                        {/* Description */}
-                        {product.description && (
-                            <p className="mb-6 text-sm leading-7 text-theme-subtle">{product.description}</p>
-                        )}
-
-                        {/* Product Details */}
-                        <div className="mb-8 space-y-3">
-                            <div className="flex flex-col gap-1 border-b border-theme-subtle py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                                <span className="text-xs text-theme-faint">النوع</span>
-                                <span className="text-right text-sm text-theme-soft">{typeLabel(product.type)}</span>
-                            </div>
-                            {availableSizes.size > 0 && (
-                                <div className="flex flex-col gap-1 border-b border-theme-subtle py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                                    <span className="text-xs text-theme-faint">المقاسات المتاحة المتوفرة</span>
-                                    <span className="text-right text-sm font-semibold text-theme-soft">{Array.from(availableSizes).join(" ، ")}</span>
-                                </div>
-                            )}
-                            <div className="flex flex-col gap-1 border-b border-theme-subtle py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                                <span className="text-xs text-theme-faint">الحالة</span>
-                                <span className={`text-sm font-medium ${isCurrentlyInStock ? "text-emerald-400" : "text-red-400"}`}>
-                                    {isCurrentlyInStock ? "متوفر" : "غير متوفر"}
-                                </span>
-                            </div>
-                        </div>
-
                         {/* Price */}
-                        <div className="mb-6">
+                        <div className="mb-5 rounded-[1.35rem] border border-gold/15 bg-gold/5 px-4 py-4">
                             {product.original_price != null && product.original_price > product.price && (
                                 <div className="mb-1 flex items-center gap-2">
                                     <span className="text-sm text-theme-faint line-through">
@@ -256,10 +266,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             <span className="text-xs text-theme-faint mr-2">{product.currency || "SAR"}</span>
                         </div>
 
+                        {/* Description */}
+                        {product.description && (
+                            <div className="mb-5 rounded-[1.35rem] border border-theme-subtle bg-theme-faint px-4 py-4">
+                                <p className="text-sm leading-7 text-theme-subtle">{product.description}</p>
+                            </div>
+                        )}
+
                         <ProductActions
                             product={product}
                             isCurrentlyInStock={isCurrentlyInStock}
-                            erpAvailableSizes={Array.from(availableSizes)}
+                            erpVariants={variantSummaries}
                         />
                     </div>
                 </div>

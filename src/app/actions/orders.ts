@@ -20,6 +20,7 @@ interface OrderItemInput {
     product_id: string | null;
     quantity: number;
     size: string | null;
+    color_code?: string | null;
     unit_price: number;
     custom_design_url?: string | null;
     custom_garment?: string | null;
@@ -130,6 +131,7 @@ function buildOrderEmailItems(items: OrderItemInput[]) {
         title: item.custom_title || "منتج",
         quantity: item.quantity,
         size: item.size,
+        color_code: item.color_code ?? null,
         unit_price: item.unit_price,
     }));
 }
@@ -160,6 +162,10 @@ function normalizeQuantity(value: unknown, max = 99) {
 }
 
 function normalizeSize(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeColorCode(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
@@ -313,14 +319,8 @@ async function buildServerOrderPayload(params: {
                 return { ok: false, error: "كمية المنتج غير صالحة" };
             }
 
-            if (product.stock_quantity !== null && product.stock_quantity < quantity) {
-                return {
-                    ok: false,
-                    error: `الكمية المطلوبة من "${product.title || "منتج"}" تتجاوز المخزون (${product.stock_quantity})`,
-                };
-            }
-
             const size = normalizeSize(item.size);
+            const colorCode = normalizeColorCode(item.color_code);
             const allowedSizes = Array.isArray(product.sizes)
                 ? product.sizes.filter((sizeValue) => typeof sizeValue === "string")
                 : [];
@@ -338,6 +338,7 @@ async function buildServerOrderPayload(params: {
                 product_id: productId,
                 quantity,
                 size,
+                color_code: colorCode,
                 unit_price: unitPrice,
                 custom_title: product.title || "منتج",
             });
@@ -615,7 +616,7 @@ async function fetchOrderEmailItems(orderId: string) {
     const supabase = getSupabaseAdminClient();
     const { data: orderItems, error } = await supabase
         .from("order_items")
-        .select("quantity, size, unit_price, custom_title, product:products(title)")
+        .select("quantity, size, color_code, unit_price, custom_title, product:products(title)")
         .eq("order_id", orderId);
 
     if (error) {
@@ -626,6 +627,7 @@ async function fetchOrderEmailItems(orderId: string) {
         title: item.product?.title || item.custom_title || "منتج",
         quantity: item.quantity,
         size: item.size,
+        color_code: item.color_code,
         unit_price: item.unit_price,
     })) as OrderEmailItem[];
 }
@@ -909,6 +911,7 @@ export async function createOrder(
         product_id: item.product_id ?? null,
         quantity: item.quantity,
         size: item.size,
+        color_code: item.color_code ?? null,
         unit_price: item.unit_price,
         total_price: item.unit_price * item.quantity,
         ...(item.product_id == null && {

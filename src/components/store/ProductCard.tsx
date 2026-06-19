@@ -32,6 +32,14 @@ function typeLabel(type: string) {
     return TYPE_LABELS[type] ?? type;
 }
 
+function isCssColor(value?: string | null) {
+    return Boolean(value && /^#?[0-9a-fA-F]{3,8}$/.test(value.trim()));
+}
+
+function normalizeColor(value: string) {
+    return value.startsWith("#") ? value : `#${value}`;
+}
+
 interface ProductCardProps {
     featured?: boolean;
     product: {
@@ -48,6 +56,8 @@ interface ProductCardProps {
         product_skus?: Array<{
             id: string;
             size?: string | null;
+            color_code?: string | null;
+            is_active?: boolean;
             inventory_levels?: Array<{ quantity: number }>;
         }>;
     };
@@ -59,17 +69,26 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
     const trackEvent = useTrackEvent();
 
     // ── Stock calculation ────────────────────────────────────────────────
-    const skus = product.product_skus ?? [];
+    const allSkus = product.product_skus ?? [];
+    const skus = allSkus.filter((sku) => sku.is_active !== false);
     let erpTotalStock = 0;
-    const availableSizes: string[] = [];
+    const sizeStock = new Map<string, number>();
+    const colorStock = new Map<string, number>();
 
     if (skus.length > 0) {
         skus.forEach((sku) => {
             const skuStock = sku.inventory_levels?.reduce((s, l) => s + (l.quantity || 0), 0) ?? 0;
             erpTotalStock += skuStock;
-            if (skuStock > 0 && sku.size) availableSizes.push(sku.size.toUpperCase());
+            if (sku.size) {
+                const key = sku.size.toUpperCase();
+                sizeStock.set(key, (sizeStock.get(key) ?? 0) + skuStock);
+            }
+            if (sku.color_code) {
+                const key = normalizeColor(sku.color_code);
+                colorStock.set(key, (colorStock.get(key) ?? 0) + skuStock);
+            }
         });
-    } else {
+    } else if (allSkus.length === 0) {
         const legacyStock = product.in_stock !== false
             ? (product.stock_quantity === undefined || product.stock_quantity === null
                 ? 999
@@ -80,7 +99,18 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
 
     const isCurrentlyInStock = erpTotalStock > 0;
     const isLowStock = isCurrentlyInStock && erpTotalStock > 0 && erpTotalStock <= 5;
-    const needsSizeSelection = availableSizes.length > 0;
+    const sizeOptions = Array.from(sizeStock.entries()).map(([size, quantity]) => ({
+        size,
+        quantity,
+        available: quantity > 0,
+    }));
+    const colorOptions = Array.from(colorStock.entries()).map(([color, quantity]) => ({
+        color,
+        quantity,
+        available: quantity > 0,
+    }));
+    const needsSizeSelection = sizeOptions.length > 0;
+    const hasColorVariants = colorOptions.length > 0;
 
     // ── Discount ─────────────────────────────────────────────────────────
     const hasDiscount = product.original_price != null && product.original_price > product.price;
@@ -133,10 +163,19 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         e.preventDefault();
         e.stopPropagation();
 
+        if (hasColorVariants) {
+            router.push(`/products/${product.id}`);
+            return;
+        }
+
         if (needsSizeSelection && !size) {
             setShowSizePicker(true);
             return;
         }
+
+        const selectedSizeStock = size
+            ? sizeOptions.find((option) => option.size === size)?.quantity
+            : undefined;
 
         addToCart({
             id: product.id,
@@ -146,6 +185,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             artist_name: product.artist?.display_name || "وشّى",
             size: size ?? null,
             type: "product",
+            maxQuantity: selectedSizeStock || product.stock_quantity || 99,
         });
         trackEvent("add_to_cart", {
             entityType: "product",
@@ -243,6 +283,37 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                             <span className="text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                         </div>
                     </div>
+                    {(sizeOptions.length > 0 || colorOptions.length > 0) && (
+                        <div className="mt-3 flex min-h-[22px] items-center justify-between gap-2">
+                            <div className="flex min-w-0 flex-wrap gap-1">
+                                {sizeOptions.slice(0, 4).map((option) => (
+                                    <span
+                                        key={option.size}
+                                        className={cn(
+                                            "rounded-md border px-1.5 py-0.5 text-[9px] font-bold",
+                                            option.available
+                                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                                : "border-red-500/20 bg-red-500/10 text-red-400"
+                                        )}
+                                    >
+                                        {option.size}
+                                    </span>
+                                ))}
+                            </div>
+                            {colorOptions.length > 0 && (
+                                <div className="flex shrink-0 -space-x-1 space-x-reverse">
+                                    {colorOptions.slice(0, 5).map((option) => (
+                                        <span
+                                            key={option.color}
+                                            className={cn("h-4 w-4 rounded-full border border-theme-soft", !option.available && "opacity-35")}
+                                            style={{ backgroundColor: isCssColor(option.color) ? option.color : undefined }}
+                                            title={`${option.color} ${option.available ? "متوفر" : "نافد"}`}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </Link>
         );
@@ -308,23 +379,26 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                             </button>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
-                            {availableSizes.map((size) => (
+                            {sizeOptions.map((option) => (
                                 <button
-                                    key={size}
+                                    key={option.size}
+                                    disabled={!option.available}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        setPendingSize(size);
-                                        handleAddToCart(e, size);
+                                        if (!option.available) return;
+                                        setPendingSize(option.size);
+                                        handleAddToCart(e, option.size);
                                     }}
                                     className={cn(
-                                        "min-h-[32px] rounded-xl border px-3 py-1 text-xs font-semibold transition-all",
-                                        pendingSize === size
+                                        "min-h-[32px] rounded-xl border px-3 py-1 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-45",
+                                        pendingSize === option.size
                                             ? "border-gold/50 bg-gold/20 text-gold"
                                             : "border-white/15 bg-[color:rgba(15,15,15,0.40)] text-white hover:border-gold/30 hover:bg-gold/10 hover:text-gold"
                                     )}
                                 >
-                                    {size}
+                                    <span>{option.size}</span>
+                                    <span className="ms-1 text-[9px] opacity-70">{option.available ? option.quantity : "نفد"}</span>
                                 </button>
                             ))}
                         </div>
@@ -338,11 +412,11 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                             <button
                                 onClick={(e) => handleAddToCart(e)}
                                 className="flex min-h-[40px] items-center justify-center gap-1.5 rounded-2xl border border-gold/30 bg-[color:var(--wusha-gold)] text-[color:var(--wusha-bg)] backdrop-blur-md transition-all hover:bg-gold-light hover:scale-[1.02] font-bold w-full shadow-lg"
-                                title={needsSizeSelection ? "اختر المقاس" : "أضف للسلة"}
+                                title={hasColorVariants ? "اختر اللون والمقاس" : needsSizeSelection ? "اختر المقاس" : "أضف للسلة"}
                             >
                                 <ShoppingCart className="w-4 h-4" />
                                 <span className="text-[12px]">
-                                    {needsSizeSelection ? "اختر المقاس" : "أضف للسلة"}
+                                    {hasColorVariants ? "اختر الخيارات" : needsSizeSelection ? "اختر المقاس" : "أضف للسلة"}
                                 </span>
                             </button>
                         )}
@@ -404,6 +478,37 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                         </span>
                     </div>
                 </div>
+                {(sizeOptions.length > 0 || colorOptions.length > 0) && (
+                    <div className="mt-3 flex min-h-[22px] items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap gap-1">
+                            {sizeOptions.slice(0, 4).map((option) => (
+                                <span
+                                    key={option.size}
+                                    className={cn(
+                                        "rounded-md border px-1.5 py-0.5 text-[9px] font-bold",
+                                        option.available
+                                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                            : "border-red-500/20 bg-red-500/10 text-red-400"
+                                    )}
+                                >
+                                    {option.size}
+                                </span>
+                            ))}
+                        </div>
+                        {colorOptions.length > 0 && (
+                            <div className="flex shrink-0 -space-x-1 space-x-reverse">
+                                {colorOptions.slice(0, 5).map((option) => (
+                                    <span
+                                        key={option.color}
+                                        className={cn("h-4 w-4 rounded-full border border-theme-soft", !option.available && "opacity-35")}
+                                        style={{ backgroundColor: isCssColor(option.color) ? option.color : undefined }}
+                                        title={`${option.color} ${option.available ? "متوفر" : "نافد"}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </Link>
     );

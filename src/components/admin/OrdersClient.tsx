@@ -630,8 +630,8 @@ export function OrdersClient({
                                                                             const title = isCustom ? (item.custom_title || "تصميم مخصص") : (item.product?.title || "منتج");
                                                                             const subtitle = isCustom
                                                                                 ? `${item.custom_garment || "قطعة مخصصة"} · مقاس ${item.size || "—"}`
-                                                                                : item.size
-                                                                                    ? `مقاس ${item.size}`
+                                                                                : item.size || item.color_code
+                                                                                    ? [item.size ? `مقاس ${item.size}` : null, item.color_code ? `لون ${item.color_code}` : null].filter(Boolean).join(" · ")
                                                                                     : "منتج بدون مقاس";
 
                                                                             return (

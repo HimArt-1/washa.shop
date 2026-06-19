@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,24 +10,81 @@ interface ProductImageGalleryProps {
     images: string[];
     title: string;
     type: string;
+    productId?: string;
+    colorImages?: Array<{ color_code: string; image_url: string }>;
 }
 
-export function ProductImageGallery({ mainImage, images, title, type }: ProductImageGalleryProps) {
-    // Combine main + extra images, deduplicate
-    const allImages = [mainImage, ...images.filter((img) => img !== mainImage)];
+function normalizeColor(value?: string | null) {
+    const trimmed = value?.trim();
+    if (!trimmed) return null;
+    return trimmed.startsWith("#") ? trimmed.toLowerCase() : `#${trimmed.toLowerCase()}`;
+}
+
+export function ProductImageGallery({ mainImage, images, title, type, productId, colorImages = [] }: ProductImageGalleryProps) {
     const [activeIdx, setActiveIdx] = useState(0);
+
+    const allImages = useMemo(() => {
+        const seen = new Set<string>();
+        return [mainImage, ...colorImages.map((item) => item.image_url), ...images]
+            .filter((img): img is string => Boolean(img && img.trim()))
+            .filter((img) => {
+                if (seen.has(img)) return false;
+                seen.add(img);
+                return true;
+            });
+    }, [colorImages, images, mainImage]);
+
+    const colorImageMap = useMemo(() => {
+        const map = new Map<string, string>();
+        colorImages.forEach((item) => {
+            const color = normalizeColor(item.color_code);
+            if (color && item.image_url) map.set(color, item.image_url);
+        });
+        return map;
+    }, [colorImages]);
+
     const hasMultiple = allImages.length > 1;
+    const activeImage = allImages[activeIdx] || mainImage;
 
     const goTo = (idx: number) => {
         setActiveIdx((idx + allImages.length) % allImages.length);
     };
+
+    useEffect(() => {
+        if (activeIdx > allImages.length - 1) setActiveIdx(0);
+    }, [activeIdx, allImages.length]);
+
+    useEffect(() => {
+        const handleColorChange = (event: Event) => {
+            const detail = (event as CustomEvent<{
+                productId?: string;
+                colorCode?: string | null;
+                imageUrl?: string | null;
+            }>).detail;
+
+            if (productId && detail?.productId && detail.productId !== productId) return;
+
+            const normalizedColor = normalizeColor(detail?.colorCode);
+            const imageUrl = detail?.imageUrl || (normalizedColor ? colorImageMap.get(normalizedColor) : null);
+            if (!imageUrl) {
+                setActiveIdx(0);
+                return;
+            }
+
+            const nextIdx = allImages.findIndex((img) => img === imageUrl);
+            setActiveIdx(nextIdx >= 0 ? nextIdx : 0);
+        };
+
+        window.addEventListener("wusha:product-color-change", handleColorChange);
+        return () => window.removeEventListener("wusha:product-color-change", handleColorChange);
+    }, [allImages, colorImageMap, productId]);
 
     return (
         <div className="theme-surface-panel rounded-[2rem] p-3 sm:p-4 xl:sticky xl:top-28 xl:self-start">
             {/* Main Image */}
             <div className="relative aspect-square rounded-[1.55rem] overflow-hidden bg-theme-subtle group">
                 <Image
-                    src={allImages[activeIdx]}
+                    src={activeImage}
                     alt={`${title} - صورة ${activeIdx + 1}`}
                     fill
                     className="object-cover transition-all duration-500"

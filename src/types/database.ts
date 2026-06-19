@@ -199,6 +199,7 @@ export type OrderItem = {
     product_id: string | null;    // FK → products.id (null for custom designs)
     quantity: number;
     size: ApparelSize | null;
+    color_code?: string | null;
     unit_price: number;
     total_price: number;
     custom_design_url?: string | null;
@@ -504,6 +505,8 @@ export type ProductSKU = Timestamps & {
     size: string | null;
     color_code: string | null;
     barcode_url: string | null;
+    color_image_url: string | null;
+    is_active: boolean;
 }
 
 export type Warehouse = Timestamps & {
@@ -663,9 +666,10 @@ export type Database = {
             };
             order_items: {
                 Row: OrderItem;
-                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "custom_design_url" | "custom_garment" | "custom_title" | "custom_position" | "custom_design_order_id"> & {
+                Insert: Omit<OrderItem, "id" | "quantity" | "size" | "color_code" | "custom_design_url" | "custom_garment" | "custom_title" | "custom_position" | "custom_design_order_id"> & {
                     quantity?: number;
                     size: string | null;
+                    color_code?: string | null;
                     custom_design_url?: string | null;
                     custom_garment?: string | null;
                     custom_title?: string | null;
@@ -952,7 +956,7 @@ export type Database = {
             };
             product_skus: {
                 Row: ProductSKU;
-                Insert: Omit<ProductSKU, "id" | "created_at" | "updated_at" | "barcode_url"> & { barcode_url?: string | null };
+                Insert: Omit<ProductSKU, "id" | "created_at" | "updated_at" | "barcode_url" | "color_image_url" | "is_active"> & { barcode_url?: string | null; color_image_url?: string | null; is_active?: boolean };
                 Update: Partial<Omit<ProductSKU, "id" | "created_at">>;
                 Relationships: [
                     {

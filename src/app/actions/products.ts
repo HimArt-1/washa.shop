@@ -31,6 +31,10 @@ export async function getProducts(
       *,
       artist:profiles!products_artist_id_fkey(id, display_name, username, avatar_url),
       product_skus(
+        id,
+        size,
+        color_code,
+        is_active,
         inventory_levels(quantity)
       )
     `, { count: "exact" });
@@ -168,14 +172,14 @@ export async function syncProductStockFromERP() {
     // جلب كل المنتجات مع مخزون SKU الخاص بها
     const { data: products, error } = await supabase
         .from("products")
-        .select("id, in_stock, product_skus(inventory_levels(quantity))");
+        .select("id, in_stock, product_skus(is_active, inventory_levels(quantity))");
 
     if (error) return { success: false, error: error.message, updated: 0 };
 
     let updated = 0;
 
     for (const product of products || []) {
-        const skus = (product as any).product_skus as any[] | null;
+        const skus = ((product as any).product_skus as any[] | null)?.filter((sku) => sku.is_active !== false);
 
         // إذا لا يوجد SKU يعتمد على in_stock القديمة — تجاهل
         if (!skus || skus.length === 0) continue;

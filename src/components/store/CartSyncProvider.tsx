@@ -14,6 +14,10 @@ import { useUser } from "@clerk/nextjs";
 import { useCartStore } from "@/stores/cartStore";
 import { saveUserCart, loadUserCart } from "@/app/actions/cart-sync";
 
+function cartItemKey(item: { id: string; size?: string | null; colorCode?: string | null }) {
+    return `${item.id}_${item.size ?? ""}_${item.colorCode ?? ""}`;
+}
+
 export function CartSyncProvider() {
     const { user, isSignedIn, isLoaded } = useUser();
     const prevSignedIn = useRef<boolean | null>(null);
@@ -32,9 +36,9 @@ export function CartSyncProvider() {
             loadUserCart().then(serverItems => {
                 if (!serverItems || serverItems.length === 0) return;
                 // أضف العناصر الغائبة من الخادم للسلة المحلية
-                const localIds = new Set(useCartStore.getState().items.map(i => `${i.id}_${i.size}`));
+                const localIds = new Set(useCartStore.getState().items.map(cartItemKey));
                 serverItems.forEach((item: any) => {
-                    if (!localIds.has(`${item.id}_${item.size}`)) {
+                    if (!localIds.has(cartItemKey(item))) {
                         addItem(item);
                     }
                 });
