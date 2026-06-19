@@ -3,10 +3,11 @@
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
-import { ProductType } from "@/types/database";
+import type { ProductType, UserRole } from "@/types/database";
 
 const SIZE_KEYS = ["size_xs", "size_s", "size_m", "size_l", "size_xl", "size_xxl", "size_xxxl", "size_xxxxl"];
 const ACCEPTED_TYPES: ProductType[] = ["apparel", "print", "nft", "digital", "original"];
+const INVENTORY_IMPORT_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
 
 export async function processSmartImport(payload: any[]) {
     try {
@@ -15,8 +16,8 @@ export async function processSmartImport(payload: any[]) {
 
         const supabase = getSupabaseAdminClient();
 
-        const { profile, isAdmin } = await resolveAdminAccess(user);
-        if (!profile || !isAdmin) return { success: false, error: "صلاحيات غير كافية" };
+        const { profile } = await resolveAdminAccess(user);
+        if (!profile || !INVENTORY_IMPORT_ROLES.includes(profile.role)) return { success: false, error: "صلاحيات غير كافية" };
 
         // Get or create default warehouse for import
         let { data: warehouse } = await supabase

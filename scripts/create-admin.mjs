@@ -1,20 +1,36 @@
 // إنشاء حساب أدمن في Supabase Auth وربطه بالملف الشخصي
 import { createClient } from "@supabase/supabase-js";
 
-const url = "https://moutdsnsyioovjyqovan.supabase.co";
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_DISPLAY_NAME = process.env.ADMIN_DISPLAY_NAME || "WASHA Admin";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "washa_admin";
+
+if (!url) {
+    console.error("❌ NEXT_PUBLIC_SUPABASE_URL is missing");
+    process.exit(1);
+}
 
 if (!serviceKey) {
     console.error("❌ SUPABASE_SERVICE_ROLE_KEY is missing");
     process.exit(1);
 }
 
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    console.error("❌ ADMIN_EMAIL and ADMIN_PASSWORD are required");
+    process.exit(1);
+}
+
+if (ADMIN_PASSWORD.length < 12) {
+    console.error("❌ ADMIN_PASSWORD must be at least 12 characters");
+    process.exit(1);
+}
+
 const supabase = createClient(url, serviceKey, {
     auth: { persistSession: false },
 });
-
-const ADMIN_EMAIL = "admin@wusha.store";
-const ADMIN_PASSWORD = "Wusha2024!";
 
 async function main() {
     console.log("🔧 Creating admin user in Supabase Auth...");
@@ -25,7 +41,7 @@ async function main() {
             email: ADMIN_EMAIL,
             password: ADMIN_PASSWORD,
             email_confirm: true,
-            user_metadata: { full_name: "هيثم الزهراني" },
+            user_metadata: { full_name: ADMIN_DISPLAY_NAME },
         });
 
     if (authError) {
@@ -74,8 +90,8 @@ async function linkProfile(userId) {
         console.log("📝 No admin profile found. Creating one...");
         const { error } = await supabase.from("profiles").insert({
             clerk_id: userId,
-            display_name: "هيثم الزهراني",
-            username: "haitham_admin",
+            display_name: ADMIN_DISPLAY_NAME,
+            username: ADMIN_USERNAME,
             role: "admin",
         });
         if (error) {
@@ -88,7 +104,7 @@ async function linkProfile(userId) {
     console.log("\n═══════════════════════════════════════");
     console.log("  بيانات تسجيل الدخول:");
     console.log("  البريد:", ADMIN_EMAIL);
-    console.log("  كلمة المرور:", ADMIN_PASSWORD);
+    console.log("  كلمة المرور: محفوظة في ADMIN_PASSWORD ولن تتم طباعتها");
     console.log("═══════════════════════════════════════\n");
 }
 

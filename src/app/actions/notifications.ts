@@ -7,8 +7,9 @@ import type {
     AdminNotificationCategory,
     AdminNotificationSeverity,
     AdminNotificationType,
+    UserRole,
 } from "@/types/database";
-import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
+import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { getDefaultAdminNotificationMeta } from "@/lib/admin-notification-meta";
 
 // NOTE: "use server" files can only export async functions.
@@ -30,6 +31,8 @@ function getNotificationsClient() {
         { auth: { persistSession: false } }
     );
 }
+
+const NOTIFICATION_ROLES: UserRole[] = ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"];
 
 /** إنشاء إشعار (يُستدعى من createOrder، applications، إلخ) */
 export async function createAdminNotification(data: {
@@ -63,8 +66,8 @@ async function requireAdmin() {
     const user = await getCurrentUserOrDevAdmin();
     if (!user) return null;
     const supabase = getNotificationsClient();
-    const { data } = await supabase.from("profiles").select("role").eq("clerk_id", user.id).single();
-    return data?.role === "admin" ? supabase : null;
+    const { profile } = await resolveAdminAccess(user);
+    return profile && NOTIFICATION_ROLES.includes(profile.role) ? supabase : null;
 }
 
 /** جلب الإشعارات للأدمن */

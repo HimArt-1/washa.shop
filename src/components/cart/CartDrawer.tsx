@@ -7,7 +7,6 @@ import { useCartStore } from "@/stores/cartStore";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createCheckoutSession } from "@/app/actions/stripe";
 import { useState } from "react";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 

@@ -59,7 +59,7 @@ async function requireAdmin() {
         .select("id, role")
         .eq("clerk_id", user.id)
         .single();
-    if (profile?.role !== "admin") throw new Error("Forbidden");
+    if (profile?.role !== "admin" && profile?.role !== "dev") throw new Error("Forbidden");
     return { user, profileId: profile.id as string | null };
 }
 

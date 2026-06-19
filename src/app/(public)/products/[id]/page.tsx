@@ -187,7 +187,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         <h1 className="mb-3 text-2xl font-bold text-theme sm:text-3xl md:text-4xl">{product.title}</h1>
 
                         {/* Author / Store */}
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(product as any).store_name ? (
                             <div className="flex items-center gap-2 mb-6">
                                 <div className="w-6 h-6 rounded-full bg-gold/20 flex items-center justify-center">

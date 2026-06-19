@@ -110,6 +110,24 @@ export function getAdminActiveHref(pathname: string, items: AdminNavItem[]) {
         .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 }
 
+export function getAdminAccessItem(pathname: string) {
+    return ADMIN_COMMAND_ITEMS
+        .filter((item) => !item.external && item.href.startsWith("/dashboard"))
+        .filter((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`)))
+        .sort((a, b) => b.href.length - a.href.length)[0] || null;
+}
+
+export function canAccessAdminPath(pathname: string, role: UserRole) {
+    if (!pathname.startsWith("/dashboard")) return false;
+
+    const item = getAdminAccessItem(pathname);
+    if (!item) {
+        return role === "admin" || role === "dev";
+    }
+
+    return canViewAdminItem(item, role);
+}
+
 export function getAdminPageMeta(pathname: string) {
     const exactMatch = ADMIN_COMMAND_ITEMS.find((item) => item.href === pathname && !item.external);
     if (exactMatch) {

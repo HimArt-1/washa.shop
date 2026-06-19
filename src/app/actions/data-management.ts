@@ -29,7 +29,6 @@ export async function purgeTestData(scope: PurgeScope): Promise<PurgeResult> {
     // ─── Use untyped raw client for new tables ────────────────────────────────
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = createClient<any>(url, key, { auth: { persistSession: false } });
 
     const deleted: Record<string, number> = {};

@@ -5,7 +5,6 @@ import { createClient } from "@supabase/supabase-js";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { computeSegments, type SegmentSummary } from "@/lib/segment-engine";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SB = ReturnType<typeof createClient<any>>;
 
 async function resolveAdminSB(): Promise<SB | null> {

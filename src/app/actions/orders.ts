@@ -14,6 +14,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
 import { emitOrderCreatedAlert, emitPaymentReceivedAlert } from "@/lib/operational-event-alerts";
+import type { DiscountCoupon, UserRole } from "@/types/database";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -21,9 +22,9 @@ interface OrderItemInput {
     size: string | null;
     unit_price: number;
     custom_design_url?: string | null;
-    custom_garment?: string;
-    custom_title?: string;
-    custom_position?: string;
+    custom_garment?: string | null;
+    custom_title?: string | null;
+    custom_position?: string | null;
     custom_design_order_id?: string | null;
 }
 
@@ -37,6 +38,54 @@ interface ShippingAddressInput {
     country: string;
     phone?: string;
 }
+
+type OrderPaymentMethod = "cod" | "stripe" | "paylink" | "pos_cash" | "pos_card";
+type OrdersSupabaseClient = ReturnType<typeof getSupabaseAdminClient>;
+
+type ProductPricingRow = {
+    id: string;
+    title: string | null;
+    price: number | string | null;
+    in_stock: boolean | null;
+    stock_quantity: number | null;
+    sizes?: string[] | null;
+};
+
+type CustomDesignPricingRow = {
+    id: string;
+    order_number: number | null;
+    user_id: string | null;
+    customer_email: string | null;
+    status: string | null;
+    final_price: number | string | null;
+    result_design_url: string | null;
+    result_mockup_url: string | null;
+    dtf_mockup_url: string | null;
+    dtf_extracted_url: string | null;
+    garment_name: string | null;
+    color_name: string | null;
+    size_name: string | null;
+    print_position: string | null;
+    pricing_snapshot: unknown;
+};
+
+type ServerOrderPayload =
+    | {
+        ok: true;
+        items: OrderItemInput[];
+        subtotal: number;
+        discount: number;
+        couponId: string | null;
+        paymentMethod: OrderPaymentMethod;
+    }
+    | {
+        ok: false;
+        error: string;
+    };
+
+const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = ["cod", "stripe", "paylink", "pos_cash", "pos_card"];
+const POS_PAYMENT_METHODS: OrderPaymentMethod[] = ["pos_cash", "pos_card"];
+const POS_ALLOWED_ROLES: UserRole[] = ["admin", "dev", "booth"];
 
 function isMissingColumnError(error: unknown, columnName: string) {
     const message = typeof error === "object" && error !== null && "message" in error
@@ -83,6 +132,298 @@ function buildOrderEmailItems(items: OrderItemInput[]) {
         size: item.size,
         unit_price: item.unit_price,
     }));
+}
+
+function roundMoney(value: number) {
+    return Math.round(value * 100) / 100;
+}
+
+function parsePositiveAmount(value: unknown) {
+    const amount = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(amount) && amount > 0 ? roundMoney(amount) : null;
+}
+
+function normalizePaymentMethod(value?: OrderPaymentMethod): OrderPaymentMethod {
+    return value && VALID_PAYMENT_METHODS.includes(value) ? value : "cod";
+}
+
+function canUsePosPayment(role?: UserRole | null) {
+    return Boolean(role && POS_ALLOWED_ROLES.includes(role));
+}
+
+function normalizeQuantity(value: unknown, max = 99) {
+    if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > max) {
+        return null;
+    }
+
+    return value as number;
+}
+
+function normalizeSize(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeEmail(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim().toLowerCase() : null;
+}
+
+function getCustomDesignPrice(order: CustomDesignPricingRow) {
+    const directPrice = parsePositiveAmount(order.final_price);
+    if (directPrice !== null) return directPrice;
+
+    if (order.pricing_snapshot && typeof order.pricing_snapshot === "object") {
+        return parsePositiveAmount((order.pricing_snapshot as { final_price?: unknown }).final_price);
+    }
+
+    return null;
+}
+
+function getCustomDesignUrl(order: CustomDesignPricingRow) {
+    return order.dtf_extracted_url
+        || order.result_design_url
+        || order.dtf_mockup_url
+        || order.result_mockup_url
+        || null;
+}
+
+function calculateCouponDiscount(coupon: DiscountCoupon, subtotal: number) {
+    const rawValue = Number(coupon.discount_value);
+    if (!Number.isFinite(rawValue) || rawValue <= 0) return 0;
+
+    const value = coupon.discount_type === "percentage"
+        ? subtotal * (Math.min(rawValue, 100) / 100)
+        : rawValue;
+
+    return roundMoney(Math.min(Math.max(value, 0), subtotal));
+}
+
+async function validateCouponForSubtotal(
+    supabase: OrdersSupabaseClient,
+    couponId: string | null | undefined,
+    subtotal: number
+) {
+    if (!couponId) {
+        return { couponId: null, discount: 0 };
+    }
+
+    const { data: coupon, error } = await supabase
+        .from("discount_coupons")
+        .select("*")
+        .eq("id", couponId)
+        .eq("is_active", true)
+        .single();
+
+    if (error || !coupon) {
+        throw new Error("كوبون الخصم غير صالح");
+    }
+
+    const typedCoupon = coupon as DiscountCoupon;
+    if (typedCoupon.valid_until && new Date(typedCoupon.valid_until) < new Date()) {
+        throw new Error("انتهت صلاحية كوبون الخصم");
+    }
+
+    if (typedCoupon.max_uses > 0 && typedCoupon.current_uses >= typedCoupon.max_uses) {
+        throw new Error("تم الوصول للحد الأقصى لاستخدام كوبون الخصم");
+    }
+
+    return {
+        couponId: typedCoupon.id,
+        discount: calculateCouponDiscount(typedCoupon, subtotal),
+    };
+}
+
+async function buildServerOrderPayload(params: {
+    supabase: OrdersSupabaseClient;
+    items: OrderItemInput[];
+    buyerId: string;
+    buyerRole?: UserRole | null;
+    buyerEmail?: string | null;
+    paymentMethod?: OrderPaymentMethod;
+    couponId?: string | null;
+}): Promise<ServerOrderPayload> {
+    const { supabase, items, buyerId, buyerRole } = params;
+    const buyerEmail = normalizeEmail(params.buyerEmail);
+
+    if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
+        return { ok: false, error: "السلة غير صالحة" };
+    }
+
+    const paymentMethod = normalizePaymentMethod(params.paymentMethod);
+    if (POS_PAYMENT_METHODS.includes(paymentMethod) && !canUsePosPayment(buyerRole)) {
+        return { ok: false, error: "طريقة دفع نقطة البيع غير متاحة لهذا الحساب" };
+    }
+
+    const productIds = Array.from(new Set(
+        items
+            .map((item) => typeof item.product_id === "string" ? item.product_id.trim() : "")
+            .filter(Boolean)
+    ));
+    const customDesignIds = Array.from(new Set(
+        items
+            .filter((item) => !item.product_id)
+            .map((item) => typeof item.custom_design_order_id === "string" ? item.custom_design_order_id.trim() : "")
+            .filter(Boolean)
+    ));
+
+    const [productsResult, customDesignsResult] = await Promise.all([
+        productIds.length
+            ? supabase
+                .from("products")
+                .select("id, title, price, in_stock, stock_quantity, sizes")
+                .in("id", productIds)
+            : Promise.resolve({ data: [], error: null }),
+        customDesignIds.length
+            ? supabase
+                .from("custom_design_orders")
+                .select("id, order_number, user_id, customer_email, status, final_price, result_design_url, result_mockup_url, dtf_mockup_url, dtf_extracted_url, garment_name, color_name, size_name, print_position, pricing_snapshot")
+                .in("id", customDesignIds)
+            : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (productsResult.error || customDesignsResult.error) {
+        return { ok: false, error: "تعذر التحقق من عناصر السلة" };
+    }
+
+    const products = new Map(
+        ((productsResult.data || []) as ProductPricingRow[]).map((product) => [product.id, product])
+    );
+    const customDesigns = new Map(
+        ((customDesignsResult.data || []) as CustomDesignPricingRow[]).map((order) => [order.id, order])
+    );
+
+    const serverItems: OrderItemInput[] = [];
+
+    for (const item of items) {
+        const productId = typeof item.product_id === "string" && item.product_id.trim()
+            ? item.product_id.trim()
+            : null;
+
+        if (productId) {
+            const product = products.get(productId);
+            if (!product) {
+                return { ok: false, error: "أحد المنتجات في السلة غير موجود" };
+            }
+
+            if (!product.in_stock) {
+                return { ok: false, error: `المنتج "${product.title || "منتج"}" غير متوفر` };
+            }
+
+            const quantity = normalizeQuantity(item.quantity);
+            if (quantity === null) {
+                return { ok: false, error: "كمية المنتج غير صالحة" };
+            }
+
+            if (product.stock_quantity !== null && product.stock_quantity < quantity) {
+                return {
+                    ok: false,
+                    error: `الكمية المطلوبة من "${product.title || "منتج"}" تتجاوز المخزون (${product.stock_quantity})`,
+                };
+            }
+
+            const size = normalizeSize(item.size);
+            const allowedSizes = Array.isArray(product.sizes)
+                ? product.sizes.filter((sizeValue) => typeof sizeValue === "string")
+                : [];
+
+            if (size && allowedSizes.length > 0 && !allowedSizes.includes(size)) {
+                return { ok: false, error: "المقاس المحدد غير متاح لهذا المنتج" };
+            }
+
+            const unitPrice = parsePositiveAmount(product.price);
+            if (unitPrice === null) {
+                return { ok: false, error: "سعر المنتج غير صالح" };
+            }
+
+            serverItems.push({
+                product_id: productId,
+                quantity,
+                size,
+                unit_price: unitPrice,
+                custom_title: product.title || "منتج",
+            });
+            continue;
+        }
+
+        const designOrderId = typeof item.custom_design_order_id === "string" && item.custom_design_order_id.trim()
+            ? item.custom_design_order_id.trim()
+            : null;
+
+        if (!designOrderId) {
+            return { ok: false, error: "طلب التصميم المخصص غير صالح" };
+        }
+
+        const designOrder = customDesigns.get(designOrderId);
+        if (!designOrder) {
+            return { ok: false, error: "طلب التصميم المخصص غير موجود" };
+        }
+
+        if (designOrder.user_id && designOrder.user_id !== buyerId) {
+            return { ok: false, error: "طلب التصميم المخصص لا يخص هذا الحساب" };
+        }
+
+        const designOrderEmail = normalizeEmail(designOrder.customer_email);
+        if (!designOrder.user_id && designOrderEmail && designOrderEmail !== buyerEmail) {
+            return { ok: false, error: "طلب التصميم المخصص لا يخص هذا الحساب" };
+        }
+
+        if (designOrder.status === "cancelled") {
+            return { ok: false, error: "طلب التصميم المخصص ملغي" };
+        }
+
+        const quantity = normalizeQuantity(item.quantity, 1);
+        if (quantity === null) {
+            return { ok: false, error: "تصميم DTF المخصص يضاف بقطعة واحدة فقط" };
+        }
+
+        const unitPrice = getCustomDesignPrice(designOrder);
+        if (unitPrice === null) {
+            return { ok: false, error: "سعر التصميم المخصص غير جاهز" };
+        }
+
+        const customDesignUrl = getCustomDesignUrl(designOrder);
+        const garmentLabel = [designOrder.garment_name, designOrder.color_name]
+            .filter((part): part is string => typeof part === "string" && part.trim().length > 0)
+            .join(" ");
+
+        serverItems.push({
+            product_id: null,
+            quantity,
+            size: normalizeSize(designOrder.size_name),
+            unit_price: unitPrice,
+            custom_design_url: customDesignUrl,
+            custom_garment: garmentLabel || null,
+            custom_title: designOrder.order_number
+                ? `تصميم مخصص #${designOrder.order_number}`
+                : "تصميم مخصص",
+            custom_position: normalizeSize(designOrder.print_position),
+            custom_design_order_id: designOrder.id,
+        });
+    }
+
+    const subtotal = roundMoney(
+        serverItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0)
+    );
+
+    if (subtotal <= 0) {
+        return { ok: false, error: "إجمالي السلة غير صالح" };
+    }
+
+    try {
+        const coupon = await validateCouponForSubtotal(supabase, params.couponId, subtotal);
+        return {
+            ok: true,
+            items: serverItems,
+            subtotal,
+            discount: coupon.discount,
+            couponId: coupon.couponId,
+            paymentMethod,
+        };
+    } catch (error) {
+        return {
+            ok: false,
+            error: error instanceof Error ? error.message : "كوبون الخصم غير صالح",
+        };
+    }
 }
 
 function assertSuccessfulDispatch(
@@ -434,14 +775,16 @@ export async function createOrder(
     // 2. Get or create buyer's profile
     const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, role")
         .eq("clerk_id", user.id)
         .single();
 
     let buyerId: string;
+    let buyerRole: UserRole = "subscriber";
 
     if (profile) {
         buyerId = profile.id;
+        buyerRole = profile.role as UserRole;
     } else {
         // Create a profile if it doesn't exist
         const { data: newProfile, error: profileError } = await supabase
@@ -457,17 +800,35 @@ export async function createOrder(
                 website: null,
                 wushsha_level: null,
             })
-            .select("id")
+            .select("id, role")
             .single();
 
         if (profileError || !newProfile) {
             return { success: false, error: "فشل في إنشاء الملف الشخصي" };
         }
         buyerId = newProfile.id;
+        buyerRole = newProfile.role as UserRole;
     }
 
+    const serverPayload = await buildServerOrderPayload({
+        supabase,
+        items,
+        buyerId,
+        buyerRole,
+        buyerEmail: user.emailAddresses?.[0]?.emailAddress ?? null,
+        paymentMethod: options?.paymentMethod,
+        couponId: options?.couponId ?? null,
+    });
+
+    if (!serverPayload.ok) {
+        return { success: false, error: serverPayload.error };
+    }
+
+    const verifiedItems = serverPayload.items;
+    const paymentMethod = serverPayload.paymentMethod;
+
     // 3. Check stock availability
-    const stockCheck = await checkStockAvailability(items);
+    const stockCheck = await checkStockAvailability(verifiedItems);
     if (!stockCheck.ok) {
         return { success: false, error: stockCheck.error || "المخزون غير كافٍ" };
     }
@@ -477,8 +838,8 @@ export async function createOrder(
     const config = settings.shipping;
 
     // 4. Calculate totals
-    const subtotal = items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-    const discount = options?.discountAmount || 0;
+    const subtotal = serverPayload.subtotal;
+    const discount = serverPayload.discount;
     const taxableAmount = Math.max(0, subtotal - discount);
 
     // Shipping logic with strict flag check
@@ -492,25 +853,25 @@ export async function createOrder(
     // Tax logic with strict flag check
     const isTaxEnabled = config.tax_enabled === true;
     const tax = isTaxEnabled
-        ? taxableAmount * ((config.tax_rate ?? 15) / 100)
+        ? roundMoney(taxableAmount * ((config.tax_rate ?? 15) / 100))
         : 0;
 
-    const total = taxableAmount + shipping_cost + tax;
+    const total = roundMoney(taxableAmount + shipping_cost + tax);
 
-    const isCod = options?.paymentMethod === "cod";
-    const isPos = options?.paymentMethod === "pos_cash" || options?.paymentMethod === "pos_card";
+    const isCod = paymentMethod === "cod";
+    const isPos = paymentMethod === "pos_cash" || paymentMethod === "pos_card";
     const initialStatus = (isCod || isPos) ? "confirmed" : "pending";
     const initialPaymentStatus = isPos ? "paid" : "pending";
-    const orderNotes = isPos ? (options?.paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)") : null;
+    const orderNotes = isPos ? (paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)") : null;
     const paymentLabel = isCod
         ? "عند الاستلام"
-        : options?.paymentMethod === "pos_cash"
+        : paymentMethod === "pos_cash"
             ? "نقطة بيع (كاش)"
-            : options?.paymentMethod === "pos_card"
+            : paymentMethod === "pos_card"
                 ? "نقطة بيع (شبكة)"
-                : options?.paymentMethod === "stripe"
+                : paymentMethod === "stripe"
                     ? "Stripe (بانتظار الدفع)"
-                    : options?.paymentMethod === "paylink"
+                    : paymentMethod === "paylink"
                         ? "Paylink (بانتظار الدفع)"
                         : "إلكتروني (بانتظار الدفع)";
 
@@ -530,8 +891,8 @@ export async function createOrder(
             shipping_address: shippingAddress,
             status: initialStatus,
             payment_status: initialPaymentStatus,
-            coupon_id: options?.couponId || null,
-            discount_amount: options?.discountAmount || 0,
+            coupon_id: serverPayload.couponId,
+            discount_amount: discount,
             notes: orderNotes,
         })
         .select("id, order_number")
@@ -543,7 +904,7 @@ export async function createOrder(
     }
 
     // 5. Create order items (منتجات عادية أو تصاميم مخصصة)
-    const orderItems = items.map((item) => ({
+    const orderItems = verifiedItems.map((item) => ({
         order_id: order.id,
         product_id: item.product_id ?? null,
         quantity: item.quantity,
@@ -580,10 +941,10 @@ export async function createOrder(
         };
     }
 
-    // الكوبون: يُحتسب فقط عند COD (مؤكد مباشرة)
-    // Stripe: يُحتسب في confirmOrderPayment عند اكتمال الدفع
-    if (isCod && options?.couponId) {
-        await supabase.rpc("increment_coupon_uses_by_id" as never, { p_coupon_id: options.couponId } as never);
+    // الكوبون: يُحتسب فوراً عند طرق الدفع المؤكدة مباشرة.
+    // Stripe/Paylink: يُحتسب في confirmOrderPayment عند اكتمال الدفع.
+    if ((isCod || isPos) && serverPayload.couponId) {
+        await supabase.rpc("increment_coupon_uses_by_id" as never, { p_coupon_id: serverPayload.couponId } as never);
     }
 
     // المخزون: يُنقص عند COD أو POS
@@ -602,12 +963,12 @@ export async function createOrder(
         paymentLabel,
         customerEmail: user.emailAddresses?.[0]?.emailAddress,
         customerName: shippingAddress.name || user.firstName || "عميل",
-        emailItems: buildOrderEmailItems(items),
+        emailItems: buildOrderEmailItems(verifiedItems),
         breakdown: {
             subtotal,
             shipping: shipping_cost,
             tax,
-            discount: options?.discountAmount || 0,
+            discount,
         },
     });
 
@@ -619,12 +980,12 @@ export async function createOrder(
             buyerId,
             customerEmail: user.emailAddresses?.[0]?.emailAddress,
             customerName: shippingAddress.name || user.firstName || "عميل",
-            paymentProvider: options?.paymentMethod,
+            paymentProvider: paymentMethod,
             breakdown: {
                 subtotal,
                 shipping: shipping_cost,
                 tax,
-                discount: options?.discountAmount || 0,
+                discount,
             },
         });
     }

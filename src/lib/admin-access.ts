@@ -2,7 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getDevAdminUser, isDevAuthBypassEnabled } from "@/lib/dev-auth";
 import { ensureIdentityProfile } from "@/lib/identity-sync";
-import type { Database, UserRole } from "@/types/database";
+import type { UserRole } from "@/types/database";
 
 type ClerkEmailAddress = {
     id?: string | null;
@@ -28,6 +28,9 @@ type AdminAccessProfile = {
     role: UserRole;
 };
 
+const STAFF_ROLES: UserRole[] = ["admin", "dev", "shipping_manager", "financial_manager", "support_agent", "booth"];
+const PLATFORM_ADMIN_ROLES: UserRole[] = ["admin", "dev"];
+
 function normalizeEmail(email?: string | null) {
     return email?.trim().toLowerCase() || null;
 }
@@ -50,13 +53,16 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
 
     if (profileError) throw profileError;
 
-    const isStaff = ["admin", "dev", "shipping_manager", "financial_manager", "support_agent", "booth"].includes(existingProfile?.role as string);
+    const profileRole = existingProfile?.role as UserRole | undefined;
+    const isStaff = Boolean(profileRole && STAFF_ROLES.includes(profileRole));
+    const isPlatformAdmin = Boolean(profileRole && PLATFORM_ADMIN_ROLES.includes(profileRole));
 
     if (isStaff) {
         return {
             supabase,
             profile: existingProfile as AdminAccessProfile,
-            isAdmin: true,
+            isAdmin: isPlatformAdmin,
+            isStaff: true,
             bootstrapped: false,
         };
     }
@@ -69,6 +75,7 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
                 supabase,
                 profile: existingProfile as AdminAccessProfile | null,
                 isAdmin: false,
+                isStaff: false,
                 bootstrapped: false,
             };
         }
@@ -85,6 +92,7 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
                 supabase,
                 profile: existingProfile as AdminAccessProfile | null,
                 isAdmin: false,
+                isStaff: false,
                 bootstrapped: false,
             };
         }
@@ -112,6 +120,7 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
                 supabase,
                 profile: null,
                 isAdmin: false,
+                isStaff: false,
                 bootstrapped: false,
             };
         }
@@ -124,6 +133,7 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
             supabase,
             profile: null,
             isAdmin: false,
+            isStaff: false,
             bootstrapped: false,
         };
     }
@@ -141,6 +151,7 @@ export async function resolveAdminAccess(user: AdminAccessUser, options: Resolve
         supabase,
         profile: promotedProfile as AdminAccessProfile,
         isAdmin: true,
+        isStaff: true,
         bootstrapped: true,
     };
 }

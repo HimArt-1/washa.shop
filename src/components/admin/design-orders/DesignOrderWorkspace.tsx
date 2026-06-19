@@ -382,9 +382,10 @@ export function DesignOrderWorkspace({
         }
     };
 
+    const trackerPath = `/design/tracker?order=${encodeURIComponent(currentOrder.id)}&token=${encodeURIComponent(currentOrder.tracker_token)}`;
     const trackerLink = typeof window !== "undefined"
-        ? `${window.location.origin}/track/${currentOrder.id}?token=${currentOrder.tracker_token}`
-        : `/track/${currentOrder.id}?token=${currentOrder.tracker_token}`;
+        ? `${window.location.origin}${trackerPath}`
+        : trackerPath;
 
     const isTokenExpired = tokenExpiry ? new Date(tokenExpiry) < new Date() : false;
 

@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
+import { headers } from "next/headers";
 import { AdminSidebar } from "@/components/admin/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
+import { canAccessAdminPath } from "@/lib/admin-navigation";
 
 export default async function DashboardLayout({
     children,
@@ -13,9 +15,14 @@ export default async function DashboardLayout({
         const user = await getCurrentUserOrDevAdmin();
         if (!user) redirect("/sign-in");
 
-        const { supabase, profile, isAdmin } = await resolveAdminAccess(user);
+        const { supabase, profile, isStaff } = await resolveAdminAccess(user);
 
-        if (!profile || !isAdmin) {
+        if (!profile || !isStaff) {
+            redirect("/");
+        }
+
+        const pathname = headers().get("x-washa-pathname") || "/dashboard";
+        if (!canAccessAdminPath(pathname, profile.role)) {
             redirect("/");
         }
 

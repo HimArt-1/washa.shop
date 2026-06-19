@@ -30,6 +30,7 @@ type Props = {
     garmentStudioMockups: GarmentStudioMockup[];
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
+    initialTab?: WorkspaceTab;
 };
 
 export function DesignWorkspaceHub({
@@ -43,9 +44,14 @@ export function DesignWorkspaceHub({
     garmentStudioMockups,
     presets,
     compatibilities,
+    initialTab,
 }: Props) {
-    // Default to washa-ai if available, otherwise preorder
-    const [activeTab, setActiveTab] = useState<WorkspaceTab>(washaAiAvailable ? "washa-ai" : "preorder");
+    const defaultTab: WorkspaceTab = initialTab === "preorder"
+        ? "preorder"
+        : washaAiAvailable
+            ? "washa-ai"
+            : "preorder";
+    const [activeTab, setActiveTab] = useState<WorkspaceTab>(defaultTab);
 
     return (
         <div className="space-y-8 w-full max-w-6xl mx-auto">

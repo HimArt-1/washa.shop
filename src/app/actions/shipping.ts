@@ -18,16 +18,18 @@ import {
     type ShippingIssue,
     type ShippingLifecycle,
 } from "@/lib/shipping/ops";
-import type { ShippingAddress, OrderStatus } from "@/types/database";
+import type { ShippingAddress, OrderStatus, UserRole } from "@/types/database";
 import { emitShippingEventAlert } from "@/lib/operational-event-alerts";
 
 // ─── Auth Guard ───────────────────────────────────────────────
 
+const SHIPPING_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
+
 async function requireAdmin() {
     const user = await getCurrentUserOrDevAdmin();
     if (!user) throw new Error("Unauthorized");
-    const { supabase, profile, isAdmin } = await resolveAdminAccess(user);
-    if (!profile || !isAdmin) throw new Error("Forbidden: Admin access required");
+    const { supabase, profile } = await resolveAdminAccess(user);
+    if (!profile || !SHIPPING_ROLES.includes(profile.role)) throw new Error("Forbidden: Shipping access required");
     return { user, profile, supabase };
 }
 

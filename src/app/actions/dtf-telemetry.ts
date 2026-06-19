@@ -5,15 +5,17 @@ import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access
 import { logDiagnosticWarning } from "@/app/api/washa-dtf-studio/utils/api-error";
 import { format, parseISO } from "date-fns";
 import { ar } from "date-fns/locale";
-import type { DtfStudioActivityLog } from "@/types/database";
+import type { DtfStudioActivityLog, UserRole } from "@/types/database";
+
+const DTF_TELEMETRY_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
 
 export async function getDtfTelemetryLogs(page = 1, limit = 50): Promise<{ data: DtfStudioActivityLog[]; count: number; error?: string }> {
     try {
         const user = await getCurrentUserOrDevAdmin();
         if (!user) return { data: [], count: 0, error: "Unauthorized" };
 
-        const { isAdmin } = await resolveAdminAccess(user);
-        if (!isAdmin) return { data: [], count: 0, error: "Unauthorized" };
+        const { profile } = await resolveAdminAccess(user);
+        if (!profile || !DTF_TELEMETRY_ROLES.includes(profile.role)) return { data: [], count: 0, error: "Unauthorized" };
 
         const sb = getSupabaseAdminClient();
 
@@ -62,8 +64,8 @@ export async function getDtfTelemetryStats(days = 7): Promise<{ data: DtfTelemet
         const user = await getCurrentUserOrDevAdmin();
         if (!user) return { data: null, error: "Unauthorized" };
 
-        const { isAdmin } = await resolveAdminAccess(user);
-        if (!isAdmin) return { data: null, error: "Unauthorized" };
+        const { profile } = await resolveAdminAccess(user);
+        if (!profile || !DTF_TELEMETRY_ROLES.includes(profile.role)) return { data: null, error: "Unauthorized" };
 
         const sb = getSupabaseAdminClient();
         const daysAgo = new Date();

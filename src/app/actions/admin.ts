@@ -36,13 +36,19 @@ function generateTempPassword(): string {
 
 // ─── Auth Guard ─────────────────────────────────────────────
 
-async function requireAdmin() {
+const DASHBOARD_OVERVIEW_ROLES: UserRole[] = ["admin", "dev", "financial_manager", "shipping_manager"];
+const FINANCE_ROLES: UserRole[] = ["admin", "dev", "financial_manager"];
+const ORDER_OPERATIONS_ROLES: UserRole[] = ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"];
+const SHIPPING_OPERATIONS_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
+const INVENTORY_OPERATIONS_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
+
+async function requireAdmin(allowedRoles: UserRole[] = ["admin", "dev"]) {
     const user = await getCurrentUserOrDevAdmin();
     if (!user) throw new Error("Unauthorized");
 
-    const { supabase, profile, isAdmin } = await resolveAdminAccess(user);
+    const { supabase, profile } = await resolveAdminAccess(user);
 
-    if (!profile || !isAdmin) {
+    if (!profile || !allowedRoles.includes(profile.role)) {
         throw new Error("Forbidden: Admin access required");
     }
 
@@ -87,7 +93,7 @@ export async function getAdminOverview() {
     noStore(); // Opt out of static caching
 
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(DASHBOARD_OVERVIEW_ROLES);
         const issues: string[] = [];
 
         // Run all queries with error handling (allSettled)
@@ -212,7 +218,7 @@ export async function getAdminCommandCenterData() {
     noStore();
 
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(DASHBOARD_OVERVIEW_ROLES);
         const issues: string[] = [];
 
         const results = await Promise.allSettled([
@@ -361,7 +367,7 @@ export interface AnalyticsData {
 export async function getAdminAnalytics(period: AnalyticsPeriod = "30d"): Promise<AnalyticsData> {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
 
         const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
         const startDate = new Date();
@@ -634,7 +640,7 @@ const LOW_STOCK_THRESHOLD = 5;
 export async function getAdminInventory(filter: "all" | "low" | "out" = "all") {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(INVENTORY_OPERATIONS_ROLES);
         const { data, error } = await supabase
             .from("products")
             .select("id, title, image_url, type, in_stock, stock_quantity, price, artist:profiles!products_artist_id_fkey(display_name)")
@@ -656,7 +662,7 @@ export async function getAdminInventory(filter: "all" | "low" | "out" = "all") {
 }
 
 export async function updateProductStock(productId: string, stockQuantity: number | null, inStock?: boolean) {
-    const { supabase } = await requireAdmin();
+    const { supabase } = await requireAdmin(INVENTORY_OPERATIONS_ROLES);
     const updates: Record<string, unknown> = {
         stock_quantity: stockQuantity,
         updated_at: new Date().toISOString(),
@@ -677,7 +683,7 @@ export async function updateProductStock(productId: string, stockQuantity: numbe
 export async function getAdminSales(period: "7d" | "30d" | "90d" = "30d") {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
         const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
         const startIso = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -1586,7 +1592,7 @@ export async function getOrdersOperationsSnapshot() {
     noStore();
 
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
         const results = await Promise.allSettled([
@@ -1702,7 +1708,7 @@ export async function getOrdersOperationsSnapshot() {
 export async function getFulfillmentHubData() {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
         const todayStartIso = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
 
         const selectStr = "id, order_number, subtotal, discount_amount, shipping_cost, total, status, payment_status, created_at, buyer:profiles!orders_buyer_id_fkey(display_name, avatar_url, username), order_items(*, product:products(title, image_url)), coupon:discount_coupons(code)";
@@ -1769,7 +1775,7 @@ export async function getFulfillmentHubData() {
 export async function getAdminOrders({ page = 1, status = "all", search = "" }: { page?: number; status?: string; search?: string }) {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
 
         const perPage = 15;
         const from = (page - 1) * perPage;
@@ -1826,7 +1832,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
         return null;
     }
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
         const selectQuery = `
             *,
             buyer:profiles!orders_buyer_id_fkey(id, display_name, username, avatar_url, role),
@@ -1849,7 +1855,7 @@ export async function getAdminOrderForFocusList(orderId: string) {
 
 export async function bookTorodShipment(orderId: string) {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(SHIPPING_OPERATIONS_ROLES);
 
         // 1. Fetch Order Details
         const { data: order, error: orderError } = await supabase
@@ -1942,7 +1948,7 @@ export async function bookTorodShipment(orderId: string) {
 
 export async function cancelTorodShipment(orderId: string) {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(SHIPPING_OPERATIONS_ROLES);
 
         const { data: order, error: orderError } = await supabase
             .from("orders")
@@ -1985,7 +1991,7 @@ export async function cancelTorodShipment(orderId: string) {
 
 
 export async function updateOrderStatus(orderId: string, newStatus: string) {
-    const { supabase } = await requireAdmin();
+    const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
 
     const validStatuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"];
     if (!validStatuses.includes(newStatus)) {
@@ -2074,7 +2080,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 export async function getFulfillmentCalculation(orderId: string) {
     noStore();
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin([...SHIPPING_OPERATIONS_ROLES, "financial_manager"]);
 
         const { data: items, error } = await supabase
             .from("order_items")
@@ -2463,7 +2469,7 @@ export async function getBulkFulfillmentCalculation(
 
 export async function initiateWarehousePayment(orderId: string): Promise<WarehousePaymentInitiationResult> {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
         const calculation = await getFulfillmentCalculation(orderId);
 
         if (!calculation.success || !calculation.breakdown) {
@@ -2700,7 +2706,7 @@ export async function confirmWarehousePayment(paymentIdentifier: string, amount?
 
 export async function markAsPaidToWarehouse(orderId: string): Promise<WarehousePaymentResult> {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
         const result = await markAsPaidToWarehouseInternal(supabase, orderId, {
             source: "manual_admin",
         });
@@ -2722,7 +2728,7 @@ export async function markAsPaidToWarehouse(orderId: string): Promise<WarehouseP
 
 export async function initiateBulkWarehousePayment(orderIds: string[]): Promise<WarehousePaymentInitiationResult> {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
         const calculation = await getBulkFulfillmentCalculation(orderIds);
 
         if (!calculation.success || !calculation.grandTotal) {
@@ -2807,7 +2813,7 @@ export async function initiateBulkWarehousePayment(orderIds: string[]): Promise<
 
 export async function markBatchAsPaidToWarehouse(orderIds: string[]): Promise<WarehousePaymentResult> {
     try {
-        const { supabase } = await requireAdmin();
+        const { supabase } = await requireAdmin(FINANCE_ROLES);
         const result = await markBatchAsPaidToWarehouseInternal(supabase, orderIds, {
             source: "manual_admin",
         });

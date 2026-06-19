@@ -11,7 +11,6 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "noreply@washa.shop";
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
 function getAdminSB() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return createClient<any>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!,

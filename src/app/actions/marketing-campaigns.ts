@@ -35,7 +35,6 @@ export async function sendCampaignToSegment(
     // Use untyped client so new tables (marketing_campaigns) pass TS without regen
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = createClient<any>(url, key, { auth: { persistSession: false } });
 
     if (!input.subject.trim() || !input.body.trim()) {

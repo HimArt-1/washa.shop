@@ -168,6 +168,7 @@ describe("POST /api/stripe/checkout-session/verify", () => {
         expect(mockRetrieveSession).toHaveBeenCalledWith("cs_test_1");
         expect(mockConfirmOrderPayment).toHaveBeenCalledWith("order_1", {
             customerEmail: "buyer@example.com",
+            paymentProvider: "stripe",
         });
     });
 

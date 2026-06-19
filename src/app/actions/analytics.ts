@@ -7,6 +7,7 @@
 
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import type { UserRole } from "@/types/database";
 
 type AnalyticsSupabase = ReturnType<typeof getSupabaseAdminClient>;
 type AnalyticsOrderRow = {
@@ -14,6 +15,8 @@ type AnalyticsOrderRow = {
     created_at: string;
     payment_status?: string | null;
 };
+
+const ANALYTICS_ROLES: UserRole[] = ["admin", "dev", "financial_manager"];
 
 export interface TopProduct {
     id: string;
@@ -43,7 +46,7 @@ async function resolveAnalyticsAdminSupabase(): Promise<AnalyticsSupabase | null
     if (!user) return null;
 
     const access = await resolveAdminAccess(user);
-    if (!access.isAdmin) return null;
+    if (!access.profile || !ANALYTICS_ROLES.includes(access.profile.role)) return null;
 
     return access.supabase;
 }

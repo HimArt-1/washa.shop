@@ -16,7 +16,7 @@ async function requireAdmin() {
     const supabase = getOpsClient();
     if (!supabase) return null;
     const { data: profile } = await supabase.from("profiles").select("role").eq("clerk_id", user.id).single();
-    if (!profile || profile.role !== "admin") return null;
+    if (!profile || (profile.role !== "admin" && profile.role !== "dev")) return null;
     return { supabase, user };
 }
 

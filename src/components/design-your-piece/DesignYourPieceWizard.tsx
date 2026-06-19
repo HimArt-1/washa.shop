@@ -734,6 +734,8 @@ export function DesignYourPieceWizard({
                                     entry={featuredPresets[0]}
                                     title="أقرب Preset الآن"
                                     desc="هذا الاقتراح يتغير حسب القطعة، طريقة التنفيذ، وقراراتك الحالية داخل الويزرد."
+                                    onApply={featuredPresets[0] ? () => applyPreset(featuredPresets[0].item) : undefined}
+                                    applyLabel="تطبيق هذا الـ preset"
                                 />
                             </div>
                             {featuredPresets.map((entry) => {
@@ -973,10 +975,14 @@ function RecommendationInsightPanel<T extends ExplainableRecommendationItem>({
     entry,
     title,
     desc,
+    onApply,
+    applyLabel = "تطبيق الترشيح",
 }: {
     entry: RankedDesignCandidate<T> | null | undefined;
     title: string;
     desc: string;
+    onApply?: () => void;
+    applyLabel?: string;
 }) {
     if (!entry) return null;
 
@@ -999,6 +1005,16 @@ function RecommendationInsightPanel<T extends ExplainableRecommendationItem>({
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:max-w-[45%] sm:justify-end">
+                    {onApply ? (
+                        <button
+                            type="button"
+                            onClick={onApply}
+                            className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-[10px] font-bold text-gold transition-colors hover:border-gold/50 hover:bg-gold/15"
+                        >
+                            <Wand2 className="h-3.5 w-3.5" />
+                            {applyLabel}
+                        </button>
+                    ) : null}
                     {entry.relation ? (
                         <span className={`rounded-full px-3 py-1 text-[10px] font-bold ${
                             entry.relation === "avoid"

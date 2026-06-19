@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { shouldBypassClerkForDashboardPath } from "@/lib/dev-auth";
 
 const isProtectedRoute = createRouteMatcher([
@@ -21,11 +21,21 @@ const isAuthAwareApiRoute = createRouteMatcher([
     '/api/washa-dtf-studio(.*)',
 ]);
 
+function nextWithPathname(req: NextRequest) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-washa-pathname", req.nextUrl.pathname);
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
+}
+
 export default clerkMiddleware(async (auth, req) => {
     if (isPublicRoute(req)) return;
     if (isProtectedRoute(req)) {
         if (shouldBypassClerkForDashboardPath(req.nextUrl.pathname)) {
-            return;
+            return nextWithPathname(req);
         }
 
         const { userId } = await auth();
@@ -37,6 +47,8 @@ export default clerkMiddleware(async (auth, req) => {
             );
             return NextResponse.redirect(signInUrl);
         }
+
+        return nextWithPathname(req);
     } else if (isAuthAwareApiRoute(req)) {
         // Hydrate auth state so currentUser() works in these route handlers.
         // Clerk v6 uses lazy evaluation — auth() must be called in the middleware
