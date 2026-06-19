@@ -375,6 +375,8 @@ type ProductSkuRow = {
     is_active?: boolean;
 };
 
+type VariantQuantityMap = Record<string, string>;
+
 function variantMatrixKey(size?: string | null, color?: string | null) {
     return `${normalizeSizeToken(size || "") || "∅"}::${normalizeColorToken(color || "") || "∅"}`;
 }
@@ -388,6 +390,171 @@ function buildVariantMatrix(sizes: string[], colors: string[]) {
 function findSkuForVariant(skus: ProductSkuRow[], size?: string | null, color?: string | null) {
     const key = variantMatrixKey(size, color);
     return skus.find((sku) => sku.is_active !== false && variantMatrixKey(sku.size, sku.color_code) === key);
+}
+
+function parseVariantQuantity(value?: string | null) {
+    const quantity = Number.parseInt(String(value ?? "").trim(), 10);
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+}
+
+function sanitizeVariantQuantities(quantities: VariantQuantityMap, sizes: string[], colors: string[]) {
+    const next: VariantQuantityMap = {};
+    buildVariantMatrix(sizes, colors).forEach((variant) => {
+        const key = variantMatrixKey(variant.size, variant.color);
+        if (Object.prototype.hasOwnProperty.call(quantities, key)) {
+            next[key] = quantities[key];
+        }
+    });
+    return next;
+}
+
+function buildVariantQuantityPayload(quantities: VariantQuantityMap, sizes: string[], colors: string[]) {
+    const payload: Record<string, number> = {};
+    buildVariantMatrix(sizes, colors).forEach((variant) => {
+        const key = variantMatrixKey(variant.size, variant.color);
+        payload[key] = parseVariantQuantity(quantities[key]);
+    });
+    return payload;
+}
+
+function VariantInventoryPlanner({
+    sizes,
+    colors,
+    skus = [],
+    quantities,
+    skuInventoryTotals = {},
+    mode,
+    onChange,
+    onFillAll,
+    onClearAll,
+}: {
+    sizes: string[];
+    colors: string[];
+    skus?: ProductSkuRow[];
+    quantities: VariantQuantityMap;
+    skuInventoryTotals?: Record<string, number>;
+    mode: "add" | "edit";
+    onChange: (key: string, value: string) => void;
+    onFillAll: (value: string) => void;
+    onClearAll: () => void;
+}) {
+    const [bulkValue, setBulkValue] = useState("");
+    const variants = buildVariantMatrix(sizes, colors);
+    const activeSkus = skus.filter((sku) => sku.is_active !== false);
+    const editableVariants = variants.filter((variant) => mode === "add" || !findSkuForVariant(activeSkus, variant.size, variant.color));
+    const plannedTotal = editableVariants.reduce((sum, variant) => sum + parseVariantQuantity(quantities[variantMatrixKey(variant.size, variant.color)]), 0);
+    const existingTotal = variants.reduce((sum, variant) => {
+        const sku = findSkuForVariant(activeSkus, variant.size, variant.color);
+        return sum + (sku ? Number(skuInventoryTotals[sku.id] || 0) : 0);
+    }, 0);
+
+    const applyBulkValue = () => {
+        const normalized = String(parseVariantQuantity(bulkValue));
+        onFillAll(normalized);
+    };
+
+    return (
+        <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <p className="text-xs font-bold text-theme">كميات المتغيرات</p>
+                    <p className="mt-1 text-[10px] leading-5 text-theme-subtle">
+                        أدخل الكمية المتاحة لكل مقاس ولون. الكمية 0 تنشئ SKU لكنه يظهر نافداً في المتجر.
+                    </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-gold/20 bg-gold/10 px-2 py-0.5 text-[10px] font-bold text-gold">
+                        مخطط: {plannedTotal}
+                    </span>
+                    {mode === "edit" && (
+                        <span className="rounded-full border border-theme-subtle bg-theme-subtle px-2 py-0.5 text-[10px] text-theme-subtle">
+                            موجود: {existingTotal}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
+                <input
+                    type="number"
+                    min="0"
+                    value={bulkValue}
+                    onChange={(event) => setBulkValue(event.target.value)}
+                    placeholder="كمية لكل المتغيرات"
+                    className="input-dark min-w-0 rounded-xl px-3 py-2 text-sm"
+                    dir="ltr"
+                />
+                <button
+                    type="button"
+                    onClick={applyBulkValue}
+                    className="rounded-xl border border-gold/25 bg-gold/10 px-3 py-2 text-xs font-bold text-gold transition-all hover:bg-gold/15 active:scale-[0.98]"
+                >
+                    تعبئة الكل
+                </button>
+                <button
+                    type="button"
+                    onClick={onClearAll}
+                    className="rounded-xl border border-theme-subtle bg-theme-faint px-3 py-2 text-xs font-bold text-theme-subtle transition-all hover:bg-theme-subtle active:scale-[0.98]"
+                >
+                    تصفير
+                </button>
+            </div>
+
+            <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1 styled-scrollbar">
+                {variants.map((variant) => {
+                    const key = variantMatrixKey(variant.size, variant.color);
+                    const sku = findSkuForVariant(activeSkus, variant.size, variant.color);
+                    const isExisting = Boolean(mode === "edit" && sku);
+                    const currentQuantity = sku ? Number(skuInventoryTotals[sku.id] || 0) : 0;
+
+                    return (
+                        <div key={key} className="grid grid-cols-[1fr_112px] items-center gap-3 rounded-xl border border-theme-subtle bg-[color:var(--wusha-surface)] px-3 py-2">
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] font-mono text-theme-subtle" dir="ltr">
+                                        {variant.size || "NO-SIZE"}
+                                    </span>
+                                    {variant.color ? (
+                                        <span className="inline-flex items-center gap-1.5 rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] text-theme-subtle">
+                                            <span className="h-3 w-3 rounded-full border border-theme-soft" style={{ backgroundColor: variant.color }} aria-hidden />
+                                            {colorLabelFor(variant.color)}
+                                        </span>
+                                    ) : (
+                                        <span className="rounded-md border border-theme-subtle bg-theme-faint px-2 py-0.5 text-[10px] text-theme-subtle">بدون لون</span>
+                                    )}
+                                    {isExisting && (
+                                        <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
+                                            SKU موجود
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-[10px] text-theme-faint">
+                                    {isExisting ? "تعديل كميته من تبويب المخزون والجرد للحفاظ على سجل الحركات." : "سيتم تسجيل هذه الكمية عند إنشاء SKU."}
+                                </p>
+                            </div>
+                            {isExisting ? (
+                                <div className="rounded-xl border border-theme-subtle bg-theme-faint px-3 py-2 text-center">
+                                    <p className="text-[10px] text-theme-faint">المتوفر</p>
+                                    <p className="mt-0.5 font-mono text-sm font-bold text-theme" dir="ltr">{currentQuantity}</p>
+                                </div>
+                            ) : (
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={quantities[key] ?? ""}
+                                    onChange={(event) => onChange(key, event.target.value)}
+                                    placeholder="0"
+                                    className="input-dark h-11 rounded-xl px-3 text-center text-sm font-mono"
+                                    dir="ltr"
+                                    aria-label="كمية المتغير"
+                                />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
 function VariantMatrixPreview({
@@ -588,6 +755,7 @@ interface ProductsClientProps {
     artists?: { id: string; display_name: string; username: string }[];
     categories?: { id: string; name_ar: string; name_en: string; slug: string }[];
     skus?: any[];
+    inventory?: any[];
     /** Base path for links (e.g. /dashboard/products-inventory for unified view) */
     basePath?: string;
     /** Callback to open Smart Import modal (products-inventory page) */
@@ -607,6 +775,7 @@ export function ProductsClient({
     artists = [],
     categories = [],
     skus = [],
+    inventory = [],
     basePath = "/dashboard/products",
     onSmartImportClick,
     salesMap = {},
@@ -819,6 +988,19 @@ export function ProductsClient({
 
     // ─── Get SKUs for product
     const getProductSkus = (productId: string) => skus.filter((s: any) => s.product_id === productId);
+    const skuInventoryTotals = useMemo(() => {
+        const totals: Record<string, number> = {};
+        inventory.forEach((item: any) => {
+            const skuId = item.sku_id || item.sku?.id;
+            if (!skuId) return;
+            totals[skuId] = (totals[skuId] || 0) + (Number(item.quantity) || 0);
+        });
+        skus.forEach((sku: any) => {
+            if (!sku?.id || !Array.isArray(sku.inventory_levels)) return;
+            totals[sku.id] = sku.inventory_levels.reduce((sum: number, level: any) => sum + (Number(level.quantity) || 0), totals[sku.id] || 0);
+        });
+        return totals;
+    }, [inventory, skus]);
 
     return (
         <div className="space-y-4">
@@ -1162,6 +1344,7 @@ export function ProductsClient({
             <ProductFormModal
                 open={showAddModal} mode="add" artists={artists} categories={categories}
                 skus={[]}
+                skuInventoryTotals={skuInventoryTotals}
                 onClose={() => setShowAddModal(false)}
                 onSuccess={() => { setShowAddModal(false); showToast("تم إضافة المنتج ✓"); router.refresh(); }}
                 onError={(msg) => setError(msg)}
@@ -1171,6 +1354,7 @@ export function ProductsClient({
             <ProductFormModal
                 open={!!editingProduct} mode="edit" product={editingProduct} artists={artists} categories={categories}
                 skus={editingProduct ? getProductSkus(editingProduct.id) : []}
+                skuInventoryTotals={skuInventoryTotals}
                 onClose={() => setEditingProduct(null)}
                 onSuccess={() => { setEditingProduct(null); showToast("تم تحديث المنتج ✓"); router.refresh(); }}
                 onError={(msg) => setError(msg)}
@@ -1598,12 +1782,13 @@ function BarcodeModal({ product, skus, onClose, onCreated, onError }: {
 // ═══════════════════════════════════════════════════════════
 
 function ProductFormModal({
-    open, mode, product, artists, categories = [], skus = [], onClose, onSuccess, onError,
+    open, mode, product, artists, categories = [], skus = [], skuInventoryTotals = {}, onClose, onSuccess, onError,
 }: {
     open: boolean; mode: "add" | "edit"; product?: any;
     artists: { id: string; display_name: string; username: string }[];
     categories?: { id: string; name_ar: string; name_en: string; slug: string }[];
     skus?: ProductSkuRow[];
+    skuInventoryTotals?: Record<string, number>;
     onClose: () => void; onSuccess: () => void; onError: (msg: string) => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1616,6 +1801,7 @@ function ProductFormModal({
     const [colorImageFiles, setColorImageFiles] = useState<Record<string, File>>({});
     const [colorImagePreviews, setColorImagePreviews] = useState<Record<string, string>>({});
     const [colorImageUrls, setColorImageUrls] = useState<Record<string, string | null>>({});
+    const [variantQuantities, setVariantQuantities] = useState<VariantQuantityMap>({});
     // ─── Multi-image state
     const [extraFiles, setExtraFiles] = useState<File[]>([]);
     const [extraPreviews, setExtraPreviews] = useState<string[]>([]);
@@ -1634,6 +1820,7 @@ function ProductFormModal({
         setPendingColorImage(null);
         setColorImageFiles({});
         setColorImagePreviews((prev) => { Object.values(prev).forEach((u) => URL.revokeObjectURL(u)); return {}; });
+        setVariantQuantities({});
         if (mode === "edit" && product) {
             const activeSkuColors = uniqueColors(
                 skus
@@ -1677,6 +1864,13 @@ function ProductFormModal({
             setExistingImages([]);
         }
     }, [open, mode, product?.id, artists, skus]);
+
+    useEffect(() => {
+        if (!open) return;
+        const sizes = parseSizeList(form.sizes);
+        const colors = parseColorList(form.colors);
+        setVariantQuantities((current) => sanitizeVariantQuantities(current, sizes, colors));
+    }, [form.sizes, form.colors, open]);
 
 
 
@@ -1767,6 +1961,8 @@ function ProductFormModal({
 
         const parsedSizes = form.sizes ? parseSizeList(form.sizes) : undefined;
         const parsedColors = form.colors ? parseColorList(form.colors) : undefined;
+        const variantInventoryQuantities = buildVariantQuantityPayload(variantQuantities, parsedSizes || [], parsedColors || []);
+        const variantInventoryTotal = Object.values(variantInventoryQuantities).reduce((sum, quantity) => sum + quantity, 0);
         setLoading(true);
         onError("");
 
@@ -1810,8 +2006,8 @@ function ProductFormModal({
             const result = await createProductAdmin({
                 artist_id: form.artist_id, title, description: form.description || undefined,
                 type: form.type, price, image_url: imageUrl, images: allImages, in_stock: form.in_stock,
-                stock_quantity: form.stock_quantity ? parseInt(form.stock_quantity, 10) : undefined,
-                store_name: form.store_name.trim() || undefined, sizes: parsedSizes, colors: parsedColors, colorImages,
+                stock_quantity: variantInventoryTotal,
+                store_name: form.store_name.trim() || undefined, sizes: parsedSizes, colors: parsedColors, colorImages, variantQuantities: variantInventoryQuantities,
             });
             setLoading(false);
             result.success ? onSuccess() : onError(result.error || "فشل الإضافة");
@@ -1833,6 +2029,7 @@ function ProductFormModal({
                 sizes: parsedSizes || [],
                 colors: parsedColors || [],
                 colorImages,
+                variantQuantities: variantInventoryQuantities,
             });
             setLoading(false);
             syncResult.success ? onSuccess() : onError(syncResult.error || "فشل مزامنة المقاسات والألوان مع SKU");
@@ -1846,6 +2043,32 @@ function ProductFormModal({
     const selectedProductSizes = parseSizeList(form.sizes);
     const selectedProductColors = parseColorList(form.colors);
     const customProductColorValue = toColorInputValue(selectedProductColors[selectedProductColors.length - 1]);
+    const setVariantQuantity = (key: string, value: string) => {
+        const normalized = value.trim();
+        if (normalized && (!/^\d+$/.test(normalized) || Number(normalized) > 999999)) return;
+        setVariantQuantities((current) => ({ ...current, [key]: normalized }));
+    };
+    const fillVariantQuantities = (value: string) => {
+        const normalized = String(parseVariantQuantity(value));
+        const next: VariantQuantityMap = {};
+        buildVariantMatrix(selectedProductSizes, selectedProductColors).forEach((variant) => {
+            const sku = findSkuForVariant(skus, variant.size, variant.color);
+            if (mode === "edit" && sku) return;
+            next[variantMatrixKey(variant.size, variant.color)] = normalized;
+        });
+        setVariantQuantities((current) => ({ ...current, ...next }));
+    };
+    const clearVariantQuantities = () => {
+        setVariantQuantities((current) => {
+            const next = { ...current };
+            buildVariantMatrix(selectedProductSizes, selectedProductColors).forEach((variant) => {
+                const sku = findSkuForVariant(skus, variant.size, variant.color);
+                if (mode === "edit" && sku) return;
+                next[variantMatrixKey(variant.size, variant.color)] = "0";
+            });
+            return next;
+        });
+    };
     const toggleProductColor = (color: string) => {
         setForm((current) => ({ ...current, colors: toggleColorInFieldValue(current.colors, color) }));
     };
@@ -2009,7 +2232,7 @@ function ProductFormModal({
                         preferredGroupKey={sizeGroupForProductType(form.type)}
                         helperText={mode === "add"
                             ? "اختر المقاسات من اللوحة. عند الحفظ يتم إنشاء SKU لكل مقاس مختار مع الألوان المختارة."
-                            : "تغيير المقاسات هنا يحدث قائمة المنتج. كميات وتوفر كل مقاس تُدار من نافذة SKU."}
+                            : "تغيير المقاسات هنا يحدث شبكة SKU. كميات SKU الموجود تبقى محفوظة في الجرد."}
                     />
 
                     {/* Store Name */}
@@ -2079,7 +2302,7 @@ function ProductFormModal({
                         </div>
                         <p className="mt-1.5 text-[10px] leading-5 text-theme-subtle">
                             {mode === "add"
-                                ? "اختر لوناً أو أكثر من اللوحة. عند الحفظ يتم إنشاء SKU لكل مقاس × لون وتوزيع المخزون الابتدائي بينها."
+                                ? "اختر لوناً أو أكثر من اللوحة. بعد ذلك أدخل الكمية لكل مقاس × لون في شبكة الكميات."
                                 : "تعديل الألوان هنا يعيد بناء شبكة SKU للمنتج؛ الناقص يُنشأ، والخارج عن الشبكة يُعطل من المتجر دون حذف سجله."}
                         </p>
                     </div>
@@ -2106,6 +2329,18 @@ function ProductFormModal({
                         mode={mode}
                     />
 
+                    <VariantInventoryPlanner
+                        sizes={selectedProductSizes}
+                        colors={selectedProductColors}
+                        skus={skus}
+                        quantities={variantQuantities}
+                        skuInventoryTotals={skuInventoryTotals}
+                        mode={mode}
+                        onChange={setVariantQuantity}
+                        onFillAll={fillVariantQuantities}
+                        onClearAll={clearVariantQuantities}
+                    />
+
                     {/* Stock Controls */}
                     <div className="space-y-3">
                         <label className="flex items-center gap-2 cursor-pointer">
@@ -2115,14 +2350,10 @@ function ProductFormModal({
                             <span className="text-sm text-theme-soft">متوفر للطلب</span>
                         </label>
                         {mode === "add" ? (
-                            <div>
-                                <label className="block text-xs font-medium text-theme-subtle mb-1">المخزون الابتدائي (عند الإضافة فقط)</label>
-                                <input type="number" min="0" value={form.stock_quantity}
-                                    onChange={(e) => setForm((f) => ({ ...f, stock_quantity: e.target.value }))}
-                                    placeholder="مثال: 100"
-                                    className="input-dark w-full max-w-[120px] rounded-lg px-3 py-2 text-sm"
-                                    dir="ltr" />
-                                <p className="text-[10px] text-theme-subtle mt-1">لتسجيل الكمية دفعة واحدة عند الإنشاء. أي تعديل لاحق من تبويب المخزون والجرد.</p>
+                            <div className="rounded-xl border border-theme-subtle bg-theme-faint px-3 py-2">
+                                <p className="text-[10px] leading-5 text-theme-subtle">
+                                    يتم احتساب مخزون المنتج من مجموع كميات المتغيرات أعلاه، وتُسجل كل كمية كحركة إضافة في الجرد.
+                                </p>
                             </div>
                         ) : (
                             <div className="p-3 rounded-xl bg-gold/5 border border-gold/20">

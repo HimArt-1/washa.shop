@@ -850,7 +850,7 @@ export function ProductsInventoryClient({
                         <ProductsClient
                             products={products} count={count} totalPages={totalPages}
                             currentPage={currentPage} currentType={currentType}
-                            artists={artists} categories={categories} skus={skus}
+                            artists={artists} categories={categories} skus={skus} inventory={inventory}
                             basePath="/dashboard/products-inventory"
                             onSmartImportClick={() => setShowSmartImport(true)}
                             salesMap={salesMap}

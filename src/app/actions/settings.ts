@@ -1014,13 +1014,95 @@ function variantKey(size?: string | null, color?: string | null) {
     return `${normalizeVariantSize(size) || "∅"}::${normalizeVariantColor(color) || "∅"}`;
 }
 
+function normalizeVariantQuantityMap(input?: Record<string, number>) {
+    const map = new Map<string, number>();
+    Object.entries(input || {}).forEach(([key, value]) => {
+        const quantity = Number(value);
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+            map.set(key, 0);
+            return;
+        }
+        map.set(key, Math.floor(quantity));
+    });
+    return map;
+}
+
+async function getDefaultWarehouseId(supabase: ReturnType<typeof getAdminSupabase>) {
+    const { data: activeWarehouse } = await supabase
+        .from("warehouses")
+        .select("id")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    if (activeWarehouse?.id) return activeWarehouse.id as string;
+
+    const { data: fallbackWarehouse } = await supabase
+        .from("warehouses")
+        .select("id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+    return (fallbackWarehouse?.id as string | undefined) || null;
+}
+
+async function addInitialVariantInventory({
+    supabase,
+    skuId,
+    warehouseId,
+    quantity,
+    profileId,
+    notes,
+}: {
+    supabase: ReturnType<typeof getAdminSupabase>;
+    skuId: string;
+    warehouseId: string | null;
+    quantity: number;
+    profileId?: string | null;
+    notes: string;
+}) {
+    if (!warehouseId || quantity <= 0) return;
+
+    const { data: currentLevel } = await supabase
+        .from("inventory_levels")
+        .select("quantity")
+        .eq("sku_id", skuId)
+        .eq("warehouse_id", warehouseId)
+        .maybeSingle();
+
+    const previousQuantity = Number(currentLevel?.quantity) || 0;
+    const nextQuantity = previousQuantity + quantity;
+
+    await supabase
+        .from("inventory_levels")
+        .upsert({
+            sku_id: skuId,
+            warehouse_id: warehouseId,
+            quantity: nextQuantity,
+        }, { onConflict: "sku_id,warehouse_id" });
+
+    await supabase.from("inventory_transactions").insert({
+        sku_id: skuId,
+        warehouse_id: warehouseId,
+        transaction_type: "addition",
+        quantity_change: quantity,
+        previous_quantity: previousQuantity,
+        new_quantity: nextQuantity,
+        notes,
+        created_by: profileId ?? null,
+    });
+}
+
 export async function syncProductVariantSkus(input: {
     product_id: string;
     sizes?: string[];
     colors?: string[];
     colorImages?: Record<string, string | null>;
+    variantQuantities?: Record<string, number>;
 }) {
-    await requireAdmin();
+    const { profileId } = await requireAdmin();
     const supabase = getAdminSupabase();
 
     const { data: product, error: productError } = await supabase
@@ -1040,6 +1122,8 @@ export async function syncProductVariantSkus(input: {
         typeof imageUrl === "string" && imageUrl.trim() ? imageUrl.trim() : null,
     ] as const);
     const colorImages = new Map(colorImageEntries.filter(([color]) => Boolean(color)) as Array<[string, string | null]>);
+    const variantQuantities = normalizeVariantQuantityMap(input.variantQuantities);
+    const warehouseId = variantQuantities.size > 0 ? await getDefaultWarehouseId(supabase) : null;
     const sizesToSync = sizes.length > 0 ? sizes : [null];
     const colorsToSync = colors.length > 0 ? colors : [null];
     const desiredVariants = sizesToSync.flatMap((size) => colorsToSync.map((color) => ({ size, color })));
@@ -1067,6 +1151,7 @@ export async function syncProductVariantSkus(input: {
         const key = variantKey(variant.size, variant.color);
         const row = existingByKey.get(key);
         const imageUpdate = variant.color ? colorImages.get(normalizeVariantColor(variant.color) || "") : undefined;
+        const quantityToAdd = variantQuantities.get(key) || 0;
         if (row) {
             const updates: Record<string, any> = {};
             if (row.is_active === false) {
@@ -1085,6 +1170,16 @@ export async function syncProductVariantSkus(input: {
                 if (error) return { success: false, error: error.message };
                 if (updates.is_active) reactivatedCount++;
             }
+            if (row.is_active === false && quantityToAdd > 0) {
+                await addInitialVariantInventory({
+                    supabase,
+                    skuId: row.id,
+                    warehouseId,
+                    quantity: quantityToAdd,
+                    profileId,
+                    notes: "Initial stock for reactivated product variant",
+                });
+            }
             continue;
         }
 
@@ -1100,9 +1195,19 @@ export async function syncProductVariantSkus(input: {
         };
         if (imageUpdate !== undefined) insertRow.color_image_url = imageUpdate;
 
-        const { error } = await supabase.from("product_skus").insert(insertRow);
+        const { data: newSku, error } = await supabase.from("product_skus").insert(insertRow).select("id").single();
 
         if (error) return { success: false, error: error.message };
+        if (newSku?.id && quantityToAdd > 0) {
+            await addInitialVariantInventory({
+                supabase,
+                skuId: newSku.id,
+                warehouseId,
+                quantity: quantityToAdd,
+                profileId,
+                notes: "Initial stock for new product variant",
+            });
+        }
         createdCount++;
     }
 
@@ -1151,17 +1256,29 @@ export async function createProductAdmin(data: {
     sizes?: string[];
     colors?: string[];
     colorImages?: Record<string, string | null>;
+    variantQuantities?: Record<string, number>;
     in_stock?: boolean;
     stock_quantity?: number;
     store_name?: string;
 }) {
-    await requireAdmin();
+    const { profileId } = await requireAdmin();
     const supabase = getAdminSupabase();
 
     const validTypes = ["print", "apparel", "digital", "nft", "original"];
     if (!validTypes.includes(data.type)) {
         return { success: false, error: "نوع المنتج غير صالح" };
     }
+
+    const sizesToCreate = data.sizes && data.sizes.length > 0 ? data.sizes.map(normalizeVariantSize).filter(Boolean) as string[] : [null];
+    const colorsToCreate = data.colors && data.colors.length > 0 ? data.colors.map(normalizeVariantColor).filter(Boolean) as string[] : [null];
+    const variantCount = Math.max(1, sizesToCreate.length * colorsToCreate.length);
+    const variantQuantities = normalizeVariantQuantityMap(data.variantQuantities);
+    const hasExplicitVariantQuantities = variantQuantities.size > 0;
+    const explicitTotalQty = sizesToCreate.reduce((sizeSum, size) => {
+        return sizeSum + colorsToCreate.reduce((colorSum, color) => colorSum + (variantQuantities.get(variantKey(size, color)) || 0), 0);
+    }, 0);
+    const fallbackTotalQty = data.stock_quantity != null ? data.stock_quantity : (data.in_stock ? 100 : 0);
+    const productStockQuantity = hasExplicitVariantQuantities ? explicitTotalQty : fallbackTotalQty;
 
     const { data: created, error } = await supabase
         .from("products")
@@ -1174,8 +1291,8 @@ export async function createProductAdmin(data: {
             image_url: data.image_url.trim(),
             images: data.images && data.images.length > 0 ? data.images : [],
             sizes: data.sizes && data.sizes.length > 0 ? data.sizes : null,
-            in_stock: data.in_stock ?? true,
-            stock_quantity: data.stock_quantity ?? null,
+            in_stock: (data.in_stock ?? true) && productStockQuantity > 0,
+            stock_quantity: productStockQuantity,
             store_name: data.store_name?.trim() || null,
             currency: "SAR",
         })
@@ -1188,16 +1305,11 @@ export async function createProductAdmin(data: {
 
     // ERP: Auto-generate SKUs & Initial Inventory
     if (productId) {
-        const sizesToCreate = data.sizes && data.sizes.length > 0 ? data.sizes : [null];
-        const colorsToCreate = data.colors && data.colors.length > 0 ? data.colors : [null];
-        const variantCount = Math.max(1, sizesToCreate.length * colorsToCreate.length);
-        const totalQty = data.stock_quantity != null ? data.stock_quantity : (data.in_stock ? 100 : 0);
+        const totalQty = productStockQuantity;
         const qtyPerSku = Math.floor(totalQty / variantCount);
         const remainder = totalQty % variantCount;
 
-        let warehouseId = null;
-        const { data: wh } = await supabase.from("warehouses").select("id").limit(1).single();
-        if (wh) warehouseId = wh.id;
+        const warehouseId = totalQty > 0 ? await getDefaultWarehouseId(supabase) : null;
 
         let variantIndex = 0;
         for (const size of sizesToCreate) {
@@ -1209,7 +1321,10 @@ export async function createProductAdmin(data: {
                     continue;
                 }
                 const finalSku = skuResult.sku;
-                const quantity = qtyPerSku + (variantIndex < remainder ? 1 : 0);
+                const key = variantKey(size, color);
+                const quantity = hasExplicitVariantQuantities
+                    ? (variantQuantities.get(key) || 0)
+                    : qtyPerSku + (variantIndex < remainder ? 1 : 0);
                 variantIndex++;
 
                 const colorImageUrl = color ? data.colorImages?.[normalizeVariantColor(color) || ""] : undefined;
@@ -1224,20 +1339,14 @@ export async function createProductAdmin(data: {
 
                 const { data: newSku } = await supabase.from("product_skus").insert(skuInsert).select("id").single();
 
-                if (newSku && warehouseId && quantity > 0) {
-                    await supabase.from("inventory_levels").insert({
-                        sku_id: newSku.id,
-                        warehouse_id: warehouseId,
-                        quantity
-                    });
-                    await supabase.from("inventory_transactions").insert({
-                        sku_id: newSku.id,
-                        warehouse_id: warehouseId,
-                        transaction_type: 'addition',
-                        quantity_change: quantity,
-                        previous_quantity: 0,
-                        new_quantity: quantity,
-                        notes: 'Initial stock creation from Admin Product Form'
+                if (newSku && quantity > 0) {
+                    await addInitialVariantInventory({
+                        supabase,
+                        skuId: newSku.id,
+                        warehouseId,
+                        quantity,
+                        profileId,
+                        notes: "Initial stock creation from Admin Product Form",
                     });
                 }
             }
