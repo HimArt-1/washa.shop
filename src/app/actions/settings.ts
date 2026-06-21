@@ -1063,7 +1063,7 @@ async function addInitialVariantInventory({
     profileId?: string | null;
     notes: string;
 }) {
-    if (!warehouseId || quantity <= 0) return;
+    if (!warehouseId || quantity <= 0) return false;
 
     const { data: currentLevel } = await supabase
         .from("inventory_levels")
@@ -1093,6 +1093,32 @@ async function addInitialVariantInventory({
         notes,
         created_by: profileId ?? null,
     });
+
+    return true;
+}
+
+async function syncProductStockSnapshot(supabase: ReturnType<typeof getAdminSupabase>, productId: string) {
+    const { data: skuRows, error } = await supabase
+        .from("product_skus")
+        .select("is_active, inventory_levels(quantity)")
+        .eq("product_id", productId);
+
+    if (error) return false;
+
+    const total = (skuRows || [])
+        .filter((sku: any) => sku.is_active !== false)
+        .reduce((productSum: number, sku: any) => {
+            return productSum + ((sku.inventory_levels || []) as any[]).reduce((skuSum, level) => {
+                return skuSum + (Number(level.quantity) || 0);
+            }, 0);
+        }, 0);
+
+    const { error: updateError } = await supabase
+        .from("products")
+        .update({ in_stock: total > 0, stock_quantity: total })
+        .eq("id", productId);
+
+    return !updateError;
 }
 
 export async function syncProductVariantSkus(input: {
@@ -1170,14 +1196,16 @@ export async function syncProductVariantSkus(input: {
                 if (error) return { success: false, error: error.message };
                 if (updates.is_active) reactivatedCount++;
             }
-            if (row.is_active === false && quantityToAdd > 0) {
+            if (quantityToAdd > 0) {
                 await addInitialVariantInventory({
                     supabase,
                     skuId: row.id,
                     warehouseId,
                     quantity: quantityToAdd,
                     profileId,
-                    notes: "Initial stock for reactivated product variant",
+                    notes: row.is_active === false
+                        ? "Initial stock for reactivated product variant"
+                        : "Stock addition from Admin Product Form",
                 });
             }
             continue;
@@ -1222,6 +1250,8 @@ export async function syncProductVariantSkus(input: {
         if (error) return { success: false, error: error.message };
         disabledCount++;
     }
+
+    await syncProductStockSnapshot(supabase, input.product_id);
 
     revalidatePath("/dashboard/products-inventory");
     revalidatePath("/store");
@@ -1351,6 +1381,10 @@ export async function createProductAdmin(data: {
                 }
             }
         }
+    }
+
+    if (productId) {
+        await syncProductStockSnapshot(supabase, productId);
     }
 
     revalidatePath("/dashboard/products-inventory");
