@@ -392,8 +392,24 @@ function findSkuForVariant(skus: ProductSkuRow[], size?: string | null, color?: 
     return skus.find((sku) => sku.is_active !== false && variantMatrixKey(sku.size, sku.color_code) === key);
 }
 
+function normalizeQuantityInput(value?: string | null) {
+    return String(value ?? "")
+        .trim()
+        .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+        .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+        .replace(/[^\d]/g, "");
+}
+
+function formatQuantityInput(value?: string | null) {
+    const normalized = normalizeQuantityInput(value);
+    if (!normalized) return "";
+    const quantity = Number.parseInt(normalized, 10);
+    if (!Number.isFinite(quantity)) return "";
+    return String(Math.min(quantity, 999999));
+}
+
 function parseVariantQuantity(value?: string | null) {
-    const quantity = Number.parseInt(String(value ?? "").trim(), 10);
+    const quantity = Number.parseInt(normalizeQuantityInput(value), 10);
     return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
 }
 
@@ -476,12 +492,14 @@ function VariantInventoryPlanner({
 
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto]">
                 <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={bulkValue}
-                    onChange={(event) => setBulkValue(event.target.value)}
+                    onChange={(event) => setBulkValue(formatQuantityInput(event.target.value))}
                     placeholder="كمية لكل المتغيرات"
                     className="input-dark min-w-0 rounded-xl px-3 py-2 text-sm"
+                    autoComplete="off"
                     dir="ltr"
                 />
                 <button
@@ -539,12 +557,14 @@ function VariantInventoryPlanner({
                                 </div>
                             ) : (
                                 <input
-                                    type="number"
-                                    min="0"
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
                                     value={quantities[key] ?? ""}
                                     onChange={(event) => onChange(key, event.target.value)}
                                     placeholder="0"
                                     className="input-dark h-11 rounded-xl px-3 text-center text-sm font-mono"
+                                    autoComplete="off"
                                     dir="ltr"
                                     aria-label="كمية المتغير"
                                 />
@@ -2044,8 +2064,7 @@ function ProductFormModal({
     const selectedProductColors = parseColorList(form.colors);
     const customProductColorValue = toColorInputValue(selectedProductColors[selectedProductColors.length - 1]);
     const setVariantQuantity = (key: string, value: string) => {
-        const normalized = value.trim();
-        if (normalized && (!/^\d+$/.test(normalized) || Number(normalized) > 999999)) return;
+        const normalized = formatQuantityInput(value);
         setVariantQuantities((current) => ({ ...current, [key]: normalized }));
     };
     const fillVariantQuantities = (value: string) => {
