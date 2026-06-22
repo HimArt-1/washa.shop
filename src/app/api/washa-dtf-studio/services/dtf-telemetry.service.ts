@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
 import { logDiagnosticWarning } from "../utils/api-error";
+import { StorageService } from "./storage.service";
 
 export type TelemetryAction = "generate-mockup" | "extract-design" | "submit-order";
 export type TelemetryStatus = "success" | "error" | "timeout" | "quota_exceeded" | "aborted";
@@ -38,6 +39,7 @@ export class DtfTelemetryService {
     public static readonly DEFAULT_DAILY_LIMIT = 5;
     private static readonly INSERT_RETRY_COUNT = 2;
     private static readonly INSERT_RETRY_DELAY_MS = 150;
+    private static readonly TELEMETRY_RESULT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
     private static isQuotaBypassedRole(userRole: string | null | undefined) {
         return userRole === "admin" || userRole === "wushsha" || userRole === "dev";
@@ -145,11 +147,64 @@ export class DtfTelemetryService {
         }
     }
 
-    private static buildInsertPayload(params: LogParams) {
+    private static getImageExtensionFromDataUrl(value: string) {
+        const match = value.match(/^data:(image\/[a-z0-9.+-]+);base64,/i);
+        const mimeType = match?.[1]?.toLowerCase();
+        if (mimeType === "image/jpeg" || mimeType === "image/jpg") return "jpg";
+        if (mimeType === "image/webp") return "webp";
+        if (mimeType === "image/gif") return "gif";
+        return "png";
+    }
+
+    private static async persistResultImageForLog(params: LogParams) {
+        const value = params.resultImageUrl?.trim();
+        const metadata: Record<string, unknown> = {};
+
+        if (!value || !/^data:image\/[a-z0-9.+-]+;base64,/i.test(value)) {
+            return { resultImageUrl: params.resultImageUrl, metadata };
+        }
+
+        const extension = DtfTelemetryService.getImageExtensionFromDataUrl(value);
+        const path = [
+            "dtf-telemetry",
+            params.action,
+            `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`,
+        ].join("/");
+
+        const upload = await StorageService.uploadBase64Image(value, path, {
+            maxBytes: DtfTelemetryService.TELEMETRY_RESULT_IMAGE_MAX_BYTES,
+        });
+
+        if ("error" in upload) {
+            logDiagnosticWarning("dtf-telemetry-result-image-upload", upload.error);
+            return {
+                resultImageUrl: params.resultImageUrl,
+                metadata: {
+                    ...metadata,
+                    result_image_upload_failed: true,
+                    result_image_upload_error: upload.error,
+                    result_image_upload_status: upload.status,
+                },
+            };
+        }
+
+        return {
+            resultImageUrl: upload.url,
+            metadata: {
+                ...metadata,
+                result_image_persisted: true,
+                result_image_storage_path: path,
+            },
+        };
+    }
+
+    private static async buildInsertPayload(params: LogParams) {
+        const persistedResult = await DtfTelemetryService.persistResultImageForLog(params);
         const referenceImage = normalizeDtfTelemetryImageUrlForLog(params.referenceImageUrl, "reference_image");
-        const resultImage = normalizeDtfTelemetryImageUrlForLog(params.resultImageUrl, "result_image");
+        const resultImage = normalizeDtfTelemetryImageUrlForLog(persistedResult.resultImageUrl, "result_image");
         const metadata = {
             ...(params.metadata || {}),
+            ...persistedResult.metadata,
             ...referenceImage.metadata,
             ...resultImage.metadata,
         };
@@ -182,11 +237,10 @@ export class DtfTelemetryService {
     static async logActivity(params: LogParams): Promise<boolean> {
         try {
             const sb = getSupabaseAdminClient();
+            const payload = await DtfTelemetryService.buildInsertPayload(params);
 
             for (let attempt = 0; attempt < DtfTelemetryService.INSERT_RETRY_COUNT; attempt += 1) {
-                const { error } = await sb.from("dtf_studio_activity_logs").insert(
-                    DtfTelemetryService.buildInsertPayload(params)
-                );
+                const { error } = await sb.from("dtf_studio_activity_logs").insert(payload);
 
                 if (error) {
                     logDiagnosticWarning(`dtf-telemetry-insert-attempt-${attempt + 1}`, error);
