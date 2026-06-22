@@ -13,17 +13,12 @@ import { useEffect, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useCartStore } from "@/stores/cartStore";
 import { saveUserCart, loadUserCart } from "@/app/actions/cart-sync";
-
-function cartItemKey(item: { id: string; size?: string | null; colorCode?: string | null }) {
-    return `${item.id}_${item.size ?? ""}_${item.colorCode ?? ""}`;
-}
+import { getCartItemKey, sanitizeCartItems } from "@/lib/commerce-safety";
 
 export function CartSyncProvider() {
     const { user, isSignedIn, isLoaded } = useUser();
     const prevSignedIn = useRef<boolean | null>(null);
     const items = useCartStore(s => s.items);
-    const addItem = useCartStore(s => s.addItem);
-    const clearCart = useCartStore(s => s.clearCart);
 
     // عند تسجيل الدخول: جلب السلة المحفوظة + دمجها مع السلة الحالية
     useEffect(() => {
@@ -33,15 +28,20 @@ export function CartSyncProvider() {
         const justSignedOut = !isSignedIn && prevSignedIn.current === true;
 
         if (justSignedIn && user) {
-            loadUserCart().then(serverItems => {
+            loadUserCart().then((serverItems) => {
                 if (!serverItems || serverItems.length === 0) return;
-                // أضف العناصر الغائبة من الخادم للسلة المحلية
-                const localIds = new Set(useCartStore.getState().items.map(cartItemKey));
-                serverItems.forEach((item: any) => {
-                    if (!localIds.has(cartItemKey(item))) {
-                        addItem(item);
-                    }
+                const merged = new Map<string, ReturnType<typeof sanitizeCartItems>[number]>();
+
+                sanitizeCartItems(useCartStore.getState().items).forEach((item) => {
+                    merged.set(getCartItemKey(item), item);
                 });
+
+                sanitizeCartItems(serverItems).forEach((item) => {
+                    const key = getCartItemKey(item);
+                    if (!merged.has(key)) merged.set(key, item);
+                });
+
+                useCartStore.setState({ items: sanitizeCartItems(Array.from(merged.values())) });
             }).catch(() => { /* graceful */ });
         }
 
@@ -57,7 +57,7 @@ export function CartSyncProvider() {
     useEffect(() => {
         if (!isSignedIn || !isLoaded) return;
         const timer = setTimeout(() => {
-            saveUserCart(items).catch(() => { /* graceful */ });
+            saveUserCart(sanitizeCartItems(items)).catch(() => { /* graceful */ });
         }, 1500); // debounce
         return () => clearTimeout(timer);
     }, [items, isSignedIn, isLoaded]);

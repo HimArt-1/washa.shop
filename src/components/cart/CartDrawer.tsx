@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, Loader2 } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
+import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
 
 export function CartDrawer() {
   const [mounted, setMounted] = useState(false);
-  const { items, isOpen, toggleCart, updateQuantity, removeItem, getCartTotal, getSubtotal, coupon, applyCoupon, removeCoupon, getDiscountAmount } = useCartStore();
+  const { items: rawItems, isOpen, toggleCart, updateQuantity, removeItem, getCartTotal, getSubtotal, coupon, applyCoupon, removeCoupon, getDiscountAmount } = useCartStore();
+  const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
+  const rawItemsSignature = useMemo(() => cartItemsSignature(rawItems), [rawItems]);
+  const cleanItemsSignature = useMemo(() => cartItemsSignature(items), [items]);
   const drawerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [promoCode, setPromoCode] = useState("");
@@ -22,6 +25,11 @@ export function CartDrawer() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted || rawItemsSignature === cleanItemsSignature) return;
+    useCartStore.setState({ items });
+  }, [cleanItemsSignature, items, mounted, rawItemsSignature]);
 
   // Handle escape key
   useEffect(() => {

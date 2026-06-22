@@ -19,6 +19,7 @@ import { useCartStore } from "@/stores/cartStore";
 import { cn } from "@/lib/utils";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelAddToCart } from "@/lib/meta-pixel";
+import { sanitizeCommerceImageUrl } from "@/lib/commerce-safety";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -67,6 +68,10 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
     const router = useRouter();
     const addToCart = useCartStore((state) => state.addItem);
     const trackEvent = useTrackEvent();
+    const productTitle = typeof product.title === "string" && product.title.trim() ? product.title.trim() : "منتج وشّى";
+    const productType = typeof product.type === "string" && product.type.trim() ? product.type.trim() : "product";
+    const productPrice = Number.isFinite(Number(product.price)) && Number(product.price) >= 0 ? Number(product.price) : 0;
+    const productImage = sanitizeCommerceImageUrl(product.image_url);
 
     // ── Stock calculation ────────────────────────────────────────────────
     const allSkus = product.product_skus ?? [];
@@ -113,9 +118,10 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
     const hasColorVariants = colorOptions.length > 0;
 
     // ── Discount ─────────────────────────────────────────────────────────
-    const hasDiscount = product.original_price != null && product.original_price > product.price;
+    const originalPrice = Number(product.original_price);
+    const hasDiscount = Number.isFinite(originalPrice) && originalPrice > productPrice;
     const discountPct = hasDiscount
-        ? Math.round(((product.original_price! - product.price) / product.original_price!) * 100)
+        ? Math.round(((originalPrice - productPrice) / originalPrice) * 100)
         : 0;
 
     // ── Size picker state ─────────────────────────────────────────────────
@@ -142,6 +148,10 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                 setInWishlist(w);
                 setLiked(l);
                 setLikesCount(c);
+            }).catch(() => {
+                setInWishlist(false);
+                setLiked(false);
+                setLikesCount(0);
             });
         }
     }, [mounted, product.id]);
@@ -179,9 +189,9 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
 
         addToCart({
             id: product.id,
-            title: product.title,
-            price: Number(product.price),
-            image_url: product.image_url,
+            title: productTitle,
+            price: productPrice,
+            image_url: productImage,
             artist_name: product.artist?.display_name || "وشّى",
             size: size ?? null,
             type: "product",
@@ -190,9 +200,9 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         trackEvent("add_to_cart", {
             entityType: "product",
             entityId: product.id,
-            metadata: { title: product.title, price: Number(product.price), size: size ?? null },
+            metadata: { title: productTitle, price: productPrice, size: size ?? null },
         });
-        pixelAddToCart({ contentId: product.id, contentName: product.title, value: Number(product.price) });
+        pixelAddToCart({ contentId: product.id, contentName: productTitle, value: productPrice });
         setShowSizePicker(false);
         setPendingSize("");
     };
@@ -200,15 +210,23 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
     const handleWishlist = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const result = inWishlist ? await removeFromWishlist(product.id) : await addToWishlist(product.id);
-        if (result.success) { setInWishlist(!inWishlist); router.refresh(); }
+        try {
+            const result = inWishlist ? await removeFromWishlist(product.id) : await addToWishlist(product.id);
+            if (result.success) { setInWishlist(!inWishlist); router.refresh(); }
+        } catch {
+            setInWishlist(false);
+        }
     };
 
     const handleLike = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const result = liked ? await unlikeProduct(product.id) : await likeProduct(product.id);
-        if (result.success) { setLiked(!liked); setLikesCount((c) => (liked ? c - 1 : c + 1)); router.refresh(); }
+        try {
+            const result = liked ? await unlikeProduct(product.id) : await likeProduct(product.id);
+            if (result.success) { setLiked(!liked); setLikesCount((c) => (liked ? c - 1 : c + 1)); router.refresh(); }
+        } catch {
+            setLiked(false);
+        }
     };
 
     const handleShare = async (e: React.MouseEvent) => {
@@ -216,7 +234,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         e.stopPropagation();
         const url = `${typeof window !== "undefined" ? window.location.origin : ""}/products/${product.id}`;
         try {
-            if (navigator.share) { await navigator.share({ title: product.title, text: `${product.title} — وشّى`, url }); return; }
+            if (navigator.share) { await navigator.share({ title: productTitle, text: `${productTitle} — وشّى`, url }); return; }
             await navigator.clipboard.writeText(url);
             setShareFeedback("copied");
             window.setTimeout(() => setShareFeedback("idle"), 1800);
@@ -241,15 +259,15 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             >
                 <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
                     <Image
-                        src={product.image_url}
-                        alt={product.title}
+                        src={productImage}
+                        alt={productTitle}
                         fill
                         className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? "group-hover:scale-105" : "grayscale opacity-70"}`}
                         sizes={featured ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
                     />
                     <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                         <span className="text-[9px] backdrop-blur-md px-2 py-0.5 rounded-full border" style={typeBadgeStyle}>
-                            {typeLabel(product.type)}
+                            {typeLabel(productType)}
                         </span>
                         {hasDiscount && (
                             <span className="text-[9px] bg-gold/90 backdrop-blur-sm text-[var(--wusha-bg)] px-2 py-0.5 rounded-full font-bold">
@@ -272,15 +290,15 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                 </div>
                 <div className="wusha-product-card-footer p-3 sm:p-4">
                     <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold transition-colors group-hover:text-gold" style={{ color: "var(--wusha-text)" }}>
-                        {product.title}
+                        {productTitle}
                     </h3>
                     <div className="mt-2 flex items-center justify-between gap-3">
                         <span className="line-clamp-1 text-[10px] text-theme-subtle">{product.store_name || product.artist?.display_name}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
                             {hasDiscount && (
-                                <span className="text-[10px] text-theme-faint line-through">{Number(product.original_price).toLocaleString()}</span>
+                                <span className="text-[10px] text-theme-faint line-through">{originalPrice.toLocaleString()}</span>
                             )}
-                            <span className="text-xs font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
+                            <span className="text-xs font-bold text-gold">{productPrice.toLocaleString()} ر.س</span>
                         </div>
                     </div>
                     {(sizeOptions.length > 0 || colorOptions.length > 0) && (
@@ -330,8 +348,8 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         >
             <div className={cn("relative overflow-hidden", featured ? "aspect-[5/4]" : "aspect-square")}>
                 <Image
-                    src={product.image_url}
-                    alt={product.title}
+                    src={productImage}
+                    alt={productTitle}
                     fill
                     className={`object-cover transition-transform duration-700 ${isCurrentlyInStock ? "group-hover:scale-105" : "grayscale opacity-70"}`}
                     sizes={featured ? "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
@@ -340,7 +358,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                 {/* Status Badges */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                     <span className="text-[9px] backdrop-blur-md px-2 py-0.5 rounded-full border" style={typeBadgeStyle}>
-                        {typeLabel(product.type)}
+                        {typeLabel(productType)}
                     </span>
                     {hasDiscount && (
                         <span className="text-[9px] bg-gold/90 backdrop-blur-sm text-[var(--wusha-bg)] px-2 py-0.5 rounded-full font-bold">
@@ -461,7 +479,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             {/* Card footer */}
             <div className="wusha-product-card-footer p-3 sm:p-4">
                 <h3 className="line-clamp-2 min-h-[2.75rem] text-sm font-bold text-theme transition-colors group-hover:text-gold">
-                    {product.title}
+                    {productTitle}
                 </h3>
                 <div className="mt-2 flex items-center justify-between gap-3">
                     <span className="line-clamp-1 text-[10px] text-theme-faint">
@@ -470,11 +488,11 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                     <div className="flex items-center gap-1.5 shrink-0">
                         {hasDiscount && (
                             <span className="text-[10px] text-theme-faint line-through">
-                                {Number(product.original_price).toLocaleString()}
+                                {originalPrice.toLocaleString()}
                             </span>
                         )}
                         <span suppressHydrationWarning className="text-xs font-bold text-gold">
-                            {Number(product.price).toLocaleString()} ر.س
+                            {productPrice.toLocaleString()} ر.س
                         </span>
                     </div>
                 </div>

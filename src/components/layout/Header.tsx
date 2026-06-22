@@ -25,8 +25,7 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
   const [isHidden, setIsHidden] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const toggleCart = useCartStore((s) => s.toggleCart);
-  const items = useCartStore((s) => s.items);
-  const cartCount = items.reduce((a, b) => a + b.quantity, 0);
+  const cartCount = useCartStore((s) => s.getCartCount());
   const lastScrollY = useRef(0);
   const scrollFrame = useRef<number | null>(null);
   const scrollState = useRef({ isScrolled: false, isHidden: false });

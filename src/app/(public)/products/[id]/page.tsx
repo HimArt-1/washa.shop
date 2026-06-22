@@ -11,6 +11,7 @@ import { RecentlyViewedTracker } from "@/components/store/RecentlyViewedTracker"
 import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection";
 import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 import { ProductImageGallery } from "@/components/store/ProductImageGallery";
+import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -36,6 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
     const canonical = `${siteUrl}/products/${id}`;
     const desc = product.description || `${product.title} — منتج حصري في متجر وشّى للأزياء الفنية`;
+    const imageUrl = sanitizeCommerceImageUrl(product.image_url);
 
     return {
         title: `${product.title} — وشّى`,
@@ -49,7 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
             siteName: "وشّى | WASHA",
             images: [
                 {
-                    url: product.image_url,
+                    url: imageUrl,
                     width: 1200,
                     height: 1200,
                     alt: product.title,
@@ -60,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
             card: "summary_large_image",
             title: `${product.title} | وشّى`,
             description: desc,
-            images: [product.image_url],
+            images: [imageUrl],
         },
     };
 }
@@ -73,6 +75,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     if (!product) notFound();
 
     const reviews = await getProductReviews(id);
+    const safeProductImage = sanitizeCommerceImageUrl(product.image_url);
+    const safeProductImages = Array.isArray(product.images)
+        ? product.images.map((img: unknown) => sanitizeOptionalCommerceImageUrl(img)).filter((img): img is string => Boolean(img))
+        : [];
+    const productTitle = typeof product.title === "string" && product.title.trim() ? product.title.trim() : "منتج وشّى";
+    const productPrice = Number.isFinite(Number(product.price)) && Number(product.price) >= 0 ? Number(product.price) : 0;
+    const originalPrice = Number(product.original_price);
+    const hasDiscount = Number.isFinite(originalPrice) && originalPrice > productPrice;
 
     // Fetch Live ERP Inventory for SKUs
     const supabase = getSupabaseServerClient();
@@ -154,13 +164,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             {/* JSON-LD Structured Data */}
             <JsonLd schema={buildProductSchema({
                 id: product.id,
-                title: product.title,
+                title: productTitle,
                 description: product.description,
-                price: product.price,
-                original_price: product.original_price,
+                price: productPrice,
+                original_price: hasDiscount ? originalPrice : null,
                 currency: product.currency,
-                image_url: product.image_url,
-                images: product.images || [],
+                image_url: safeProductImage,
+                images: safeProductImages,
                 in_stock: isCurrentlyInStock,
                 rating: product.rating,
                 reviews_count: product.reviews_count,
@@ -171,10 +181,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <JsonLd schema={buildBreadcrumbSchema([
                 { name: "الرئيسية", href: "/" },
                 { name: "المتجر", href: "/store" },
-                { name: product.title, href: `/products/${product.id}` },
+                { name: productTitle, href: `/products/${product.id}` },
             ])} />
             {/* Track this visit in localStorage */}
-            <RecentlyViewedTracker product={{ id: product.id, title: product.title, price: product.price, image_url: product.image_url, type: product.type }} />
+            <RecentlyViewedTracker product={{ id: product.id, title: productTitle, price: productPrice, image_url: safeProductImage, type: product.type }} />
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Breadcrumb ─── */}
                 <nav className="mb-6 flex flex-wrap items-center gap-2 text-xs text-theme-faint sm:mb-8">
@@ -182,23 +192,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <span>/</span>
                     <Link href="/store" className="hover:text-gold transition-colors">المتجر</Link>
                     <span>/</span>
-                    <span className="text-theme-subtle">{product.title}</span>
+                    <span className="text-theme-subtle">{productTitle}</span>
                 </nav>
 
                 {/* ─── Main Content ─── */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
                     {/* Image */}
                     <ProductImageGallery
-                        mainImage={product.image_url}
-                        images={product.images || []}
-                        title={product.title}
+                        mainImage={safeProductImage}
+                        images={safeProductImages}
+                        title={productTitle}
                         type={product.type}
                         productId={product.id}
                         colorImages={variantSummaries
                             .filter((variant) => variant.color_code && variant.color_image_url)
                             .map((variant) => ({
                                 color_code: variant.color_code as string,
-                                image_url: variant.color_image_url as string,
+                                image_url: sanitizeCommerceImageUrl(variant.color_image_url),
                             }))}
                     />
 
@@ -219,7 +229,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                             </span>
                         </div>
 
-                        <h1 className="mb-3 text-2xl font-bold text-theme sm:text-3xl md:text-4xl">{product.title}</h1>
+                        <h1 className="mb-3 text-2xl font-bold text-theme sm:text-3xl md:text-4xl">{productTitle}</h1>
 
                         {/* Author / Store */}
                         {(product as any).store_name ? (
@@ -252,17 +262,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
                         {/* Price */}
                         <div className="mb-5 rounded-[1.35rem] border border-gold/15 bg-gold/5 px-4 py-4">
-                            {product.original_price != null && product.original_price > product.price && (
+                            {hasDiscount && (
                                 <div className="mb-1 flex items-center gap-2">
                                     <span className="text-sm text-theme-faint line-through">
-                                        {Number(product.original_price).toLocaleString()} ر.س
+                                        {originalPrice.toLocaleString()} ر.س
                                     </span>
                                     <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold">
-                                        خصم {Math.round(((product.original_price - product.price) / product.original_price) * 100)}%
+                                        خصم {Math.round(((originalPrice - productPrice) / originalPrice) * 100)}%
                                     </span>
                                 </div>
                             )}
-                            <span className="text-3xl font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
+                            <span className="text-3xl font-bold text-gold">{productPrice.toLocaleString()} ر.س</span>
                             <span className="text-xs text-theme-faint mr-2">{product.currency || "SAR"}</span>
                         </div>
 
@@ -305,7 +315,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 >
                                     <div className="aspect-square relative">
                                         <Image
-                                            src={item.image_url}
+                                            src={sanitizeCommerceImageUrl(item.image_url)}
                                             alt={item.title}
                                             fill
                                             className="object-cover group-hover:scale-105 transition-transform duration-700"

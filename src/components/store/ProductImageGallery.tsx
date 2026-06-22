@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
 
 interface ProductImageGalleryProps {
     mainImage: string;
@@ -25,8 +26,12 @@ export function ProductImageGallery({ mainImage, images, title, type, productId,
 
     const allImages = useMemo(() => {
         const seen = new Set<string>();
-        return [mainImage, ...colorImages.map((item) => item.image_url), ...images]
-            .filter((img): img is string => Boolean(img && img.trim()))
+        return [
+            sanitizeCommerceImageUrl(mainImage),
+            ...colorImages.map((item) => sanitizeOptionalCommerceImageUrl(item.image_url)),
+            ...images.map((img) => sanitizeOptionalCommerceImageUrl(img)),
+        ]
+            .filter((img): img is string => Boolean(img))
             .filter((img) => {
                 if (seen.has(img)) return false;
                 seen.add(img);
@@ -38,13 +43,14 @@ export function ProductImageGallery({ mainImage, images, title, type, productId,
         const map = new Map<string, string>();
         colorImages.forEach((item) => {
             const color = normalizeColor(item.color_code);
-            if (color && item.image_url) map.set(color, item.image_url);
+            const imageUrl = sanitizeOptionalCommerceImageUrl(item.image_url);
+            if (color && imageUrl) map.set(color, imageUrl);
         });
         return map;
     }, [colorImages]);
 
     const hasMultiple = allImages.length > 1;
-    const activeImage = allImages[activeIdx] || mainImage;
+    const activeImage = allImages[activeIdx] || sanitizeCommerceImageUrl(mainImage);
 
     const goTo = (idx: number) => {
         setActiveIdx((idx + allImages.length) % allImages.length);

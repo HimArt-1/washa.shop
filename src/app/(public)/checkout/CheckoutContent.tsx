@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelInitiateCheckout } from "@/lib/meta-pixel";
 import { useCartStore } from "@/stores/cartStore";
@@ -15,6 +15,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
+import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
 
 // Schema
 const addressSchema = z.object({
@@ -73,7 +74,11 @@ async function verifyPaylinkPayment(params: {
 // ─── Main Client Component ───────────────────────────────
 
 export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean }) {
-    const { items, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
+    const { items: rawItems, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
+    const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
+    const rawItemsSignature = useMemo(() => cartItemsSignature(rawItems), [rawItems]);
+    const cleanItemsSignature = useMemo(() => cartItemsSignature(items), [items]);
+    const cartWasCleaned = rawItemsSignature !== cleanItemsSignature;
     const searchParams = useSearchParams();
     const verifiedPaymentKeyRef = useRef<string | null>(null);
     const trackEvent = useTrackEvent();
@@ -149,6 +154,11 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    useEffect(() => {
+        if (!isClient || !cartWasCleaned) return;
+        useCartStore.setState({ items });
+    }, [cartWasCleaned, isClient, items]);
 
     if (!isClient) return null;
 
@@ -745,6 +755,12 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     {paymentMethod === "paylink" ? "دفع إلكتروني — Paylink" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
                                 </span>
                             </div>
+
+                            {cartWasCleaned && (
+                                <div className="mb-5 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                                    تم تحديث السلة وإزالة بيانات قديمة غير صالحة. راجع العناصر قبل إتمام الطلب.
+                                </div>
+                            )}
 
                             <div className="mb-6 space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar sm:max-h-[320px]">
                                 {items.map((item) => (

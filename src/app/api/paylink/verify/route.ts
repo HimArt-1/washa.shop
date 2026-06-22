@@ -8,7 +8,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { getPaylinkInvoice } from "@/lib/paylink";
 import { confirmOrderPayment } from "@/app/actions/orders";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { assertPaylinkInvoiceMatchesOrder } from "@/lib/paylink-security";
+import { assertPaylinkInvoiceMatchesOrder, getStoredPaylinkTransactionNo } from "@/lib/paylink-security";
 
 export async function POST(req: NextRequest) {
     try {
@@ -21,13 +21,6 @@ export async function POST(req: NextRequest) {
 
         if (!orderNumber) {
             return NextResponse.json({ success: false, error: "رقم الطلب مطلوب" }, { status: 400 });
-        }
-
-        if (!transactionNo) {
-            return NextResponse.json(
-                { success: false, error: "رقم معاملة Paylink مطلوب للتحقق" },
-                { status: 400 }
-            );
         }
 
         const user = await currentUser();
@@ -76,10 +69,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, orderNumber: order.order_number });
         }
 
+        const effectiveTransactionNo = transactionNo?.trim() || getStoredPaylinkTransactionNo(order.metadata);
+        if (!effectiveTransactionNo) {
+            return NextResponse.json(
+                { success: false, error: "رقم معاملة Paylink غير متاح. افتح الطلب من صفحة الطلبات أو أعد محاولة الدفع." },
+                { status: 400 }
+            );
+        }
+
         // Verify with Paylink API
-        const invoice = await getPaylinkInvoice(transactionNo);
+        const invoice = await getPaylinkInvoice(effectiveTransactionNo);
         const validation = assertPaylinkInvoiceMatchesOrder(invoice, order, {
-            expectedTransactionNo: transactionNo,
+            expectedTransactionNo: effectiveTransactionNo,
         });
 
         if (!validation.ok) {
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
         // Confirm order payment in our system
         const result = await confirmOrderPayment(order.id, {
             customerEmail: validation.clientEmail || undefined,
-            webhookEventId: validation.transactionNo || transactionNo,
+            webhookEventId: validation.transactionNo || effectiveTransactionNo,
             paidAmount: validation.amount,
             paymentProvider: "paylink",
         });

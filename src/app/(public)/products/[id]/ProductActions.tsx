@@ -18,6 +18,7 @@ import { SignedIn, SignedOut } from "@clerk/nextjs";
 import Link from "next/link";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelViewContent, pixelAddToCart } from "@/lib/meta-pixel";
+import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
 
 type ProductVariant = {
     id: string;
@@ -63,6 +64,9 @@ export function ProductActions({
     const addItem = useCartStore((s) => s.addItem);
     const router = useRouter();
     const trackEvent = useTrackEvent();
+    const productTitle = typeof product.title === "string" && product.title.trim() ? product.title.trim() : "منتج وشّى";
+    const productPrice = Number.isFinite(Number(product.price)) && Number(product.price) >= 0 ? Number(product.price) : 0;
+    const productImage = sanitizeCommerceImageUrl(product.image_url);
 
     const hasErpVariants = erpVariants.length > 0;
     const legacySizes = useMemo(
@@ -110,9 +114,10 @@ export function ProductActions({
         : legacyStock;
     const selectedColorImage = useMemo(() => {
         if (!selectedColor) return null;
-        return erpVariants.find((variant) =>
+        const rawImage = erpVariants.find((variant) =>
             normalizeColor(variant.color_code) === selectedColor && variant.color_image_url
         )?.color_image_url || null;
+        return sanitizeOptionalCommerceImageUrl(rawImage);
     }, [erpVariants, selectedColor]);
     const canAddToCart = Boolean(inStock)
         && (!sizeOptions.length || sizeOptions.some((option) => option.size === selectedSize && option.available))
@@ -124,9 +129,9 @@ export function ProductActions({
         trackEvent("product_view", {
             entityType: "product",
             entityId: product.id,
-            metadata: { title: product.title, price: Number(product.price) },
+            metadata: { title: productTitle, price: productPrice },
         });
-        pixelViewContent({ contentId: product.id, contentName: product.title, value: Number(product.price) });
+        pixelViewContent({ contentId: product.id, contentName: productTitle, value: productPrice });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -140,6 +145,10 @@ export function ProductActions({
                 setInWishlist(w);
                 setLiked(l);
                 setLikesCount(c);
+            }).catch(() => {
+                setInWishlist(false);
+                setLiked(false);
+                setLikesCount(0);
             });
         }
     }, [mounted, product.id]);
@@ -168,7 +177,7 @@ export function ProductActions({
             detail: {
                 productId: product.id,
                 colorCode: selectedColor || null,
-                imageUrl: selectedColorImage,
+                imageUrl: selectedColorImage || null,
             },
         }));
     }, [product.id, selectedColor, selectedColorImage]);
@@ -176,39 +185,53 @@ export function ProductActions({
     const handleShare = async () => {
         if (typeof window === "undefined") return;
 
-        if (navigator.share) {
-            await navigator.share({
-                title: product.title,
-                text: `${product.title} — وشّى`,
-                url: window.location.href,
-            });
-        } else {
-            await navigator.clipboard.writeText(window.location.href);
-            setShareFeedback("copied");
-            window.setTimeout(() => setShareFeedback("idle"), 1800);
+        try {
+            if (navigator.share) {
+                await navigator.share({
+                    title: productTitle,
+                    text: `${productTitle} — وشّى`,
+                    url: window.location.href,
+                });
+            } else {
+                await navigator.clipboard.writeText(window.location.href);
+                setShareFeedback("copied");
+                window.setTimeout(() => setShareFeedback("idle"), 1800);
+            }
+        } catch {
+            setShareFeedback("idle");
         }
     };
 
     const handleWishlist = async () => {
         if (loadingWishlist) return;
         setLoadingWishlist(true);
-        const result = inWishlist ? await removeFromWishlist(product.id) : await addToWishlist(product.id);
-        setLoadingWishlist(false);
-        if (result.success) {
-            setInWishlist(!inWishlist);
-            router.refresh();
+        try {
+            const result = inWishlist ? await removeFromWishlist(product.id) : await addToWishlist(product.id);
+            if (result.success) {
+                setInWishlist(!inWishlist);
+                router.refresh();
+            }
+        } catch {
+            setInWishlist(false);
+        } finally {
+            setLoadingWishlist(false);
         }
     };
 
     const handleLike = async () => {
         if (loadingLike) return;
         setLoadingLike(true);
-        const result = liked ? await unlikeProduct(product.id) : await likeProduct(product.id);
-        setLoadingLike(false);
-        if (result.success) {
-            setLiked(!liked);
-            setLikesCount((c) => (liked ? c - 1 : c + 1));
-            router.refresh();
+        try {
+            const result = liked ? await unlikeProduct(product.id) : await likeProduct(product.id);
+            if (result.success) {
+                setLiked(!liked);
+                setLikesCount((c) => (liked ? c - 1 : c + 1));
+                router.refresh();
+            }
+        } catch {
+            setLiked(false);
+        } finally {
+            setLoadingLike(false);
         }
     };
 
@@ -298,9 +321,9 @@ export function ProductActions({
                     onClick={() => {
                         addItem({
                             id: product.id,
-                            title: product.title,
-                            price: Number(product.price),
-                            image_url: selectedColorImage || product.image_url,
+                            title: productTitle,
+                            price: productPrice,
+                            image_url: selectedColorImage || productImage,
                             artist_name: product.artist?.display_name || "فنان وشّى",
                             type: "product",
                             size: selectedSize || null,
@@ -310,9 +333,9 @@ export function ProductActions({
                         trackEvent("add_to_cart", {
                             entityType: "product",
                             entityId: product.id,
-                            metadata: { title: product.title, price: Number(product.price), size: selectedSize || null, color_code: selectedColor || null },
+                            metadata: { title: productTitle, price: productPrice, size: selectedSize || null, color_code: selectedColor || null },
                         });
-                        pixelAddToCart({ contentId: product.id, contentName: product.title, value: Number(product.price) });
+                        pixelAddToCart({ contentId: product.id, contentName: productTitle, value: productPrice });
                     }}
                     disabled={!canAddToCart}
                     className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"

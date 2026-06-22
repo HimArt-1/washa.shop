@@ -1,26 +1,17 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { Database } from "@/types/database";
+import {
+    normalizeCartMoney,
+    normalizeCartQuantity,
+    sanitizeCartItem,
+    sanitizeCartItems,
+    type CommerceCartItem,
+} from "@/lib/commerce-safety";
 
 type DiscountCoupon = Database["public"]["Tables"]["discount_coupons"]["Row"];
 
-export interface CartItem {
-    id: string; // Product ID أو custom-{garment}-{timestamp}
-    title: string;
-    price: number;
-    image_url: string;
-    artist_name: string;
-    quantity: number;
-    size?: string | null;
-    colorCode?: string | null;
-    type: "product" | "artwork" | "custom_design";
-    maxQuantity?: number; // Stock limit
-    // للتصاميم المخصصة فقط
-    customDesignUrl?: string;
-    customDesignOrderId?: string;
-    customGarment?: string;
-    customPosition?: string;
-}
+export type CartItem = CommerceCartItem;
 
 interface CartState {
     items: CartItem[];
@@ -43,6 +34,61 @@ interface CartState {
     getCartCount: () => number;
 }
 
+const CART_STORAGE_VERSION = 2;
+
+const safeCartStorage = {
+    getItem: (name: string) => {
+        try {
+            if (typeof window === "undefined") return null;
+            return window.localStorage.getItem(name);
+        } catch {
+            return null;
+        }
+    },
+    setItem: (name: string, value: string) => {
+        try {
+            if (typeof window === "undefined") return;
+            window.localStorage.setItem(name, value);
+        } catch {
+            // Safari private mode, blocked storage, or quota errors must not break shopping.
+        }
+    },
+    removeItem: (name: string) => {
+        try {
+            if (typeof window === "undefined") return;
+            window.localStorage.removeItem(name);
+        } catch {
+            // no-op
+        }
+    },
+};
+
+function sanitizeCoupon(value: unknown): DiscountCoupon | null {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+    const coupon = value as Partial<DiscountCoupon>;
+    const discountValue = normalizeCartMoney(coupon.discount_value);
+    if (!coupon.id || !coupon.code || discountValue <= 0) return null;
+    if (coupon.discount_type !== "percentage" && coupon.discount_type !== "fixed") return null;
+
+    return {
+        ...(coupon as DiscountCoupon),
+        discount_value: discountValue,
+    };
+}
+
+function normalizePersistedState(value: unknown): Partial<Pick<CartState, "items" | "coupon">> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return { items: [], coupon: null };
+    }
+
+    const state = value as Partial<CartState>;
+    return {
+        items: sanitizeCartItems(state.items),
+        coupon: sanitizeCoupon(state.coupon),
+    };
+}
+
 export const useCartStore = create<CartState>()(
     persist(
         (set, get) => ({
@@ -52,23 +98,31 @@ export const useCartStore = create<CartState>()(
 
             addItem: (newItem) => {
                 set((state) => {
-                    const existingItemIndex = state.items.findIndex(
+                    const cleanNewItem = sanitizeCartItem({ ...newItem, quantity: 1 });
+                    const currentItems = sanitizeCartItems(state.items);
+                    if (!cleanNewItem) {
+                        return { items: currentItems, isOpen: state.isOpen };
+                    }
+
+                    const existingItemIndex = currentItems.findIndex(
                         (item) =>
-                            item.id === newItem.id &&
-                            (item.size ?? null) === (newItem.size ?? null) &&
-                            (item.colorCode ?? null) === (newItem.colorCode ?? null)
+                            item.id === cleanNewItem.id &&
+                            (item.size ?? null) === (cleanNewItem.size ?? null) &&
+                            (item.colorCode ?? null) === (cleanNewItem.colorCode ?? null)
                     );
 
                     if (existingItemIndex > -1) {
                         // Item exists, increment quantity
-                        const newItems = [...state.items];
+                        const newItems = [...currentItems];
                         const item = newItems[existingItemIndex];
-                        const max = item.maxQuantity || 99;
+                        const max = Math.max(item.maxQuantity || 99, cleanNewItem.maxQuantity || 99);
 
                         if (item.quantity < max) {
                             newItems[existingItemIndex] = {
                                 ...item,
-                                quantity: item.quantity + 1,
+                                ...cleanNewItem,
+                                quantity: normalizeCartQuantity(item.quantity + 1, max),
+                                maxQuantity: max,
                             };
                         }
 
@@ -76,7 +130,7 @@ export const useCartStore = create<CartState>()(
                     } else {
                         // New item
                         return {
-                            items: [...state.items, { ...newItem, quantity: 1 }],
+                            items: [...currentItems, cleanNewItem],
                             isOpen: true,
                         };
                     }
@@ -85,7 +139,7 @@ export const useCartStore = create<CartState>()(
 
             removeItem: (id, size, colorCode) => {
                 set((state) => ({
-                    items: state.items.filter(
+                    items: sanitizeCartItems(state.items).filter(
                         (item) =>
                             !(
                                 item.id === id &&
@@ -98,14 +152,14 @@ export const useCartStore = create<CartState>()(
 
             updateQuantity: (id, quantity, size, colorCode) => {
                 set((state) => ({
-                    items: state.items.map((item) => {
+                    items: sanitizeCartItems(state.items).map((item) => {
                         if (
                             item.id === id &&
                             (item.size ?? null) === (size ?? null) &&
                             (item.colorCode ?? null) === (colorCode ?? null)
                         ) {
                             const max = item.maxQuantity || 99;
-                            return { ...item, quantity: Math.min(Math.max(1, quantity), max) };
+                            return { ...item, quantity: normalizeCartQuantity(quantity, max) };
                         }
                         return item;
                     }),
@@ -118,11 +172,11 @@ export const useCartStore = create<CartState>()(
                 isOpen: open !== undefined ? open : !state.isOpen
             })),
 
-            applyCoupon: (coupon) => set({ coupon }),
+            applyCoupon: (coupon) => set({ coupon: sanitizeCoupon(coupon) }),
             removeCoupon: () => set({ coupon: null }),
 
             getSubtotal: () => {
-                return get().items.reduce((total, item) => total + item.price * item.quantity, 0);
+                return sanitizeCartItems(get().items).reduce((total, item) => total + item.price * item.quantity, 0);
             },
 
             getDiscountAmount: () => {
@@ -131,10 +185,13 @@ export const useCartStore = create<CartState>()(
 
                 if (!coupon) return 0;
 
-                if (coupon.discount_type === 'percentage') {
-                    return Number(((subtotal * coupon.discount_value) / 100).toFixed(2));
+                const discountValue = normalizeCartMoney(coupon.discount_value);
+                if (discountValue <= 0) return 0;
+
+                if (coupon.discount_type === "percentage") {
+                    return Number(((subtotal * discountValue) / 100).toFixed(2));
                 } else {
-                    return Math.min(coupon.discount_value, subtotal); // Don't discount more than the cart value
+                    return Math.min(discountValue, subtotal); // Don't discount more than the cart value
                 }
             },
 
@@ -145,13 +202,23 @@ export const useCartStore = create<CartState>()(
             },
 
             getCartCount: () => {
-                return get().items.reduce((count, item) => count + item.quantity, 0);
+                return sanitizeCartItems(get().items).reduce((count, item) => count + item.quantity, 0);
             },
         }),
         {
             name: "wusha-cart-storage",
+            version: CART_STORAGE_VERSION,
+            storage: createJSONStorage(() => safeCartStorage),
             // Persist items + coupon, skip UI state like isOpen
-            partialize: (state) => ({ items: state.items, coupon: state.coupon }),
+            partialize: (state) => ({
+                items: sanitizeCartItems(state.items),
+                coupon: sanitizeCoupon(state.coupon),
+            }),
+            migrate: (persistedState) => normalizePersistedState(persistedState),
+            merge: (persistedState, currentState) => ({
+                ...currentState,
+                ...normalizePersistedState(persistedState),
+            }),
         }
     )
 );
