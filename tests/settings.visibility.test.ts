@@ -44,7 +44,7 @@ vi.mock("@/app/actions/erp/inventory", () => ({
     getInventoryWithSales: mockGetInventoryWithSales,
 }));
 
-import { getPublicVisibility, getSiteSettings } from "@/app/actions/settings";
+import { getPublicVisibility, getSiteSettings, getWashaAiSettings } from "@/app/actions/settings";
 
 describe("settings visibility normalization", () => {
     beforeEach(() => {
@@ -103,5 +103,29 @@ describe("settings visibility normalization", () => {
         expect(settings.visibility.gallery).toBe(true);
         expect(settings.visibility.store).toBe(false);
         expect(settings.visibility.design_piece_generation_public).toBe(true);
+    });
+
+    it("normalizes Washa AI subscriber and guest generation limits", async () => {
+        mockCreateClient.mockReturnValue({
+            from: vi.fn(() => ({
+                select: vi.fn(async () => ({
+                    data: [
+                        {
+                            key: "washa_ai",
+                            value: {
+                                dtf_daily_quota_limit: "7",
+                                dtf_guest_daily_quota_limit: "3",
+                            },
+                        },
+                    ],
+                    error: null,
+                })),
+            })),
+        });
+
+        const settings = await getWashaAiSettings();
+
+        expect(settings.dtf_daily_quota_limit).toBe(7);
+        expect(settings.dtf_guest_daily_quota_limit).toBe(3);
     });
 });

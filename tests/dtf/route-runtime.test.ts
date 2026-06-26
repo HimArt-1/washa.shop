@@ -3,13 +3,11 @@ import type { NextRequest } from "next/server";
 
 const {
     mockResolveDesignPieceAccess,
-    mockResolveDesignPieceApiState,
     mockGetDesignPieceAccessFailure,
     mockCheckRateLimit,
     mockGetRequestClientIdentifier,
 } = vi.hoisted(() => ({
     mockResolveDesignPieceAccess: vi.fn(),
-    mockResolveDesignPieceApiState: vi.fn(),
     mockGetDesignPieceAccessFailure: vi.fn(),
     mockCheckRateLimit: vi.fn(),
     mockGetRequestClientIdentifier: vi.fn(),
@@ -18,10 +16,6 @@ const {
 vi.mock("@/lib/design-piece-access", () => ({
     resolveDesignPieceAccess: mockResolveDesignPieceAccess,
     getDesignPieceAccessFailure: mockGetDesignPieceAccessFailure,
-}));
-
-vi.mock("@/lib/design-piece-runtime", () => ({
-    resolveDesignPieceApiState: mockResolveDesignPieceApiState,
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
@@ -43,7 +37,6 @@ import { submitOrderSchema } from "@/app/api/washa-dtf-studio/validators/submit-
 describe("dtf route runtime", () => {
     beforeEach(() => {
         mockResolveDesignPieceAccess.mockReset();
-        mockResolveDesignPieceApiState.mockReset();
         mockGetDesignPieceAccessFailure.mockReset();
         mockCheckRateLimit.mockReset();
         mockGetRequestClientIdentifier.mockReset();
@@ -55,22 +48,23 @@ describe("dtf route runtime", () => {
         mockGetRequestClientIdentifier.mockReturnValue("guest:127.0.0.1");
     });
 
-    it("uses the public API state when public generation is enabled", async () => {
-        mockResolveDesignPieceApiState.mockResolvedValue({
-            access: {
-                allowed: true,
-                reason: "public_access",
-            },
+    it("allows public access when public generation routes request it", async () => {
+        mockResolveDesignPieceAccess.mockResolvedValue({
+            allowed: true,
+            reason: "public_access",
+            role: "guest",
         });
 
         const result = await requireDtfRouteAccess({ allowPublicGeneration: true });
 
-        expect(mockResolveDesignPieceApiState).toHaveBeenCalledTimes(1);
-        expect(mockResolveDesignPieceAccess).not.toHaveBeenCalled();
+        expect(mockResolveDesignPieceAccess).toHaveBeenCalledWith({
+            allowPublicAccess: true,
+        });
         expect(result).toEqual({
             access: {
                 allowed: true,
                 reason: "public_access",
+                role: "guest",
             },
         });
     });

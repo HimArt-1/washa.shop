@@ -11,6 +11,7 @@ const {
     mockLogActivity,
     mockReleaseDailyQuota,
     mockGetWashaDtfErrorDetails,
+    mockGetRequestClientIdentifier,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockEnforceDtfRouteRateLimit: vi.fn(),
@@ -20,6 +21,7 @@ const {
     mockLogActivity: vi.fn(),
     mockReleaseDailyQuota: vi.fn(),
     mockGetWashaDtfErrorDetails: vi.fn(),
+    mockGetRequestClientIdentifier: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
@@ -46,6 +48,10 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
     getWashaDtfErrorDetails: mockGetWashaDtfErrorDetails,
 }));
 
+vi.mock("@/lib/request-client", () => ({
+    getRequestClientIdentifier: mockGetRequestClientIdentifier,
+}));
+
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
 
 describe("generate-mockup route", () => {
@@ -58,6 +64,7 @@ describe("generate-mockup route", () => {
         mockLogActivity.mockReset();
         mockReleaseDailyQuota.mockReset();
         mockGetWashaDtfErrorDetails.mockReset();
+        mockGetRequestClientIdentifier.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -88,6 +95,7 @@ describe("generate-mockup route", () => {
             message: "خدمة Washa AI تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
             status: 503,
         });
+        mockGetRequestClientIdentifier.mockReturnValue("guest:127.0.0.1");
     });
 
     it("returns the access response unchanged when access is denied", async () => {
@@ -143,6 +151,23 @@ describe("generate-mockup route", () => {
             error: "الوصف مطلوب",
         });
         expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+    });
+
+    it("passes the guest identifier into the quota reservation for public guests", async () => {
+        mockRequireDtfRouteAccess.mockResolvedValue({
+            access: {
+                allowed: true,
+                role: "guest",
+                reason: "public_access",
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(200);
+        expect(mockReserveDailyQuota).toHaveBeenCalledWith(undefined, "guest", {
+            guestIdentifier: "guest:127.0.0.1",
+        });
     });
 
     it("returns the current quota-exceeded response and logs the failure", async () => {

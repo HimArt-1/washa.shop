@@ -5,7 +5,6 @@ import {
     resolveDesignPieceAccess,
     type DesignPieceAccessResult,
 } from "@/lib/design-piece-access";
-import { resolveDesignPieceApiState } from "@/lib/design-piece-runtime";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRequestClientIdentifier } from "@/lib/request-client";
 
@@ -32,9 +31,9 @@ export async function requireDtfRouteAccess(options?: {
     const allowPublicGeneration = options?.allowPublicGeneration === true;
     const respond = options?.errorResponder ?? jsonError;
 
-    const access = allowPublicGeneration
-        ? (await resolveDesignPieceApiState()).access
-        : await resolveDesignPieceAccess();
+    const access = await resolveDesignPieceAccess({
+        allowPublicAccess: allowPublicGeneration,
+    });
 
     if (access.allowed) {
         return { access };

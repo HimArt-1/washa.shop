@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveDesignPieceApiState } from "@/lib/design-piece-runtime";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 export const runtime = "nodejs";
 
@@ -24,14 +24,10 @@ function isHtmlShellRequest(relativePath: string, segments: string[]) {
 }
 
 async function ensureDtfStudioAccess(request: NextRequest) {
-    const { visibility, access } = await resolveDesignPieceApiState();
+    const visibility = await getPublicVisibility();
 
     if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
         return NextResponse.redirect(new URL("/design", request.url));
-    }
-
-    if (!access.allowed) {
-        return NextResponse.redirect(new URL("/design/washa-ai", request.url));
     }
 
     return null;

@@ -11,7 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default async function DesignDtfStudioEntryPage() {
-    const { visibility, access, showWizard } = await resolveDesignPiecePageState();
+    const { visibility, access, showWizard } = await resolveDesignPiecePageState({
+        allowPublicAccess: true,
+    });
 
     if (!isWashaAiRouteAvailable(visibility)) {
         redirect("/design");

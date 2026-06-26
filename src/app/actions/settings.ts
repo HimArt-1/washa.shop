@@ -80,6 +80,7 @@ export type SiteSettingsType = {
     };
     washa_ai?: {
         dtf_daily_quota_limit?: number;
+        dtf_guest_daily_quota_limit?: number;
     };
     site_info: Record<string, string>;
     shipping: {
@@ -143,6 +144,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
     },
     washa_ai: {
         dtf_daily_quota_limit: 5,
+        dtf_guest_daily_quota_limit: 3,
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
@@ -349,6 +351,10 @@ function buildSiteSettings(settings: Record<string, any>): SiteSettingsType {
             dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
                 washaAi.dtf_daily_quota_limit,
                 DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5
+            ),
+            dtf_guest_daily_quota_limit: coerceDtfDailyQuotaLimit(
+                washaAi.dtf_guest_daily_quota_limit,
+                DEFAULT_SITE_SETTINGS.washa_ai?.dtf_guest_daily_quota_limit ?? 3
             ),
         },
         site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
@@ -757,6 +763,7 @@ export async function getCreationPrices() {
 export async function getWashaAiSettings() {
     const fallback = {
         dtf_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5,
+        dtf_guest_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_guest_daily_quota_limit ?? 3,
     };
 
     const settings = await getSiteSettings();
@@ -764,6 +771,10 @@ export async function getWashaAiSettings() {
         dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
             settings.washa_ai?.dtf_daily_quota_limit,
             fallback.dtf_daily_quota_limit
+        ),
+        dtf_guest_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            settings.washa_ai?.dtf_guest_daily_quota_limit,
+            fallback.dtf_guest_daily_quota_limit
         ),
     };
 }

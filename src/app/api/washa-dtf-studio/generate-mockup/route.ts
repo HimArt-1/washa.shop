@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMockupSchema } from "../validators/ai-studio.schema";
 import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
+import { getRequestClientIdentifier } from "@/lib/request-client";
 import { AiStudioService } from "../services/ai-studio.service";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import {
@@ -78,7 +79,9 @@ export async function POST(request: NextRequest) {
     });
 
     const quotaStartedAt = Date.now();
-    const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role);
+    const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
+        guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
+    });
     logDtfTrace("dtf.generate-mockup", traceId, "quota_checked", {
         duration_ms: Date.now() - quotaStartedAt,
         allowed: quota.allowed,

@@ -3,6 +3,10 @@ import { resolveDesignPieceAccess, type DesignPieceAccessResult } from "@/lib/de
 
 export type DesignPieceVisibility = Awaited<ReturnType<typeof getPublicVisibility>>;
 
+type DesignPieceRuntimeOptions = {
+    allowPublicAccess?: boolean;
+};
+
 /** Same rule as `/design/washa-ai` before access checks: section on + DTF shortcut not disabled. */
 export function isWashaAiRouteAvailable(visibility: {
     design_piece?: boolean;
@@ -11,47 +15,20 @@ export function isWashaAiRouteAvailable(visibility: {
     return Boolean(visibility.design_piece) && visibility.design_piece_dtf_studio_switch !== false;
 }
 
-function getPublicAccessResult(): DesignPieceAccessResult {
-    return {
-        allowed: true,
-        reason: "public_access",
-    };
-}
-
-export async function resolveDesignPiecePageState(): Promise<{
+export async function resolveDesignPiecePageState(options?: DesignPieceRuntimeOptions): Promise<{
     visibility: DesignPieceVisibility;
     publicGenerationEnabled: boolean;
     access: DesignPieceAccessResult;
     showWizard: boolean;
 }> {
     const visibility = await getPublicVisibility();
-    const publicGenerationEnabled = visibility.design_piece_generation_public === true;
-    const access = publicGenerationEnabled
-        ? getPublicAccessResult()
-        : await resolveDesignPieceAccess();
+    const allowPublicAccess = options?.allowPublicAccess === true;
+    const access = await resolveDesignPieceAccess({ allowPublicAccess });
 
     return {
         visibility,
-        publicGenerationEnabled,
+        publicGenerationEnabled: allowPublicAccess,
         access,
-        showWizard: publicGenerationEnabled || access.allowed,
-    };
-}
-
-export async function resolveDesignPieceApiState(): Promise<{
-    visibility: DesignPieceVisibility;
-    publicGenerationEnabled: boolean;
-    access: DesignPieceAccessResult;
-}> {
-    const visibility = await getPublicVisibility();
-    const publicGenerationEnabled = visibility.design_piece_generation_public === true;
-    const access = await resolveDesignPieceAccess({
-        allowPublicAccess: publicGenerationEnabled,
-    });
-
-    return {
-        visibility,
-        publicGenerationEnabled,
-        access,
+        showWizard: access.allowed,
     };
 }

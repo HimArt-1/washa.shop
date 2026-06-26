@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
 import { StorageService } from "./storage.service";
 
@@ -35,11 +36,17 @@ export interface DailyQuotaReservation {
     tracked: boolean;
 }
 
+type DailyQuotaOptions = {
+    guestIdentifier?: string | null;
+};
+
 export class DtfTelemetryService {
     public static readonly DEFAULT_DAILY_LIMIT = 5;
+    public static readonly DEFAULT_GUEST_DAILY_LIMIT = 3;
     private static readonly INSERT_RETRY_COUNT = 2;
     private static readonly INSERT_RETRY_DELAY_MS = 150;
     private static readonly TELEMETRY_RESULT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+    private static readonly GUEST_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
     private static isQuotaBypassedRole(userRole: string | null | undefined) {
         return userRole === "admin" || userRole === "wushsha" || userRole === "dev";
@@ -67,15 +74,53 @@ export class DtfTelemetryService {
         }
     }
 
+    private static async resolveGuestDailyLimit() {
+        try {
+            const settings = await getWashaAiSettings();
+            const configuredLimit = Number(settings.dtf_guest_daily_quota_limit);
+            if (!Number.isFinite(configuredLimit)) {
+                return DtfTelemetryService.DEFAULT_GUEST_DAILY_LIMIT;
+            }
+
+            return Math.max(1, Math.round(configuredLimit));
+        } catch {
+            return DtfTelemetryService.DEFAULT_GUEST_DAILY_LIMIT;
+        }
+    }
+
     static async reserveDailyQuota(
         profileId: string | null | undefined,
-        userRole: string | null | undefined
+        userRole: string | null | undefined,
+        options: DailyQuotaOptions = {}
     ): Promise<DailyQuotaReservation> {
         const dailyLimit = await DtfTelemetryService.resolveDailyLimit();
 
         if (!profileId) {
             if (userRole === "guest") {
-                return { allowed: true, remaining: 0, used: 0, tracked: false };
+                const guestDailyLimit = await DtfTelemetryService.resolveGuestDailyLimit();
+                const guestIdentifier = options.guestIdentifier?.trim();
+                if (!guestIdentifier) {
+                    return { allowed: true, remaining: guestDailyLimit, used: 0, tracked: false };
+                }
+
+                try {
+                    const result = await checkRateLimit(
+                        `dtf-guest-daily-${guestIdentifier}`,
+                        guestDailyLimit,
+                        DtfTelemetryService.GUEST_DAILY_WINDOW_MS
+                    );
+
+                    return {
+                        allowed: result.success,
+                        remaining: result.remaining,
+                        used: Math.max(0, guestDailyLimit - result.remaining),
+                        quotaDate: new Date().toISOString().slice(0, 10),
+                        tracked: true,
+                    };
+                } catch (error) {
+                    logDiagnosticWarning("dtf-telemetry-guest-quota-reserve", error);
+                    return { allowed: true, remaining: guestDailyLimit, used: 0, tracked: false };
+                }
             }
             return { allowed: false, remaining: 0, used: 0, tracked: false };
         }
