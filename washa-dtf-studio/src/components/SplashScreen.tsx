@@ -22,6 +22,7 @@ const PARTICLES = [
 
 // Easing for the brush stroke reveal
 const BRUSH_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+const BRAND_MARK_SRC = 'header-logo-identity.png';
 
 export default function SplashScreen() {
   const [visible, setVisible] = useState(true);
@@ -210,12 +211,12 @@ export default function SplashScreen() {
                 transition={{ duration: 0.8, delay: 0.28, ease: BRUSH_EASE }}
               >
                 <img
-                  src={siteAsset('washa-logo.png')}
+                  src={siteAsset(BRAND_MARK_SRC)}
                   alt="وشّى"
                   draggable={false}
                   style={{
-                    width: '70%',
-                    height: '70%',
+                    width: '74%',
+                    height: '64%',
                     objectFit: 'contain',
                     filter: 'drop-shadow(0 8px 22px rgba(0,0,0,0.55))',
                   }}

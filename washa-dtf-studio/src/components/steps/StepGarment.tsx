@@ -53,14 +53,14 @@ export default function StepGarment() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="text-washa-text-sec text-lg"
         >
-          هذه الخيارات تأتي مباشرة من إعدادات المتجر الذكي في لوحة الإدارة
+          اختر القالب واللون والمقاس المناسب قبل بدء تصميمك.
         </motion.p>
       </div>
 
       {configLoading ? (
         <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
-          <p className="mt-4 text-sm text-washa-text-sec">جاري تحميل إعدادات DTF من المتجر الذكي...</p>
+          <p className="mt-4 text-sm text-washa-text-sec">جاري تجهيز خيارات القطع...</p>
         </div>
       ) : (
         <div className="space-y-10">
@@ -72,7 +72,7 @@ export default function StepGarment() {
 
           <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{garmentOptions.length} قطع مفعّلة</span>
+              <span className="text-xs text-washa-gold/60">{garmentOptions.length} قطع متاحة</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
                 <Package2 className="h-5 w-5 text-washa-gold" />
                 نوع القطعة
@@ -216,14 +216,14 @@ export default function StepGarment() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
-                لا توجد ألوان مفعّلة لهذه القطعة داخل المتجر الذكي.
+                لا توجد ألوان متاحة لهذه القطعة حالياً.
               </div>
             )}
           </div>
 
           <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات نشطة</span>
+              <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات متاحة</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
                 <Ruler className="h-5 w-5 text-washa-gold" />
                 المقاس
@@ -265,7 +265,7 @@ export default function StepGarment() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
-                لا توجد مقاسات مفعّلة لهذه القطعة/اللون.
+                لا توجد مقاسات متاحة لهذه القطعة/اللون حالياً.
               </div>
             )}
           </div>

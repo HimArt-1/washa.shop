@@ -8,6 +8,8 @@ interface HeaderProps {
   onOpenGallery: () => void;
 }
 
+const BRAND_MARK_SRC = 'header-logo-identity.png';
+
 export default function Header({ onOpenGallery }: HeaderProps) {
   const { step } = useDesign();
 
@@ -25,8 +27,8 @@ export default function Header({ onOpenGallery }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between relative">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-washa-gold/15 bg-[radial-gradient(circle_at_35%_35%,rgba(201,168,106,0.18),rgba(11,11,12,0.95)_72%)] shadow-[0_0_20px_rgba(201,168,106,0.3)] animate-glow-pulse">
-            <img src={siteAsset('washa-logo.png')} alt="وشّى" className="w-full h-full object-contain p-1.5" />
+          <div className="w-10 h-10 rounded-2xl overflow-hidden border border-washa-gold/18 bg-[radial-gradient(circle_at_35%_28%,rgba(255,255,255,0.14),rgba(201,168,106,0.16)_38%,rgba(11,11,12,0.95)_78%)] shadow-[0_0_24px_rgba(201,168,106,0.28)] animate-glow-pulse">
+            <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="w-full h-full object-contain px-1.5 py-2" />
           </div>
           <div className="hidden sm:block">
             <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>

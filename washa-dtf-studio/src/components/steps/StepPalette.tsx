@@ -298,7 +298,7 @@ export default function StepPalette() {
 
           <section className="space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">مفعّلة افتراضيًا لنتيجة أنظف</span>
+              <span className="text-xs text-washa-gold/60">مهيّأة لنتيجة أنظف</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
                 <Wand2 className="h-5 w-5 text-washa-gold" />
                 تفضيلات الإخراج

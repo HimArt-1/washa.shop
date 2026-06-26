@@ -34,7 +34,7 @@ export async function fetchDtfStudioConfig(): Promise<DtfStudioConfig> {
   });
 
   if (!response.ok) {
-    throw new Error('تعذر تحميل إعدادات استوديو DTF من المتجر الذكي.');
+    throw new Error('تعذر تجهيز خيارات التصميم حالياً.');
   }
 
   const data = (await response.json()) as DtfStudioConfig | { error?: string };
@@ -43,7 +43,7 @@ export async function fetchDtfStudioConfig(): Promise<DtfStudioConfig> {
   }
 
   if (!isDtfStudioConfig(data)) {
-    throw new Error('بيانات إعدادات استوديو DTF غير مكتملة.');
+    throw new Error('خيارات التصميم غير مكتملة حالياً.');
   }
 
   return hydrateConfigWithFallback(data);
