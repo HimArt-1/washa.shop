@@ -9,7 +9,7 @@ import type { Product } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "@/components/store/ProductCard";
 
-type ProductWithArtist = Product & {
+export type ProductWithArtist = Product & {
   artist: {
     display_name: string;
     avatar_url: string | null;
@@ -22,18 +22,38 @@ const storeSignals = [
   { value: "03", label: "جاهزة للارتداء", detail: "منتجات تصل كقطعة نهائية" },
 ];
 
-export function Store() {
-  const [products, setProducts] = useState<ProductWithArtist[]>([]);
-  const [loading, setLoading] = useState(true);
+export function Store({
+  initialProducts = [],
+  initialProductsLoaded = false,
+}: {
+  initialProducts?: ProductWithArtist[];
+  initialProductsLoaded?: boolean;
+}) {
+  const [products, setProducts] = useState<ProductWithArtist[]>(initialProducts);
+  const [loading, setLoading] = useState(!initialProductsLoaded);
 
   useEffect(() => {
+    if (initialProductsLoaded) {
+      setProducts(initialProducts);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
     async function fetchProducts() {
       const { data } = await getProducts(1, "all");
-      setProducts((data as unknown as ProductWithArtist[]) || []);
-      setLoading(false);
+      if (!cancelled) {
+        setProducts((data as unknown as ProductWithArtist[]) || []);
+        setLoading(false);
+      }
     }
+
     fetchProducts();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [initialProducts, initialProductsLoaded]);
 
   return (
     <section id="store" className="home-flow-section home-flow-section--store">

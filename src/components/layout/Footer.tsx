@@ -163,15 +163,14 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                 toneColor="var(--hero-logo-tone)"
                 className="home-footer-logo"
               />
-              <h3>وشّى</h3>
               <p>
                 منصة فنية رقمية للأزياء، تجمع التصميم، المتجر، وخدمات المجتمع في تجربة واحدة متماسكة.
               </p>
 
               <div className="home-footer-contact">
-                <a href="mailto:washaksa@hotmail.com">
+                <a href="mailto:info@washa.shop">
                   <Mail className="h-4 w-4" aria-hidden />
-                  <span>washaksa@hotmail.com</span>
+                  <span>info@washa.shop</span>
                 </a>
                 <a href="https://wa.me/966532235005" target="_blank" rel="noopener noreferrer">
                   <Phone className="h-4 w-4" aria-hidden />

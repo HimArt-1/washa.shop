@@ -1,7 +1,8 @@
 import { Hero } from "@/components/sections/Hero";
 import { AISection } from "@/components/sections/AISection";
-import { Store } from "@/components/sections/Store";
+import { Store, type ProductWithArtist } from "@/components/sections/Store";
 import { getSiteSettings } from "@/app/actions/settings";
+import { getProducts } from "@/app/actions/products";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
 import { isWashaAiRouteAvailable } from "@/lib/design-piece-runtime";
 
@@ -13,6 +14,7 @@ export default async function Home() {
     const showStore = Boolean(v.store);
     const showAiSection = settings.visibility.ai_section !== false;
     const showFlowStack = showStore || showAiSection;
+    const storeProducts = showStore ? (await getProducts(1, "all")).data || [] : [];
 
     return (
         <PublicPageWrapper visibility={v}>
@@ -30,7 +32,12 @@ export default async function Home() {
                             <span />
                             <span />
                         </div>
-                        {showStore ? <Store /> : null}
+                        {showStore ? (
+                            <Store
+                                initialProducts={storeProducts as unknown as ProductWithArtist[]}
+                                initialProductsLoaded
+                            />
+                        ) : null}
                         {showAiSection ? (
                             <AISection config={settings.ai_simulation} />
                         ) : null}

@@ -129,7 +129,7 @@ export type SiteSettingsType = {
 const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
     visibility: {
         gallery: false,
-        store: false,
+        store: true,
         signup: false,
         join: true,
         join_artist: true,
