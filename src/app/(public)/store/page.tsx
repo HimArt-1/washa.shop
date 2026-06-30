@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { buildItemListSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+const BRAND_ASSET_VERSION = "20260630";
+const SITE_OG_IMAGE_URL = `${SITE_URL}/og-image.png?v=${BRAND_ASSET_VERSION}`;
 
 export const metadata: Metadata = {
     title: "المتجر | وشّى WUSHA",
@@ -22,13 +24,13 @@ export const metadata: Metadata = {
         type: "website",
         siteName: "وشّى | WASHA",
         locale: "ar_SA",
-        images: [{ url: `${SITE_URL}/icon-512.png`, width: 512, height: 512, alt: "متجر وشّى" }],
+        images: [{ url: SITE_OG_IMAGE_URL, width: 1200, height: 630, alt: "متجر وشّى" }],
     },
     twitter: {
         card: "summary_large_image",
         title: "المتجر | وشّى",
         description: "قطع فنية وملابس مصممة بعناية.",
-        images: [`${SITE_URL}/icon-512.png`],
+        images: [SITE_OG_IMAGE_URL],
     },
 };
 

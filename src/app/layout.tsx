@@ -23,6 +23,11 @@ export const viewport: Viewport = {
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
+const BRAND_ASSET_VERSION = "20260630";
+const brandAsset = (path: string) => `${path}?v=${BRAND_ASSET_VERSION}`;
+const siteAsset = (path: string) => `${SITE_URL}${brandAsset(path)}`;
+const SITE_ICON_URL = siteAsset("/icon-512.png");
+const SITE_OG_IMAGE_URL = siteAsset("/og-image.png");
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "+966532235005";
 const BUILD_VERSION =
   process.env.NEXT_PUBLIC_BUILD_VERSION ||
@@ -261,10 +266,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: brandAsset("/favicon.ico"), sizes: "any" },
+      { url: brandAsset("/favicon-32x32.png"), sizes: "32x32", type: "image/png" },
+      { url: brandAsset("/favicon-16x16.png"), sizes: "16x16", type: "image/png" },
+      { url: brandAsset("/icon-192.png"), sizes: "192x192", type: "image/png" },
+      { url: brandAsset("/icon-512.png"), sizes: "512x512", type: "image/png" },
     ],
-    apple: "/apple-touch-icon.png",
+    shortcut: brandAsset("/favicon.ico"),
+    apple: [{ url: brandAsset("/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {
     title: "وشّى",
@@ -282,9 +291,9 @@ export const metadata: Metadata = {
     siteName: "وشّى | WUSHA",
     images: [
       {
-        url: `${SITE_URL}/icon-512.png`, // Placeholder for actual OG image
-        width: 512,
-        height: 512,
+        url: SITE_OG_IMAGE_URL,
+        width: 1200,
+        height: 630,
         alt: "وشّى - فنٌ يرتدى",
       },
     ],
@@ -293,7 +302,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "وشّى | WUSHA",
     description: "منصة فنية رقمية للأزياء — فنٌ يرتدى",
-    images: [`${SITE_URL}/icon-512.png`],
+    images: [SITE_OG_IMAGE_URL],
   },
   robots: {
     index: true,
@@ -387,7 +396,7 @@ export default async function RootLayout({
                     url: SITE_URL,
                     logo: {
                       "@type": "ImageObject",
-                      url: `${SITE_URL}/icon-512.png`,
+                      url: SITE_ICON_URL,
                       width: 512,
                       height: 512,
                     },

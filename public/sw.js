@@ -3,15 +3,17 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const SW_VERSION = "2026-04-sw-api-bypass-1";
+const SW_VERSION = "2026-06-brand-icons-1";
 const CACHE_NAME = `wusha-shell-${SW_VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const BRAND_ICON_192 = "/icon-192.png?v=20260630";
+const BRAND_ICON_512 = "/icon-512.png?v=20260630";
 
 // Static assets to pre-cache
 const PRECACHE_ASSETS = [
     OFFLINE_URL,
-    "/icon-192.png",
-    "/icon-512.png",
+    BRAND_ICON_192,
+    BRAND_ICON_512,
 ];
 
 function createServiceUnavailableResponse() {
@@ -52,8 +54,8 @@ self.addEventListener("push", (event) => {
     const data = event.data?.json?.() || {};
     const opts = {
         body: data.body || data.message || "إشعار جديد",
-        icon: "/icon-192.png",
-        badge: "/icon-192.png",
+        icon: BRAND_ICON_192,
+        badge: BRAND_ICON_192,
         tag: data.tag || "wusha-push",
         data: { url: data.url || "/" },
     };
