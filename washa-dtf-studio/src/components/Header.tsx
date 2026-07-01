@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { History, Sparkles } from 'lucide-react';
+import { ArrowUpLeft, FlaskConical, History, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
@@ -9,6 +9,7 @@ interface HeaderProps {
 }
 
 const BRAND_MARK_SRC = 'header-logo-identity.png';
+const DEV_STUDIO_PATH = '/design/washa-ai/dev';
 
 export default function Header({ onOpenGallery }: HeaderProps) {
   const { step } = useDesign();
@@ -24,15 +25,34 @@ export default function Header({ onOpenGallery }: HeaderProps) {
 
   return (
     <header className="border-b border-washa-border/50 bg-washa-surface/30 backdrop-blur-xl sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-20 md:h-20 py-3 md:py-0 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 relative">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl overflow-hidden border border-washa-gold/18 bg-[radial-gradient(circle_at_35%_28%,rgba(255,255,255,0.14),rgba(201,168,106,0.16)_38%,rgba(11,11,12,0.95)_78%)] shadow-[0_0_24px_rgba(201,168,106,0.28)] animate-glow-pulse">
-            <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="w-full h-full object-contain px-1.5 py-2" />
+        <div className="flex items-center justify-between gap-3 md:justify-start">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl overflow-hidden border border-washa-gold/18 bg-[radial-gradient(circle_at_35%_28%,rgba(255,255,255,0.14),rgba(201,168,106,0.16)_38%,rgba(11,11,12,0.95)_78%)] shadow-[0_0_24px_rgba(201,168,106,0.28)] animate-glow-pulse">
+              <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="w-full h-full object-contain px-1.5 py-2" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>
+              <p className="text-[10px] text-washa-text-faint tracking-[0.2em] uppercase leading-none mt-0.5">WASHA STUDIO</p>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>
-            <p className="text-[10px] text-washa-text-faint tracking-[0.2em] uppercase leading-none mt-0.5">WASHA STUDIO</p>
+
+          {/* Mobile Step Indicator */}
+          <div className="md:hidden flex items-center gap-2">
+            {steps.map(s => (
+              <div
+                key={s.num}
+                className={cn(
+                  'w-2 h-2 rounded-full transition-all duration-300',
+                  step === s.num
+                    ? 'bg-washa-gold w-6 shadow-[0_0_10px_rgba(201,168,106,0.5)]'
+                    : step > s.num
+                    ? 'bg-washa-gold/40'
+                    : 'bg-washa-border/50'
+                )}
+              />
+            ))}
           </div>
         </div>
 
@@ -91,32 +111,28 @@ export default function Header({ onOpenGallery }: HeaderProps) {
           ))}
         </div>
 
-        {/* Mobile Step Indicator */}
-        <div className="md:hidden flex items-center gap-2">
-          {steps.map(s => (
-            <div
-              key={s.num}
-              className={cn(
-                'w-2 h-2 rounded-full transition-all duration-300',
-                step === s.num
-                  ? 'bg-washa-gold w-6 shadow-[0_0_10px_rgba(201,168,106,0.5)]'
-                  : step > s.num
-                  ? 'bg-washa-gold/40'
-                  : 'bg-washa-border/50'
-              )}
-            />
-          ))}
-        </div>
+        <div className="flex items-center justify-between gap-2 md:justify-end">
+          <a
+            href={DEV_STUDIO_PATH}
+            className="group relative flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-washa-gold/25 bg-washa-gold/10 px-3 py-2 text-sm font-bold text-washa-gold shadow-[0_12px_28px_rgba(154,123,61,0.08)] transition-all duration-300 hover:border-washa-gold/50 hover:bg-washa-gold/15 hover:text-washa-gold-deep active:scale-[0.98] md:flex-none md:px-4"
+            aria-label="جرب النسخة التطويرية"
+          >
+            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-washa-gold/55 to-transparent opacity-70" />
+            <FlaskConical className="h-4 w-4 shrink-0" />
+            <span className="truncate">جرب النسخة التطويرية</span>
+            <ArrowUpLeft className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
 
-        {/* Gallery Button */}
-        <button
-          onClick={onOpenGallery}
-          className="flex items-center gap-2 text-sm text-washa-text-sec hover:text-washa-gold transition-all duration-300 px-3 py-2 rounded-xl hover:bg-washa-gold/5 border border-transparent hover:border-washa-gold/20"
-          title="تصاميمي السابقة"
-        >
-          <History className="w-4 h-4" />
-          <span className="hidden sm:inline">تصاميمي</span>
-        </button>
+          {/* Gallery Button */}
+          <button
+            onClick={onOpenGallery}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold"
+            title="تصاميمي السابقة"
+          >
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">تصاميمي</span>
+          </button>
+        </div>
       </div>
     </header>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { DesignProvider, useDesign } from './context/DesignContext';
 import { useDesignHistory } from './hooks/useDesignHistory';
@@ -15,12 +15,20 @@ import Toast from './components/ui/Toast';
 import DesignGallery from './components/DesignGallery';
 import ErrorBoundary from './components/ErrorBoundary';
 import { resizeDataUrl } from './lib/image';
+import WashaDevStudio from './components/dev/WashaDevStudio';
+
+function isDevStudioRoute() {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return window.location.pathname.includes('/design/washa-ai/dev') || params.get('dev') === '1';
+}
 
 function AppContent() {
   const { step, mockupImage, isGenerating, state } = useDesign();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const { history, saveDesign, deleteDesign, clearHistory } = useDesignHistory();
   const prevMockupRef = useRef<string | null>(null);
+  const devStudio = useMemo(() => isDevStudioRoute(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,27 +81,33 @@ function AppContent() {
   ]);
 
   return (
-    <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-hidden">
-      {/* Ambient Background Orbs */}
-      <div className="ambient-orb ambient-orb-1" />
-      <div className="ambient-orb ambient-orb-2" />
-      <div className="ambient-orb ambient-orb-3" />
+    <>
+      {devStudio ? (
+        <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
+      ) : (
+        <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-hidden">
+          {/* Ambient Background Orbs */}
+          <div className="ambient-orb ambient-orb-1" />
+          <div className="ambient-orb ambient-orb-2" />
+          <div className="ambient-orb ambient-orb-3" />
 
-      <Header onOpenGallery={() => setGalleryOpen(true)} />
+          <Header onOpenGallery={() => setGalleryOpen(true)} />
 
-      {/* Full-Screen Wizard — centered, no side panel */}
-      <main className="wizard-step-container">
-        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
-          <AnimatePresence mode="wait">
-            {step === 1 && <StepGarment key="step-garment" />}
-            {step === 2 && <StepIdea key="step-idea" />}
-            {step === 3 && <StepPosition key="step-position" />}
-            {step === 4 && <StepArtStyle key="step-artstyle" />}
-            {step === 5 && <StepPalette key="step-palette" />}
-            {step === 6 && <StepResult key="step-result" />}
-          </AnimatePresence>
+          {/* Full-Screen Wizard — centered, no side panel */}
+          <main className="wizard-step-container">
+            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
+              <AnimatePresence mode="wait">
+                {step === 1 && <StepGarment key="step-garment" />}
+                {step === 2 && <StepIdea key="step-idea" />}
+                {step === 3 && <StepPosition key="step-position" />}
+                {step === 4 && <StepArtStyle key="step-artstyle" />}
+                {step === 5 && <StepPalette key="step-palette" />}
+                {step === 6 && <StepResult key="step-result" />}
+              </AnimatePresence>
+            </div>
+          </main>
         </div>
-      </main>
+      )}
 
       <Toast />
       <DesignGallery
@@ -103,7 +117,7 @@ function AppContent() {
         onDelete={deleteDesign}
         onClear={clearHistory}
       />
-    </div>
+    </>
   );
 }
 

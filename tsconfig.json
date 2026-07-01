@@ -36,6 +36,7 @@
   ],
   "exclude": [
     "node_modules",
+    "Design System for Washa Studio",
     "washa-dtf-studio",
     "test_*.ts",
     "test_*.js"
