@@ -109,7 +109,7 @@ export default function StepGarment() {
                       'group relative h-64 overflow-hidden rounded-3xl border transition-all duration-500',
                       isSelected
                         ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_40px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
-                        : 'border-white/10 bg-white/[0.02] hover:border-washa-gold/30 hover:bg-white/[0.05]'
+                        : 'border-washa-border/70 bg-washa-surface/55 hover:border-washa-gold/40 hover:bg-washa-ivory/80'
                     )}
                   >
                     {/* Garment Image */}
@@ -128,7 +128,7 @@ export default function StepGarment() {
                     </div>
 
                     {/* Gradient Overlay for Text Readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-washa-bg/60 to-transparent z-10 opacity-90" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-washa-bg/70 to-transparent z-10 opacity-95" />
 
                     {/* Content */}
                     <div className="absolute inset-x-0 bottom-0 z-20 p-5 space-y-2 text-right">
@@ -140,12 +140,22 @@ export default function StepGarment() {
                         )}
                         <p className={cn(
                           "text-xl font-bold transition-colors w-full",
-                          isSelected ? "text-washa-gold" : "text-white group-hover:text-washa-gold/80"
+                          isSelected ? "text-washa-gold" : "text-washa-text group-hover:text-washa-gold-deep"
                         )}>{garment.name}</p>
                       </div>
-                      <div className="flex items-center justify-end gap-3 text-xs text-washa-text-faint/80">
-                        <span className="bg-black/40 px-2 py-1 rounded-md backdrop-blur-md">{garment.colors.length} ألوان</span>
-                        <span className="bg-black/40 px-2 py-1 rounded-md backdrop-blur-md">{garment.sizes.length} مقاسات</span>
+                      <div className="flex items-center justify-end gap-3 text-xs font-bold">
+                        <span className={cn(
+                          "rounded-md border px-2 py-1 backdrop-blur-md",
+                          isSelected
+                            ? "border-washa-gold/30 bg-washa-gold/15 text-washa-gold"
+                            : "border-washa-border bg-washa-bg/85 text-washa-text-sec"
+                        )}>{garment.colors.length} ألوان</span>
+                        <span className={cn(
+                          "rounded-md border px-2 py-1 backdrop-blur-md",
+                          isSelected
+                            ? "border-washa-gold/30 bg-washa-gold/15 text-washa-gold"
+                            : "border-washa-border bg-washa-bg/85 text-washa-text-sec"
+                        )}>{garment.sizes.length} مقاسات</span>
                       </div>
                     </div>
 

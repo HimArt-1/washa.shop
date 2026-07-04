@@ -23,7 +23,9 @@ type ShaderPalette = {
 
 const MAX_CLICKS = 6;
 const CLICK_LIFETIME_MS = 3500;
-const SHADER_FRAME_INTERVAL_MS = 1000 / 30;
+const SHADER_FRAME_INTERVAL_MS = 1000 / 24;
+const SHADER_INITIAL_ACTIVE_MS = 7200;
+const SHADER_INTERACTION_BURST_MS = 2600;
 const LOGO_INK: Rgb = [0.106, 0.031, 0.031];
 const DEFAULT_PALETTE: ShaderPalette = {
   base: [0.027, 0.024, 0.024],
@@ -282,7 +284,7 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
       alpha: false,
       antialias: false,
       depth: false,
-      powerPreference: "high-performance",
+      powerPreference: "low-power",
       stencil: false,
     });
 
@@ -328,6 +330,7 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
     let isPageVisible = document.visibilityState === "visible";
     let clickWaves: ClickWave[] = [];
     const startedAt = performance.now();
+    let activeUntil = startedAt + SHADER_INITIAL_ACTIVE_MS;
     const mouse = {
       x: window.innerWidth * 0.5,
       y: window.innerHeight * 0.45,
@@ -340,6 +343,8 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
     let palette = readThemePalette(colorProbe);
     const refreshPalette = () => {
       palette = readThemePalette(colorProbe);
+      activeUntil = performance.now() + SHADER_INTERACTION_BURST_MS;
+      scheduleRender();
     };
     const themeObserver = new MutationObserver(refreshPalette);
     themeObserver.observe(document.documentElement, {
@@ -352,7 +357,7 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
       const cssWidth = Math.max(1, Math.ceil(bounds?.width || window.innerWidth));
       const cssHeight = Math.max(1, Math.ceil(bounds?.height || window.innerHeight));
       const compactViewport = window.matchMedia("(max-width: 768px)").matches;
-      dpr = Math.min(window.devicePixelRatio || 1, compactViewport ? 1.2 : 1.5);
+      dpr = Math.min(window.devicePixelRatio || 1, compactViewport ? 0.9 : 1);
       width = Math.max(1, Math.floor(cssWidth * dpr));
       height = Math.max(1, Math.floor(cssHeight * dpr));
 
@@ -366,10 +371,13 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
     const handlePointerMove = (event: PointerEvent) => {
       mouse.x = event.clientX;
       mouse.y = event.clientY;
+      activeUntil = performance.now() + SHADER_INTERACTION_BURST_MS;
+      scheduleRender();
     };
 
     const handlePointerDown = (event: PointerEvent) => {
       if (isInteractiveElement(event.target)) return;
+      activeUntil = performance.now() + SHADER_INTERACTION_BURST_MS;
       clickWaves.push({
         x: event.clientX,
         y: event.clientY,
@@ -378,9 +386,10 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
       if (clickWaves.length > MAX_CLICKS) {
         clickWaves = clickWaves.slice(clickWaves.length - MAX_CLICKS);
       }
+      scheduleRender();
     };
 
-    const shouldRender = () => isActive && isPageVisible;
+    const shouldRender = () => isActive && isPageVisible && performance.now() <= activeUntil;
 
     const cancelRender = () => {
       if (frameId !== null) {
@@ -452,12 +461,14 @@ export function WushaShaderBackground({ onReady }: WushaShaderBackgroundProps) {
 
     const handleResize = () => {
       resize();
+      activeUntil = performance.now() + SHADER_INTERACTION_BURST_MS;
       scheduleRender();
     };
 
     const handleVisibilityChange = () => {
       isPageVisible = document.visibilityState === "visible";
       if (isPageVisible) {
+        activeUntil = performance.now() + SHADER_INTERACTION_BURST_MS;
         scheduleRender();
       } else {
         cancelRender();
