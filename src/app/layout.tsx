@@ -78,6 +78,7 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
   var recoveryKey = "wusha-css-recovery:" + buildVersion;
   var recoveryParam = "__css_recover";
   var maxWaitMs = 1800;
+  var recoveryStarted = false;
   doc.dataset.cssReady = "pending";
 
   function emitRecoveryEvent(phase, detail) {
@@ -164,7 +165,31 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
     window.location.replace(url.toString());
   }
 
+  function isNextStaticAssetUrl(value) {
+    if (!value) {
+      return false;
+    }
+    try {
+      var url = new URL(value, window.location.href);
+      return url.origin === window.location.origin && url.pathname.indexOf("/_next/static/") === 0;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function getFailedAssetUrl(target) {
+    if (!target || target === window) {
+      return "";
+    }
+    return target.src || target.href || "";
+  }
+
   function recoverFromCssFailure() {
+    if (recoveryStarted) {
+      return;
+    }
+    recoveryStarted = true;
+
     var alreadyRetried = false;
     try {
       var currentUrl = new URL(window.location.href);
@@ -195,7 +220,7 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
       cleanupTasks.push(
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           return Promise.all(registrations.map(function(registration) {
-            return registration.update();
+            return registration.unregister();
           }));
         })
       );
@@ -220,6 +245,15 @@ const CSS_GUARD_SCRIPT = String.raw`(function(){
     emitRecoveryEvent("reload", { cacheClearRequested: cleanupTasks.length > 0 });
     Promise.allSettled(cleanupTasks).finally(hardReload);
   }
+
+  window.addEventListener("error", function(event) {
+    var failedUrl = getFailedAssetUrl(event.target);
+    if (!isNextStaticAssetUrl(failedUrl)) {
+      return;
+    }
+    emitRecoveryEvent("asset-error", { url: failedUrl });
+    recoverFromCssFailure();
+  }, true);
 
   function watchForCss() {
     var startedAt = Date.now();

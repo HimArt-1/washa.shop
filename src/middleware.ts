@@ -24,11 +24,22 @@ const isAuthAwareApiRoute = createRouteMatcher([
 function nextWithPathname(req: NextRequest) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-washa-pathname", req.nextUrl.pathname);
-    return NextResponse.next({
+    const response = NextResponse.next({
         request: {
             headers: requestHeaders,
         },
     });
+
+    if (
+        req.nextUrl.pathname.startsWith("/dashboard") ||
+        req.nextUrl.pathname.startsWith("/account") ||
+        req.nextUrl.pathname.startsWith("/studio")
+    ) {
+        response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+        response.headers.set("Pragma", "no-cache");
+    }
+
+    return response;
 }
 
 export default clerkMiddleware(async (auth, req) => {

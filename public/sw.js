@@ -3,7 +3,7 @@
  * PWA + Web Push + Offline Cache Strategy
  */
 
-const SW_VERSION = "2026-06-brand-icons-1";
+const SW_VERSION = "2026-07-dashboard-static-recovery-1";
 const CACHE_NAME = `wusha-shell-${SW_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const BRAND_ICON_192 = "/icon-192.png?v=20260630";
@@ -130,7 +130,7 @@ self.addEventListener("fetch", (event) => {
     // Navigation requests → network-first with offline fallback
     if (request.mode === "navigate") {
         event.respondWith(
-            fetch(request).catch(async () =>
+            fetch(request, { cache: "no-store" }).catch(async () =>
                 (await caches.match(OFFLINE_URL)) || createServiceUnavailableResponse()
             )
         );
@@ -162,7 +162,7 @@ self.addEventListener("fetch", (event) => {
 
     // Everything else → network
     event.respondWith(
-        fetch(request).catch(() =>
+        fetch(request, { cache: "no-store" }).catch(() =>
             request.mode === "navigate"
                 ? caches.match(OFFLINE_URL).then((cached) => cached || createServiceUnavailableResponse())
                 : createServiceUnavailableResponse()
