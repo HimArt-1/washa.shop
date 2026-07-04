@@ -2100,6 +2100,24 @@ body.reamaze-active [data-reamaze-widget] {
   padding: clamp(5rem, 9vw, 8.5rem) 0 clamp(4rem, 8vw, 7rem);
 }
 
+.home-store-stack,
+.home-ai-stack {
+  display: grid;
+  gap: clamp(1.4rem, 3vw, 2.4rem);
+}
+
+.home-store-head,
+.home-ai-head {
+  display: flex;
+  align-items: end;
+  justify-content: flex-start;
+}
+
+.home-store-head .home-section-title,
+.home-ai-head .home-section-title {
+  margin-top: 0;
+}
+
 .home-flow-section--ai {
   padding: clamp(4.5rem, 8vw, 8rem) 0 clamp(5rem, 9vw, 8.5rem);
 }
@@ -2202,6 +2220,10 @@ body.reamaze-active [data-reamaze-widget] {
 
 .home-product-deck {
   overflow: hidden;
+}
+
+.home-product-deck--full {
+  width: 100%;
 }
 
 .home-product-deck > .grid {
@@ -2345,6 +2367,10 @@ body.reamaze-active [data-reamaze-widget] {
   border-radius: 2.2rem;
   padding: 0.5rem;
   overflow: hidden;
+}
+
+.home-stage-shell--full {
+  width: 100%;
 }
 
 .home-stage-core {

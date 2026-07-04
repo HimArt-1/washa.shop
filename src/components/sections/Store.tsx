@@ -1,8 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
-import { ArrowLeft, ShoppingBag, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { getProducts } from "@/app/actions/products";
 import { useState, useEffect } from "react";
 import type { Product } from "@/types/database";
@@ -15,12 +14,6 @@ export type ProductWithArtist = Product & {
     avatar_url: string | null;
   };
 };
-
-const storeSignals = [
-  { value: "01", label: "اختيار فني", detail: "قطع مختارة بعناية" },
-  { value: "02", label: "هوية واحدة", detail: "ألوان وخامات متناسقة" },
-  { value: "03", label: "جاهزة للارتداء", detail: "منتجات تصل كقطعة نهائية" },
-];
 
 export function Store({
   initialProducts = [],
@@ -64,70 +57,26 @@ export function Store({
       </div>
 
       <div className="container-wusha relative z-10">
-        <div className="grid items-start gap-8 lg:grid-cols-[0.9fr_1.35fr] lg:gap-10 xl:gap-14">
-          <motion.aside
-            className="home-panel home-panel--intro"
+        <div className="home-store-stack">
+          <motion.div
+            className="home-store-head"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="home-panel-inner">
-              <div className="home-section-kicker">
-                <span
-                  aria-hidden
-                  className="block h-4 w-5 shrink-0 bg-current"
-                  style={{
-                    WebkitMaskImage: "url('/header-logo-identity.png')",
-                    maskImage: "url('/header-logo-identity.png')",
-                    WebkitMaskRepeat: "no-repeat",
-                    maskRepeat: "no-repeat",
-                    WebkitMaskPosition: "center",
-                    maskPosition: "center",
-                    WebkitMaskSize: "contain",
-                    maskSize: "contain",
-                  }}
-                />
-                منتجات حصرية
-              </div>
-              <h2 className="home-section-title">
-                متجر وشّى
-              </h2>
-              <p className="home-section-copy">
-                اكتشف قطعاً فنية مختارة بعناية، جاهزة للطلب والارتداء، بتصاميم تحمل هوية وشّى وتفاصيل تصنع حضوراً مختلفاً.
-              </p>
-
-              <div className="mt-8 space-y-3">
-                {storeSignals.map((item) => (
-                  <div key={item.value} className="home-detail-row">
-                    <span>{item.value}</span>
-                    <div>
-                      <strong>{item.label}</strong>
-                      <p>{item.detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/store" className="home-cta-pill group mt-8">
-                <span className="home-cta-icon">
-                  <ShoppingBag className="h-4 w-4" aria-hidden />
-                </span>
-                تصفح المتجر بالكامل
-                <ArrowLeft className="h-4 w-4 transition-transform duration-500 group-hover:-translate-x-1" aria-hidden />
-              </Link>
-            </div>
-          </motion.aside>
+            <h2 className="home-section-title">متجر وشّى</h2>
+          </motion.div>
 
           <motion.div
-            className="home-product-deck"
+            className="home-product-deck home-product-deck--full"
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
             {loading ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div key={i} className={cn("home-loading-card", i === 1 && "col-span-2")}>
                     <div className={cn("bg-theme-faint/60", i === 1 ? "aspect-[5/4]" : "aspect-square")} />
@@ -143,7 +92,7 @@ export function Store({
                 ))}
               </div>
             ) : products.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
                 {products.map((product, index) => {
                   const featured = products.length >= 3 && index === 0;
                   return (

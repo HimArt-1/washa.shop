@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
-import { Sparkles, Wand2, Shirt, Stars, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Sparkles, Wand2, Shirt, Stars, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 
 const steps = [
   {
@@ -25,12 +24,6 @@ const steps = [
     desc: "شاهد التصميم على القطعة قبل متابعة الطلب.",
     icon: CheckCircle2,
   },
-];
-
-const aiSignals = [
-  { value: "01", label: "مدخلات مرتبة", detail: "القطعة واللون والموضع تقود نتيجة أدق." },
-  { value: "02", label: "توليد قابل للمراجعة", detail: "لا ينتقل التصميم للطلب قبل معاينتك." },
-  { value: "03", label: "جاهز للطباعة", detail: "المخرجات مرتبطة بتدفق الطلب الفعلي." },
 ];
 
 const wushaIntroMarkMaskStyle: CSSProperties = {
@@ -123,52 +116,19 @@ export function AISection({ config }: AISectionProps) {
       </div>
 
       <div className="container-wusha relative z-10">
-        <div className="grid items-start gap-8 lg:grid-cols-[0.86fr_1.42fr] lg:gap-10 xl:gap-14">
-          <motion.aside
-            className="home-panel home-panel--intro"
+        <div className="home-ai-stack">
+          <motion.div
+            className="home-ai-head"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="home-panel-inner">
-              <div className="home-section-kicker">
-                <span
-                  aria-hidden
-                  className="block h-4 w-5 shrink-0 bg-current"
-                  style={wushaIntroMarkMaskStyle}
-                />
-                صممها بنفسك
-              </div>
-              <h2 className="home-section-title">تصميم يبدأ من وصفك</h2>
-              <p className="home-section-copy">
-                تجربة تصميم أقرب لورشة عمل مصغّرة: تختار القطعة، تكتب اتجاهك الفني، ثم تراجع النتيجة على المنتج قبل الطلب.
-              </p>
-
-              <div className="mt-8 space-y-3">
-                {aiSignals.map((item) => (
-                  <div key={item.value} className="home-detail-row">
-                    <span>{item.value}</span>
-                    <div>
-                      <strong>{item.label}</strong>
-                      <p>{item.detail}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <Link href="/design" className="home-cta-pill group mt-8">
-                <span className="home-cta-icon">
-                  <Wand2 className="h-4 w-4" aria-hidden />
-                </span>
-                ابدأ تصميم قطعتك
-                <ArrowLeft className="h-4 w-4 transition-transform duration-500 group-hover:-translate-x-1" aria-hidden />
-              </Link>
-            </div>
-          </motion.aside>
+            <h2 className="home-section-title">صممها بنفسك</h2>
+          </motion.div>
 
           <motion.div
-            className="home-stage-shell"
+            className="home-stage-shell home-stage-shell--full"
             initial={{ opacity: 0, y: 28 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
