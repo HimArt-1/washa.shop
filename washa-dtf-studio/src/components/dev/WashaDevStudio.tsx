@@ -81,7 +81,7 @@ const STEP_META = {
   6: {
     eyebrow: 'النتيجة النهائية',
     title: 'راجع التصميم وأرسله للسلة',
-    subtitle: 'هذه نتيجة التوليد الحقيقية من WASHA AI، وليست صورة محاكاة.',
+    subtitle: '',
   },
 } as const;
 
@@ -228,9 +228,11 @@ function PageIntro() {
       <h1 className="text-balance font-alnaseeb text-3xl font-black leading-[1.35] text-[#1A1A1A] sm:text-5xl">
         {meta.title}
       </h1>
-      <p className="mx-auto mt-4 max-w-[62ch] text-pretty text-sm leading-7 text-[#8B7A5E] sm:text-base">
-        {meta.subtitle}
-      </p>
+      {meta.subtitle ? (
+        <p className="mx-auto mt-4 max-w-[62ch] text-pretty text-sm leading-7 text-[#8B7A5E] sm:text-base">
+          {meta.subtitle}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -1136,7 +1138,7 @@ function StepResultDev() {
               <img src={mockupImage} alt="نتيجة WASHA AI" className="aspect-square w-full object-cover sm:aspect-[4/3]" />
             </button>
             <div className="flex flex-wrap-reverse items-center justify-between gap-3 border-t border-[#C9A84C]/14 bg-[#FAF8F4] p-4 text-[#1A1A1A] sm:p-5">
-              <p className="text-sm font-bold text-[#8B7A5E]">الموكب الحقيقي الناتج من WASHA AI</p>
+              <p className="text-sm font-bold text-[#8B7A5E]">قطعتك بتوقيعك جاهزة للطلب</p>
               <Button variant="outline" onClick={() => handleDownload(mockupImage, 'washa-ai-mockup.png')} className="gap-2 rounded-2xl border-[#C9A84C]/24 bg-white/70 text-[#1A1A1A] hover:bg-[#C9A84C]/10">
                 <Download className="h-4 w-4" />
                 تحميل
