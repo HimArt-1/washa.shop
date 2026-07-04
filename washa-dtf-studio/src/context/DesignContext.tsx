@@ -80,6 +80,8 @@ export interface ToastState {
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
 const REFERENCE_IMAGE_QUALITY = 0.76;
+const GARMENT_REFERENCE_MAX_DIMENSION = 1280;
+const GARMENT_REFERENCE_QUALITY = 0.82;
 const TRANSPARENT_REFERENCE_TYPES = new Set(['image/png', 'image/webp']);
 
 const EMPTY_STATE: DesignState = {
@@ -146,6 +148,56 @@ async function parseApiPayload(response: Response) {
 
   const text = await response.text();
   return { error: text || `HTTP ${response.status}` };
+}
+
+function resolveOperationalGarmentReference(
+  garment: DtfStudioGarmentOption | null,
+  printPosition: DesignState['printPosition']
+) {
+  if (!garment) return null;
+  const frontUrl = garment.aiReferenceFrontUrl?.trim() || '';
+  const backUrl = garment.aiReferenceBackUrl?.trim() || '';
+  const side: 'front' | 'back' = printPosition === 'back' ? 'back' : 'front';
+  const url = side === 'back' ? (backUrl || frontUrl) : (frontUrl || backUrl);
+  return url ? { url, side } : null;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('تعذر قراءة مرجع القطعة'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadOperationalGarmentReference(reference: { url: string; side: 'front' | 'back' } | null) {
+  if (!reference) return null;
+
+  try {
+    const url = new URL(reference.url, window.location.origin).toString();
+    const response = await fetch(url, { cache: 'force-cache' });
+    if (!response.ok) return null;
+
+    const blob = await response.blob();
+    if (blob.type && !/^image\/(png|jpe?g|webp)$/i.test(blob.type)) return null;
+
+    const dataUrl = await blobToDataUrl(blob);
+    const resized = await resizeDataUrl(dataUrl, {
+      maxDimension: GARMENT_REFERENCE_MAX_DIMENSION,
+      quality: GARMENT_REFERENCE_QUALITY,
+      outputMimeType: 'image/jpeg',
+    });
+
+    return {
+      base64: stripDataUrlPrefix(resized.dataUrl),
+      mimeType: resized.mimeType,
+      side: reference.side,
+    };
+  } catch (error) {
+    console.warn('Failed to load operational garment reference', error);
+    return null;
+  }
 }
 
 function resolveDefaultSize(garment: DtfStudioGarmentOption | null, colorId?: string | null) {
@@ -445,6 +497,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       : selectedPalette?.prompt || FALLBACK_PALETTE_PROMPTS[state.palette] || state.palette;
     const techniquePrompt = selectedTechnique?.prompt || FALLBACK_TECHNIQUE_PROMPTS[state.technique] || state.technique;
     const stylePrompt = selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style;
+    const effectivePrintPosition = state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition);
+    const effectivePrintSize = state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition);
+    const garmentReference = await loadOperationalGarmentReference(
+      resolveOperationalGarmentReference(selectedGarment, effectivePrintPosition)
+    );
 
     const runGenerate = async (referenceImageBase64?: string, referenceImageMimeType?: string) => generateMockup(
       state.garmentType,
@@ -460,9 +517,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         removeBackground: state.removeBackground,
         avoidHardEdges: state.avoidHardEdges,
         designPosition: state.designPosition,
-        printPosition: state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition),
-        printSize: state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition),
+        printPosition: effectivePrintPosition,
+        printSize: effectivePrintSize,
         printPositionLabel: state.printPositionLabel ?? undefined,
+        garmentColorHex: state.garmentColorHex,
+        garmentReferenceImageBase64: garmentReference?.base64,
+        garmentReferenceImageMimeType: garmentReference?.mimeType,
+        garmentReferenceSide: garmentReference?.side,
       }
     );
 

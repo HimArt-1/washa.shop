@@ -16,11 +16,20 @@ import DesignGallery from './components/DesignGallery';
 import ErrorBoundary from './components/ErrorBoundary';
 import { resizeDataUrl } from './lib/image';
 import WashaDevStudio from './components/dev/WashaDevStudio';
+import WashaDevStudioV2 from './components/dev-v2/WashaDevStudioV2';
 
-function isDevStudioRoute() {
-  if (typeof window === 'undefined') return false;
+type StudioMode = 'production' | 'dev' | 'dev-v2';
+
+function getStudioMode(): StudioMode {
+  if (typeof window === 'undefined') return 'production';
   const params = new URLSearchParams(window.location.search);
-  return window.location.pathname.includes('/design/washa-ai/dev') || params.get('dev') === '1';
+  if (window.location.pathname.includes('/design/washa-ai/dev-v2') || params.get('dev') === '2') {
+    return 'dev-v2';
+  }
+  if (window.location.pathname.includes('/design/washa-ai/dev') || params.get('dev') === '1') {
+    return 'dev';
+  }
+  return 'production';
 }
 
 function AppContent() {
@@ -28,7 +37,7 @@ function AppContent() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const { history, saveDesign, deleteDesign, clearHistory } = useDesignHistory();
   const prevMockupRef = useRef<string | null>(null);
-  const devStudio = useMemo(() => isDevStudioRoute(), []);
+  const studioMode = useMemo(() => getStudioMode(), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,7 +91,9 @@ function AppContent() {
 
   return (
     <>
-      {devStudio ? (
+      {studioMode === 'dev-v2' ? (
+        <WashaDevStudioV2 onOpenGallery={() => setGalleryOpen(true)} />
+      ) : studioMode === 'dev' ? (
         <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
       ) : (
         <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-hidden">

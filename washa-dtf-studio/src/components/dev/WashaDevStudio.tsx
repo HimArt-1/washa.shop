@@ -204,7 +204,7 @@ function DevHeader({ onOpenGallery }: WashaDevStudioProps) {
         <div className="flex items-center gap-3">
           <div className="hidden border-r border-[#C9A84C]/24 pr-3 text-left sm:block">
             <p className="text-[10px] font-bold tracking-[0.24em] text-[#8B7A5E]">DEV STUDIO</p>
-            <p className="text-[11px] font-semibold text-[#8B7A5E]/70">WASHA AI v2</p>
+            <p className="text-[11px] font-semibold text-[#8B7A5E]/70">WASHA AI dev</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#1A1A1A] shadow-[0_14px_28px_rgba(26,26,26,0.18)]">
             <img src={siteAsset(BRAND_MARK_SRC)} alt="وشى" className="h-full w-full object-contain p-2" />
@@ -357,12 +357,11 @@ function StepGarmentDev() {
                       <img
                         src={preview}
                         alt={garment.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                        className="h-full w-full object-contain object-center"
                       />
                     ) : (
                       <EmptyAsset label="لا توجد صورة" />
                     )}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/42 to-transparent" />
                   </div>
 
                   <div className={cn(active ? 'flex flex-col' : 'mt-5')}>
@@ -655,8 +654,12 @@ function StepPositionDev() {
   const { state, updateState, positionOptions, selectedGarment, selectedSize } = useDesign();
   const selectedOption = positionOptions.find((item) => item.id === state.printOptionId) || positionOptions[0] || null;
   const selectedPlacement = resolvePrintPlacementFromOption(selectedOption);
-  const side = selectedPlacement.printPosition === 'back' ? 'back' : 'front';
-  const garmentPreview = getSizePreview(selectedSize, selectedGarment?.imageUrl, side);
+  const getPositionPreview = (
+    position: (typeof positionOptions)[number] | null,
+    placement = resolvePrintPlacementFromOption(position)
+  ) => assetOrEmpty(position?.imageUrl) || studioAsset(getPositionFallback(placement.printPosition));
+  const fallbackSide = selectedPlacement.printPosition === 'back' ? 'back' : 'front';
+  const previewImage = getPositionPreview(selectedOption, selectedPlacement) || getSizePreview(selectedSize, selectedGarment?.imageUrl, fallbackSide);
 
   return (
     <DevFrame>
@@ -665,8 +668,13 @@ function StepPositionDev() {
           <div className="relative overflow-hidden rounded-[26px] bg-[#F2EFE8]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(201,168,76,0.14),transparent_45%)]" />
             <div className="relative mx-auto flex min-h-[440px] max-w-[560px] items-center justify-center p-8">
-              {garmentPreview ? (
-                <img src={garmentPreview} alt="معاينة القطعة" className="max-h-[390px] w-full object-contain drop-shadow-[0_20px_34px_rgba(26,26,26,0.14)]" />
+              {previewImage ? (
+                <img
+                  src={previewImage}
+                  alt={selectedOption?.name || 'معاينة موضع الطباعة'}
+                  data-testid="print-position-preview-image"
+                  className="max-h-[390px] w-full object-contain drop-shadow-[0_20px_34px_rgba(26,26,26,0.14)]"
+                />
               ) : (
                 <EmptyAsset label="لا توجد معاينة" />
               )}
@@ -697,7 +705,7 @@ function StepPositionDev() {
             {positionOptions.map((position, index) => {
               const placement = resolvePrintPlacementFromOption(position);
               const active = state.printOptionId === position.id;
-              const image = assetOrEmpty(position.imageUrl) || studioAsset(getPositionFallback(placement.printPosition));
+              const image = getPositionPreview(position, placement);
               return (
                 <motion.button
                   key={position.id}
@@ -717,7 +725,7 @@ function StepPositionDev() {
                   )}
                 >
                   <div className="h-24 overflow-hidden rounded-2xl bg-white">
-                    <img src={image} alt={position.name} className="h-full w-full object-cover" />
+                    <img src={image} alt={position.name} data-position-option-image={position.id} className="h-full w-full object-contain" />
                   </div>
                   <div className="flex min-w-0 flex-col justify-center">
                     <p className="font-black text-[#1A1A1A]">{position.name}</p>

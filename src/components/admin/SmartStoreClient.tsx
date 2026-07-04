@@ -732,6 +732,8 @@ type SmartStoreImageFieldName =
     | "image_url"
     | "image_front_url"
     | "image_back_url"
+    | "ai_reference_front_url"
+    | "ai_reference_back_url"
     | "mockup_front_url"
     | "mockup_back_url"
     | "mockup_model_url"
@@ -858,12 +860,33 @@ function GarmentsTab({
     const [loading, setLoading] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [imageUrl, setImageUrl] = useState("");
+    const [aiReferenceFrontUrl, setAiReferenceFrontUrl] = useState("");
+    const [aiReferenceBackUrl, setAiReferenceBackUrl] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-    const openAdd = () => { setIsAdding(true); setImageUrl(""); setError(null); };
-    const openEdit = (g: CustomDesignGarment) => { setEditing(g); setImageUrl(g.image_url ?? ""); setError(null); };
-    const closeModal = () => { setEditing(null); setIsAdding(false); setImageUrl(""); setError(null); };
+    const openAdd = () => {
+        setIsAdding(true);
+        setImageUrl("");
+        setAiReferenceFrontUrl("");
+        setAiReferenceBackUrl("");
+        setError(null);
+    };
+    const openEdit = (g: CustomDesignGarment) => {
+        setEditing(g);
+        setImageUrl(g.image_url ?? "");
+        setAiReferenceFrontUrl(g.ai_reference_front_url ?? "");
+        setAiReferenceBackUrl(g.ai_reference_back_url ?? "");
+        setError(null);
+    };
+    const closeModal = () => {
+        setEditing(null);
+        setIsAdding(false);
+        setImageUrl("");
+        setAiReferenceFrontUrl("");
+        setAiReferenceBackUrl("");
+        setError(null);
+    };
 
     const handleSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -873,6 +896,8 @@ function GarmentsTab({
             const fd = new FormData(e.currentTarget);
             if (editing) fd.set("id", editing.id);
             fd.set("image_url", imageUrl);
+            fd.set("ai_reference_front_url", aiReferenceFrontUrl);
+            fd.set("ai_reference_back_url", aiReferenceBackUrl);
             const result = await upsertGarment(fd);
             const actionError = getActionError(result);
             if (actionError) {
@@ -897,7 +922,7 @@ function GarmentsTab({
         } finally {
             setLoading(false);
         }
-    }, [editing, onFallbackRefresh, imageUrl, setItems]);
+    }, [aiReferenceBackUrl, aiReferenceFrontUrl, editing, onFallbackRefresh, imageUrl, setItems]);
 
     const handleDelete = useCallback(async () => {
         if (!pendingDeleteId) return;
@@ -932,6 +957,28 @@ function GarmentsTab({
             <FormField label="صورة القطعة">
                 <ImageUploader value={imageUrl} onChange={setImageUrl} folder="garments" fieldName="image_url" />
             </FormField>
+            <div className="grid gap-4 rounded-2xl border border-gold/15 bg-gold/5 p-4 md:grid-cols-2">
+                <FormField label="مرجع AI واقعي أمامي">
+                    <ImageUploader
+                        value={aiReferenceFrontUrl}
+                        onChange={setAiReferenceFrontUrl}
+                        folder="garment-ai-references"
+                        label="مرجع AI واقعي أمامي"
+                        fieldName="ai_reference_front_url"
+                    />
+                    <p className="text-xs leading-relaxed text-theme-subtle">تشغيلي فقط: يستخدمه النموذج لمطابقة القصّة والخامة والتصوير في النتيجة النهائية.</p>
+                </FormField>
+                <FormField label="مرجع AI واقعي خلفي">
+                    <ImageUploader
+                        value={aiReferenceBackUrl}
+                        onChange={setAiReferenceBackUrl}
+                        folder="garment-ai-references"
+                        label="مرجع AI واقعي خلفي"
+                        fieldName="ai_reference_back_url"
+                    />
+                    <p className="text-xs leading-relaxed text-theme-subtle">تشغيلي فقط: يُستخدم عند اختيار الطباعة الخلفية أو كبديل إذا احتاج النموذج للظهر.</p>
+                </FormField>
+            </div>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
             </FormField>

@@ -337,6 +337,8 @@ export const smartStoreUpsertGarmentSchema = z.object({
     name: requiredText("اسم القطعة", 120),
     slug: slugText("الرابط المختصر", 120),
     image_url: optionalSafeUrl("صورة القطعة"),
+    ai_reference_front_url: optionalSafeUrl("مرجع AI الواقعي الأمامي"),
+    ai_reference_back_url: optionalSafeUrl("مرجع AI الواقعي الخلفي"),
     sort_order: numberFromUnknown("ترتيب القطعة", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
     base_price: numberFromUnknown("السعر الأساسي", { min: 0, defaultValue: 0 }),

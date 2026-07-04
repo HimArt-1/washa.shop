@@ -71,11 +71,13 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(bodyResult.response, traceId);
     }
 
-    const { prompt, referenceImage } = bodyResult.data;
+    const { prompt, referenceImage, garmentReferenceImage } = bodyResult.data;
     logDtfTrace("dtf.generate-mockup", traceId, "payload_ready", {
         prompt_length: prompt.length,
         has_reference_image: Boolean(referenceImage?.base64),
+        has_garment_reference_image: Boolean(garmentReferenceImage?.base64),
         reference_mime_type: referenceImage?.mimeType ?? null,
+        garment_reference_mime_type: garmentReferenceImage?.mimeType ?? null,
     });
 
     const quotaStartedAt = Date.now();
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
         const imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
             traceId,
             timeoutMs: GENERATE_MOCKUP_TIMEOUT_MS,
+            garmentReferenceImage,
         });
         logDtfTrace("dtf.generate-mockup", traceId, "provider_completed", {
             duration_ms: Date.now() - providerStartedAt,
@@ -133,6 +136,7 @@ export async function POST(request: NextRequest) {
             referenceImageUrl: referenceImage?.base64 ? "base64_hidden" : undefined,
             resultImageUrl: imageUrl || undefined,
             metadata: {
+                hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
                 remainingPointsAfterReservation: quota.remaining,
                 usedPoints: quota.used,
                 quotaDate: quota.quotaDate,

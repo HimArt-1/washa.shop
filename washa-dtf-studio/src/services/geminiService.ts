@@ -8,6 +8,10 @@ interface GenerationPreferences {
   printPosition?: 'chest' | 'back' | 'shoulder_right' | 'shoulder_left' | null;
   printSize?: 'large' | 'small' | null;
   printPositionLabel?: string | null;
+  garmentColorHex?: string | null;
+  garmentReferenceImageBase64?: string;
+  garmentReferenceImageMimeType?: string;
+  garmentReferenceSide?: 'front' | 'back';
 }
 
 function compactPrompt(parts: Array<string | null | undefined>) {
@@ -64,6 +68,24 @@ export async function generateMockup(
 ): Promise<string | null> {
   const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
   const isArabicText = isCalligraphy && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(calligraphyText!);
+  const selectedColorDirective = compactPrompt([
+    color ? `selected color name: ${color}` : null,
+    preferences.garmentColorHex ? `selected color hex: ${preferences.garmentColorHex}` : null,
+  ]);
+  const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
+  const garmentReferenceDirectives = [
+    hasGarmentReference
+      ? 'Use the hidden operational garment reference image as the exact product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
+      : 'Final output must be a photorealistic premium studio product mockup, not line art, sketch, vector preview, drawing, or flat catalog icon.',
+    hasGarmentReference && preferences.garmentReferenceSide
+      ? `The garment reference side is ${preferences.garmentReferenceSide}; generate the same side unless the selected print placement explicitly requires otherwise.`
+      : null,
+    `Recolor only the garment fabric to the customer's selected color (${selectedColorDirective || color}); keep realistic texture, wrinkles, shadows, and highlights. Do not leave the garment white unless white is the selected color.`,
+    hasGarmentReference
+      ? 'The garment reference is operational only. Do not expose, describe, or copy it as artwork; use it only to match the garment realism and silhouette.'
+      : null,
+    'The final mockup must show the selected garment type clearly and realistically with the print integrated on fabric.',
+  ];
   const printDirectives = [
     'Premium DTF print integrated directly into the garment.',
     preferences.removeBackground
@@ -78,6 +100,7 @@ export async function generateMockup(
     referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
       ? 'Do not preserve the reference image background, frame, crop, or edges.'
       : null,
+    ...garmentReferenceDirectives,
   ];
 
   const effectivePrintPosition =
@@ -163,6 +186,12 @@ export async function generateMockup(
       body.referenceImage = {
         base64: referenceImageBase64,
         mimeType: referenceImageMimeType
+      };
+    }
+    if (preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType) {
+      body.garmentReferenceImage = {
+        base64: preferences.garmentReferenceImageBase64,
+        mimeType: preferences.garmentReferenceImageMimeType,
       };
     }
 

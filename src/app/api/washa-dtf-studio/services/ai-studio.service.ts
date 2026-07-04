@@ -1,6 +1,8 @@
 import { washDtfRoutedExtractDesign, washDtfRoutedGenerateMockup } from "@/lib/washa-dtf-image-router";
 import { logDtfTrace } from "../utils/trace";
 
+type AiStudioImageReference = { base64: string; mimeType: string };
+
 function resolveProviderTimeoutMs(fallbackMs: number) {
     const parsed = Number.parseInt(process.env.WASHA_DTF_PROVIDER_TIMEOUT_MS || "", 10);
     if (!Number.isFinite(parsed)) return fallbackMs;
@@ -13,8 +15,8 @@ export class AiStudioService {
      */
     static async generateMockup(
         prompt: string,
-        referenceImage?: { base64: string; mimeType: string } | null,
-        options?: { traceId?: string; timeoutMs?: number }
+        referenceImage?: AiStudioImageReference | null,
+        options?: { traceId?: string; timeoutMs?: number; garmentReferenceImage?: AiStudioImageReference | null }
     ) {
         const traceId = options?.traceId ?? crypto.randomUUID();
         const timeoutMs = resolveProviderTimeoutMs(options?.timeoutMs ?? 45_000);
@@ -23,11 +25,16 @@ export class AiStudioService {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "provider_started", {
             prompt_length: prompt.length,
             has_reference_image: Boolean(referenceImage?.base64),
+            has_garment_reference_image: Boolean(options?.garmentReferenceImage?.base64),
             timeout_ms: timeoutMs,
         });
 
         try {
-            const imageUrl = await washDtfRoutedGenerateMockup(prompt, referenceImage, { traceId, timeoutMs });
+            const imageUrl = await washDtfRoutedGenerateMockup(prompt, referenceImage, {
+                traceId,
+                timeoutMs,
+                garmentReferenceImage: options?.garmentReferenceImage ?? null,
+            });
             logDtfTrace("dtf.ai.generate-mockup", traceId, "provider_succeeded", {
                 duration_ms: Date.now() - providerStartedAt,
                 image_url_length: imageUrl.length,

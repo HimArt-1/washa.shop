@@ -19,6 +19,8 @@ import { isGeminiKeyConfigured, runGeminiImagenDataUrl, runNanoBananaDataUrl } f
 import { isOpenAIKeyConfigured, runOpenAIGenerateDataUrl, runOpenAIEditDataUrl } from "@/lib/openai-image";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
 
+type DtfImageReference = { base64: string; mimeType: string };
+
 export function getWashaDtfResolvedImageProvider(): string {
     return (process.env.WASHA_DTF_IMAGE_PROVIDER || process.env.IMAGE_PROVIDER || "genai").toLowerCase().trim();
 }
@@ -74,17 +76,30 @@ function isQuotaOrUnavailableError(error: unknown): boolean {
 
 async function runGenaiSdkMockup(
     prompt: string,
-    referenceImage: { base64: string; mimeType: string } | null | undefined,
+    referenceImage: DtfImageReference | null | undefined,
+    garmentReferenceImage: DtfImageReference | null | undefined,
     timeoutMs: number,
     traceId: string
 ) {
     const client = getWashaDtfGenAiClient();
-    const parts: any[] = [{ text: prompt }];
+    const parts: any[] = [];
+    if (garmentReferenceImage?.base64 && garmentReferenceImage?.mimeType) {
+        parts.push({
+            text: "Image A is a hidden operational garment reference. Match its cut, proportions, seams, fabric behavior, camera angle, and studio lighting. Do not copy any artwork from it.",
+        });
+        parts.push({
+            inlineData: { data: garmentReferenceImage.base64, mimeType: garmentReferenceImage.mimeType },
+        });
+    }
     if (referenceImage?.base64 && referenceImage?.mimeType) {
-        parts.unshift({
+        parts.push({
+            text: "Image B is a customer design reference. Use it only for the artwork idea, composition, or visual style when relevant.",
+        });
+        parts.push({
             inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType },
         });
     }
+    parts.push({ text: prompt });
     const config = {
         responseModalities: ["IMAGE", "TEXT"],
         imageConfig: { aspectRatio: "1:1", imageSize: "1K" },
@@ -169,8 +184,15 @@ async function runGenaiSdkExtract(
     return imageUrl;
 }
 
-function referenceToDataUrl(ref: { base64: string; mimeType: string }): string {
+function referenceToDataUrl(ref: DtfImageReference): string {
     return `data:${ref.mimeType};base64,${ref.base64}`;
+}
+
+function resolvePrimaryMockupReference(
+    referenceImage: DtfImageReference | null | undefined,
+    garmentReferenceImage: DtfImageReference | null | undefined
+) {
+    return garmentReferenceImage?.base64 ? garmentReferenceImage : referenceImage;
 }
 
 function isDtfProviderFallbackEnabled() {
@@ -179,7 +201,7 @@ function isDtfProviderFallbackEnabled() {
 
 async function runReplicateMockup(
     prompt: string,
-    referenceImage: { base64: string; mimeType: string } | null | undefined
+    referenceImage: DtfImageReference | null | undefined
 ) {
     if (!isReplicateTokenConfigured()) {
         return null;
@@ -202,7 +224,7 @@ async function runReplicateMockup(
 async function runReplicateMockupFallback(
     originalError: unknown,
     prompt: string,
-    referenceImage: { base64: string; mimeType: string } | null | undefined,
+    referenceImage: DtfImageReference | null | undefined,
     traceId: string,
     fromProvider: string
 ) {
@@ -239,13 +261,17 @@ async function runReplicateMockupFallback(
  */
 export async function washDtfRoutedGenerateMockup(
     prompt: string,
-    referenceImage: { base64: string; mimeType: string } | null | undefined,
-    options: { traceId: string; timeoutMs: number }
+    referenceImage: DtfImageReference | null | undefined,
+    options: { traceId: string; timeoutMs: number; garmentReferenceImage?: DtfImageReference | null }
 ): Promise<string> {
     const { traceId, timeoutMs } = options;
+    const garmentReferenceImage = options.garmentReferenceImage ?? null;
+    const primaryReferenceImage = resolvePrimaryMockupReference(referenceImage, garmentReferenceImage);
     const p = getWashaDtfResolvedImageProvider();
     logDtfTrace("dtf.ai.generate-mockup", traceId, "router_provider", {
         resolved: p,
+        has_reference_image: Boolean(referenceImage?.base64),
+        has_garment_reference_image: Boolean(garmentReferenceImage?.base64),
     });
 
     if (
@@ -258,9 +284,9 @@ export async function washDtfRoutedGenerateMockup(
         p === "gemini-3.1-flash-image-preview"
     ) {
         try {
-            return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+            return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
         } catch (error) {
-            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
         }
     }
 
@@ -269,11 +295,11 @@ export async function washDtfRoutedGenerateMockup(
         logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_start", { model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1" });
         try {
             let result: string | null = null;
-            if (referenceImage?.base64 && referenceImage?.mimeType) {
+            if (primaryReferenceImage?.base64 && primaryReferenceImage?.mimeType) {
                 // تعديل صورة (gpt-image-1 يدعم edit)
                 result = await runOpenAIEditDataUrl(
                     prompt,
-                    referenceToDataUrl(referenceImage),
+                    referenceToDataUrl(primaryReferenceImage),
                     { throwOnError: true }
                 );
             }
@@ -289,10 +315,10 @@ export async function washDtfRoutedGenerateMockup(
                 if (isGeminiKeyConfigured()) {
                     logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_fallback_genai", {});
                     try {
-                        return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+                        return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
                     } catch { /* تجاهل — سنرمي الخطأ الأصلي */ }
                 }
-                return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+                return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
             }
             throw error;
         }
@@ -300,41 +326,41 @@ export async function washDtfRoutedGenerateMockup(
 
     if (p === "replicate") {
         if (isReplicateTokenConfigured()) {
-            const result = await runReplicateMockup(prompt, referenceImage);
+            const result = await runReplicateMockup(prompt, primaryReferenceImage);
             if (result) return result;
             // Replicate فشل — نحاول Gemini
         }
         // توكن Replicate غير مضبوط أو فشل — تراجع تلقائي إلى Gemini
         logDtfTrace("dtf.ai.generate-mockup", traceId, "replicate_no_token_fallback_genai", {});
         if (isGeminiKeyConfigured()) {
-            return runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+            return runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
         }
     }
 
     if (p === "nanobanana" && isGeminiKeyConfigured()) {
         try {
-            const u = await runNanoBananaDataUrl(prompt, referenceImage ? referenceToDataUrl(referenceImage) : null, {
+            const u = await runNanoBananaDataUrl(prompt, primaryReferenceImage ? referenceToDataUrl(primaryReferenceImage) : null, {
                 throwOnError: true,
             });
             if (u) return u;
             throw new Error("لم يرجع مزود Nano Banana صورة صالحة.");
         } catch (error) {
-            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
         }
     }
 
     if (p === "gemini" && isGeminiKeyConfigured()) {
-        const refUrl = referenceImage ? referenceToDataUrl(referenceImage) : null;
+        const refUrl = primaryReferenceImage ? referenceToDataUrl(primaryReferenceImage) : null;
         try {
             const n = await runNanoBananaDataUrl(prompt, refUrl, { throwOnError: true });
             if (n) return n;
-            if (!referenceImage) {
+            if (!primaryReferenceImage) {
                 const im = await runGeminiImagenDataUrl(prompt);
                 if (im) return im;
             }
             throw new Error("لم يرجع مزود Gemini صورة صالحة.");
         } catch (error) {
-            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, p);
+            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
         }
     }
 
@@ -350,9 +376,9 @@ export async function washDtfRoutedGenerateMockup(
     if (isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_genai", { from: p });
         try {
-            return await runGenaiSdkMockup(prompt, referenceImage, timeoutMs, traceId);
+            return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
         } catch (error) {
-            return runReplicateMockupFallback(error, prompt, referenceImage, traceId, "genai");
+            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, "genai");
         }
     }
 

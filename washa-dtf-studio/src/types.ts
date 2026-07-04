@@ -41,6 +41,8 @@ export interface DtfStudioGarmentOption {
   name: string;
   slug: string;
   imageUrl: string | null;
+  aiReferenceFrontUrl: string | null;
+  aiReferenceBackUrl: string | null;
   sortOrder: number;
   basePrice: number;
   pricing: {
@@ -167,6 +169,8 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       name: 'تي شيرت',
       slug: 'tshirt',
       imageUrl: '/mockups/tshirt-front.png',
+      aiReferenceFrontUrl: null,
+      aiReferenceBackUrl: null,
       sortOrder: 0,
       basePrice: 0,
       pricing: {
@@ -207,6 +211,8 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       name: 'هودي',
       slug: 'hoodie',
       imageUrl: '/mockups/hoodie-front.png',
+      aiReferenceFrontUrl: null,
+      aiReferenceBackUrl: null,
       sortOrder: 1,
       basePrice: 0,
       pricing: {
@@ -229,6 +235,8 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       name: 'سويت شيرت',
       slug: 'sweatshirt',
       imageUrl: '/mockups/pullover-back.png',
+      aiReferenceFrontUrl: null,
+      aiReferenceBackUrl: null,
       sortOrder: 2,
       basePrice: 0,
       pricing: {
@@ -250,6 +258,8 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       name: 'بلوفر',
       slug: 'pullover',
       imageUrl: '/mockups/pullover-front.png',
+      aiReferenceFrontUrl: null,
+      aiReferenceBackUrl: null,
       sortOrder: 3,
       basePrice: 0,
       pricing: {
