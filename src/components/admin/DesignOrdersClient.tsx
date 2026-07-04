@@ -263,7 +263,6 @@ export function DesignOrdersClient({
                                                 
                                                 <div className="flex items-center gap-3 mb-3">
                                                     {order.design_method === "studio" && order.dtf_mockup_url ? (
-                                                        // eslint-disable-next-line @next/next/no-img-element
                                                         <img src={order.dtf_mockup_url} alt="معاينة التصميم" className="w-12 h-12 rounded-lg object-cover border border-emerald-500/20" />
                                                     ) : (
                                                         <div className="w-12 h-12 rounded-lg bg-theme-faint flex items-center justify-center">
@@ -365,7 +364,6 @@ export function DesignOrdersClient({
                                         <td className="px-4 py-3">
                                             <div className="flex items-start gap-2">
                                                 {order.design_method === "studio" && order.dtf_mockup_url && (
-                                                    // eslint-disable-next-line @next/next/no-img-element
                                                     <img
                                                         src={order.dtf_mockup_url}
                                                         alt="معاينة التصميم"

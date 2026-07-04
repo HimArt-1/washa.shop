@@ -41,7 +41,6 @@ export function Header({ visibility }: { visibility?: { gallery?: boolean; store
         toggleCart(true);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filter Nav Items according to visibility settings

@@ -132,7 +132,6 @@ export function ProductActions({
             metadata: { title: productTitle, price: productPrice },
         });
         pixelViewContent({ contentId: product.id, contentName: productTitle, value: productPrice });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

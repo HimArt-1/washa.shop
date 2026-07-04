@@ -244,7 +244,6 @@ export function CreationStepInput({
                 onClick={() => handleExclusiveSelect(d)}
                 className="relative aspect-square rounded-xl overflow-hidden border-2 border-theme-soft hover:border-gold/40 transition-colors group"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={d.image_url} alt={d.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                   <p className="text-xs font-bold text-theme truncate">{d.title}</p>
@@ -370,7 +369,6 @@ export function CreationStepInput({
                 onClick={() => handleStudioSelect(art)}
                 className="aspect-square rounded-xl overflow-hidden border-2 border-theme-soft hover:border-gold/40"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={art.image_url} alt={art.title ?? ""} className="w-full h-full object-cover" />
               </button>
             ))}
@@ -513,7 +511,6 @@ export function CreationStepInput({
         </div>
         {state.imagePreviewUrl && (
           <div className="relative inline-block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={state.imagePreviewUrl} alt="معاينة" className="h-32 w-auto object-contain rounded-xl border" />
             <button
               type="button"
@@ -662,7 +659,6 @@ export function CreationStepInput({
             >
               {state.imagePreviewUrl ? (
                 <div className="relative inline-block">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={state.imagePreviewUrl} alt="" className="h-24 w-auto rounded-lg" />
                   <button
                     type="button"
@@ -693,7 +689,6 @@ export function CreationStepInput({
                   state.combineStudioId === art.id ? "border-gold" : "border-theme-soft"
                 }`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={art.image_url} alt="" className="w-full h-full object-cover" />
               </button>
             ))}

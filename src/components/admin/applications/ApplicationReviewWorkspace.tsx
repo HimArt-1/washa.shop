@@ -578,7 +578,6 @@ export function ApplicationReviewWorkspace({
                                         rel="noopener noreferrer"
                                         className="overflow-hidden rounded-2xl border border-theme-subtle bg-[color:var(--surface-elevated)] transition-all hover:border-gold/30"
                                     >
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img src={imageUrl} alt={`Portfolio ${index + 1}`} className="h-48 w-full object-cover" />
                                     </a>
                                 ))}

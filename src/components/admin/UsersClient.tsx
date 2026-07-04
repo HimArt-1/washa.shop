@@ -924,7 +924,6 @@ function EditUserModal({
                 website: user.website || "",
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.id]);
 
     if (!user) return null;

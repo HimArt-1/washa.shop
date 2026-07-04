@@ -300,7 +300,6 @@ export function DesignYourPieceWizard({
             startTrackedRef.current = true;
             trackEvent("design_order_start");
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Check for existing active order on mount

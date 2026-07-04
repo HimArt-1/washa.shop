@@ -261,7 +261,6 @@ export function ClerkUsersClient({
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-theme-subtle">
                                                             {user.imageUrl ? (
-                                                                // eslint-disable-next-line @next/next/no-img-element
                                                                 <img
                                                                     src={user.imageUrl}
                                                                     alt=""

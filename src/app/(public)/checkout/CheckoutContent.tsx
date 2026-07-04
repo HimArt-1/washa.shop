@@ -96,7 +96,6 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
         trackEvent("checkout_start", { metadata: { itemCount: items.length } });
         pixelInitiateCheckout({ numItems: items.length, value: subtotal });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Auto-verify on return from Paylink

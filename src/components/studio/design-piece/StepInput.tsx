@@ -134,7 +134,6 @@ export function StepInput({
                 animate={{ opacity: 1 }}
                 className="relative mt-4 inline-block"
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagePreviewUrl}
                   alt="معاينة"

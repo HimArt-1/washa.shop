@@ -59,7 +59,7 @@ export function sanitizeRecentlyViewedItems(value: unknown): RecentlyViewedItem[
 export function RecentlyViewedTracker({ product }: { product: RecentlyViewedItem }) {
     useEffect(() => {
         saveRecentlyViewed(product);
-    }, [product.id]); // eslint-disable-line
+    }, [product.id]);
 
     return null;
 }
