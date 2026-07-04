@@ -42,7 +42,7 @@ function nextWithPathname(req: NextRequest) {
     return response;
 }
 
-export default clerkMiddleware(async (auth, req) => {
+export const proxy = clerkMiddleware(async (auth, req) => {
     if (isPublicRoute(req)) return;
     if (isProtectedRoute(req)) {
         if (shouldBypassClerkForDashboardPath(req.nextUrl.pathname)) {
@@ -62,7 +62,7 @@ export default clerkMiddleware(async (auth, req) => {
         return nextWithPathname(req);
     } else if (isAuthAwareApiRoute(req)) {
         // Hydrate auth state so currentUser() works in these route handlers.
-        // Clerk v6 uses lazy evaluation — auth() must be called in the middleware
+        // Clerk v6 uses lazy evaluation — auth() must be called in the proxy
         // for the session to be available downstream. No redirect on unauthenticated;
         // each route handler handles 401/403 itself.
         await auth();
