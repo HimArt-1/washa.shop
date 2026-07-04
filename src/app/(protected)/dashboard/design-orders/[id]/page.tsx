@@ -6,11 +6,11 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }
 
 export default async function DesignOrderDetailPage({ params }: PageProps) {
-    const { id } = params;
+    const { id } = await params;
 
     const [order, adminList] = await Promise.all([
         getDesignOrder(id),

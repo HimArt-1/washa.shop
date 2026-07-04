@@ -6,8 +6,9 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function CustomerProfilePage({ params }: { params: { id: string } }) {
-    const customer = await getCustomerProfile(params.id);
+export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const customer = await getCustomerProfile(id);
 
     if (!customer) {
         notFound();

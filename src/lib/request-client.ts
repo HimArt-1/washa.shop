@@ -5,13 +5,17 @@ function firstHeaderIp(value: string | null) {
     return value?.split(",")[0]?.trim() || null;
 }
 
+function legacyRequestIp(request: NextRequest) {
+    return (request as NextRequest & { ip?: string | null }).ip || null;
+}
+
 export function getRequestClientIdentifier(request: NextRequest) {
     const ip =
         firstHeaderIp(request.headers.get("x-forwarded-for")) ||
         firstHeaderIp(request.headers.get("x-vercel-forwarded-for")) ||
         request.headers.get("cf-connecting-ip") ||
         request.headers.get("x-real-ip") ||
-        request.ip ||
+        legacyRequestIp(request) ||
         null;
 
     if (ip) {

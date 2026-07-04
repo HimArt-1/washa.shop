@@ -839,9 +839,9 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
         return { success: false, error: error.message };
     }
 
-    revalidateTag(SITE_SETTINGS_CACHE_TAG);
+    revalidateTag(SITE_SETTINGS_CACHE_TAG, "max");
     if (key === "visibility") {
-        revalidateTag(PUBLIC_VISIBILITY_CACHE_TAG);
+        revalidateTag(PUBLIC_VISIBILITY_CACHE_TAG, "max");
     }
 
     if (key === "operational_rules" && changedRuleKeys.length > 0) {

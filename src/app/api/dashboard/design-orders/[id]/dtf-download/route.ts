@@ -47,8 +47,9 @@ async function requireAdmin() {
 
 export async function GET(
     request: NextRequest,
-    context: { params: { id: string } },
+    context: { params: Promise<{ id: string }> },
 ) {
+    const params = await context.params;
     const access = await requireAdmin();
     if (!access.ok) {
         return NextResponse.json({ error: access.error }, { status: access.status });
@@ -57,7 +58,7 @@ export async function GET(
     const { data: order, error } = await access.supabase
         .from("custom_design_orders")
         .select("order_number, dtf_extracted_url")
-        .eq("id", context.params.id)
+        .eq("id", params.id)
         .single();
 
     if (error || !order?.dtf_extracted_url) {

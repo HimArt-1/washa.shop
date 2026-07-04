@@ -220,9 +220,10 @@ self.addEventListener("fetch", (event) => {
 
 export async function GET(
     request: NextRequest,
-    context: { params: { path?: string[] } }
+    context: { params: Promise<{ path?: string[] }> }
 ) {
-    const segments = context.params.path ?? [];
+    const params = await context.params;
+    const segments = params.path ?? [];
     const relativePath = segments.length > 0 ? path.join(...segments) : "index.html";
     const guardResponse = await ensureWashaAiDevSurfaceAccess(request, "dev");
     if (guardResponse) {

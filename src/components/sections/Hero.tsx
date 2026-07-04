@@ -645,7 +645,7 @@ export function Hero({
                   <Link
                     href="/sign-in"
                     className="group flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.25em] uppercase transition-all duration-400"
-                    style={{ color: "rgba(250, 243, 230, 0.45)" }}
+                    style={{ color: "var(--wusha-text-muted)" }}
                   >
                     <LogIn className="w-3 h-3 opacity-60 transition-opacity group-hover:opacity-100" />
                     <span className="transition-colors group-hover:text-gold">الدخول</span>
@@ -654,7 +654,7 @@ export function Hero({
                   <Link
                     href="/sign-up"
                     className="group flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.25em] uppercase transition-all duration-400"
-                    style={{ color: "rgba(250, 243, 230, 0.45)" }}
+                    style={{ color: "var(--wusha-text-muted)" }}
                   >
                     <UserPlus className="w-3 h-3 opacity-60 transition-opacity group-hover:opacity-100" />
                     <span className="transition-colors group-hover:text-gold">حساب جديد</span>

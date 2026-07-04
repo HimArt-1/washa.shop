@@ -6,8 +6,9 @@ export const metadata = {
     title: "محادثة الدعم | حسابي",
 };
 
-export default async function SupportTicketPage({ params }: { params: { id: string } }) {
-    const details = await getSupportTicketDetails(params.id);
+export default async function SupportTicketPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const details = await getSupportTicketDetails(id);
 
     if (!details) {
         notFound();

@@ -19,9 +19,9 @@ import type { Application } from "@/types/database";
 const APPLICATION_RATE_LIMIT = 5;
 const APPLICATION_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 دقائق
 
-function getRequestIp(): string {
+async function getRequestIp(): Promise<string> {
     try {
-        const headersList = headers();
+        const headersList = await headers();
         return (
             headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
             headersList.get("x-real-ip") ||
@@ -98,7 +98,7 @@ async function getCurrentMatchingProfileId(email: string) {
 
 async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<ActionResponse> {
     // ── Rate Limiting بالـ IP ─────────────────────────────
-    const ip = getRequestIp();
+    const ip = await getRequestIp();
     const rateKey = `application:${ip}`;
     const rateCheck = await checkRateLimit(rateKey, APPLICATION_RATE_LIMIT, APPLICATION_RATE_WINDOW_MS);
     if (!rateCheck.success) {

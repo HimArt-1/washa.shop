@@ -4,10 +4,11 @@ import { Logo } from "@/components/ui/Logo";
 import { ArrowRight } from "lucide-react";
 import { CyberAuthBackground } from "@/components/auth/CyberAuthBackground";
 
-type Props = { searchParams?: { redirect_url?: string } };
+type Props = { searchParams?: Promise<{ redirect_url?: string }> };
 
-export default function SignInPage({ searchParams }: Props) {
-    const redirectUrl = searchParams?.redirect_url?.startsWith("/") ? searchParams.redirect_url : "/account";
+export default async function SignInPage({ searchParams }: Props) {
+    const params = (await searchParams) ?? {};
+    const redirectUrl = params.redirect_url?.startsWith("/") ? params.redirect_url : "/account";
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-bg px-4 py-12 relative overflow-hidden">

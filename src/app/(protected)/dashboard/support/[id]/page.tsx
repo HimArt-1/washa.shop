@@ -7,8 +7,9 @@ export const metadata = {
     title: "مساحة عمل الدعم | لوحة الإدارة",
 };
 
-export default async function AdminSupportTicketPage({ params }: { params: { id: string } }) {
-    const details = await getSupportTicketDetails(params.id);
+export default async function AdminSupportTicketPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    const details = await getSupportTicketDetails(id);
 
     if (!details) {
         notFound();

@@ -197,7 +197,6 @@ export function AISection({ config }: AISectionProps) {
                             fill
                             className="object-contain drop-shadow-[0_28px_58px_rgba(0,0,0,0.26)]"
                             sizes="(max-width: 640px) 240px, (max-width: 1024px) 288px, 320px"
-                            priority
                             unoptimized={garmentImage.endsWith(".svg")}
                           />
                         </motion.div>
@@ -295,7 +294,6 @@ export function AISection({ config }: AISectionProps) {
                             fill
                             className="object-cover"
                             sizes="(max-width: 640px) calc(100vw - 64px), 448px"
-                            priority
                           />
                         </motion.div>
 

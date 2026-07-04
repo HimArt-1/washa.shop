@@ -7,6 +7,35 @@ export default defineConfig(() => {
   return {
     base: '/design/washa-ai/app/',
     plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return;
+            }
+
+            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+              return 'vendor-react';
+            }
+
+            if (id.includes('/lucide-react/') || id.includes('/lucide/')) {
+              return 'vendor-icons';
+            }
+
+            if (id.includes('/motion/') || id.includes('/framer-motion/')) {
+              return 'vendor-motion';
+            }
+
+            if (id.includes('/@google/genai/')) {
+              return 'vendor-ai';
+            }
+
+            return 'vendor';
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

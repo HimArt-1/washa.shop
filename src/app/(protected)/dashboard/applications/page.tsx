@@ -5,17 +5,17 @@ import {
 import { ApplicationsOperationsCenter } from "@/components/admin/applications/ApplicationsOperationsCenter";
 
 interface PageProps {
-    searchParams?: {
+    searchParams?: Promise<{
         status?: string;
         joinType?: string;
         gender?: string;
         ageBand?: string;
         identityState?: string;
-    };
+    }>;
 }
 
 export default async function AdminApplicationsPage({ searchParams }: PageProps) {
-    const params = searchParams ?? {};
+    const params = (await searchParams) ?? {};
     const status = params.status || "all";
     const joinType = params.joinType || "all";
     const gender = params.gender || "all";

@@ -1,11 +1,18 @@
 "use client";
 
 import { ReactLenis } from "@studio-freight/react-lenis";
+import type { ComponentType, ReactNode } from "react";
 
-export function SmoothScroll({ children }: { children: React.ReactNode }) {
+const SmoothReactLenis = ReactLenis as unknown as ComponentType<{
+    root?: boolean;
+    options?: { lerp?: number; duration?: number; smoothWheel?: boolean };
+    children?: ReactNode;
+}>;
+
+export function SmoothScroll({ children }: { children: ReactNode }) {
     return (
-        <ReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
+        <SmoothReactLenis root options={{ lerp: 0.1, duration: 1.5, smoothWheel: true }}>
             {children}
-        </ReactLenis>
+        </SmoothReactLenis>
     );
 }

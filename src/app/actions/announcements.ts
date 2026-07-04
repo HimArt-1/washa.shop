@@ -169,7 +169,7 @@ function validateAnnouncementPayload(data: Omit<Announcement, "id" | "createdAt"
 }
 
 function revalidateAnnouncementSurfaces() {
-    revalidateTag(ANNOUNCEMENTS_CACHE_TAG);
+    revalidateTag(ANNOUNCEMENTS_CACHE_TAG, "max");
     revalidatePath("/dashboard/announcements");
     revalidatePath("/", "layout");
 }

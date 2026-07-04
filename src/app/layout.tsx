@@ -1,10 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
-import dynamic from "next/dynamic";
 import { ThemeProvider } from "@/context/ThemeContext";
-const FloatingWhatsAppButton = dynamic(() => import("@/components/ui/FloatingWhatsAppButton").then(m => m.FloatingWhatsAppButton), { ssr: false });
-const FloatingSupportButton = dynamic(() => import("@/components/ui/FloatingSupportButton").then(m => m.FloatingSupportButton), { ssr: false });
+import { FloatingActions } from "@/components/ui/FloatingActions";
 import { VisitLogger } from "@/components/ops/VisitLogger";
 import { ClientErrorLogger } from "@/components/ops/ClientErrorLogger";
 import MarketingPixels from "@/components/ops/MarketingPixels";
@@ -513,8 +511,7 @@ export default async function RootLayout({
           <ServiceWorkerRegister />
           
           {/* Floating UI Elements */}
-          <FloatingWhatsAppButton phoneNumber={WHATSAPP_NUMBER} />
-          <FloatingSupportButton />
+          <FloatingActions phoneNumber={WHATSAPP_NUMBER} />
 
           {/* Re:amaze — دعم فني */}
           <ReamazeLoader />

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { headers } from "next/headers";
 import { AdminSidebar } from "@/components/admin/layout/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/layout/AdminTopBar";
@@ -21,7 +21,8 @@ export default async function DashboardLayout({
             redirect("/");
         }
 
-        const pathname = headers().get("x-washa-pathname") || "/dashboard";
+        const headersList = await headers();
+        const pathname = headersList.get("x-washa-pathname") || "/dashboard";
         if (!canAccessAdminPath(pathname, profile.role)) {
             redirect("/");
         }

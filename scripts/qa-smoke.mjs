@@ -6,11 +6,11 @@ const routes = [
   { path: "/", expectedStatus: 200 },
   { path: "/join", expectedStatus: 200 },
   { path: "/store", expectedStatus: 200 },
-  { path: "/dashboard", expectedStatus: 200 },
-  { path: "/dashboard/applications", expectedStatus: 200 },
-  { path: "/dashboard/settings", expectedStatus: 200 },
-  { path: "/dashboard/support", expectedStatus: 200 },
-  { path: "/dashboard/products-inventory", expectedStatus: 200 },
+  { path: "/dashboard", expectedStatuses: [200, 307, 308], protected: true },
+  { path: "/dashboard/applications", expectedStatuses: [200, 307, 308], protected: true },
+  { path: "/dashboard/settings", expectedStatuses: [200, 307, 308], protected: true },
+  { path: "/dashboard/support", expectedStatuses: [200, 307, 308], protected: true },
+  { path: "/dashboard/products-inventory", expectedStatuses: [200, 307, 308], protected: true },
 ];
 
 function isHtml(response) {
@@ -32,9 +32,16 @@ async function run() {
         },
       });
 
-      const ok = response.status === route.expectedStatus && isHtml(response);
+      const expectedStatuses = route.expectedStatuses ?? [route.expectedStatus ?? 200];
+      const isExpectedStatus = expectedStatuses.includes(response.status);
+      const isProtectedRedirect =
+        route.protected === true &&
+        (response.status === 307 || response.status === 308) &&
+        (response.headers.get("location") || "").includes("/sign-in");
+      const ok = isExpectedStatus && (isHtml(response) || isProtectedRedirect);
       const mark = ok ? "PASS" : "FAIL";
-      console.log(`${mark.padEnd(5)} ${route.path} -> ${response.status}`);
+      const redirectNote = isProtectedRedirect ? ` -> ${response.headers.get("location")}` : "";
+      console.log(`${mark.padEnd(5)} ${route.path} -> ${response.status}${redirectNote}`);
 
       if (!ok) {
         failures.push({

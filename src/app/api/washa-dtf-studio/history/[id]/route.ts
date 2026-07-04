@@ -6,8 +6,9 @@ export const dynamic = "force-dynamic";
 
 export async function DELETE(
     _request: NextRequest,
-    context: { params: { id: string } }
+    context: { params: Promise<{ id: string }> }
 ) {
+    const params = await context.params;
     const access = await requireWashaDtfHistoryAccess();
     if (!access.ok) {
         return NextResponse.json({ error: access.error }, { status: access.status });
@@ -18,7 +19,7 @@ export async function DELETE(
     }
 
     try {
-        await deleteDtfHistoryItem(access.supabase, access.profileId, context.params.id);
+        await deleteDtfHistoryItem(access.supabase, access.profileId, params.id);
         return NextResponse.json({ ok: true });
     } catch (error) {
         console.error("[washa-dtf-studio.history.delete]", error);

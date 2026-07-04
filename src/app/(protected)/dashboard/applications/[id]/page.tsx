@@ -9,11 +9,12 @@ export const metadata = {
 export default async function AdminApplicationDetailPage({
     params,
 }: {
-    params: { id: string };
+    params: Promise<{ id: string }>;
 }) {
+    const { id } = await params;
     const [application, workspaceContext] = await Promise.all([
-        getAdminApplicationDetails(params.id),
-        getApplicationWorkspaceContext(params.id),
+        getAdminApplicationDetails(id),
+        getApplicationWorkspaceContext(id),
     ]);
 
     if (!application) {

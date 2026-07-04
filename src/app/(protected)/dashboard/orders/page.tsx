@@ -6,11 +6,11 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-    searchParams?: { page?: string; status?: string; focus?: string; search?: string };
+    searchParams?: Promise<{ page?: string; status?: string; focus?: string; search?: string }>;
 }
 
 export default async function AdminOrdersPage({ searchParams }: PageProps) {
-    const params = searchParams ?? {};
+    const params = (await searchParams) ?? {};
     const page = Number(params.page) || 1;
     const status = params.status || "all";
     const search = params.search || "";

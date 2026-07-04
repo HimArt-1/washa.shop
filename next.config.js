@@ -91,6 +91,7 @@ module.exports = (phase) => {
   /** @type {import('next').NextConfig} */
   return {
     distDir: isDevelopmentServer ? '.next-dev' : '.next',
+    outputFileTracingRoot: __dirname,
     env: {
       NEXT_PUBLIC_BUILD_VERSION: deploymentId,
     },
