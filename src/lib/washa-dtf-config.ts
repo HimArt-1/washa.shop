@@ -39,6 +39,7 @@ export type WashaDtfStudioConfig = {
         imageUrl: string | null;
         aiReferenceFrontUrl: string | null;
         aiReferenceBackUrl: string | null;
+        aiReferenceMode: "match_reference" | "prompt_realistic";
         sortOrder: number;
         basePrice: number;
         pricing: {
@@ -254,6 +255,7 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
             const garmentWithAiReferences = garment as CustomDesignGarment & {
                 ai_reference_front_url?: string | null;
                 ai_reference_back_url?: string | null;
+                ai_reference_mode?: "match_reference" | "prompt_realistic" | null;
             };
             const pricing = applyPositionPricing({
                 base_price: garment.base_price,
@@ -272,6 +274,7 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
                 imageUrl: garment.image_url,
                 aiReferenceFrontUrl: garmentWithAiReferences.ai_reference_front_url ?? null,
                 aiReferenceBackUrl: garmentWithAiReferences.ai_reference_back_url ?? null,
+                aiReferenceMode: garmentWithAiReferences.ai_reference_mode === "prompt_realistic" ? "prompt_realistic" : "match_reference",
                 sortOrder: garment.sort_order,
                 basePrice: garment.base_price,
                 pricing: {

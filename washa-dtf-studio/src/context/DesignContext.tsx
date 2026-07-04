@@ -155,6 +155,7 @@ function resolveOperationalGarmentReference(
   printPosition: DesignState['printPosition']
 ) {
   if (!garment) return null;
+  if (garment.aiReferenceMode === 'prompt_realistic') return null;
   const frontUrl = garment.aiReferenceFrontUrl?.trim() || '';
   const backUrl = garment.aiReferenceBackUrl?.trim() || '';
   const side: 'front' | 'back' = printPosition === 'back' ? 'back' : 'front';

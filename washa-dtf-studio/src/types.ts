@@ -7,6 +7,7 @@ export type ColorPalette = string;
 export type DesignMethod = 'text' | 'image' | 'calligraphy';
 export type PrintPosition = 'chest' | 'back' | 'shoulder_right' | 'shoulder_left';
 export type PrintSize = 'large' | 'small';
+export type DtfStudioGarmentAiReferenceMode = 'match_reference' | 'prompt_realistic';
 
 export interface DtfStudioColorToken {
   hex: string;
@@ -43,6 +44,7 @@ export interface DtfStudioGarmentOption {
   imageUrl: string | null;
   aiReferenceFrontUrl: string | null;
   aiReferenceBackUrl: string | null;
+  aiReferenceMode: DtfStudioGarmentAiReferenceMode;
   sortOrder: number;
   basePrice: number;
   pricing: {
@@ -171,6 +173,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       imageUrl: '/mockups/tshirt-front.png',
       aiReferenceFrontUrl: null,
       aiReferenceBackUrl: null,
+      aiReferenceMode: 'match_reference',
       sortOrder: 0,
       basePrice: 0,
       pricing: {
@@ -213,6 +216,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       imageUrl: '/mockups/hoodie-front.png',
       aiReferenceFrontUrl: null,
       aiReferenceBackUrl: null,
+      aiReferenceMode: 'match_reference',
       sortOrder: 1,
       basePrice: 0,
       pricing: {
@@ -237,6 +241,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       imageUrl: '/mockups/pullover-back.png',
       aiReferenceFrontUrl: null,
       aiReferenceBackUrl: null,
+      aiReferenceMode: 'match_reference',
       sortOrder: 2,
       basePrice: 0,
       pricing: {
@@ -260,6 +265,7 @@ export const FALLBACK_DTF_CONFIG: DtfStudioConfig = {
       imageUrl: '/mockups/pullover-front.png',
       aiReferenceFrontUrl: null,
       aiReferenceBackUrl: null,
+      aiReferenceMode: 'match_reference',
       sortOrder: 3,
       basePrice: 0,
       pricing: {

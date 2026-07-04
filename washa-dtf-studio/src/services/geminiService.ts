@@ -76,7 +76,7 @@ export async function generateMockup(
   const garmentReferenceDirectives = [
     hasGarmentReference
       ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
-      : 'Final output must be a photorealistic premium studio product mockup, not line art, sketch, vector preview, drawing, or flat catalog icon.',
+      : 'No hidden garment reference is supplied. Treat the selected garment type, color, side, and print placement as authoritative product specifications. Generate a photorealistic premium studio product mockup with the correct garment silhouette, collar/hood/sleeves/fit, fabric behavior, and camera framing; not line art, sketch, vector preview, drawing, or flat catalog icon.',
     hasGarmentReference && preferences.garmentReferenceSide
       ? `The garment reference side is ${preferences.garmentReferenceSide}; generate the same side unless the selected print placement explicitly requires otherwise.`
       : null,

@@ -10,6 +10,7 @@ const ENERGY_LEVELS = ["low", "medium", "high"] as const;
 const COMPLEXITY_LEVELS = ["minimal", "balanced", "bold"] as const;
 const LUXURY_TIERS = ["core", "signature", "editorial"] as const;
 const CATALOG_SCOPES = ["design_piece", "dtf_studio", "shared"] as const;
+const GARMENT_AI_REFERENCE_MODES = ["match_reference", "prompt_realistic"] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const SAFE_RECORD_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/;
 
@@ -114,6 +115,11 @@ const printPositionSchema = z.preprocess(
 const printSizeSchema = z.preprocess(
     trimToUndefined,
     z.enum(PRINT_SIZES, { error: "حجم الطباعة غير صالح" })
+);
+
+const garmentAiReferenceModeSchema = z.preprocess(
+    (value) => trimToUndefined(value) ?? "match_reference",
+    z.enum(GARMENT_AI_REFERENCE_MODES, { error: "طريقة توجيه AI للقطعة غير صالحة" })
 );
 
 const customColorsSchema = z
@@ -339,6 +345,7 @@ export const smartStoreUpsertGarmentSchema = z.object({
     image_url: optionalSafeUrl("صورة القطعة"),
     ai_reference_front_url: optionalSafeUrl("مرجع AI الواقعي الأمامي"),
     ai_reference_back_url: optionalSafeUrl("مرجع AI الواقعي الخلفي"),
+    ai_reference_mode: garmentAiReferenceModeSchema,
     sort_order: numberFromUnknown("ترتيب القطعة", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
     base_price: numberFromUnknown("السعر الأساسي", { min: 0, defaultValue: 0 }),

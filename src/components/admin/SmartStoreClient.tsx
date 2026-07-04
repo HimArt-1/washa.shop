@@ -127,6 +127,21 @@ const DEFAULT_TAB_BY_WORKSPACE: Record<WorkspaceId, TabId> = {
     dtfStudio: "garments",
 };
 
+const GARMENT_AI_REFERENCE_MODE_COPY: Record<CustomDesignGarment["ai_reference_mode"], { label: string; description: string }> = {
+    match_reference: {
+        label: "يلتزم بالمرجع الواقعي",
+        description: "يرسل مرجع القطعة المخفي للنموذج حتى يطابق القصّة والخامة وزاوية التصوير.",
+    },
+    prompt_realistic: {
+        label: "بدون مرجع، مظهر واقعي",
+        description: "لا يرسل صورة مرجعية، ويجبر النموذج على الالتزام باسم القطعة واللون والموضع بمظهر واقعي.",
+    },
+};
+
+function getGarmentAiReferenceMode(value: CustomDesignGarment["ai_reference_mode"] | null | undefined): CustomDesignGarment["ai_reference_mode"] {
+    return value === "prompt_realistic" ? "prompt_realistic" : "match_reference";
+}
+
 // ─── Component ──────────────────────────────────────────
 
 export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
@@ -862,6 +877,7 @@ function GarmentsTab({
     const [imageUrl, setImageUrl] = useState("");
     const [aiReferenceFrontUrl, setAiReferenceFrontUrl] = useState("");
     const [aiReferenceBackUrl, setAiReferenceBackUrl] = useState("");
+    const [aiReferenceMode, setAiReferenceMode] = useState<CustomDesignGarment["ai_reference_mode"]>("match_reference");
     const [error, setError] = useState<string | null>(null);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
@@ -870,6 +886,7 @@ function GarmentsTab({
         setImageUrl("");
         setAiReferenceFrontUrl("");
         setAiReferenceBackUrl("");
+        setAiReferenceMode("match_reference");
         setError(null);
     };
     const openEdit = (g: CustomDesignGarment) => {
@@ -877,6 +894,7 @@ function GarmentsTab({
         setImageUrl(g.image_url ?? "");
         setAiReferenceFrontUrl(g.ai_reference_front_url ?? "");
         setAiReferenceBackUrl(g.ai_reference_back_url ?? "");
+        setAiReferenceMode(getGarmentAiReferenceMode(g.ai_reference_mode));
         setError(null);
     };
     const closeModal = () => {
@@ -885,6 +903,7 @@ function GarmentsTab({
         setImageUrl("");
         setAiReferenceFrontUrl("");
         setAiReferenceBackUrl("");
+        setAiReferenceMode("match_reference");
         setError(null);
     };
 
@@ -898,6 +917,7 @@ function GarmentsTab({
             fd.set("image_url", imageUrl);
             fd.set("ai_reference_front_url", aiReferenceFrontUrl);
             fd.set("ai_reference_back_url", aiReferenceBackUrl);
+            fd.set("ai_reference_mode", aiReferenceMode);
             const result = await upsertGarment(fd);
             const actionError = getActionError(result);
             if (actionError) {
@@ -922,7 +942,7 @@ function GarmentsTab({
         } finally {
             setLoading(false);
         }
-    }, [aiReferenceBackUrl, aiReferenceFrontUrl, editing, onFallbackRefresh, imageUrl, setItems]);
+    }, [aiReferenceBackUrl, aiReferenceFrontUrl, aiReferenceMode, editing, onFallbackRefresh, imageUrl, setItems]);
 
     const handleDelete = useCallback(async () => {
         if (!pendingDeleteId) return;
@@ -956,6 +976,21 @@ function GarmentsTab({
             </FormField>
             <FormField label="صورة القطعة">
                 <ImageUploader value={imageUrl} onChange={setImageUrl} folder="garments" fieldName="image_url" />
+            </FormField>
+            <FormField label="طريقة توجيه الذكاء الاصطناعي">
+                <select
+                    name="ai_reference_mode"
+                    value={aiReferenceMode}
+                    onChange={(event) => setAiReferenceMode(getGarmentAiReferenceMode(event.target.value as CustomDesignGarment["ai_reference_mode"]))}
+                    className={inputCls}
+                >
+                    {Object.entries(GARMENT_AI_REFERENCE_MODE_COPY).map(([value, copy]) => (
+                        <option key={value} value={value}>{copy.label}</option>
+                    ))}
+                </select>
+                <p className="mt-2 text-xs leading-relaxed text-theme-subtle">
+                    {GARMENT_AI_REFERENCE_MODE_COPY[aiReferenceMode].description}
+                </p>
             </FormField>
             <div className="grid gap-4 rounded-2xl border border-gold/15 bg-gold/5 p-4 md:grid-cols-2">
                 <FormField label="مرجع AI واقعي أمامي">
@@ -1020,6 +1055,9 @@ function GarmentsTab({
                                 <p className="font-medium text-theme truncate">{g.name}</p>
                                 <p className="text-xs text-theme-subtle">{g.slug} · ترتيب: {g.sort_order}</p>
                             </div>
+                            <span className="hidden rounded-full border border-gold/20 bg-gold/10 px-2 py-1 text-xs text-gold md:inline-flex">
+                                {GARMENT_AI_REFERENCE_MODE_COPY[getGarmentAiReferenceMode(g.ai_reference_mode)].label}
+                            </span>
                             <span className={`text-xs px-2 py-1 rounded-full ${g.is_active ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
                                 {g.is_active ? "نشط" : "معطل"}
                             </span>

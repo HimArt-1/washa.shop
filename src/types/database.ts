@@ -343,6 +343,7 @@ export type CustomDesignGarment = {
     image_url: string | null;
     ai_reference_front_url: string | null;
     ai_reference_back_url: string | null;
+    ai_reference_mode: "match_reference" | "prompt_realistic";
     sort_order: number;
     is_active: boolean;
     base_price: number;
@@ -727,11 +728,12 @@ export type Database = {
             };
             custom_design_garments: {
                 Row: CustomDesignGarment;
-                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "ai_reference_front_url" | "ai_reference_back_url" | "price_chest_large" | "price_chest_small" | "price_back_large" | "price_back_small" | "price_shoulder_large" | "price_shoulder_small"> & {
+                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "ai_reference_front_url" | "ai_reference_back_url" | "ai_reference_mode" | "price_chest_large" | "price_chest_small" | "price_back_large" | "price_back_small" | "price_shoulder_large" | "price_shoulder_small"> & {
                     sort_order?: number;
                     is_active?: boolean;
                     ai_reference_front_url?: string | null;
                     ai_reference_back_url?: string | null;
+                    ai_reference_mode?: "match_reference" | "prompt_realistic";
                     price_chest_large?: number;
                     price_chest_small?: number;
                     price_back_large?: number;
