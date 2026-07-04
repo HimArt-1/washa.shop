@@ -398,7 +398,7 @@ export default function StepPalette() {
         <Button
           variant="gold"
           size="lg"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate()}
           disabled={!canGenerate || configLoading}
           className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
         >

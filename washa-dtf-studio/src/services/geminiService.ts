@@ -75,14 +75,14 @@ export async function generateMockup(
   const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
   const garmentReferenceDirectives = [
     hasGarmentReference
-      ? 'Use the hidden operational garment reference image as the exact product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
+      ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
       : 'Final output must be a photorealistic premium studio product mockup, not line art, sketch, vector preview, drawing, or flat catalog icon.',
     hasGarmentReference && preferences.garmentReferenceSide
       ? `The garment reference side is ${preferences.garmentReferenceSide}; generate the same side unless the selected print placement explicitly requires otherwise.`
       : null,
     `Recolor only the garment fabric to the customer's selected color (${selectedColorDirective || color}); keep realistic texture, wrinkles, shadows, and highlights. Do not leave the garment white unless white is the selected color.`,
     hasGarmentReference
-      ? 'The garment reference is operational only. Do not expose, describe, or copy it as artwork; use it only to match the garment realism and silhouette.'
+      ? 'The garment reference is operational only. Never treat the blank garment or recolored garment as the finished result; it must receive the new customer artwork described in the text prompt.'
       : null,
     'The final mockup must show the selected garment type clearly and realistically with the print integrated on fabric.',
   ];
@@ -171,11 +171,14 @@ export async function generateMockup(
       ])
     : compactPrompt([
         sceneDirectives,
-        `Visual concept: ${userDescription}.`,
-        'Pure illustration only. No text, letters, words, or typography.',
+        `Mandatory customer artwork concept: ${userDescription}.`,
+        'Create a new visible print artwork from the customer concept first, then place that artwork on the selected garment as a DTF print.',
+        'The result is invalid if the garment is blank, if only the garment color changes, or if the customer concept is missing from the print.',
+        'The print artwork may be graphic or illustrative, while the garment mockup must remain photorealistic. No text, letters, words, or typography unless the customer explicitly requested them.',
         `Style: ${style}.`,
         `Technique: ${technique}.`,
         `Palette: ${palette}.`,
+        `The printed artwork must be instantly recognizable as: ${userDescription}.`,
         'Single clean design with sharp details on fabric and no duplicated layers.',
         ...printDirectives,
       ]);

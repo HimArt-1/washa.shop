@@ -46,7 +46,7 @@ interface DesignContextType {
   orderResult: OrderResult | null;
   submitOrder: () => Promise<boolean>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleGenerate: () => Promise<void>;
+  handleGenerate: (options?: { promptOverride?: string }) => Promise<void>;
   handleExtract: () => Promise<void>;
   handleDownload: (imageUrl: string, filename: string) => void;
   resetDesign: () => void;
@@ -455,7 +455,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (options: { promptOverride?: string } = {}) => {
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
@@ -503,10 +503,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       resolveOperationalGarmentReference(selectedGarment, effectivePrintPosition)
     );
 
+    const generationPrompt = state.designMethod === 'calligraphy'
+      ? state.prompt
+      : (options.promptOverride?.trim() || state.prompt);
+
     const runGenerate = async (referenceImageBase64?: string, referenceImageMimeType?: string) => generateMockup(
       state.garmentType,
       state.garmentColor,
-      state.prompt,
+      generationPrompt,
       techniquePrompt,
       stylePrompt,
       palettePrompt,

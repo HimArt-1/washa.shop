@@ -444,15 +444,21 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
     }
   };
 
+  const getGenerationPromptOverride = () => composeCustomerFacingPromptV2({
+    state,
+    selectedStyle,
+    selectedPalette,
+  });
+
   const handleGenerateFromWizard = () => {
     if (!canGenerate) return;
     setStudioView('generation');
-    void handleGenerate();
+    void handleGenerate({ promptOverride: getGenerationPromptOverride() });
   };
 
   const handleRetryGenerate = () => {
     if (!canGenerate) return;
-    void handleGenerate();
+    void handleGenerate({ promptOverride: getGenerationPromptOverride() });
   };
 
   const handleEditStep = (index: number) => {

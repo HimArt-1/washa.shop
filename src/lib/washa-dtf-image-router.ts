@@ -83,9 +83,12 @@ async function runGenaiSdkMockup(
 ) {
     const client = getWashaDtfGenAiClient();
     const parts: any[] = [];
+    parts.push({
+        text: "Authoritative task: generate a final DTF product mockup where the customer's text prompt becomes a visible printed artwork on the garment. Reference images are support material only; a blank or merely recolored garment is a failed result.",
+    });
     if (garmentReferenceImage?.base64 && garmentReferenceImage?.mimeType) {
         parts.push({
-            text: "Image A is a hidden operational garment reference. Match its cut, proportions, seams, fabric behavior, camera angle, and studio lighting. Do not copy any artwork from it.",
+            text: "Image A is a hidden operational garment reference. Match its cut, proportions, seams, fabric behavior, camera angle, and studio lighting. Do not copy any artwork from it, and do not output it as a blank/recolored product without the new printed artwork.",
         });
         parts.push({
             inlineData: { data: garmentReferenceImage.base64, mimeType: garmentReferenceImage.mimeType },
