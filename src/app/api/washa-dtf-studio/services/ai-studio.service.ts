@@ -41,7 +41,7 @@ function getTextFromGenAiResponse(response: any) {
 }
 
 function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
-    const forbiddenPattern = /DTF|prompt|WASHA AI|مواصفات القطعة|موضع الطباعة|لون القطعة|المقاس|خلفية شفافة|قيود مهمة|الأسلوب الفني المطلوب|طريقة التنفيذ البصرية|لوحة الألوان/i;
+    const forbiddenPattern = /DTF|prompt|WASHA AI|مواصفات القطعة|موضع الطباعة|لون القطعة|المقاس|خلفية شفافة|قيود مهمة|الأسلوب الفني المطلوب|طريقة التنفيذ البصرية|لوحة الألوان|كاتلوج|كتالوج|برومبت|نموذج الذكاء|تعليمات/i;
     const cleaned = value
         .replace(/```[\s\S]*?```/g, "")
         .replace(/^[\s"'“”«»]+|[\s"'“”«»]+$/g, "")
@@ -57,7 +57,10 @@ function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
         .replace(/\s+/g, " ")
         .trim();
 
-    if (!cleaned || forbiddenPattern.test(cleaned)) {
+    const isTooSmallForShortIdea = fallbackIdea.length <= 60 && cleaned.length < Math.max(55, fallbackIdea.length + 24);
+    const isGeneric = /خلفية مناسبة|تفاصيل جميلة|مشهد غني وواضح|تصميم جذاب/i.test(cleaned) && cleaned.length < 95;
+
+    if (!cleaned || forbiddenPattern.test(cleaned) || isTooSmallForShortIdea || isGeneric) {
         throw new Error(`Idea enhancer returned an internal prompt for: ${fallbackIdea}`);
     }
 
@@ -73,13 +76,16 @@ function buildIdeaEnhancementPrompt(input: EnhanceIdeaInput) {
     ]);
 
     return compactPrompt([
-        "أنت كاتب عربي إبداعي داخل أداة تصميم. مهمتك تحسين فكرة العميل فقط، وليس كتابة تعليمات تشغيلية للنموذج.",
-        "أعد صياغة الفكرة العربية في جملة أو فقرة واحدة جميلة وواضحة وغنية بصرياً، كأن العميل سيقرأها داخل مربع الفكرة.",
-        "يجب أن تصف المشهد أو الشخصية أو العناصر البصرية بطريقة ملهمة ومباشرة.",
+        "أنت كاتب إبداعي عربي ممتاز داخل تجربة تصميم. مهمتك تحويل فكرة العميل الخام إلى وصف بصري ذكي يقرأه العميل مباشرة.",
+        "فكّر داخلياً أولاً: ما العنصر الرئيسي؟ ما الحركة؟ ما البيئة الأنسب؟ ما الشعور؟ ما التفاصيل الصغيرة التي تجعل الصورة غير عادية؟ ثم اكتب الناتج فقط.",
+        "اكتب جملة عربية واحدة أو فقرة قصيرة واحدة، غنية ومحددة وراقية، لا تبدو كقالب عام.",
+        "اجعل التحسين يضيف: مشهداً واضحاً، حركة أو وضعية، عمقاً في الخلفية، إضاءة أو جوّاً، وتفصيلاً مميزاً واحداً على الأقل.",
+        "إذا كانت الفكرة قصيرة جداً فوسّعها بذكاء. مثال: «ديناصور يرقص» تصبح مشهداً مرحاً في غابة كثيفة وخلفه شلال ورذاذ ضوء وحركة سعيدة.",
+        "إذا كانت الفكرة شخصية أو حيواناً فامنحه تعبيراً وحضوراً. إذا كانت شيئاً بسيطاً فحوّله إلى مشهد له قصة. إذا كانت عبارة نصية فحافظ على النص كما هو وأضف شعوراً بصرياً حوله فقط.",
+        "لا تضف كلمات أو شعارات أو نصوصاً جديدة إلا إذا طلبها العميل صراحة.",
         "ممنوع تماماً ذكر: DTF، تيشيرت، قماش، مقاس، لون قطعة، موضع طباعة، خلفية شفافة، قيود، برومبت، نموذج، WASHA AI، كتالوج، أو أي مواصفات تشغيلية.",
-        "لا تستخدم عناوين، لا نقاط، لا اقتباسات، لا مقدمات. أخرج النص المحسن فقط.",
-        "حافظ على جوهر فكرة العميل ولا تضف نصوصاً أو شعارات إلا إذا طلبها صراحة.",
-        "الطول المثالي بين 18 و45 كلمة.",
+        "ممنوع استخدام عناوين أو نقاط أو اقتباسات أو مقدمات مثل: الفكرة المحسنة. أخرج النص المحسن فقط.",
+        "الطول المثالي بين 24 و58 كلمة، ويفضل أن يكون النص موسيقياً وسهل القراءة بالعربية.",
         context ? `سياق اختياري لا تذكره حرفياً:\n${context}` : null,
         `فكرة العميل: ${input.idea}`,
     ]);
@@ -92,8 +98,9 @@ async function runGeminiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
         model,
         contents: { role: "user", parts: [{ text: buildIdeaEnhancementPrompt(input) }] },
         config: {
-            temperature: 0.8,
-            maxOutputTokens: 220,
+            temperature: 0.92,
+            topP: 0.92,
+            maxOutputTokens: 260,
             httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
         } as any,
     });
@@ -125,8 +132,9 @@ async function runOpenAiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
                         content: buildIdeaEnhancementPrompt(input),
                     },
                 ],
-                temperature: 0.8,
-                max_tokens: 220,
+                temperature: 0.92,
+                top_p: 0.92,
+                max_tokens: 260,
             }),
             signal: abortController.signal,
         });
