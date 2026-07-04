@@ -18,6 +18,8 @@ const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
 const SITE_SETTINGS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("SITE_SETTINGS_QUERY_TIMEOUT_MS", 1200, 500, 10000);
 const SITE_SETTINGS_CACHE_REVALIDATE_SECONDS = readPositiveIntegerEnv("SITE_SETTINGS_CACHE_REVALIDATE_SECONDS", 120, 10, 3600);
 
+export type WashaAiDevAccessMode = "disabled" | "admin" | "link";
+
 // ─── Admin Supabase Client ──────────────────────────────────
 
 function hasAdminSupabaseConfig() {
@@ -77,6 +79,8 @@ export type SiteSettingsType = {
         design_piece?: boolean;
         design_piece_dtf_studio_switch?: boolean;
         design_piece_generation_public?: boolean;
+        washa_ai_dev_access?: WashaAiDevAccessMode;
+        washa_ai_dev_v2_access?: WashaAiDevAccessMode;
     };
     washa_ai?: {
         dtf_daily_quota_limit?: number;
@@ -141,6 +145,8 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         design_piece: true,
         design_piece_dtf_studio_switch: true,
         design_piece_generation_public: false,
+        washa_ai_dev_access: "admin",
+        washa_ai_dev_v2_access: "admin",
     },
     washa_ai: {
         dtf_daily_quota_limit: 5,
@@ -274,6 +280,12 @@ function coerceBooleanSetting(value: unknown, fallback: boolean) {
     return fallback;
 }
 
+function coerceWashaAiDevAccessMode(value: unknown, fallback: WashaAiDevAccessMode): WashaAiDevAccessMode {
+    if (typeof value !== "string") return fallback;
+    if (value === "disabled" || value === "admin" || value === "link") return value;
+    return fallback;
+}
+
 function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibility"] {
     const visibility = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
     const fallback = DEFAULT_SITE_SETTINGS.visibility;
@@ -293,6 +305,14 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         design_piece_generation_public: coerceBooleanSetting(
             visibility.design_piece_generation_public,
             fallback.design_piece_generation_public ?? false
+        ),
+        washa_ai_dev_access: coerceWashaAiDevAccessMode(
+            visibility.washa_ai_dev_access,
+            fallback.washa_ai_dev_access ?? "admin"
+        ),
+        washa_ai_dev_v2_access: coerceWashaAiDevAccessMode(
+            visibility.washa_ai_dev_v2_access,
+            fallback.washa_ai_dev_v2_access ?? "admin"
         ),
     };
 }
@@ -843,6 +863,8 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
     revalidatePath("/design");
     revalidatePath("/design/preorder");
     revalidatePath("/design/washa-ai");
+    revalidatePath("/design/washa-ai/dev");
+    revalidatePath("/design/washa-ai/dev-v2");
     revalidatePath("/studio");
     if (key === "operational_rules") {
         revalidatePath("/dashboard/analytics");

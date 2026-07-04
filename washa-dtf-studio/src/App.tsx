@@ -22,11 +22,10 @@ type StudioMode = 'production' | 'dev' | 'dev-v2';
 
 function getStudioMode(): StudioMode {
   if (typeof window === 'undefined') return 'production';
-  const params = new URLSearchParams(window.location.search);
-  if (window.location.pathname.includes('/design/washa-ai/dev-v2') || params.get('dev') === '2') {
+  if (window.location.pathname.includes('/design/washa-ai/dev-v2')) {
     return 'dev-v2';
   }
-  if (window.location.pathname.includes('/design/washa-ai/dev') || params.get('dev') === '1') {
+  if (window.location.pathname.includes('/design/washa-ai/dev')) {
     return 'dev';
   }
   return 'production';

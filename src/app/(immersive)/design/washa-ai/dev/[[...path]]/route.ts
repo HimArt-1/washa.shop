@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { getPublicVisibility } from "@/app/actions/settings";
+import { ensureWashaAiDevSurfaceAccess } from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
 
@@ -68,10 +68,6 @@ function getContentType(filePath: string) {
 
 function readUtf8(filePath: string) {
     return readFile(filePath, "utf8");
-}
-
-function isHtmlShellRequest(relativePath: string, segments: string[]) {
-    return segments.length === 0 || (!path.extname(relativePath) && segments[0] !== "assets");
 }
 
 function extractShellAssetPaths(indexHtml: string) {
@@ -222,22 +218,16 @@ self.addEventListener("fetch", (event) => {
 `.trimStart();
 }
 
-async function ensureDtfStudioAccess(request: NextRequest) {
-    const visibility = await getPublicVisibility();
-
-    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
-        return NextResponse.redirect(new URL("/design", request.url));
-    }
-
-    return null;
-}
-
 export async function GET(
     request: NextRequest,
     context: { params: { path?: string[] } }
 ) {
     const segments = context.params.path ?? [];
     const relativePath = segments.length > 0 ? path.join(...segments) : "index.html";
+    const guardResponse = await ensureWashaAiDevSurfaceAccess(request, "dev");
+    if (guardResponse) {
+        return guardResponse;
+    }
 
     if (segments.length === 1 && segments[0] === "manifest.webmanifest") {
         return new NextResponse(JSON.stringify(DEV_MANIFEST, null, 2), {
@@ -260,13 +250,6 @@ export async function GET(
             });
         } catch {
             return new NextResponse("WASHA AI dev service worker is missing", { status: 500 });
-        }
-    }
-
-    if (isHtmlShellRequest(relativePath, segments)) {
-        const guardResponse = await ensureDtfStudioAccess(request);
-        if (guardResponse) {
-            return guardResponse;
         }
     }
 

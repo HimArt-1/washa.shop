@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { ArrowUpLeft, FlaskConical, History, Sparkles } from 'lucide-react';
+import { History, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
@@ -9,8 +9,6 @@ interface HeaderProps {
 }
 
 const BRAND_MARK_SRC = 'header-logo-identity.png';
-const DEV_STUDIO_PATH = '/design/washa-ai/dev';
-const DEV_STUDIO_V2_PATH = '/design/washa-ai/dev-v2';
 
 export default function Header({ onOpenGallery }: HeaderProps) {
   const { step } = useDesign();
@@ -113,28 +111,6 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         </div>
 
         <div className="flex items-center justify-between gap-2 md:justify-end">
-          <a
-            href={DEV_STUDIO_V2_PATH}
-            className="group relative flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-[#123C36]/20 bg-[#123C36] px-3 py-2 text-sm font-bold text-white shadow-[0_12px_28px_rgba(18,60,54,0.14)] transition-all duration-300 hover:bg-[#0D2D28] active:scale-[0.98] md:flex-none md:px-4"
-            aria-label="افتح النسخة التطويرية 2"
-          >
-            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-white/40 to-transparent opacity-70" />
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span className="truncate">النسخة التطويرية 2</span>
-            <ArrowUpLeft className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
-          </a>
-
-          <a
-            href={DEV_STUDIO_PATH}
-            className="group relative flex min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-washa-gold/25 bg-washa-gold/10 px-3 py-2 text-sm font-bold text-washa-gold shadow-[0_12px_28px_rgba(154,123,61,0.08)] transition-all duration-300 hover:border-washa-gold/50 hover:bg-washa-gold/15 hover:text-washa-gold-deep active:scale-[0.98] md:flex-none md:px-4"
-            aria-label="جرب النسخة التطويرية"
-          >
-            <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-washa-gold/55 to-transparent opacity-70" />
-            <FlaskConical className="h-4 w-4 shrink-0" />
-            <span className="truncate">جرب النسخة التطويرية</span>
-            <ArrowUpLeft className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform duration-300 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5" />
-          </a>
-
           {/* Gallery Button */}
           <button
             onClick={onOpenGallery}

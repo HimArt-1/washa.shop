@@ -14,6 +14,7 @@ import {
     type OperationalRuleSignal,
     type OperationalRulesDiagnostics,
     type SiteSettingsType,
+    type WashaAiDevAccessMode,
 } from "@/app/actions/settings";
 
 interface SettingsProps {
@@ -34,7 +35,31 @@ type VisibilityState = {
     design_piece: boolean;
     design_piece_dtf_studio_switch: boolean;
     design_piece_generation_public: boolean;
+    washa_ai_dev_access: WashaAiDevAccessMode;
+    washa_ai_dev_v2_access: WashaAiDevAccessMode;
 };
+
+const WASHA_AI_DEV_ACCESS_OPTIONS: Array<{ value: WashaAiDevAccessMode; label: string; description: string }> = [
+    {
+        value: "admin",
+        label: "للمشرفين فقط",
+        description: "النسخة تعمل فقط لحسابات الإدارة والتطوير، ولا تظهر ولا تعمل للعامة.",
+    },
+    {
+        value: "disabled",
+        label: "معطلة",
+        description: "الرابط يرجع 404 ولا يكشف وجود النسخة.",
+    },
+    {
+        value: "link",
+        label: "متاحة بالرابط",
+        description: "لا تظهر في الواجهة العامة، لكنها تعمل لمن يملك الرابط للاختبار.",
+    },
+];
+
+function getDevAccessDescription(value: WashaAiDevAccessMode) {
+    return WASHA_AI_DEV_ACCESS_OPTIONS.find((item) => item.value === value)?.description ?? "";
+}
 
 // ─── Toggle Switch ──────────────────────────────────────
 
@@ -60,6 +85,36 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
                 />
             </div>
         </button>
+    );
+}
+
+function DevAccessSelect({
+    label,
+    value,
+    onChange,
+}: {
+    label: string;
+    value: WashaAiDevAccessMode;
+    onChange: (value: WashaAiDevAccessMode) => void;
+}) {
+    return (
+        <div className="rounded-xl border border-theme-subtle bg-theme-faint p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p className="text-sm font-bold text-theme-soft">{label}</p>
+                    <p className="mt-1 text-xs leading-6 text-theme-subtle">{getDevAccessDescription(value)}</p>
+                </div>
+                <select
+                    value={value}
+                    onChange={(event) => onChange(event.target.value as WashaAiDevAccessMode)}
+                    className="min-h-[42px] rounded-xl border border-theme-soft bg-surface px-3 py-2 text-sm font-bold text-theme-strong outline-none transition-colors focus:border-gold"
+                >
+                    {WASHA_AI_DEV_ACCESS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
     );
 }
 
@@ -299,6 +354,8 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
         design_piece_generation_public: settings.visibility.design_piece_generation_public ?? false,
+        washa_ai_dev_access: settings.visibility.washa_ai_dev_access ?? "admin",
+        washa_ai_dev_v2_access: settings.visibility.washa_ai_dev_v2_access ?? "admin",
     });
     const [washaAi, setWashaAi] = useState({
         dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
@@ -526,6 +583,31 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         checked={visibility.design_piece_dtf_studio_switch ?? true}
                         onChange={(v) => setVisibility({ ...visibility, design_piece_dtf_studio_switch: v })}
                     />
+                    <div className="rounded-2xl border border-gold/15 bg-gold/5 p-4">
+                        <div className="mb-3 flex items-start gap-3">
+                            <div className="mt-1 rounded-lg bg-gold/10 p-2">
+                                <Sparkles className="h-4 w-4 text-gold" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-theme">النسخ التطويرية لـ WASHA AI</p>
+                                <p className="mt-1 text-xs leading-6 text-theme-subtle">
+                                    تتحكم هذه الخيارات في الوصول المباشر للنسخ التجريبية فقط. النسخة الرسمية تبقى مستقلة.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <DevAccessSelect
+                                label="/design/washa-ai/dev"
+                                value={visibility.washa_ai_dev_access}
+                                onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_access: value })}
+                            />
+                            <DevAccessSelect
+                                label="/design/washa-ai/dev-v2"
+                                value={visibility.washa_ai_dev_v2_access}
+                                onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_v2_access: value })}
+                            />
+                        </div>
+                    </div>
                 </div>
                 <button
                     onClick={() => handleSave("visibility", visibility)}
