@@ -1112,7 +1112,7 @@ function StepResultDev() {
       ) : null}
 
       {mockupImage && !isGenerating && !orderResult ? (
-        <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
+        <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)_300px]">
           <aside className="order-2 space-y-4 rounded-[30px] border border-[#C9A84C]/16 bg-white p-5 shadow-[0_18px_55px_rgba(26,26,26,0.06)] lg:order-1">
             <p className="text-sm font-black text-[#1A1A1A]">ملخص التصميم</p>
             {[
@@ -1131,13 +1131,13 @@ function StepResultDev() {
             ))}
           </aside>
 
-          <section className="order-1 overflow-hidden rounded-[34px] border border-[#C9A84C]/16 bg-[#1A1A1A] shadow-[0_28px_80px_rgba(26,26,26,0.25)] lg:order-2">
-            <button onClick={() => setLightbox(true)} className="block w-full bg-[#11100E]">
-              <img src={mockupImage} alt="نتيجة WASHA AI" className="aspect-square h-full w-full object-cover sm:aspect-[4/3]" />
+          <section className="order-1 self-start overflow-hidden rounded-[34px] border border-[#C9A84C]/18 bg-white shadow-[0_28px_80px_rgba(92,72,32,0.16)] lg:order-2">
+            <button onClick={() => setLightbox(true)} className="block w-full bg-[#F3EFE7]">
+              <img src={mockupImage} alt="نتيجة WASHA AI" className="aspect-square w-full object-cover sm:aspect-[4/3]" />
             </button>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 p-5 text-white">
-              <p className="text-sm font-bold text-white/68">الموكب الحقيقي الناتج من WASHA AI</p>
-              <Button variant="outline" onClick={() => handleDownload(mockupImage, 'washa-ai-mockup.png')} className="gap-2 rounded-2xl border-white/15 text-white hover:bg-white/10">
+            <div className="flex flex-wrap-reverse items-center justify-between gap-3 border-t border-[#C9A84C]/14 bg-[#FAF8F4] p-4 text-[#1A1A1A] sm:p-5">
+              <p className="text-sm font-bold text-[#8B7A5E]">الموكب الحقيقي الناتج من WASHA AI</p>
+              <Button variant="outline" onClick={() => handleDownload(mockupImage, 'washa-ai-mockup.png')} className="gap-2 rounded-2xl border-[#C9A84C]/24 bg-white/70 text-[#1A1A1A] hover:bg-[#C9A84C]/10">
                 <Download className="h-4 w-4" />
                 تحميل
               </Button>
