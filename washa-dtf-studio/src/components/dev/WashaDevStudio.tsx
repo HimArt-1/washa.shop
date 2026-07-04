@@ -34,6 +34,7 @@ import {
   type PrintPosition,
 } from '../../types';
 import { resolvePrintPlacementFromOption } from '../../lib/placement';
+import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 
@@ -490,9 +491,35 @@ function StepGarmentDev() {
 }
 
 function StepIdeaDev() {
-  const { state, updateState, handleImageUpload } = useDesign();
+  const { state, updateState, handleImageUpload, showToast } = useDesign();
   const [dragging, setDragging] = useState(false);
+  const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
   const referencePreview = getImagePreview(state.referenceImage, state.referenceImageMimeType);
+
+  const handleEnhanceIdea = async () => {
+    const idea = state.prompt.trim();
+    if (!idea || isEnhancingIdea) return;
+
+    setIsEnhancingIdea(true);
+    try {
+      const result = await enhanceDesignIdea({
+        idea,
+        garmentType: state.garmentType,
+        style: state.style,
+        technique: state.technique,
+        palette: state.palette,
+      });
+
+      if (result.enhancedIdea) {
+        updateState({ prompt: result.enhancedIdea });
+        showToast(result.source === 'ai' ? 'تم تحسين الوصف بالذكاء الاصطناعي' : 'تم تحسين الوصف محلياً', result.source === 'ai' ? 'success' : 'info');
+      }
+    } catch {
+      showToast('تعذر تحسين الوصف الآن', 'error');
+    } finally {
+      setIsEnhancingIdea(false);
+    }
+  };
 
   const tabs: { id: DesignMethod; label: string; icon: ComponentType<{ className?: string }> }[] = [
     { id: 'text', label: 'وصف الفكرة', icon: Type },
@@ -535,7 +562,18 @@ function StepIdeaDev() {
                     className="min-h-[210px] resize-none rounded-3xl border-[#C9A84C]/20 bg-[#FAF8F4] p-6 text-base leading-8 text-[#1A1A1A] focus-visible:ring-[#C9A84C]/35"
                     maxLength={420}
                   />
-                  <p className="text-left text-xs font-bold text-[#8B7A5E]">{state.prompt.length}/420</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <button
+                      type="button"
+                      onClick={handleEnhanceIdea}
+                      disabled={!state.prompt.trim() || isEnhancingIdea}
+                      className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-[#C9A84C]/25 bg-[#C9A84C]/10 px-4 py-2 text-sm font-black text-[#9A7B3D] transition hover:border-[#C9A84C]/45 hover:bg-[#C9A84C]/15 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                      {isEnhancingIdea ? 'جاري التحسين' : 'حسّن الفكرة'}
+                    </button>
+                    <p className="text-left text-xs font-bold text-[#8B7A5E]">{state.prompt.length}/420</p>
+                  </div>
                 </div>
                 <SuggestionRail
                   title="أفكار ملهمة"

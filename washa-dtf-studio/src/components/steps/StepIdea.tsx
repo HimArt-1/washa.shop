@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Type, PenLine, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Type, PenLine, ChevronLeft, ChevronRight, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { useDesign } from '../../context/DesignContext';
+import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
 
 const SUGGESTIONS = [
   { text: 'ذئب هندسي', emoji: '🐺' },
@@ -25,7 +27,33 @@ const CALLIGRAPHY_SUGGESTIONS = [
 ];
 
 export default function StepIdea() {
-  const { state, updateState, nextStep, prevStep, handleImageUpload } = useDesign();
+  const { state, updateState, nextStep, prevStep, handleImageUpload, showToast } = useDesign();
+  const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
+
+  const handleEnhanceIdea = async () => {
+    const idea = state.prompt.trim();
+    if (!idea || isEnhancingIdea) return;
+
+    setIsEnhancingIdea(true);
+    try {
+      const result = await enhanceDesignIdea({
+        idea,
+        garmentType: state.garmentType,
+        style: state.style,
+        technique: state.technique,
+        palette: state.palette,
+      });
+
+      if (result.enhancedIdea) {
+        updateState({ prompt: result.enhancedIdea });
+        showToast(result.source === 'ai' ? 'تم تحسين الفكرة بالذكاء الاصطناعي' : 'تم تحسين الفكرة محلياً', result.source === 'ai' ? 'success' : 'info');
+      }
+    } catch {
+      showToast('تعذر تحسين الفكرة الآن', 'error');
+    } finally {
+      setIsEnhancingIdea(false);
+    }
+  };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -139,6 +167,21 @@ export default function StepIdea() {
                   value={state.prompt}
                   onChange={e => updateState({ prompt: e.target.value })}
                 />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEnhanceIdea}
+                  disabled={!state.prompt.trim() || isEnhancingIdea}
+                  className="gap-2 rounded-xl border-washa-gold/25 bg-washa-gold/5 text-washa-gold hover:bg-washa-gold/10 hover:text-washa-gold"
+                >
+                  {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  {isEnhancingIdea ? 'جاري التحسين' : 'حسّن الفكرة'}
+                </Button>
+                <span className="text-xs text-washa-text-faint">
+                  {state.prompt.length ? `${state.prompt.length} حرف` : 'اكتب فكرة قصيرة ثم حسّنها'}
+                </span>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-2 justify-end text-xs text-washa-text-faint">
