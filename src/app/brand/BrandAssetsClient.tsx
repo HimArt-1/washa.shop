@@ -234,6 +234,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
     hiddenDecor.forEach((el) => (el.style.display = "none"));
 
     try {
+      await document.fonts.ready;
       const dataUrl = await toPng(element, {
         cacheBust: true,
         pixelRatio: 4, // Ultra high quality for print
@@ -428,26 +429,26 @@ export default function BrandAssetsClient({ config }: { config: any }) {
               >
                 <div
                   id="thank-you-card"
-                  className="brand-card w-full h-full rounded-[1.7rem] p-8 border flex flex-col items-center text-center overflow-hidden relative transition-all duration-700 ring-1 ring-white/10"
+                  className="brand-card w-full h-full rounded-[1.7rem] p-6 sm:p-7 border flex flex-col items-center text-center overflow-hidden relative transition-all duration-700 ring-1 ring-white/10"
                 >
                   {/* Subtle Top Glow */}
                   <div className="brand-card-glow absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 blur-[50px] z-0 rounded-full" />
                   {/* Grainy Texture */}
                   <TextureLayer className="opacity-[0.035] dark:opacity-[0.055]" />
 
-                  <BrandMark className="relative z-10 mb-8 h-[46px] w-[52px]" />
+                  <BrandMark className="relative z-10 mb-6 h-[46px] w-[52px]" />
 
-                  <div className="flex-1 flex flex-col justify-center relative z-10 w-full text-center">
-                    <h3 className="brand-strong text-2xl font-serif mb-6">{brandCopy.thankYouTitle}</h3>
-                    <div className="brand-muted text-sm leading-8 mb-8 whitespace-pre-line px-2">
+                  <div className="flex-1 min-h-0 flex flex-col justify-center relative z-10 w-full text-center">
+                    <h3 className="brand-card-title-ghadim brand-strong text-2xl mb-4">{brandCopy.thankYouTitle}</h3>
+                    <div className="brand-muted text-[12px] leading-6 mb-5 whitespace-pre-line px-1">
                       {brandCopy.thankYouMessage}
                     </div>
                   </div>
 
-                  <div className="brand-divider w-full flex items-center justify-center mt-auto pt-6 border-t relative z-10">
+                  <div className="brand-divider w-full flex items-center justify-center mt-auto pt-4 border-t relative z-10">
                     <span
                       dir="ltr"
-                      className="brand-link-pill brand-muted inline-flex items-center justify-center rounded-full border px-4 py-2 text-[11px] tracking-[0.18em] uppercase"
+                      className="brand-link-pill brand-muted inline-flex items-center justify-center rounded-full border px-3 py-1.5 text-[10px] tracking-[0.16em] uppercase"
                     >
                       {brandCopy.thankYouHandle}
                     </span>
@@ -468,23 +469,23 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                  initial={{ opacity: 0, scale: 0.95 }}
                  whileInView={{ opacity: 1, scale: 1 }}
                  viewport={{ once: true, margin: "-100px" }}
-                 className="relative w-full max-w-[450px]"
+                 className="relative w-full max-w-[320px] aspect-[1/1.4]"
                >
                  <div
                    id="care-card"
-                   className="brand-card w-full h-full border rounded-[1.7rem] p-8 sm:p-10 overflow-hidden relative transition-all duration-700 ring-1 ring-white/10"
+                   className="brand-card w-full h-full border rounded-[1.7rem] p-5 overflow-hidden relative transition-all duration-700 ring-1 ring-white/10"
                  >
                    {/* Subtle Top Glow */}
                    <div className="brand-card-glow absolute top-0 left-1/2 -translate-x-1/2 w-48 h-24 blur-[50px] z-0 rounded-full" />
                    {/* Grainy Texture */}
                    <TextureLayer className="opacity-[0.035] dark:opacity-[0.055]" />
 
-                   <div className="brand-divider text-center mb-10 border-b pb-6 relative z-10">
-                     <h3 className="brand-strong text-2xl font-bold tracking-wide mb-2">تعليمات الغسيل والكي</h3>
-                     <p className="brand-muted text-sm">للحفاظ على جودة القطعة والطباعة لأطول فترة ممكنة</p>
+                   <div className="brand-divider text-center mb-3 border-b pb-3 relative z-10">
+                     <h3 className="brand-card-title-ghadim brand-strong text-[1.45rem] leading-tight mb-1">تعليمات الغسيل والكي</h3>
+                     <p className="brand-muted text-[11px] leading-5">للحفاظ على جودة القطعة والطباعة لأطول فترة ممكنة</p>
                    </div>
 
-                   <div className="space-y-4 relative z-10">
+                   <div className="space-y-2 relative z-10">
                      <CareItem 
                        icon={Droplets}
                        title="الغسيل بالماء البارد"
@@ -498,7 +499,7 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                      <CareItem 
                        icon={Wind}
                        title="تجفيف بالهواء الطلق"
-                       desc="تجنب استخدام النشافة الحرارية (Tumble Dry)"
+                       desc="تجنب استخدام النشافة الحرارية"
                      />
                      <CareItem 
                        icon={ShieldAlert}
@@ -508,12 +509,12 @@ export default function BrandAssetsClient({ config }: { config: any }) {
                      <CareItem 
                        icon={Thermometer}
                        title="الكي بحذر"
-                       desc="لا تقم بكي منطقة الطباعة مباشرة، اكوها مقلوبة أو ضع قطعة قماش فاصلة"
+                       desc="لا تكوِ منطقة الطباعة مباشرة"
                      />
                    </div>
                    
-                   <div className="mt-10 text-center flex justify-center relative z-10">
-                     <BrandMark className="h-[34px] w-[40px] opacity-60 transition-opacity duration-300 hover:opacity-100" />
+                   <div className="mt-5 text-center flex justify-center relative z-10">
+                     <BrandMark className="h-[28px] w-[34px] opacity-60 transition-opacity duration-300 hover:opacity-100" />
                    </div>
                  </div>
                </motion.div>
@@ -684,13 +685,13 @@ function DownloadButton({
 
 function CareItem({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
   return (
-    <div className="brand-care-item flex items-start gap-4 px-4 py-3 rounded-2xl border transition-all duration-300 hover:border-[var(--brand-card-border-strong)]">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand-card-accent-soft)]">
-        <Icon className="w-5 h-5 brand-icon" />
+    <div className="brand-care-item flex items-start gap-2.5 px-3 py-1.5 rounded-xl border transition-all duration-300 hover:border-[var(--brand-card-border-strong)]">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-card-accent-soft)]">
+        <Icon className="w-3.5 h-3.5 brand-icon" />
       </div>
-      <div>
-        <h4 className="brand-strong font-bold text-sm sm:text-base mb-1">{title}</h4>
-        <p className="brand-muted text-xs sm:text-sm">{desc}</p>
+      <div className="min-w-0">
+        <h4 className="brand-card-title-ghadim brand-strong text-[12px] leading-tight">{title}</h4>
+        <p className="brand-muted mt-0.5 text-[9.5px] leading-[1.35]">{desc}</p>
       </div>
     </div>
   );
@@ -817,7 +818,7 @@ function BrandOptionsArchive({
             elementId="option-care-current-light"
             filename="wusha-care-current-light"
             handleDownload={handleDownload}
-            previewClassName="min-h-[680px]"
+            previewClassName="min-h-[540px]"
           >
             <LegacyCarePreview id="option-care-current-light" tone="light" />
           </DesignOption>
@@ -827,7 +828,7 @@ function BrandOptionsArchive({
             elementId="option-care-current-dark"
             filename="wusha-care-current-dark"
             handleDownload={handleDownload}
-            previewClassName="min-h-[680px]"
+            previewClassName="min-h-[540px]"
           >
             <LegacyCarePreview id="option-care-current-dark" tone="dark" />
           </DesignOption>
@@ -837,7 +838,7 @@ function BrandOptionsArchive({
             elementId="option-care-import-light"
             filename="wusha-care-import-light"
             handleDownload={handleDownload}
-            previewClassName="min-h-[680px]"
+            previewClassName="min-h-[540px]"
           >
             <ImportedCarePreview id="option-care-import-light" tone="light" />
           </DesignOption>
@@ -847,7 +848,7 @@ function BrandOptionsArchive({
             elementId="option-care-import-dark"
             filename="wusha-care-import-dark"
             handleDownload={handleDownload}
-            previewClassName="min-h-[680px]"
+            previewClassName="min-h-[540px]"
           >
             <ImportedCarePreview id="option-care-import-dark" tone="dark" />
           </DesignOption>
@@ -1080,7 +1081,7 @@ function LegacyThankYouPreview({
       <BrandMark className="relative z-10 mb-6 h-[42px] w-[50px]" />
 
       <div className="relative z-10 flex flex-1 flex-col justify-center">
-        <h4 className="brand-strong mb-5 text-xl font-serif">{copy.thankYouTitle}</h4>
+        <h4 className="brand-card-title-ghadim brand-strong mb-5 text-xl">{copy.thankYouTitle}</h4>
         <div className="brand-muted whitespace-pre-line text-xs leading-6">
           {copy.thankYouMessage}
         </div>
@@ -1103,21 +1104,21 @@ function LegacyCarePreview({ id, tone }: { id: string; tone: CardTone }) {
     <div
       id={id}
       data-export-bg={exportBgForTone(tone)}
-      className={`brand-card brand-card--force-${tone} relative w-full max-w-[450px] overflow-hidden rounded-[1.45rem] border p-8 sm:p-10 ring-1 ring-white/10`}
+      className={`brand-card brand-card--force-${tone} relative flex aspect-[1/1.4] w-full max-w-[320px] flex-col overflow-hidden rounded-[1.45rem] border p-5 ring-1 ring-white/10`}
     >
       <div data-export-hide="true" className="brand-card-glow absolute left-1/2 top-0 h-24 w-44 -translate-x-1/2 rounded-full blur-[48px]" />
       <TextureLayer className="opacity-[0.035]" />
-      <div className="brand-divider relative z-10 mb-6 border-b pb-4 text-center">
-        <h4 className="brand-strong mb-1 text-lg font-bold">تعليمات الغسيل والكي</h4>
-        <p className="brand-muted text-[11px] leading-5">للحفاظ على جودة القطعة والطباعة</p>
+      <div className="brand-divider relative z-10 mb-4 border-b pb-3 text-center">
+        <h4 className="brand-card-title-ghadim brand-strong mb-1 text-[1.45rem] leading-tight">تعليمات الغسيل والكي</h4>
+        <p className="brand-muted text-[10px] leading-5">للحفاظ على جودة القطعة والطباعة</p>
       </div>
-      <div className="relative z-10 space-y-3">
+      <div className="relative z-10 space-y-2">
         <CareItem icon={Droplets} title="الغسيل بالماء البارد" desc="لا تتجاوز درجة حرارة الماء 30 مئوية" />
         <CareItem icon={Shirt} title="قلب القطعة" desc="اغسل القطعة مقلوبة من الداخل للخارج" />
         <CareItem icon={Wind} title="تجفيف بالهواء الطلق" desc="تجنب استخدام النشافة الحرارية" />
         <CareItem icon={ShieldAlert} title="بدون مبيضات" desc="لا تستخدم الكلور أو المبيضات القوية" />
       </div>
-      <BrandMark className="relative z-10 mx-auto mt-6 h-8 w-10 opacity-60" />
+      <BrandMark className="relative z-10 mx-auto mt-5 h-7 w-9 opacity-60" />
     </div>
   );
 }
@@ -1281,7 +1282,7 @@ function ImportedThankYouPreview({
       <BrandMark toneColor={logoTone} className="relative z-10 mb-7 h-14 w-16 opacity-95" />
 
       <div className="relative z-10 flex flex-1 flex-col justify-center">
-        <h4 className="mb-5 text-2xl font-black text-[var(--import-strong)]">
+        <h4 className="brand-card-title-ghadim mb-5 text-2xl text-[var(--import-strong)]">
           {copy.thankYouTitle}
         </h4>
         <div className="whitespace-pre-line text-xs leading-7 text-[var(--import-muted)]">
@@ -1308,15 +1309,15 @@ function ImportedCarePreview({ id, tone }: { id: string; tone: CardTone }) {
     <div
       id={id}
       data-export-bg={importedExportBgForTone(tone)}
-      className={`brand-import-card brand-import-card--${tone} relative w-full max-w-[450px] overflow-hidden rounded-[1.15rem] border p-8 sm:p-10`}
+      className={`brand-import-card brand-import-card--${tone} relative flex aspect-[1/1.4] w-full max-w-[320px] flex-col overflow-hidden rounded-[1.15rem] border p-5`}
     >
       <ImportedTexture tone={tone} />
       <div className="absolute -top-11 left-5 h-32 w-32 rounded-full bg-[var(--import-orb)]" />
       <div className="absolute -bottom-12 -right-8 h-36 w-36 rounded-full bg-[var(--import-orb-strong)]" />
 
-      <div className="relative z-10 mb-5 border-b border-[var(--import-line)] pb-4 text-center">
-        <BrandMark toneColor={logoTone} className="mx-auto mb-3 h-10 w-12 opacity-95" />
-        <h4 className="mb-1 text-lg font-black text-[var(--import-strong)]">
+      <div className="relative z-10 mb-4 border-b border-[var(--import-line)] pb-3 text-center">
+        <BrandMark toneColor={logoTone} className="mx-auto mb-2 h-9 w-11 opacity-95" />
+        <h4 className="brand-card-title-ghadim mb-1 text-[1.45rem] leading-tight text-[var(--import-strong)]">
           تعليمات الغسيل والكي
         </h4>
         <p className="text-[10px] leading-5 text-[var(--import-muted)]">
@@ -1324,7 +1325,7 @@ function ImportedCarePreview({ id, tone }: { id: string; tone: CardTone }) {
         </p>
       </div>
 
-      <div className="relative z-10 space-y-2.5">
+      <div className="relative z-10 space-y-2">
         <ImportedCareLine icon={Droplets} title="الغسيل بالماء البارد" desc="لا تتجاوز درجة حرارة الماء 30 مئوية" />
         <ImportedCareLine icon={Shirt} title="قلب القطعة" desc="اغسل القطعة مقلوبة من الداخل للخارج" />
         <ImportedCareLine icon={Wind} title="تجفيف بالهواء الطلق" desc="تجنب استخدام النشافة الحرارية" />
@@ -1461,13 +1462,13 @@ function ImportedCareLine({
   desc: string;
 }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-[var(--import-line)] bg-[var(--import-chip)] px-3 py-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--import-icon-bg)] text-[var(--import-accent)]">
-        <Icon className="h-4 w-4" />
+    <div className="flex items-start gap-2.5 rounded-lg border border-[var(--import-line)] bg-[var(--import-chip)] px-3 py-1.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--import-icon-bg)] text-[var(--import-accent)]">
+        <Icon className="h-3.5 w-3.5" />
       </div>
-      <div>
-        <h5 className="text-xs font-black text-[var(--import-strong)]">{title}</h5>
-        <p className="mt-0.5 text-[10px] leading-5 text-[var(--import-muted)]">{desc}</p>
+      <div className="min-w-0">
+        <h5 className="brand-card-title-ghadim text-[12px] leading-tight text-[var(--import-strong)]">{title}</h5>
+        <p className="mt-0.5 text-[9.5px] leading-[1.35] text-[var(--import-muted)]">{desc}</p>
       </div>
     </div>
   );

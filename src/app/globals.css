@@ -30,6 +30,14 @@
 }
 
 @font-face {
+  font-family: 'Ghadim';
+  src: url('/fonts/Ghadim.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'TheYearOfTheCamel';
   src: url('/fonts/TheYearofTheCamel-ExtraLight.woff2') format('woff2'),
        url('/fonts/TheYearofTheCamel-ExtraLight.otf') format('opentype');
@@ -98,6 +106,7 @@
   --font-serif: var(--font-display);
   --font-body: var(--font-primary);
   --font-alnaseeb: 'Alnaseeb', var(--font-display);
+  --font-ghadim: 'Ghadim', var(--font-display);
   --wusha-heading-main-weight: 800;
   --wusha-heading-section-weight: 700;
   --wusha-heading-card-weight: 600;
@@ -3514,6 +3523,13 @@ body.reamaze-active [data-reamaze-widget] {
 
 .brand-card-glow {
   background: radial-gradient(circle, var(--brand-card-accent-soft) 0%, transparent 68%);
+}
+
+.brand-card-title-ghadim {
+  font-family: var(--font-ghadim);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-wrap: balance;
 }
 
 .brand-accent,
