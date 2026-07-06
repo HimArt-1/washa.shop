@@ -113,6 +113,7 @@ function getFirstValidationError(error: { issues: Array<{ message: string }> }) 
 
 const DESIGN_ORDER_MISSING_COLUMN_REGEX =
     /Could not find the '([^']+)' column of 'custom_design_orders' in the schema cache/i;
+const SMART_STORE_ADMIN_ROLES = new Set(["admin", "dev"]);
 
 type DesignOrderInsertRow = Database["public"]["Tables"]["custom_design_orders"]["Insert"];
 
@@ -166,7 +167,7 @@ async function requireSmartStoreAdmin() {
         .eq("clerk_id", user.id)
         .single();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || !SMART_STORE_ADMIN_ROLES.has(profile.role)) {
         throw new Error("Forbidden");
     }
 

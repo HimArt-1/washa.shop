@@ -768,6 +768,16 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
     const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
+    useEffect(() => {
+        if (!uploading) {
+            setPreview(value);
+        }
+    }, [uploading, value]);
+
+    useEffect(() => {
+        setError(null);
+    }, [value]);
+
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -808,11 +818,6 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
             if (inputRef.current) inputRef.current.value = "";
         }
     };
-
-    // Sync external changes
-    if (!uploading && value !== preview && value !== "" && preview !== value) {
-        // handled by useEffect below
-    }
 
     return (
         <div className="space-y-2">

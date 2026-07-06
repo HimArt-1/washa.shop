@@ -1,12 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowUpLeft, Sparkles, Star } from "lucide-react";
 import { getProducts } from "@/app/actions/products";
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Product } from "@/types/database";
-import { cn } from "@/lib/utils";
-import { ProductCard } from "@/components/store/ProductCard";
+import { sanitizeCommerceImageUrl } from "@/lib/commerce-safety";
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  apparel: "ملابس",
+  print: "طباعة",
+  digital: "رقمي",
+  original: "عمل أصلي",
+  nft: "NFT",
+};
+
+function productTypeLabel(type: string) {
+  return PRODUCT_TYPE_LABELS[type] ?? type;
+}
 
 export type ProductWithArtist = Product & {
   artist: {
@@ -24,6 +37,15 @@ export function Store({
 }) {
   const [products, setProducts] = useState<ProductWithArtist[]>(initialProducts);
   const [loading, setLoading] = useState(!initialProductsLoaded);
+  const selectedProducts = useMemo(() => {
+    return [...products]
+      .sort((a, b) => {
+        const featuredDelta = Number(Boolean(b.is_featured)) - Number(Boolean(a.is_featured));
+        if (featuredDelta !== 0) return featuredDelta;
+        return Number(b.rating || 0) - Number(a.rating || 0);
+      })
+      .slice(0, 5);
+  }, [products]);
 
   useEffect(() => {
     if (initialProductsLoaded) {
@@ -65,48 +87,70 @@ export function Store({
             viewport={{ once: true }}
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           >
-            <h2 className="home-section-title">متجر وشّى</h2>
+            <div>
+              <h2 className="home-section-title">متجر وشّى</h2>
+            </div>
+            <Link href="/store" className="home-store-view-link">
+              عرض كل المنتجات
+              <ArrowUpLeft className="h-4 w-4" aria-hidden />
+            </Link>
           </motion.div>
 
-          <motion.div
-            className="home-product-deck home-product-deck--full"
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <div className="home-product-deck home-product-deck--full">
             {loading ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="home-store-grid home-store-grid--loading">
                 {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={cn("home-loading-card", i === 1 && "col-span-2")}>
-                    <div className={cn("bg-theme-faint/60", i === 1 ? "aspect-[5/4]" : "aspect-square")} />
-                    <div className="space-y-3 p-4">
-                      <div className="h-3 w-20 rounded-full bg-theme-faint" />
-                      <div className="h-4 w-3/4 rounded-full bg-theme-faint" />
-                      <div className="flex items-center justify-between pt-2">
-                        <div className="h-4 w-14 rounded-full bg-theme-faint" />
-                        <div className="h-9 w-9 rounded-2xl bg-theme-faint" />
-                      </div>
+                  <div key={i} className="home-loading-card home-store-card-skeleton">
+                    <div className="home-store-card-skeleton-media bg-theme-faint/60" />
+                    <div className="home-store-card-skeleton-copy">
+                      <span />
+                      <span />
+                      <span />
                     </div>
                   </div>
                 ))}
               </div>
-            ) : products.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
-                {products.map((product, index) => {
-                  const featured = products.length >= 3 && index === 0;
+            ) : selectedProducts.length > 0 ? (
+              <div className="home-store-grid" aria-label="منتجات مختارة من متجر وشّى">
+                {selectedProducts.map((product) => {
+                  const price = Number(product.price || 0);
+                  const originalPrice = Number(product.original_price || 0);
+                  const hasDiscount = originalPrice > price && price > 0;
+                  const rating = Number(product.rating || 0);
                   return (
-                    <div key={product.id} className={cn(featured && "col-span-2")}>
-                      <motion.div
-                        initial={{ opacity: 0, y: 34 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.65, delay: Math.min(index * 0.08, 0.32), ease: [0.16, 1, 0.3, 1] }}
-                        className="h-full"
-                      >
-                        <ProductCard product={product} featured={featured} />
-                      </motion.div>
-                    </div>
+                    <Link key={product.id} href={`/products/${product.id}`} className="home-store-card group">
+                      <div className="home-store-card-media relative">
+                        <Image
+                          src={sanitizeCommerceImageUrl(product.image_url)}
+                          alt={product.title}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          sizes="(max-width: 767px) 82vw, (max-width: 1023px) 42vw, 20vw"
+                        />
+                        <div className="home-store-card-glaze" aria-hidden />
+                        <span className="home-store-card-badge">{product.badge || productTypeLabel(product.type)}</span>
+                      </div>
+                      <div className="home-store-card-copy">
+                        <h3>{product.title}</h3>
+                        <div className="home-store-card-meta">
+                          <strong>{price.toLocaleString()} ر.س</strong>
+                          {hasDiscount ? <span>{originalPrice.toLocaleString()} ر.س</span> : null}
+                        </div>
+                        <small
+                          className={rating > 0 ? "home-store-card-rating" : "home-store-card-rating home-store-card-rating--empty"}
+                          aria-hidden={rating <= 0}
+                        >
+                          {rating > 0 ? (
+                            <>
+                            <Star className="h-3 w-3" aria-hidden />
+                            {rating.toFixed(1)}
+                            </>
+                          ) : (
+                            <span aria-hidden="true">&nbsp;</span>
+                          )}
+                        </small>
+                      </div>
+                    </Link>
                   );
                 })}
               </div>
@@ -117,7 +161,7 @@ export function Store({
                 <p>ستظهر المنتجات المختارة هنا بمجرد تفعيلها من لوحة التحكم.</p>
               </div>
             )}
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>
