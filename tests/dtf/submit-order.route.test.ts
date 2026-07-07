@@ -4,12 +4,14 @@ import { NextResponse } from "next/server";
 
 const {
     mockRequireDtfRouteAccess,
+    mockEnforceDtfRouteRateLimit,
     mockParseAndValidateDtfJson,
     mockCurrentUser,
     mockPrepareCartItem,
     mockLogDiagnosticWarning,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
+    mockEnforceDtfRouteRateLimit: vi.fn(),
     mockParseAndValidateDtfJson: vi.fn(),
     mockCurrentUser: vi.fn(),
     mockPrepareCartItem: vi.fn(),
@@ -18,6 +20,7 @@ const {
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
     requireDtfRouteAccess: mockRequireDtfRouteAccess,
+    enforceDtfRouteRateLimit: mockEnforceDtfRouteRateLimit,
     parseAndValidateDtfJson: mockParseAndValidateDtfJson,
 }));
 
@@ -47,6 +50,7 @@ import { POST } from "@/app/api/washa-dtf-studio/submit-order/route";
 describe("submit-order route", () => {
     beforeEach(() => {
         mockRequireDtfRouteAccess.mockReset();
+        mockEnforceDtfRouteRateLimit.mockReset();
         mockParseAndValidateDtfJson.mockReset();
         mockCurrentUser.mockReset();
         mockPrepareCartItem.mockReset();
@@ -60,6 +64,7 @@ describe("submit-order route", () => {
                 role: "subscriber",
             },
         });
+        mockEnforceDtfRouteRateLimit.mockResolvedValue(null);
         mockParseAndValidateDtfJson.mockResolvedValue({
             data: {
                 garmentType: "تيشيرت",
@@ -101,6 +106,24 @@ describe("submit-order route", () => {
         await expect(response.json()).resolves.toEqual({
             error: "غير مصرح لك باستخدام استوديو DTF",
         });
+    });
+
+    it("returns rate limit responses unchanged", async () => {
+        mockEnforceDtfRouteRateLimit.mockResolvedValue(
+            NextResponse.json(
+                { error: "تم تجاوز حد إرسال التصاميم للسلة" },
+                { status: 429 }
+            )
+        );
+
+        const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
+
+        expect(response.status).toBe(429);
+        await expect(response.json()).resolves.toEqual({
+            error: "تم تجاوز حد إرسال التصاميم للسلة",
+        });
+        expect(mockParseAndValidateDtfJson).not.toHaveBeenCalled();
+        expect(mockPrepareCartItem).not.toHaveBeenCalled();
     });
 
     it("returns validation failures unchanged", async () => {

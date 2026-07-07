@@ -5,6 +5,10 @@
         {
             "path": "/api/cron/cart-abandon",
             "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/cron/dtf-reservations",
+            "schedule": "17 */6 * * *"
         }
     ]
 }
