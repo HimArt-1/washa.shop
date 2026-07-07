@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { History, Sparkles } from 'lucide-react';
+import { History, Home, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
@@ -111,6 +111,15 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         </div>
 
         <div className="flex items-center justify-between gap-2 md:justify-end">
+          <a
+            href="/"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold"
+            title="الرئيسية"
+          >
+            <Home className="w-4 h-4" />
+            <span>الرئيسية</span>
+          </a>
+
           {/* Gallery Button */}
           <button
             onClick={onOpenGallery}

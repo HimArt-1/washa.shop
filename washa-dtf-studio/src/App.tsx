@@ -95,7 +95,7 @@ function AppContent() {
       ) : studioMode === 'dev' ? (
         <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
       ) : (
-        <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-hidden">
+        <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-x-clip">
           {/* Ambient Background Orbs */}
           <div className="ambient-orb ambient-orb-1" />
           <div className="ambient-orb ambient-orb-2" />
@@ -105,7 +105,7 @@ function AppContent() {
 
           {/* Full-Screen Wizard — centered, no side panel */}
           <main className="wizard-step-container">
-            <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative z-10">
+            <div className={`w-full ${step === 3 ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 relative z-10`}>
               <AnimatePresence mode="wait">
                 {step === 1 && <StepGarment key="step-garment" />}
                 {step === 2 && <StepIdea key="step-idea" />}

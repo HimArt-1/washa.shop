@@ -106,6 +106,7 @@ html {
   /* Prevent iOS auto-zoom on inputs */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 h1 {
@@ -129,6 +130,7 @@ h5, h6 {
 }
 
 body {
+  margin: 0;
   background-color: var(--color-washa-bg);
   color: var(--color-washa-text);
   font-family: var(--font-sans);
@@ -138,6 +140,11 @@ body {
   overflow-x: hidden;
   /* Prevent elastic bounce scrolling on iOS that disrupts fixed overlays */
   overscroll-behavior-y: none;
+}
+
+#root {
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Remove default iOS tap highlight (we add our own) */

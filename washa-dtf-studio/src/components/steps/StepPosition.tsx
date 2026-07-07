@@ -26,21 +26,27 @@ export default function StepPosition() {
 
   /* ── Reusable SVG T-Shirt with configurable highlight zone ── */
   const TShirtDiagram = ({ highlightRect, isSelected }: { highlightRect: { x: number; y: number; w: number; h: number }; isSelected: boolean }) => (
-    <div className="relative w-full aspect-[4/3] flex items-center justify-center p-3">
-      <svg viewBox="0 0 120 140" className="w-24 h-24 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="relative flex h-full min-h-44 w-full items-center justify-center p-4">
+      <svg viewBox="0 0 120 140" className="h-[88%] w-[78%] max-w-44 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* T-shirt body */}
         <path
           d="M30 25 L10 45 L25 55 L25 130 L95 130 L95 55 L110 45 L90 25 L75 35 C70 40 50 40 45 35 L30 25Z"
-          fill="rgba(255,255,255,0.06)"
-          stroke="rgba(255,255,255,0.2)"
-          strokeWidth="1.5"
+          fill="rgba(18,18,18,0.86)"
+          stroke="rgba(201,168,106,0.45)"
+          strokeWidth="1.8"
         />
         {/* Collar */}
         <path
           d="M45 35 C50 42 70 42 75 35"
           fill="none"
-          stroke="rgba(255,255,255,0.25)"
-          strokeWidth="1.2"
+          stroke="rgba(255,255,255,0.34)"
+          strokeWidth="1.4"
+        />
+        <path
+          d="M25 55 L33 60 M95 55 L87 60 M33 126 H87"
+          fill="none"
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth="1"
         />
         {/* Design zone highlight */}
         <rect
@@ -179,14 +185,14 @@ export default function StepPosition() {
                 printPositionLabel: pos.title,
               })}
               className={cn(
-                'group relative flex flex-col overflow-hidden rounded-3xl border transition-all duration-500',
+                'group relative flex flex-col overflow-hidden rounded-3xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
                 isSelected
-                  ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_40px_rgba(201,168,106,0.2)] ring-1 ring-washa-gold'
-                  : 'border-white/10 bg-white/[0.02] hover:border-washa-gold/30 hover:bg-white/[0.05]'
+                  ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold'
+                  : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative bg-black/40 border-b border-white/5 w-full aspect-[4/3] flex items-center justify-center overflow-hidden">
+              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(239,226,199,0.94),rgba(36,34,30,0.88)_68%)] p-3 sm:p-4">
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
                 
@@ -195,8 +201,8 @@ export default function StepPosition() {
                     src={studioAsset(pos.imageUrl as string)} 
                     alt={pos.title} 
                     className={cn(
-                      "absolute inset-0 w-full h-full object-cover transition-transform duration-700",
-                      isSelected ? "scale-105" : "group-hover:scale-110"
+                      "relative z-[1] h-full w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
+                      isSelected ? "scale-[1.02]" : "group-hover:scale-[1.04]"
                     )} 
                   />
                 ) : 'visual' in pos && typeof pos.visual === 'function' ? (
@@ -211,22 +217,22 @@ export default function StepPosition() {
               </div>
 
               {/* Text Content */}
-              <div className="p-5 text-right space-y-2 z-10 bg-washa-surface/40 backdrop-blur-sm flex-1">
+              <div className="p-5 text-right space-y-2 z-10 bg-washa-bg/90 backdrop-blur-sm flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <p className={cn(
                     "text-lg font-bold transition-colors",
-                    isSelected ? "text-washa-gold" : "text-white group-hover:text-washa-gold/80"
+                    isSelected ? "text-washa-gold-deep" : "text-washa-text group-hover:text-washa-gold-deep"
                   )}>
                     {pos.title}
                   </p>
                   <div className={cn(
                     "p-2 rounded-lg transition-colors",
-                    isSelected ? "bg-washa-gold/20 text-washa-gold" : "bg-white/5 text-washa-text-faint group-hover:text-washa-gold/60"
+                    isSelected ? "bg-washa-gold/[0.18] text-washa-gold-deep" : "bg-washa-gold/[0.08] text-washa-text-sec group-hover:text-washa-gold-deep"
                   )}>
                     {pos.icon}
                   </div>
                 </div>
-                <p className="text-xs leading-relaxed text-washa-text-faint group-hover:text-washa-text-sec transition-colors">
+                <p className="text-xs leading-relaxed text-washa-text-sec transition-colors">
                   {pos.description}
                 </p>
                 {typeof pos.price === 'number' && (
