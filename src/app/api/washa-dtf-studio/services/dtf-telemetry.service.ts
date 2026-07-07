@@ -43,6 +43,7 @@ type DailyQuotaOptions = {
 export class DtfTelemetryService {
     public static readonly DEFAULT_DAILY_LIMIT = 5;
     public static readonly DEFAULT_GUEST_DAILY_LIMIT = 3;
+    public static readonly DEFAULT_BOOTH_DAILY_LIMIT = 25;
     private static readonly INSERT_RETRY_COUNT = 2;
     private static readonly INSERT_RETRY_DELAY_MS = 150;
     private static readonly TELEMETRY_RESULT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
@@ -60,17 +61,33 @@ export class DtfTelemetryService {
         return data;
     }
 
-    private static async resolveDailyLimit() {
+    private static normalizePositiveLimit(value: unknown, fallback: number) {
+        const configuredLimit = Number(value);
+        if (!Number.isFinite(configuredLimit)) {
+            return fallback;
+        }
+
+        return Math.max(1, Math.round(configuredLimit));
+    }
+
+    private static async resolveDailyLimit(userRole?: string | null) {
         try {
             const settings = await getWashaAiSettings();
-            const configuredLimit = Number(settings.dtf_daily_quota_limit);
-            if (!Number.isFinite(configuredLimit)) {
-                return DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+            if (userRole === "booth") {
+                return DtfTelemetryService.normalizePositiveLimit(
+                    settings.dtf_booth_daily_quota_limit,
+                    DtfTelemetryService.DEFAULT_BOOTH_DAILY_LIMIT
+                );
             }
 
-            return Math.max(1, Math.round(configuredLimit));
+            return DtfTelemetryService.normalizePositiveLimit(
+                settings.dtf_daily_quota_limit,
+                DtfTelemetryService.DEFAULT_DAILY_LIMIT
+            );
         } catch {
-            return DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+            return userRole === "booth"
+                ? DtfTelemetryService.DEFAULT_BOOTH_DAILY_LIMIT
+                : DtfTelemetryService.DEFAULT_DAILY_LIMIT;
         }
     }
 
@@ -93,8 +110,6 @@ export class DtfTelemetryService {
         userRole: string | null | undefined,
         options: DailyQuotaOptions = {}
     ): Promise<DailyQuotaReservation> {
-        const dailyLimit = await DtfTelemetryService.resolveDailyLimit();
-
         if (!profileId) {
             if (userRole === "guest") {
                 const guestDailyLimit = await DtfTelemetryService.resolveGuestDailyLimit();
@@ -128,6 +143,8 @@ export class DtfTelemetryService {
         if (DtfTelemetryService.isQuotaBypassedRole(userRole)) {
             return { allowed: true, remaining: 9999, used: 0, tracked: false };
         }
+
+        const dailyLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
 
         try {
             const sb = getSupabaseAdminClient();
@@ -165,11 +182,11 @@ export class DtfTelemetryService {
         profileId: string | null | undefined,
         userRole: string | null | undefined
     ): Promise<boolean> {
-        const dailyLimit = await DtfTelemetryService.resolveDailyLimit();
-
         if (!profileId || DtfTelemetryService.isQuotaBypassedRole(userRole)) {
             return false;
         }
+
+        const dailyLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
 
         try {
             const sb = getSupabaseAdminClient();

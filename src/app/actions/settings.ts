@@ -85,6 +85,7 @@ export type SiteSettingsType = {
     washa_ai?: {
         dtf_daily_quota_limit?: number;
         dtf_guest_daily_quota_limit?: number;
+        dtf_booth_daily_quota_limit?: number;
     };
     site_info: Record<string, string>;
     shipping: {
@@ -151,6 +152,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
     washa_ai: {
         dtf_daily_quota_limit: 5,
         dtf_guest_daily_quota_limit: 3,
+        dtf_booth_daily_quota_limit: 25,
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
@@ -257,6 +259,26 @@ function coerceDtfDailyQuotaLimit(value: unknown, fallback = 5) {
     return Math.max(1, Math.round(parsed));
 }
 
+function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSettingsType["washa_ai"]>> {
+    const washaAi = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+    const fallback = DEFAULT_SITE_SETTINGS.washa_ai;
+
+    return {
+        dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            washaAi.dtf_daily_quota_limit,
+            fallback?.dtf_daily_quota_limit ?? 5
+        ),
+        dtf_guest_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            washaAi.dtf_guest_daily_quota_limit,
+            fallback?.dtf_guest_daily_quota_limit ?? 3
+        ),
+        dtf_booth_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            washaAi.dtf_booth_daily_quota_limit,
+            fallback?.dtf_booth_daily_quota_limit ?? 25
+        ),
+    };
+}
+
 function coerceBooleanSetting(value: unknown, fallback: boolean) {
     if (typeof value === "boolean") {
         return value;
@@ -360,23 +382,13 @@ function collectChangedRuleKeys(before: OperationalRulesConfig, after: Operation
 
 function buildSiteSettings(settings: Record<string, any>): SiteSettingsType {
     const visibility = normalizeVisibilitySettings(settings.visibility);
-    const washaAi = settings.washa_ai || {};
     const cp = settings.creation_prices || {};
     const pi = settings.product_identifiers || {};
     const aiSim = settings.ai_simulation || {};
 
     return {
         visibility,
-        washa_ai: {
-            dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
-                washaAi.dtf_daily_quota_limit,
-                DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5
-            ),
-            dtf_guest_daily_quota_limit: coerceDtfDailyQuotaLimit(
-                washaAi.dtf_guest_daily_quota_limit,
-                DEFAULT_SITE_SETTINGS.washa_ai?.dtf_guest_daily_quota_limit ?? 3
-            ),
-        },
+        washa_ai: normalizeWashaAiSettings(settings.washa_ai),
         site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
         shipping: {
             flat_rate: Number(settings.shipping?.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
@@ -781,22 +793,8 @@ export async function getCreationPrices() {
 }
 
 export async function getWashaAiSettings() {
-    const fallback = {
-        dtf_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_daily_quota_limit ?? 5,
-        dtf_guest_daily_quota_limit: DEFAULT_SITE_SETTINGS.washa_ai?.dtf_guest_daily_quota_limit ?? 3,
-    };
-
     const settings = await getSiteSettings();
-    return {
-        dtf_daily_quota_limit: coerceDtfDailyQuotaLimit(
-            settings.washa_ai?.dtf_daily_quota_limit,
-            fallback.dtf_daily_quota_limit
-        ),
-        dtf_guest_daily_quota_limit: coerceDtfDailyQuotaLimit(
-            settings.washa_ai?.dtf_guest_daily_quota_limit,
-            fallback.dtf_guest_daily_quota_limit
-        ),
-    };
+    return normalizeWashaAiSettings(settings.washa_ai);
 }
 
 // ─── Public visibility (للصفحات العامة — بدون صلاحية أدمن) ───
@@ -813,7 +811,11 @@ export async function getPublicVisibility() {
 export async function updateSiteSetting(key: string, value: Record<string, any>) {
     const { profileId } = await requireAdmin();
     const supabase = getAdminSupabase();
-    const nextValue = key === "operational_rules" ? normalizeOperationalRules(value) : value;
+    const nextValue = key === "operational_rules"
+        ? normalizeOperationalRules(value)
+        : key === "washa_ai"
+            ? normalizeWashaAiSettings(value)
+            : value;
 
     let changedRuleKeys: string[] = [];
 

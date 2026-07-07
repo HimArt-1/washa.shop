@@ -105,7 +105,7 @@ describe("settings visibility normalization", () => {
         expect(settings.visibility.design_piece_generation_public).toBe(true);
     });
 
-    it("normalizes Washa AI subscriber and guest generation limits", async () => {
+    it("normalizes Washa AI subscriber, guest, and booth generation limits", async () => {
         mockCreateClient.mockReturnValue({
             from: vi.fn(() => ({
                 select: vi.fn(async () => ({
@@ -115,6 +115,7 @@ describe("settings visibility normalization", () => {
                             value: {
                                 dtf_daily_quota_limit: "7",
                                 dtf_guest_daily_quota_limit: "3",
+                                dtf_booth_daily_quota_limit: "18",
                             },
                         },
                     ],
@@ -127,5 +128,6 @@ describe("settings visibility normalization", () => {
 
         expect(settings.dtf_daily_quota_limit).toBe(7);
         expect(settings.dtf_guest_daily_quota_limit).toBe(3);
+        expect(settings.dtf_booth_daily_quota_limit).toBe(18);
     });
 });

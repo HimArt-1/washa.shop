@@ -360,6 +360,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
     const [washaAi, setWashaAi] = useState({
         dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
         dtf_guest_daily_quota_limit: settings.washa_ai?.dtf_guest_daily_quota_limit ?? 3,
+        dtf_booth_daily_quota_limit: settings.washa_ai?.dtf_booth_daily_quota_limit ?? 25,
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -624,7 +625,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     يتحكم في عدد توليدات WASHA AI اليومية. الزائر يدخل الاستوديو بدون حساب، ثم يُطلب منه التسجيل عند إكمال الشراء.
                     لا تنطبق هذه الحدود على فرق الإدارة والصيانة.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Field
                         label="حد الزائر اليومي"
                         value={String(washaAi.dtf_guest_daily_quota_limit)}
@@ -641,6 +642,16 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         onChange={(v) => setWashaAi({
                             ...washaAi,
                             dtf_daily_quota_limit: Math.max(1, Number(v) || 1),
+                        })}
+                        type="number"
+                        dir="ltr"
+                    />
+                    <Field
+                        label="حد البوث اليومي"
+                        value={String(washaAi.dtf_booth_daily_quota_limit)}
+                        onChange={(v) => setWashaAi({
+                            ...washaAi,
+                            dtf_booth_daily_quota_limit: Math.max(1, Number(v) || 1),
                         })}
                         type="number"
                         dir="ltr"
