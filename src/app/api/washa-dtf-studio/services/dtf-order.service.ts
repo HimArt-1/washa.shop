@@ -578,6 +578,7 @@ export class DtfOrderService {
                     cartItem: {
                         ...cartItem,
                         customDesignOrderId: insertedOrder?.id ?? undefined,
+                        customDesignTrackerToken: insertedOrder?.tracker_token ?? undefined,
                     },
                     orderId: insertedOrder?.id ?? null,
                     orderNumber: insertedOrder?.order_number ?? null,

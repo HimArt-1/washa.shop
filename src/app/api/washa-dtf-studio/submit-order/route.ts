@@ -3,7 +3,11 @@ import { currentUser } from "@clerk/nextjs/server";
 import { DtfOrderService } from "../services/dtf-order.service";
 import { respondWithError, logDiagnosticWarning } from "../utils/api-error";
 import { submitOrderSchema } from "../validators/submit-order.schema";
-import { parseAndValidateDtfJson, requireDtfRouteAccess } from "../utils/route-runtime";
+import {
+    enforceDtfRouteRateLimit,
+    parseAndValidateDtfJson,
+    requireDtfRouteAccess,
+} from "../utils/route-runtime";
 import {
     attachDtfTraceId,
     logDtfTrace,
@@ -32,6 +36,22 @@ export async function POST(request: NextRequest) {
     });
     if (accessResult.response) {
         return attachDtfTraceId(accessResult.response, traceId);
+    }
+    const access = accessResult.access;
+
+    const rateLimitStartedAt = Date.now();
+    const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
+        keyPrefix: "submit",
+        limit: 8,
+        windowMs: 10 * 60_000,
+        message: "تم تجاوز حد إرسال التصاميم للسلة. يرجى الانتظار قليلاً ثم المحاولة مجدداً.",
+    });
+    logDtfTrace("dtf.submit-order", traceId, "rate_limit_checked", {
+        duration_ms: Date.now() - rateLimitStartedAt,
+        blocked: Boolean(rateLimitResponse),
+    });
+    if (rateLimitResponse) {
+        return attachDtfTraceId(rateLimitResponse, traceId);
     }
 
     const validationStartedAt = Date.now();

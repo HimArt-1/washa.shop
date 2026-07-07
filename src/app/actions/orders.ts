@@ -27,6 +27,7 @@ interface OrderItemInput {
     custom_title?: string | null;
     custom_position?: string | null;
     custom_design_order_id?: string | null;
+    custom_design_tracker_token?: string | null;
 }
 
 interface ShippingAddressInput {
@@ -68,6 +69,8 @@ type CustomDesignPricingRow = {
     size_name: string | null;
     print_position: string | null;
     pricing_snapshot: unknown;
+    tracker_token?: string | null;
+    tracker_token_expires_at?: string | null;
 };
 
 type ServerOrderPayload =
@@ -171,6 +174,16 @@ function normalizeColorCode(value: unknown) {
 
 function normalizeEmail(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim().toLowerCase() : null;
+}
+
+function normalizeTrackerToken(value: unknown) {
+    return typeof value === "string" && value.trim() ? value.trim().slice(0, 240) : null;
+}
+
+function trackerTokenIsValid(expiresAt: unknown) {
+    if (typeof expiresAt !== "string" || !expiresAt.trim()) return true;
+    const expiry = new Date(expiresAt);
+    return Number.isFinite(expiry.getTime()) && expiry >= new Date();
 }
 
 function getCustomDesignPrice(order: CustomDesignPricingRow) {
@@ -281,7 +294,7 @@ async function buildServerOrderPayload(params: {
         customDesignIds.length
             ? supabase
                 .from("custom_design_orders")
-                .select("id, order_number, user_id, customer_email, status, final_price, result_design_url, result_mockup_url, dtf_mockup_url, dtf_extracted_url, garment_name, color_name, size_name, print_position, pricing_snapshot")
+                .select("id, order_number, user_id, customer_email, status, final_price, result_design_url, result_mockup_url, dtf_mockup_url, dtf_extracted_url, garment_name, color_name, size_name, print_position, pricing_snapshot, tracker_token, tracker_token_expires_at")
                 .in("id", customDesignIds)
             : Promise.resolve({ data: [], error: null }),
     ]);
@@ -367,6 +380,22 @@ async function buildServerOrderPayload(params: {
             return { ok: false, error: "طلب التصميم المخصص لا يخص هذا الحساب" };
         }
 
+        const providedTrackerToken = normalizeTrackerToken(item.custom_design_tracker_token);
+        const trackerTokenMatches = Boolean(
+            providedTrackerToken &&
+            designOrder.tracker_token &&
+            providedTrackerToken === designOrder.tracker_token &&
+            trackerTokenIsValid(designOrder.tracker_token_expires_at)
+        );
+
+        if (!designOrder.user_id && !designOrderEmail && !trackerTokenMatches) {
+            return { ok: false, error: "طلب التصميم المخصص لا يخص هذا الحساب" };
+        }
+        const shouldClaimDesignOrder = !designOrder.user_id && (
+            trackerTokenMatches ||
+            Boolean(designOrderEmail && buyerEmail && designOrderEmail === buyerEmail)
+        );
+
         if (designOrder.status === "cancelled") {
             return { ok: false, error: "طلب التصميم المخصص ملغي" };
         }
@@ -379,6 +408,23 @@ async function buildServerOrderPayload(params: {
         const unitPrice = getCustomDesignPrice(designOrder);
         if (unitPrice === null) {
             return { ok: false, error: "سعر التصميم المخصص غير جاهز" };
+        }
+
+        if (shouldClaimDesignOrder) {
+            const claimPayload: Record<string, string> = { user_id: buyerId };
+            if (buyerEmail) claimPayload.customer_email = buyerEmail;
+
+            const { data: claimedOrder, error: claimError } = await supabase
+                .from("custom_design_orders")
+                .update(claimPayload)
+                .eq("id", designOrder.id)
+                .is("user_id", null)
+                .select("id")
+                .maybeSingle();
+
+            if (claimError || !claimedOrder) {
+                return { ok: false, error: "تعذر ربط التصميم المخصص بحسابك" };
+            }
         }
 
         const customDesignUrl = getCustomDesignUrl(designOrder);
@@ -957,23 +1003,25 @@ export async function createOrder(
     }
 
 
-    await dispatchOrderCreatedSideEffects({
-        orderId: order.id,
-        orderNumber: order.order_number,
-        total,
-        buyerId,
-        isCod,
-        paymentLabel,
-        customerEmail: user.emailAddresses?.[0]?.emailAddress,
-        customerName: shippingAddress.name || user.firstName || "عميل",
-        emailItems: buildOrderEmailItems(verifiedItems),
-        breakdown: {
-            subtotal,
-            shipping: shipping_cost,
-            tax,
-            discount,
-        },
-    });
+    if (isCod || isPos) {
+        await dispatchOrderCreatedSideEffects({
+            orderId: order.id,
+            orderNumber: order.order_number,
+            total,
+            buyerId,
+            isCod,
+            paymentLabel,
+            customerEmail: user.emailAddresses?.[0]?.emailAddress,
+            customerName: shippingAddress.name || user.firstName || "عميل",
+            emailItems: buildOrderEmailItems(verifiedItems),
+            breakdown: {
+                subtotal,
+                shipping: shipping_cost,
+                tax,
+                discount,
+            },
+        });
+    }
 
     if (isPos) {
         await dispatchOrderPaymentSideEffects({

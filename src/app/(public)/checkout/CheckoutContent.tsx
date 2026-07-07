@@ -5,7 +5,7 @@ import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelInitiateCheckout } from "@/lib/meta-pixel";
 import { useCartStore } from "@/stores/cartStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, Loader2, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
+import { ArrowRight, Check, Loader2, Mail, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,18 +13,29 @@ import * as z from "zod";
 import { createOrder } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { useUser } from "@clerk/nextjs";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
 import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
 
+function normalizeSaudiPhone(value: string) {
+    const compact = value.replace(/[\s\-()]/g, "");
+    if (compact.startsWith("00966")) return `+966${compact.slice(5)}`;
+    if (compact.startsWith("966")) return `+${compact}`;
+    return compact;
+}
+
 // Schema
 const addressSchema = z.object({
-    name: z.string().min(3, "الاسم مطلوب"),
-    phone: z.string().min(10, "رقم الهاتف مطلوب"),
-    line1: z.string().min(5, "العنوان مطلوب"),
+    name: z.string().trim().min(3, "الاسم مطلوب"),
+    phone: z.string()
+        .trim()
+        .transform(normalizeSaudiPhone)
+        .refine((value) => /^(?:05\d{8}|\+9665\d{8})$/.test(value), "أدخل رقم جوال سعودي صحيح مثل 05xxxxxxxx أو +9665xxxxxxxx"),
+    line1: z.string().trim().min(5, "العنوان مطلوب"),
     line2: z.string().optional(),
-    city: z.string().min(2, "المدينة مطلوبة"),
-    postal_code: z.string().min(4, "الرمز البريدي مطلوب"),
+    city: z.string().trim().min(2, "المدينة مطلوبة"),
+    postal_code: z.string().trim().regex(/^\d{5}$/, "الرمز البريدي السعودي يتكون من 5 أرقام"),
     country: z.string().min(2, "الدولة مطلوبة"),
 });
 
@@ -75,6 +86,7 @@ async function verifyPaylinkPayment(params: {
 
 export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean }) {
     const { items: rawItems, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
+    const { user } = useUser();
     const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
     const rawItemsSignature = useMemo(() => cartItemsSignature(rawItems), [rawItems]);
     const cleanItemsSignature = useMemo(() => cartItemsSignature(items), [items]);
@@ -91,6 +103,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
+    const accountEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || "";
 
     useEffect(() => {
         const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -304,6 +317,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                     unit_price: item.price,
                     custom_design_url: item.customDesignUrl ?? undefined,
                     custom_design_order_id: item.customDesignOrderId ?? undefined,
+                    custom_design_tracker_token: item.customDesignTrackerToken ?? undefined,
                     custom_garment: item.customGarment ?? undefined,
                     custom_title: item.title,
                     custom_position: item.customPosition ?? undefined,
@@ -536,10 +550,12 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                             <form id="checkout-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
-                                        <label className="text-sm text-theme-soft">الاسم الكامل</label>
+                                        <label htmlFor="checkout-name" className="text-sm text-theme-soft">الاسم الكامل</label>
                                         <div className="relative">
                                             <input
+                                                id="checkout-name"
                                                 {...form.register("name")}
+                                                autoComplete="name"
                                                 className="input-dark w-full rounded-xl px-4 py-3 pl-10"
                                                 placeholder="الاسم الثلاثي"
                                             />
@@ -551,10 +567,14 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-sm text-theme-soft">رقم الهاتف</label>
+                                        <label htmlFor="checkout-phone" className="text-sm text-theme-soft">رقم الهاتف</label>
                                         <div className="relative">
                                             <input
+                                                id="checkout-phone"
                                                 {...form.register("phone")}
+                                                type="tel"
+                                                inputMode="tel"
+                                                autoComplete="tel"
                                                 className="input-dark w-full rounded-xl px-4 py-3 pl-10 dir-ltr text-right"
                                                 placeholder="05xxxxxxxx"
                                             />
@@ -566,10 +586,28 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     </div>
                                 </div>
 
+                                {accountEmail ? (
+                                    <div className="space-y-2">
+                                        <label htmlFor="checkout-email" className="text-sm text-theme-soft">البريد المعتمد للدفع والإشعارات</label>
+                                        <div className="relative">
+                                            <input
+                                                id="checkout-email"
+                                                value={accountEmail}
+                                                disabled
+                                                autoComplete="email"
+                                                className="input-dark w-full rounded-xl px-4 py-3 pl-10 dir-ltr text-right text-theme-subtle cursor-not-allowed opacity-80"
+                                            />
+                                            <Mail className="absolute left-3 top-3.5 w-4 h-4 text-theme-faint" />
+                                        </div>
+                                    </div>
+                                ) : null}
+
                                 <div className="space-y-2">
-                                    <label className="text-sm text-theme-soft">العنوان</label>
+                                    <label htmlFor="checkout-line1" className="text-sm text-theme-soft">العنوان</label>
                                     <input
+                                        id="checkout-line1"
                                         {...form.register("line1")}
+                                        autoComplete="street-address"
                                         className="input-dark w-full rounded-xl px-4 py-3"
                                         placeholder="اسم الشارع، رقم المبنى"
                                     />
@@ -580,9 +618,11 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
 
                                 <div className="grid gap-4 sm:grid-cols-3">
                                     <div className="space-y-2">
-                                        <label className="text-sm text-theme-soft">المدينة</label>
+                                        <label htmlFor="checkout-city" className="text-sm text-theme-soft">المدينة</label>
                                         <input
+                                            id="checkout-city"
                                             {...form.register("city")}
+                                            autoComplete="address-level2"
                                             className="input-dark w-full rounded-xl px-4 py-3"
                                         />
                                         {form.formState.errors.city && (
@@ -590,9 +630,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm text-theme-soft">الرمز البريدي</label>
+                                        <label htmlFor="checkout-postal-code" className="text-sm text-theme-soft">الرمز البريدي</label>
                                         <input
+                                            id="checkout-postal-code"
                                             {...form.register("postal_code")}
+                                            inputMode="numeric"
+                                            autoComplete="postal-code"
+                                            pattern="[0-9]{5}"
                                             className="input-dark w-full rounded-xl px-4 py-3"
                                         />
                                         {form.formState.errors.postal_code && (
@@ -600,10 +644,12 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                         )}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm text-theme-soft">الدولة</label>
+                                        <label htmlFor="checkout-country" className="text-sm text-theme-soft">الدولة</label>
                                         <input
+                                            id="checkout-country"
                                             {...form.register("country")}
                                             disabled
+                                            autoComplete="country-name"
                                             className="input-dark w-full rounded-xl px-4 py-3 text-theme-subtle cursor-not-allowed opacity-70"
                                         />
                                     </div>
@@ -647,7 +693,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                             <div>
                                                 <span className="font-bold">الدفع الإلكتروني الآمن</span>
                                                 <p className="mt-1 text-xs text-theme-subtle">
-                                                    دفع مشفّر بـ Mada، Visa، Apple Pay، أو STC Pay.
+                                                    دفع مشفّر عبر مدى، Visa/Mastercard، STC Pay، Tabby أو Tamara.
                                                 </p>
                                             </div>
                                         </div>
@@ -659,8 +705,10 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     <div className="mt-3 mr-7 flex flex-wrap gap-2">
                                         {/* Mock visual logos for cards */}
                                         <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">mada</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">VISA</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Apple Pay</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">VISA/MC</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">STC Pay</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tabby</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tamara</div>
                                     </div>
                                 </motion.button>
                                 

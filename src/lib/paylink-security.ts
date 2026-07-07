@@ -29,6 +29,12 @@ function normalizeText(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function asRecord(value: unknown) {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
 function normalizeMoney(value: unknown) {
     if (typeof value === "number" && Number.isFinite(value)) {
         return Math.round(value * 100) / 100;
@@ -75,18 +81,41 @@ export function isPaylinkInvoicePaid(invoice: PaylinkInvoiceLike | null | undefi
     return normalizeText(invoice?.orderStatus)?.toLowerCase() === "paid";
 }
 
+export function getStoredPaylinkTransactionNos(metadata: unknown) {
+    const metadataRecord = asRecord(metadata);
+    const paylink = asRecord(metadataRecord?.paylink);
+    if (!paylink) return [];
+
+    const transactionNos: string[] = [];
+    const seen = new Set<string>();
+    const add = (value: unknown) => {
+        const transactionNo = normalizeText(value);
+        if (!transactionNo || seen.has(transactionNo)) return;
+        seen.add(transactionNo);
+        transactionNos.push(transactionNo);
+    };
+
+    add(paylink.transactionNo);
+    add(paylink.transaction_no);
+
+    const transactions = Array.isArray(paylink.transactions)
+        ? paylink.transactions
+        : Array.isArray(paylink.invoices)
+            ? paylink.invoices
+            : [];
+
+    for (let index = transactions.length - 1; index >= 0; index -= 1) {
+        const transaction = asRecord(transactions[index]);
+        if (!transaction) continue;
+        add(transaction.transactionNo);
+        add(transaction.transaction_no);
+    }
+
+    return transactionNos;
+}
+
 export function getStoredPaylinkTransactionNo(metadata: unknown) {
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-        return null;
-    }
-
-    const paylink = (metadata as Record<string, unknown>).paylink;
-    if (!paylink || typeof paylink !== "object" || Array.isArray(paylink)) {
-        return null;
-    }
-
-    const record = paylink as Record<string, unknown>;
-    return normalizeText(record.transactionNo) || normalizeText(record.transaction_no);
+    return getStoredPaylinkTransactionNos(metadata)[0] ?? null;
 }
 
 export function assertPaylinkInvoiceMatchesOrder(
@@ -140,9 +169,13 @@ export function assertPaylinkInvoiceMatchesOrder(
         };
     }
 
-    const storedTransactionNo = getStoredPaylinkTransactionNo(order.metadata);
+    const storedTransactionNos = getStoredPaylinkTransactionNos(order.metadata);
     const effectiveTransactionNo = invoiceTransactionNo || expectedTransactionNo;
-    if (storedTransactionNo && effectiveTransactionNo && storedTransactionNo !== effectiveTransactionNo) {
+    if (
+        storedTransactionNos.length > 0 &&
+        effectiveTransactionNo &&
+        !storedTransactionNos.includes(effectiveTransactionNo)
+    ) {
         return {
             ok: false,
             status: 409,

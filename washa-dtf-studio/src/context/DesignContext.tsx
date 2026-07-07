@@ -633,6 +633,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const submitOrder = async (): Promise<boolean> => {
     if (!mockupImage) return false;
 
+    if (configError && config === FALLBACK_DTF_CONFIG) {
+      const msg = 'لا يمكن إضافة التصميم للسلة حالياً لأن إعدادات القطع والأسعار لم تُحمّل من الخادم. حاول تحديث الصفحة بعد قليل.';
+      setError(msg);
+      showToast(msg, 'error');
+      return false;
+    }
+
     setIsSubmittingOrder(true);
     setError(null);
 

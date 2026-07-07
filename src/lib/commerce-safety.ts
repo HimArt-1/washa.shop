@@ -28,6 +28,7 @@ export interface CommerceCartItem {
     maxQuantity?: number;
     customDesignUrl?: string;
     customDesignOrderId?: string;
+    customDesignTrackerToken?: string;
     customGarment?: string;
     customPosition?: string;
 }
@@ -164,6 +165,9 @@ export function sanitizeCartItem(value: unknown): CommerceCartItem | null {
         ...(type === "custom_design" && toCleanString(item.customDesignOrderId)
             ? { customDesignOrderId: toCleanString(item.customDesignOrderId).slice(0, 160) }
             : {}),
+        ...(type === "custom_design" && toCleanString(item.customDesignTrackerToken)
+            ? { customDesignTrackerToken: toCleanString(item.customDesignTrackerToken).slice(0, 240) }
+            : {}),
         ...(type === "custom_design" && toCleanString(item.customGarment)
             ? { customGarment: toCleanString(item.customGarment).slice(0, 80) }
             : {}),
@@ -215,6 +219,7 @@ export function cartItemsSignature(items: unknown) {
             maxQuantity: item.maxQuantity ?? null,
             customDesignUrl: item.customDesignUrl ?? null,
             customDesignOrderId: item.customDesignOrderId ?? null,
+            customDesignTrackerToken: item.customDesignTrackerToken ?? null,
             customGarment: item.customGarment ?? null,
             customPosition: item.customPosition ?? null,
         }))
