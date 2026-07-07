@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/types/database";
+import type { Database, UserRole } from "@/types/database";
 import { generateNextSKU, getUnitSerialsForPrint } from "@/lib/product-identifiers";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
@@ -17,31 +17,62 @@ function getAdminSb() {
     );
 }
 
-// Helper to verify admin role
-async function verifyAdmin() {
+const INVENTORY_OPERATIONS_ROLES: UserRole[] = ["admin", "dev", "shipping_manager"];
+const POS_LOOKUP_ROLES: UserRole[] = ["admin", "dev", "financial_manager", "booth"];
+
+async function verifyRoleAccess(allowedRoles: UserRole[]) {
     const user = await getCurrentUserOrDevAdmin();
-    if (!user) return { user: null, isAdmin: false };
+    if (!user) return { user: null, profile: null, hasAccess: false };
 
     const supabase = getAdminSb();
     const { data: profile } = await supabase
         .from("profiles")
-        .select("role")
+        .select("id, role")
         .eq("clerk_id", user.id)
         .single();
 
-    return { user, isAdmin: profile?.role === "admin" };
+    const role = profile?.role as UserRole | undefined;
+    return {
+        user,
+        profile,
+        hasAccess: Boolean(role && allowedRoles.includes(role)),
+    };
+}
+
+async function verifyInventoryOperationsAccess() {
+    const { user, profile, hasAccess } = await verifyRoleAccess(INVENTORY_OPERATIONS_ROLES);
+    return { user, profile, hasAccess };
+}
+
+async function verifyPosLookupAccess() {
+    return verifyRoleAccess(POS_LOOKUP_ROLES);
 }
 
 // ─── SKUs ───────────────────────────────────────────────
 
 export async function getSKUs() {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
     const { data, error } = await supabase
         .from("product_skus")
         .select("*, product:products(title, image_url)")
+        .order("created_at", { ascending: false });
+
+    if (error) return { error: error.message };
+    return { skus: data };
+}
+
+export async function getSKUsForSales() {
+    const { hasAccess } = await verifyPosLookupAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
+
+    const supabase = getAdminSb();
+    const { data, error } = await supabase
+        .from("product_skus")
+        .select("id, product_id, sku, size, color_code, color_image_url, is_active, product:products(id, title, image_url, price)")
+        .eq("is_active", true)
         .order("created_at", { ascending: false });
 
     if (error) return { error: error.message };
@@ -57,8 +88,8 @@ export async function createSKU(input: {
     initial_quantity?: number;
     is_active?: boolean;
 }) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     let skuValue = input.sku?.trim();
     if (!skuValue) {
@@ -129,8 +160,8 @@ export async function updateSKU(input: {
     color_image_url?: string | null;
     is_active?: boolean;
 }) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const skuValue = input.sku?.trim();
     if (!input.id) return { error: "SKU غير محدد" };
@@ -158,16 +189,16 @@ export async function updateSKU(input: {
 }
 
 export async function getUnitSerials(skuId: string, count: number) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
     return getUnitSerialsForPrint(skuId, count);
 }
 
 // ─── Warehouses ─────────────────────────────────────────
 
 export async function getWarehouses() {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
     const { data, error } = await supabase
@@ -179,9 +210,24 @@ export async function getWarehouses() {
     return { warehouses: data };
 }
 
+export async function getWarehousesForSales() {
+    const { hasAccess } = await verifyPosLookupAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
+
+    const supabase = getAdminSb();
+    const { data, error } = await supabase
+        .from("warehouses")
+        .select("id, name, location, is_active")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true });
+
+    if (error) return { error: error.message };
+    return { warehouses: data };
+}
+
 export async function createWarehouse(name: string, location?: string) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
     const { data, error } = await supabase.from("warehouses")
@@ -196,8 +242,8 @@ export async function createWarehouse(name: string, location?: string) {
 // ─── Inventory Management ───────────────────────────────
 
 export async function getInventoryLevels(warehouseId?: string) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
     let query = supabase
@@ -222,8 +268,8 @@ export async function adjustInventory(
     transactionType: 'addition' | 'sale' | 'adjustment' | 'transfer' | 'return',
     notes?: string
 ) {
-    const { user, isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { user, hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
 
@@ -343,8 +389,8 @@ export async function bulkExecuteRestockPlan(input: {
     items: BulkRestockPlanItem[];
     notes?: string;
 }) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { error: "غير مصرح" };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { error: "غير مصرح" };
 
     const sourceItems = Array.isArray(input.items) ? input.items.slice(0, 25) : [];
     const actionableItems = sourceItems.filter(
@@ -414,8 +460,8 @@ export async function bulkExecuteRestockPlan(input: {
 // ─── Enhanced Inventory with Sales Data ─────────────────
 
 export async function getInventoryWithSales(warehouseId?: string) {
-    const { isAdmin } = await verifyAdmin();
-    if (!isAdmin) return { inventory: [], stats: null };
+    const { hasAccess } = await verifyInventoryOperationsAccess();
+    if (!hasAccess) return { inventory: [], stats: null };
 
     const supabase = getAdminSb();
 

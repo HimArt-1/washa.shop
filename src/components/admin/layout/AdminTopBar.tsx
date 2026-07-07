@@ -25,7 +25,12 @@ import {
 import type { AdminNotification } from "@/types/database";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { ADMIN_COMMAND_ITEMS, getAdminPageMeta, type AdminNavItem } from "@/lib/admin-navigation";
+import {
+    getAdminPageMeta,
+    getVisibleAdminCommandItems,
+    type AdminNavItem,
+} from "@/lib/admin-navigation";
+import type { UserRole } from "@/types/database";
 
 function getAdminNotificationIcon(notification: AdminNotification) {
     switch (notification.category) {
@@ -78,10 +83,11 @@ function getCategoryBadgeClasses(notification: AdminNotification) {
 }
 
 const NOTIFICATION_REFRESH_MS = 45_000;
+const ADMIN_NOTIFICATION_ROLES: UserRole[] = ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"];
 
 import { OrderRadar } from "@/components/admin/orders/OrderRadar";
 
-export function AdminTopBar() {
+export function AdminTopBar({ role }: { role: UserRole }) {
     const router = useRouter();
     const pathname = usePathname();
     const [mounted, setMounted] = useState(false);
@@ -91,6 +97,8 @@ export function AdminTopBar() {
     const { notifications, unreadCount, fetchInitial, markAsRead, markAllAsRead } = useNotificationStore();
     const notificationSummary = { critical: 0, warning: 0, info: 0 };
     const pageMeta = getAdminPageMeta(pathname);
+    const canUseAdminNotifications = ADMIN_NOTIFICATION_ROLES.includes(role);
+    const commandItems = getVisibleAdminCommandItems(role);
 
     useEffect(() => {
         setMounted(true);
@@ -103,14 +111,16 @@ export function AdminTopBar() {
     }
 
     useEffect(() => {
+        if (!canUseAdminNotifications) return;
         fetchInitial();
-    }, [fetchInitial]);
+    }, [canUseAdminNotifications, fetchInitial]);
 
     useEffect(() => {
         setNotificationsOpen(false);
     }, [pathname]);
 
     useEffect(() => {
+        if (!canUseAdminNotifications) return;
         const refresh = () => {
             void fetchInitial(true);
         };
@@ -128,14 +138,14 @@ export function AdminTopBar() {
             window.removeEventListener("focus", refresh);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [fetchInitial]);
+    }, [canUseAdminNotifications, fetchInitial]);
 
     const filtered = query.trim()
-        ? ADMIN_COMMAND_ITEMS.filter((item) => {
+        ? commandItems.filter((item) => {
             const needle = query.trim().toLowerCase();
             return `${item.label} ${item.description} ${item.href}`.toLowerCase().includes(needle);
         })
-        : ADMIN_COMMAND_ITEMS;
+        : commandItems;
 
     const handleKeyDown = useCallback(
         (e: KeyboardEvent) => {
@@ -200,18 +210,20 @@ export function AdminTopBar() {
                             الموقع العام
                         </Link>
                         <ThemeToggle />
-                        <button
-                            onClick={() => setNotificationsOpen(!notificationsOpen)}
-                            className="relative p-2.5 rounded-xl border border-amber-500/15 bg-amber-500/5 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/25 transition-colors"
-                            aria-label="تنبيهات الإدارة"
-                        >
-                            <ShieldAlert className="w-5 h-5" />
-                            {mounted && unreadCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-gold text-[#0a0a0a] text-[10px] font-bold flex items-center justify-center px-1">
-                                    {unreadCount > 99 ? "99+" : unreadCount}
-                                </span>
-                            )}
-                        </button>
+                        {canUseAdminNotifications && (
+                            <button
+                                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                className="relative p-2.5 rounded-xl border border-amber-500/15 bg-amber-500/5 text-amber-300 hover:bg-amber-500/10 hover:border-amber-500/25 transition-colors"
+                                aria-label="تنبيهات الإدارة"
+                            >
+                                <ShieldAlert className="w-5 h-5" />
+                                {mounted && unreadCount > 0 && (
+                                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-gold text-[#0a0a0a] text-[10px] font-bold flex items-center justify-center px-1">
+                                        {unreadCount > 99 ? "99+" : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+                        )}
                         <div className="[&_.cl-userButtonBox]:flex [&_.cl-userButtonTrigger]:rounded-xl">
                             <UserButton
                                 afterSignOutUrl="/"
@@ -225,7 +237,7 @@ export function AdminTopBar() {
                     </div>
                 </div>
             </header>
-            <OrderRadar />
+            {canUseAdminNotifications && <OrderRadar />}
 
             {/* Command Palette Modal */}
             <AnimatePresence>

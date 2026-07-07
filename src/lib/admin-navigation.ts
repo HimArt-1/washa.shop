@@ -61,7 +61,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
             { icon: ShoppingCart, label: "الطلبات", href: "/dashboard/orders", description: "قائمة الطلبات وإجراءات المتابعة.", roles: ["admin", "dev", "shipping_manager", "support_agent", "financial_manager"] },
             { icon: Truck, label: "إدارة الشحن", href: "/dashboard/shipping", description: "الشحنات، التتبع، ومزودي التوصيل.", roles: ["admin", "dev", "shipping_manager"] },
             { icon: Package, label: "المنتجات والمخزون", href: "/dashboard/products-inventory", description: "المنتجات، المخزون، الجرد، والباركود في مركز واحد.", roles: ["admin", "dev", "shipping_manager"] },
-            { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", description: "نقاط البيع وسجل الحركة التجارية.", roles: ["admin", "dev", "financial_manager"] },
+            { icon: TrendingUp, label: "المبيعات", href: "/dashboard/sales", description: "نقاط البيع وسجل الحركة التجارية.", roles: ["admin", "dev", "financial_manager", "booth"] },
             { icon: Ticket, label: "الكوبونات", href: "/dashboard/coupons", description: "حملات الخصم والاستخدامات.", roles: ["admin", "dev", "financial_manager", "shipping_manager"] },
             { icon: Package, label: "الباركود", href: "/dashboard/barcodes", description: "رموز SKU وربط المنتجات بالمستودع.", roles: ["admin", "dev", "shipping_manager"] },
         ],
@@ -102,6 +102,10 @@ export const ADMIN_COMMAND_ITEMS: AdminNavItem[] = [
 
 export function canViewAdminItem(item: AdminNavItem, role: UserRole) {
     return !item.roles || item.roles.includes(role);
+}
+
+export function getVisibleAdminCommandItems(role: UserRole) {
+    return ADMIN_COMMAND_ITEMS.filter((item) => canViewAdminItem(item, role));
 }
 
 export function getAdminActiveHref(pathname: string, items: AdminNavItem[]) {

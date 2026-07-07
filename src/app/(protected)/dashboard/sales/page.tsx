@@ -1,5 +1,5 @@
 import { getSalesRecords } from "@/app/actions/erp/sales";
-import { getWarehouses, getSKUs } from "@/app/actions/erp/inventory";
+import { getSKUsForSales, getWarehousesForSales } from "@/app/actions/erp/inventory";
 import SalesClient from "@/components/admin/erp/SalesClient";
 
 export const metadata = {
@@ -9,14 +9,16 @@ export const metadata = {
 export default async function SalesPage() {
     const [salesRes, whRes, skusRes] = await Promise.all([
         getSalesRecords(),
-        getWarehouses(),
-        getSKUs()
+        getWarehousesForSales(),
+        getSKUsForSales()
     ]);
 
     if (salesRes.error || whRes.error || skusRes.error) {
+        const message = salesRes.error || whRes.error || skusRes.error || "تعذر جلب بيانات المبيعات";
         return (
             <div className="p-8 text-center text-red-400">
                 <p>خطأ في جلب بيانات المبيعات</p>
+                <p className="mt-2 text-sm text-red-300/80">{message}</p>
             </div>
         );
     }

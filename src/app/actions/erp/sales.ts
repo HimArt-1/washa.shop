@@ -34,7 +34,7 @@ async function verifySalesAccess() {
 
 // ─── Get Sales Records ────────────────────────────────────────
 export async function getSalesRecords(method?: SalesMethodType) {
-    const { hasAccess } = await verifySalesAccess();
+    const { profile, hasAccess } = await verifySalesAccess();
     if (!hasAccess) return { error: "غير مصرح" };
 
     const supabase = getAdminSb();
@@ -43,7 +43,13 @@ export async function getSalesRecords(method?: SalesMethodType) {
         .select("*, sku:product_skus(sku, size, color_code, product:products(title, image_url, price))")
         .order("created_at", { ascending: false });
 
-    if (method) query = query.eq("sales_method", method);
+    if (profile?.role === "booth") {
+        query = query
+            .eq("sales_method", "booth_manual")
+            .eq("created_by", profile.id);
+    } else if (method) {
+        query = query.eq("sales_method", method);
+    }
 
     const { data, error } = await query;
     if (error) return { error: error.message };
