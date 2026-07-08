@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DesignDtfStudioEntryPage() {
-    const { visibility, access, showWizard } = await resolveDesignPiecePageState({
+    const { visibility, access } = await resolveDesignPiecePageState({
         allowPublicAccess: true,
     });
 
@@ -34,5 +34,5 @@ export default async function DesignDtfStudioEntryPage() {
     }
 
     // Always show the immersive landing page
-    return <WashaAiEntryGate showWizard={showWizard} redirectUrl="/design/washa-ai/app" />;
+    return <WashaAiEntryGate redirectUrl="/design/washa-ai/app" />;
 }

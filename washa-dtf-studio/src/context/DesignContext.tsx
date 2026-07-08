@@ -644,6 +644,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     const draft = consumeWashaAiAuthDraft();
     if (!draft) return;
+    let cancelled = false;
 
     setState((current) => ({
       ...current,
@@ -658,18 +659,47 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       if (draft.referenceImageOmitted && draft.state.designMethod === 'image' && !draft.state.prompt.trim()) {
         setStep(2);
         showToast('استرجعنا اختياراتك، لكن أعد رفع الصورة المرجعية قبل التوليد.', 'info');
-        return;
+        return () => {
+          cancelled = true;
+        };
       }
 
       setStep(5);
-      setPendingGenerateAfterAuth(true);
-      showToast('تم استرجاع اختياراتك بعد تسجيل الدخول. يبدأ التوليد الآن.', 'info');
-      return;
+    } else {
+      setStep(5);
     }
 
-    setStep(5);
-    setPendingGenerateAfterAuth(true);
-    showToast('تم استرجاع اختياراتك بعد تسجيل الدخول. سنعيد توليد التصميم بحسابك قبل إضافته للسلة.', 'info');
+    const restoredMessage = draft.intent === 'generate'
+      ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول فقط عند التوليد.'
+      : 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول عند إرسال الطلب.';
+    const authenticatedMessage = draft.intent === 'generate'
+      ? 'تم استرجاع اختياراتك بعد تسجيل الدخول. يبدأ التوليد الآن.'
+      : 'تم استرجاع اختياراتك بعد تسجيل الدخول. سنعيد توليد التصميم بحسابك قبل إضافته للسلة.';
+
+    async function continueAfterConfirmedAuth() {
+      try {
+        const session = await fetchWashaAiSession();
+        if (cancelled) return;
+
+        if (session.authenticated && session.canGenerate) {
+          setPendingGenerateAfterAuth(true);
+          showToast(authenticatedMessage, 'info');
+          return;
+        }
+      } catch {
+        // Restoring the draft should not force auth or block entry to the studio.
+      }
+
+      if (!cancelled) {
+        showToast(restoredMessage, 'info');
+      }
+    }
+
+    void continueAfterConfirmedAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, [config, configLoading, showToast]);
 
   useEffect(() => {
