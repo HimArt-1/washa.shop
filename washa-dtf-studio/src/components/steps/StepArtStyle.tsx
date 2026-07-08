@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, ArrowLeft, ArrowRight, Loader2, Palette, Brush } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Sparkles, Loader2, Palette, Brush } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
+import StepNavigationBar from './StepNavigationBar';
 
 const STYLE_THUMBNAILS: Record<string, string> = {
   'ملصق (Sticker)': 'thumbnails/styles/sticker.png',
@@ -97,14 +97,15 @@ export default function StepArtStyle() {
   ];
 
   return (
-    <motion.div
-      key="step-artstyle"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step-artstyle"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong p-6 sm:p-10 space-y-10"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -248,20 +249,12 @@ export default function StepArtStyle() {
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="lg" onClick={prevStep} className="gap-2 rounded-xl">
-          <ArrowRight className="w-5 h-5" /> رجوع
-        </Button>
-        <Button
-          variant="gold"
-          size="lg"
-          onClick={nextStep}
-          disabled={(!state.styleId && !state.techniqueId) || configLoading}
-          className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          التالي <ArrowLeft className="w-5 h-5" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        onNext={nextStep}
+        nextDisabled={(!state.styleId && !state.techniqueId) || configLoading}
+      />
+    </>
   );
 }

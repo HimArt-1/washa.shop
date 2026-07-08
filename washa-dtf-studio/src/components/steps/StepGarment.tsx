@@ -1,10 +1,10 @@
 import { motion } from 'motion/react';
-import { Shirt, CheckCircle2, ChevronLeft, Loader2, Package2, Ruler } from 'lucide-react';
+import { Shirt, CheckCircle2, Loader2, Package2, Ruler } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { LIGHT_GARMENT_COLORS } from '../../types';
 import { siteAsset } from '../../lib/assets';
+import StepNavigationBar from './StepNavigationBar';
 
 export default function StepGarment() {
   const {
@@ -23,14 +23,15 @@ export default function StepGarment() {
   const canProceed = Boolean(state.garmentId && state.garmentColorId && state.garmentSizeId && selectedSize && selectedSize.stockStatus !== 'out');
 
   return (
-    <motion.div
-      key="step1"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step1"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong p-6 sm:p-10 space-y-10"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -282,17 +283,11 @@ export default function StepGarment() {
         </div>
       )}
 
-      <div className="flex justify-end pt-4">
-        <Button
-          variant="gold"
-          size="lg"
-          onClick={nextStep}
-          disabled={!canProceed || configLoading}
-          className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          التالي <ChevronLeft className="w-5 h-5" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onNext={nextStep}
+        nextDisabled={!canProceed || configLoading}
+      />
+    </>
   );
 }

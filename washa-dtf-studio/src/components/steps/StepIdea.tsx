@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Type, PenLine, ChevronLeft, ChevronRight, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { Image as ImageIcon, Type, PenLine, Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { useDesign } from '../../context/DesignContext';
 import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
+import StepNavigationBar from './StepNavigationBar';
 
 const SUGGESTIONS = [
   { text: 'ذئب هندسي', emoji: '🐺' },
@@ -70,14 +71,15 @@ export default function StepIdea() {
   ] as const;
 
   return (
-    <motion.div
-      key="step2"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step2"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong p-6 sm:p-10 space-y-10"
+      >
       {/* Step Badge */}
       <div className="flex items-center justify-between">
         <div className="step-badge">
@@ -355,14 +357,12 @@ export default function StepIdea() {
         </AnimatePresence>
       </div>
 
-      <div className="flex justify-between pt-4">
-        <Button variant="ghost" onClick={prevStep} className="gap-2 rounded-xl hover:bg-washa-gold/5">
-          <ChevronRight className="w-4 h-4" /> السابق
-        </Button>
-        <Button variant="gold" size="lg" onClick={nextStep} className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl">
-          التالي <ChevronLeft className="w-4 h-4" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        backLabel="السابق"
+        onNext={nextStep}
+      />
+    </>
   );
 }

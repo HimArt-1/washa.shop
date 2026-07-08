@@ -39,6 +39,12 @@ function AppContent() {
   const studioMode = useMemo(() => getStudioMode(), []);
 
   useEffect(() => {
+    if (studioMode !== 'production') return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step, studioMode]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function persistHistoryThumbnail() {
@@ -103,7 +109,7 @@ function AppContent() {
 
           <Header onOpenGallery={() => setGalleryOpen(true)} />
 
-          {/* Full-Screen Wizard — centered, no side panel */}
+          {/* Full-screen wizard, no side panel */}
           <main className="wizard-step-container">
             <div className={`w-full ${step === 3 ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 relative z-10`}>
               <AnimatePresence mode="wait">

@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Palette, Check, Sparkles, Wand2, ChevronLeft, ChevronRight, Loader2, X, LockKeyhole } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Textarea } from '../ui/Textarea';
+import { Check, Sparkles, Wand2, Loader2, X, LockKeyhole } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { CUSTOM_PALETTE_ID, CUSTOM_PALETTE_LABEL } from '../../types';
+import StepNavigationBar from './StepNavigationBar';
 
 /* ── Color Swatch Picker ── */
 const COLOR_SWATCHES = [
@@ -164,15 +163,23 @@ export default function StepPalette() {
     (!customPaletteSelected || state.customPalette?.trim())
   );
 
+  const generateHint = (
+    <span className="inline-flex items-center justify-center gap-1.5 sm:justify-end">
+      <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" />
+      يتطلب التوليد تسجيل الدخول لحفظ التصميم وربطه بطلبك
+    </span>
+  );
+
   return (
-    <motion.div
-      key="step-palette"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step-palette"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong p-6 sm:p-10 space-y-10"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -386,31 +393,14 @@ export default function StepPalette() {
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          variant="ghost"
-          size="lg"
-          onClick={prevStep}
-          className="gap-2 rounded-xl"
-        >
-          <ChevronRight className="w-5 h-5" /> رجوع
-        </Button>
-        <div className="flex flex-col items-stretch gap-2 sm:items-end">
-          <Button
-            variant="gold"
-            size="lg"
-            onClick={() => void handleGenerate()}
-            disabled={!canGenerate || configLoading}
-            className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            توليد التصميم <ChevronLeft className="w-5 h-5" />
-          </Button>
-          <p className="inline-flex items-center justify-center gap-1.5 text-[11px] leading-5 text-washa-text-faint sm:justify-end">
-            <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" />
-            يتطلب التوليد تسجيل الدخول لحفظ التصميم وربطه بطلبك
-          </p>
-        </div>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        onNext={() => void handleGenerate()}
+        nextLabel="توليد التصميم"
+        nextDisabled={!canGenerate || configLoading}
+        hint={generateHint}
+      />
+    </>
   );
 }

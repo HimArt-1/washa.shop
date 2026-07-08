@@ -513,12 +513,18 @@ a {
   /* Use dynamic viewport height so iOS browser chrome is excluded */
   min-height: calc(100dvh - 5rem);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 2rem 1rem;
-  /* Bottom padding respects iOS home indicator */
-  padding-bottom: max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem));
+  /* Keep long cards fully scrollable above the fixed wizard navigation. */
+  padding-bottom: max(11rem, calc(env(safe-area-inset-bottom, 0px) + 10rem));
   position: relative;
+}
+
+@media (min-width: 640px) {
+  .wizard-step-container {
+    padding-bottom: max(8.5rem, calc(env(safe-area-inset-bottom, 0px) + 7.5rem));
+  }
 }
 
 /* Fallback for browsers that don't support dvh */
