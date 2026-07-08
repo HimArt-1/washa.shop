@@ -28,8 +28,12 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         {/* Logo */}
         <div className="flex items-center justify-between gap-3 md:justify-start">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl overflow-hidden border border-washa-gold/18 bg-[radial-gradient(circle_at_35%_28%,rgba(255,255,255,0.14),rgba(201,168,106,0.16)_38%,rgba(11,11,12,0.95)_78%)] shadow-[0_0_24px_rgba(201,168,106,0.28)] animate-glow-pulse">
-              <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="w-full h-full object-contain px-1.5 py-2" />
+            <div className="flex h-11 w-14 shrink-0 items-center justify-center">
+              <img
+                src={siteAsset(BRAND_MARK_SRC)}
+                alt="وشّى"
+                className="h-9 w-auto object-contain drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]"
+              />
             </div>
             <div className="hidden sm:block">
               <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>
