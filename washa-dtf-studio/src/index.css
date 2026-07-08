@@ -28,6 +28,14 @@
 }
 
 @font-face {
+  font-family: 'Ghadim';
+  src: url('/fonts/Ghadim.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'TheYearOfTheCamel';
   src: url('/fonts/TheYearofTheCamel-ExtraLight.woff2') format('woff2'),
        url('/fonts/TheYearofTheCamel-ExtraLight.otf') format('opentype');
@@ -99,6 +107,7 @@
   --font-serif: 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
   --font-poetry: 'ArabicPoetry', 'TheYearOfTheCamel', serif;
   --font-alnaseeb: 'Alnaseeb', 'TheYearOfTheCamel', 'ArabicPoetry', system-ui, sans-serif;
+  --font-step-title: 'Ghadim', 'Alnaseeb', 'TheYearOfTheCamel', system-ui, sans-serif;
 }
 
 /* ————— Base ————— */
@@ -127,6 +136,14 @@ h3, h4 {
 h5, h6 {
   font-family: var(--font-alnaseeb);
   font-weight: 500;
+}
+
+.step-title-heading {
+  font-family: var(--font-step-title);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+  text-wrap: balance;
 }
 
 body {
