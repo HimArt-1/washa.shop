@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     });
 
     const accessStartedAt = Date.now();
-    const accessResult = await requireDtfRouteAccess({ allowPublicGeneration: true });
+    const accessResult = await requireDtfRouteAccess();
     logDtfTrace("dtf.generate-mockup", traceId, "access_resolved", {
         duration_ms: Date.now() - accessStartedAt,
         allowed: Boolean(accessResult.access?.allowed),

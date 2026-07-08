@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
 
     const accessStartedAt = Date.now();
     const accessResult = await requireDtfRouteAccess({
-        allowPublicGeneration: true,
         errorResponder: respondWithError,
     });
     logDtfTrace("dtf.submit-order", traceId, "access_resolved", {
@@ -94,6 +93,13 @@ export async function POST(request: NextRequest) {
         duration_ms: Date.now() - currentUserStartedAt,
         authenticated: Boolean(userProfile),
     });
+
+    if (!userProfile) {
+        return attachDtfTraceId(
+            respondWithError("يجب تسجيل الدخول قبل إضافة تصميم WASHA AI إلى السلة.", 401),
+            traceId
+        );
+    }
 
     const serviceStartedAt = Date.now();
     const result = await DtfOrderService.prepareCartItem(bodyResult.data, userProfile, { traceId });

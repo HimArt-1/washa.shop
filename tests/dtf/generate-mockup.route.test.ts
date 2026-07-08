@@ -153,21 +153,21 @@ describe("generate-mockup route", () => {
         expect(mockReserveDailyQuota).not.toHaveBeenCalled();
     });
 
-    it("passes the guest identifier into the quota reservation for public guests", async () => {
+    it("requires authenticated DTF route access before generation", async () => {
         mockRequireDtfRouteAccess.mockResolvedValue({
-            access: {
-                allowed: true,
-                role: "guest",
-                reason: "public_access",
-            },
+            response: NextResponse.json(
+                { error: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك." },
+                { status: 401 }
+            ),
         });
 
         const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
-        expect(response.status).toBe(200);
-        expect(mockReserveDailyQuota).toHaveBeenCalledWith(undefined, "guest", {
-            guestIdentifier: "guest:127.0.0.1",
+        expect(response.status).toBe(401);
+        await expect(response.json()).resolves.toEqual({
+            error: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك.",
         });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
     });
 
     it("returns the current quota-exceeded response and logs the failure", async () => {

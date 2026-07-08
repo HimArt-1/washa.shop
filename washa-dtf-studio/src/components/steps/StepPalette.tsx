@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Palette, Check, Sparkles, Wand2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
+import { Palette, Check, Sparkles, Wand2, ChevronLeft, ChevronRight, Loader2, X, LockKeyhole } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { useDesign } from '../../context/DesignContext';
@@ -395,15 +395,21 @@ export default function StepPalette() {
         >
           <ChevronRight className="w-5 h-5" /> رجوع
         </Button>
-        <Button
-          variant="gold"
-          size="lg"
-          onClick={() => void handleGenerate()}
-          disabled={!canGenerate || configLoading}
-          className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          توليد التصميم <ChevronLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <Button
+            variant="gold"
+            size="lg"
+            onClick={() => void handleGenerate()}
+            disabled={!canGenerate || configLoading}
+            className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            توليد التصميم <ChevronLeft className="w-5 h-5" />
+          </Button>
+          <p className="inline-flex items-center justify-center gap-1.5 text-[11px] leading-5 text-washa-text-faint sm:justify-end">
+            <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" />
+            يتطلب التوليد تسجيل الدخول لحفظ التصميم وربطه بطلبك
+          </p>
+        </div>
       </div>
     </motion.div>
   );
