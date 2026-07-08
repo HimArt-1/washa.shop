@@ -5,7 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, X, ArrowRight, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getAdminNotifications } from "@/app/actions/notifications";
+import { createPollingNetworkGuard } from "@/lib/browser-polling-guard";
 import type { AdminNotification } from "@/types/database";
+
+const ORDER_RADAR_POLL_MS = 20_000;
+const orderRadarNetworkGuard = createPollingNetworkGuard();
 
 export function OrderRadar() {
     const [latestOrder, setLatestOrder] = useState<AdminNotification | null>(null);
@@ -50,8 +54,11 @@ export function OrderRadar() {
     };
 
     const checkNewOrders = useCallback(async () => {
+        if (!orderRadarNetworkGuard.canAttempt()) return;
+
         try {
             const notifications = await getAdminNotifications(5);
+            orderRadarNetworkGuard.recordSuccess();
             const paidOrder = notifications.find(
                 (n) => n.category === "orders" && n.type === "payment_received" && !n.is_read
             );
@@ -67,7 +74,10 @@ export function OrderRadar() {
                 setTimeout(() => setIsVisible(false), 15000);
             }
         } catch (error) {
-            console.error("OrderRadar error:", error);
+            const { shouldLog } = orderRadarNetworkGuard.recordFailure();
+            if (shouldLog) {
+                console.warn("OrderRadar paused after a network failure; will retry automatically.", error);
+            }
         }
     }, [lastCheckedId]);
 
@@ -76,8 +86,17 @@ export function OrderRadar() {
         checkNewOrders();
         
         // poll every 20 seconds
-        const interval = setInterval(checkNewOrders, 20000);
-        return () => clearInterval(interval);
+        const interval = setInterval(checkNewOrders, ORDER_RADAR_POLL_MS);
+        const handleOnline = () => {
+            orderRadarNetworkGuard.reset();
+            void checkNewOrders();
+        };
+
+        window.addEventListener("online", handleOnline);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener("online", handleOnline);
+        };
     }, [checkNewOrders]);
 
     return (

@@ -25,6 +25,7 @@ import {
 import type { AdminNotification } from "@/types/database";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
 import { useNotificationStore } from "@/stores/notificationStore";
+import { isBrowserOffline } from "@/lib/browser-polling-guard";
 import {
     getAdminPageMeta,
     getVisibleAdminCommandItems,
@@ -122,6 +123,7 @@ export function AdminTopBar({ role }: { role: UserRole }) {
     useEffect(() => {
         if (!canUseAdminNotifications) return;
         const refresh = () => {
+            if (isBrowserOffline()) return;
             void fetchInitial(true);
         };
 
@@ -131,11 +133,13 @@ export function AdminTopBar({ role }: { role: UserRole }) {
 
         const intervalId = window.setInterval(refresh, NOTIFICATION_REFRESH_MS);
         window.addEventListener("focus", refresh);
+        window.addEventListener("online", refresh);
         document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             window.clearInterval(intervalId);
             window.removeEventListener("focus", refresh);
+            window.removeEventListener("online", refresh);
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, [canUseAdminNotifications, fetchInitial]);

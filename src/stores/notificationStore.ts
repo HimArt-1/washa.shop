@@ -4,7 +4,10 @@ import {
     markAllNotificationsRead as markAllAdminNotificationsRead,
     markNotificationRead as markAdminNotificationRead,
 } from "@/app/actions/notifications";
+import { createPollingNetworkGuard } from "@/lib/browser-polling-guard";
 import type { AdminNotification } from "@/types/database";
+
+const notificationFetchGuard = createPollingNetworkGuard();
 
 interface NotificationState {
     notifications: AdminNotification[];
@@ -71,10 +74,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     fetchInitial: async (force = false) => {
         if (get().isLoading) return;
         if (!force && get().isInitialized) return;
+        if (!notificationFetchGuard.canAttempt()) return;
         
         set({ isLoading: true });
         try {
             const data = await getAdminNotifications(50);
+            notificationFetchGuard.recordSuccess();
             set({ 
                 notifications: data,
                 unreadCount: data.filter((n) => !n.is_read).length,
@@ -82,7 +87,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 isLoading: false
             });
         } catch (error) {
-            console.error("Failed to fetch admin notifications", error);
+            const { shouldLog } = notificationFetchGuard.recordFailure();
+            if (shouldLog) {
+                console.warn("Admin notifications fetch paused after a network failure; will retry automatically.", error);
+            }
             set({ isLoading: false });
         }
     }
