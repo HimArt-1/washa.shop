@@ -397,9 +397,11 @@ export default async function RootLayout({
         suppressHydrationWarning
         data-theme="light"
       >
-        <head>
+        <head suppressHydrationWarning>
           <meta name="wusha-build" content={BUILD_VERSION} />
           <style
+            id="wusha-css-guard-style"
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: CSS_GUARD_STYLE,
             }}
