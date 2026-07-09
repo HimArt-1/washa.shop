@@ -165,8 +165,8 @@ export default function StepArtStyle() {
           </div>
 
           {/* ── Card Grid ── */}
-          <div className="-mx-1 h-[calc(100dvh-22rem)] min-h-72 overflow-y-auto overscroll-contain px-1 pb-28 touch-pan-y sm:h-[calc(100dvh-21rem)] sm:pb-4">
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="-mx-1 max-h-[calc(100dvh-22rem)] min-h-72 overflow-y-auto overscroll-contain px-1 pb-28 touch-pan-y sm:max-h-[calc(100dvh-21rem)] sm:pb-4">
+            <div className="grid grid-cols-2 items-stretch gap-3.5 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((option, index) => {
                 const isSelected = option.kind === 'style'
                   ? state.styleId === option.id
@@ -180,39 +180,42 @@ export default function StepArtStyle() {
                     transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
                     onClick={() => handleSelect(option)}
                     className={cn(
-                      'group relative h-40 touch-pan-y overflow-hidden rounded-2xl border text-right transition-all duration-500 sm:h-44',
+                      'group relative flex min-h-[13.75rem] touch-pan-y flex-col overflow-hidden rounded-2xl border bg-washa-surface/80 text-right transition-all duration-500 sm:min-h-[14.5rem]',
                       isSelected
                         ? 'border-washa-gold shadow-[0_0_30px_rgba(64,48,40,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
                         : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(64,48,40,0.15)]'
                     )}
                   >
                     {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
-                      {option.kind === 'style'
-                        ? <Palette className="h-12 w-12 text-white/10" />
-                        : <Brush className="h-12 w-12 text-white/10" />
-                      }
+                    <div className="relative min-h-[8rem] overflow-hidden border-b border-white/10 bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface sm:min-h-[8.75rem]">
+                      {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {option.kind === 'style'
+                          ? <Palette className="h-12 w-12 text-white/10" />
+                          : <Brush className="h-12 w-12 text-white/10" />
+                        }
+                      </div>
+
+                      {/* Background Image */}
+                      {option.bgImage ? (
+                        <img
+                          src={option.bgImage}
+                          alt={option.name}
+                          className={cn(
+                            "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
+                            isSelected ? "scale-[1.03]" : "group-hover:scale-[1.07]"
+                          )}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : null}
+
+                      {/* Gradient Overlay */}
+                      <div className={cn(
+                        "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
+                        option.gradient,
+                        isSelected ? 'opacity-75' : 'opacity-60'
+                      )} />
                     </div>
-
-                    {/* Background Image */}
-                    {option.bgImage ? (
-                      <img
-                        src={option.bgImage}
-                        alt={option.name}
-                        className={cn(
-                          "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
-                          isSelected ? "scale-105" : "group-hover:scale-110"
-                        )}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : null}
-
-                    {/* Gradient Overlay */}
-                    <div className={cn(
-                      "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
-                      option.gradient,
-                      isSelected ? 'opacity-90' : 'opacity-80'
-                    )} />
 
                     {/* Kind Badge */}
                     <div className={cn(
@@ -235,11 +238,11 @@ export default function StepArtStyle() {
                     )}
 
                     {/* Content */}
-                    <div className="absolute inset-x-0 bottom-0 space-y-1 p-3">
-                      <p className="text-sm font-bold leading-tight text-white drop-shadow-md">
+                    <div className="relative z-[1] flex flex-1 flex-col gap-1.5 bg-[linear-gradient(180deg,rgba(21,18,16,0.96),rgba(10,9,8,0.98))] p-3 text-white">
+                      <p className="text-sm font-bold leading-snug drop-shadow-md">
                         {option.name}
                       </p>
-                      <p className="text-[11px] text-white/70 line-clamp-2 drop-shadow-md">
+                      <p className="text-[11px] leading-relaxed text-white/72 drop-shadow-md">
                         {option.description || (option.kind === 'style' ? 'اتجاه بصري مميز' : 'تقنية تنفيذ فنية')}
                       </p>
                     </div>

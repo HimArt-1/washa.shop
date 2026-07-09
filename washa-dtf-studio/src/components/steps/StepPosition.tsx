@@ -188,7 +188,8 @@ export default function StepPosition() {
         </motion.p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="max-h-[calc(100dvh-20rem)] min-h-72 overflow-y-auto overscroll-contain pb-28 touch-pan-y sm:max-h-none sm:pb-0">
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4">
         {displayPositions.map((pos, index) => {
           const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
           return (
@@ -205,16 +206,25 @@ export default function StepPosition() {
                 printPositionLabel: pos.title,
               })}
               className={cn(
-                'group relative flex flex-col overflow-hidden rounded-2xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
+                'group relative flex min-h-[15rem] flex-col overflow-hidden rounded-2xl border bg-washa-ivory text-washa-text transition-all duration-500 shadow-depth-sm sm:min-h-[16rem]',
                 isSelected
-                  ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold'
-                  : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
+                  ? 'border-washa-gold shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold'
+                  : 'border-washa-border/80 hover:border-washa-gold/45'
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(239,226,199,0.94),rgba(36,34,30,0.88)_68%)] p-2.5">
+              <div className="relative flex min-h-[8.75rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.94),rgba(232,221,203,0.82)_48%,rgba(64,48,40,0.42)_100%)] p-3 sm:min-h-[9.5rem]">
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
+
+                {'visual' in pos && typeof pos.visual === 'function' ? (
+                  <div className={cn(
+                    "absolute inset-0 z-0 transition-opacity duration-300",
+                    'imageUrl' in pos && pos.imageUrl ? "opacity-55" : "opacity-100"
+                  )}>
+                    {pos.visual(isSelected)}
+                  </div>
+                ) : null}
                 
                 {('imageUrl' in pos && pos.imageUrl) ? (
                   <img 
@@ -222,11 +232,9 @@ export default function StepPosition() {
                     alt={pos.title} 
                     className={cn(
                       "relative z-[1] h-full w-full object-contain object-center drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
-                      isSelected ? "scale-[1.38]" : "scale-[1.3] group-hover:scale-[1.38]"
+                      isSelected ? "scale-[1.05]" : "scale-100 group-hover:scale-[1.05]"
                     )} 
                   />
-                ) : 'visual' in pos && typeof pos.visual === 'function' ? (
-                  pos.visual(isSelected)
                 ) : null}
                 
                 {isSelected && (
@@ -237,10 +245,10 @@ export default function StepPosition() {
               </div>
 
               {/* Text Content */}
-              <div className="z-10 flex-1 space-y-1.5 bg-washa-bg/90 p-3 text-right backdrop-blur-sm">
+              <div className="z-10 flex flex-1 flex-col gap-1.5 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(249,245,237,0.98))] p-3 text-right backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className={cn(
-                    "text-sm font-bold leading-tight transition-colors",
+                    "min-w-0 text-sm font-bold leading-snug transition-colors",
                     isSelected ? "text-washa-gold-deep" : "text-washa-text group-hover:text-washa-gold-deep"
                   )}>
                     {pos.title}
@@ -252,11 +260,11 @@ export default function StepPosition() {
                     {pos.icon}
                   </div>
                 </div>
-                <p className="line-clamp-2 text-[11px] leading-relaxed text-washa-text-sec transition-colors">
+                <p className="text-[11px] leading-relaxed text-washa-text-sec transition-colors">
                   {pos.description}
                 </p>
                 {typeof pos.price === 'number' && (
-                  <p className="text-xs font-bold text-washa-gold">
+                  <p className="mt-auto pt-1 text-xs font-bold text-washa-gold">
                     {pos.price > 0 ? `${pos.price} ر.س` : 'مجاني'}
                   </p>
                 )}
@@ -264,6 +272,7 @@ export default function StepPosition() {
             </motion.button>
           );
         })}
+        </div>
       </div>
 
       </motion.div>
