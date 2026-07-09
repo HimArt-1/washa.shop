@@ -26,8 +26,8 @@ export default function StepPosition() {
 
   /* ── Reusable SVG T-Shirt with configurable highlight zone ── */
   const TShirtDiagram = ({ highlightRect, isSelected }: { highlightRect: { x: number; y: number; w: number; h: number }; isSelected: boolean }) => (
-    <div className="relative flex h-full min-h-44 w-full items-center justify-center p-4">
-      <svg viewBox="0 0 120 140" className="h-[88%] w-[78%] max-w-44 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="relative flex h-full min-h-32 w-full items-center justify-center p-3">
+      <svg viewBox="0 0 120 140" className="h-[86%] w-[74%] max-w-36 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* T-shirt body */}
         <path
           d="M30 25 L10 45 L25 55 L25 130 L95 130 L95 55 L110 45 L90 25 L75 35 C70 40 50 40 45 35 L30 25Z"
@@ -72,6 +72,19 @@ export default function StepPosition() {
       </svg>
     </div>
   );
+
+  const getHighlightRect = (printPosition: PrintPosition, printSize: PrintSize) => {
+    if (printPosition === 'shoulder_right') return { x: 67, y: 48, w: 18, h: 18 };
+    if (printPosition === 'shoulder_left') return { x: 35, y: 48, w: 18, h: 18 };
+    if (printPosition === 'back') {
+      return printSize === 'small'
+        ? { x: 50, y: 52, w: 20, h: 20 }
+        : { x: 33, y: 48, w: 54, h: 60 };
+    }
+    return printSize === 'small'
+      ? { x: 50, y: 48, w: 20, h: 20 }
+      : { x: 35, y: 42, w: 50, h: 55 };
+  };
 
   const defaultPositions: PositionCard[] = [
     {
@@ -128,7 +141,13 @@ export default function StepPosition() {
           printPosition: placement.printPosition,
           printSize: placement.printSize,
           price: p.price,
-          icon: <LayoutDashboard className="h-5 w-5" />
+          icon: <LayoutDashboard className="h-5 w-5" />,
+          visual: (isSelected: boolean) => (
+            <TShirtDiagram
+              highlightRect={getHighlightRect(placement.printPosition, placement.printSize)}
+              isSelected={isSelected}
+            />
+          ),
         };
       })
     : defaultPositions;
@@ -141,7 +160,7 @@ export default function StepPosition() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -30, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong p-6 sm:p-10 space-y-10"
+        className="glass-card-strong wizard-panel"
       >
       <div className="flex items-center justify-between">
         <div className="step-badge">
@@ -150,12 +169,12 @@ export default function StepPosition() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="step-title-heading text-4xl bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           مكان التصميم
         </motion.h2>
@@ -163,13 +182,13 @@ export default function StepPosition() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           أين تفضل أن يظهر تصميمك على القطعة؟
         </motion.p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {displayPositions.map((pos, index) => {
           const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
           return (
@@ -186,54 +205,54 @@ export default function StepPosition() {
                 printPositionLabel: pos.title,
               })}
               className={cn(
-                'group relative flex flex-col overflow-hidden rounded-3xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
+                'group relative flex flex-col overflow-hidden rounded-2xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
                 isSelected
                   ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold'
                   : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(239,226,199,0.94),rgba(36,34,30,0.88)_68%)] p-3 sm:p-4">
+              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(239,226,199,0.94),rgba(36,34,30,0.88)_68%)] p-2.5">
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
                 
-                {('imageUrl' in pos && pos.imageUrl) ? (
+                {'visual' in pos && typeof pos.visual === 'function' ? (
+                  pos.visual(isSelected)
+                ) : ('imageUrl' in pos && pos.imageUrl) ? (
                   <img 
                     src={studioAsset(pos.imageUrl as string)} 
                     alt={pos.title} 
                     className={cn(
-                      "relative z-[1] h-full w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
-                      isSelected ? "scale-[1.02]" : "group-hover:scale-[1.04]"
+                      "relative z-[1] h-full w-full object-contain object-center drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
+                      isSelected ? "scale-[1.38]" : "scale-[1.3] group-hover:scale-[1.38]"
                     )} 
                   />
-                ) : 'visual' in pos && typeof pos.visual === 'function' ? (
-                  pos.visual(isSelected)
                 ) : null}
                 
                 {isSelected && (
-                  <div className="absolute top-4 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg z-10 shadow-lg">
+                  <div className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
                     <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
                   </div>
                 )}
               </div>
 
               {/* Text Content */}
-              <div className="p-5 text-right space-y-2 z-10 bg-washa-bg/90 backdrop-blur-sm flex-1">
+              <div className="z-10 flex-1 space-y-1.5 bg-washa-bg/90 p-3 text-right backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className={cn(
-                    "text-lg font-bold transition-colors",
+                    "text-sm font-bold leading-tight transition-colors",
                     isSelected ? "text-washa-gold-deep" : "text-washa-text group-hover:text-washa-gold-deep"
                   )}>
                     {pos.title}
                   </p>
                   <div className={cn(
-                    "p-2 rounded-lg transition-colors",
+                    "rounded-lg p-1.5 transition-colors",
                     isSelected ? "bg-washa-gold/[0.18] text-washa-gold-deep" : "bg-washa-gold/[0.08] text-washa-text-sec group-hover:text-washa-gold-deep"
                   )}>
                     {pos.icon}
                   </div>
                 </div>
-                <p className="text-xs leading-relaxed text-washa-text-sec transition-colors">
+                <p className="line-clamp-2 text-[11px] leading-relaxed text-washa-text-sec transition-colors">
                   {pos.description}
                 </p>
                 {typeof pos.price === 'number' && (

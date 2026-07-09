@@ -37,7 +37,7 @@ export default function StepGarment() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -30, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong p-6 sm:p-10 space-y-10"
+        className="glass-card-strong wizard-panel"
       >
       <div className="flex items-center justify-between">
         <div className="step-badge">
@@ -46,12 +46,12 @@ export default function StepGarment() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="step-title-heading text-4xl bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           اختر القطعة
         </motion.h2>
@@ -59,26 +59,26 @@ export default function StepGarment() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           اختر القالب واللون والمقاس المناسب قبل بدء تصميمك.
         </motion.p>
       </div>
 
       {configLoading ? (
-        <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
+        <div className="rounded-2xl border border-washa-border/30 bg-washa-bg/40 p-7 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
           <p className="mt-4 text-sm text-washa-text-sec">جاري تجهيز خيارات القطع...</p>
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-7">
           {configError ? (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {configError}
             </div>
           ) : null}
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-washa-gold/60">{garmentOptions.length} قطع متاحة</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
@@ -86,7 +86,7 @@ export default function StepGarment() {
                 نوع القطعة
               </label>
             </div>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {garmentOptions.map((garment, index) => {
                 const isSelected = state.garmentId === garment.id;
                 return (
@@ -115,7 +115,7 @@ export default function StepGarment() {
                       revealOptions();
                     }}
                     className={cn(
-                      'group relative h-64 overflow-hidden rounded-3xl border transition-all duration-500',
+                      'group relative h-52 overflow-hidden rounded-2xl border transition-all duration-500 sm:h-56',
                       isSelected
                         ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_40px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
                         : 'border-washa-border/70 bg-washa-surface/55 hover:border-washa-gold/40 hover:bg-washa-ivory/80'
@@ -140,7 +140,7 @@ export default function StepGarment() {
                     <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-washa-bg/70 to-transparent z-10 opacity-95" />
 
                     {/* Content */}
-                    <div className="absolute inset-x-0 bottom-0 z-20 p-5 space-y-2 text-right">
+                    <div className="absolute inset-x-0 bottom-0 z-20 space-y-2 p-4 text-right">
                       <div className="flex items-center justify-between">
                         {isSelected && (
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg">
@@ -148,7 +148,7 @@ export default function StepGarment() {
                           </div>
                         )}
                         <p className={cn(
-                          "text-xl font-bold transition-colors w-full",
+                          "w-full text-lg font-bold transition-colors",
                           isSelected ? "text-washa-gold" : "text-washa-text group-hover:text-washa-gold-deep"
                         )}>{garment.name}</p>
                       </div>
@@ -178,8 +178,8 @@ export default function StepGarment() {
             </div>
           </div>
 
-          <div ref={optionsRef} className="scroll-mt-24 space-y-8 sm:scroll-mt-28 sm:space-y-10">
-            <div className="space-y-5">
+          <div ref={optionsRef} className="scroll-mt-24 space-y-6 sm:scroll-mt-28 sm:space-y-7">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-washa-gold/60">{colorOptions.length} لوناً متوفراً</span>
                 <label className="text-lg text-washa-text font-medium">لون القطعة</label>
@@ -210,7 +210,7 @@ export default function StepGarment() {
                         });
                       }}
                       className={cn(
-                        'w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-500 relative group/color',
+                        'relative h-11 w-11 rounded-full border-2 transition-all duration-500 group/color sm:h-12 sm:w-12',
                         state.garmentColorId === color.id
                           ? 'border-washa-gold scale-115 shadow-[0_0_25px_rgba(201,168,106,0.5)] ring-2 ring-washa-gold/20 ring-offset-2 ring-offset-washa-bg'
                           : 'border-white/10 hover:border-white/30 hover:scale-110'
@@ -241,7 +241,7 @@ export default function StepGarment() {
               )}
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات متاحة</span>
                 <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
@@ -265,7 +265,7 @@ export default function StepGarment() {
                         }}
                         disabled={isOut}
                         className={cn(
-                          'rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
+                        'rounded-xl border px-4 py-3 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
                           state.garmentSizeId === size.id
                             ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
                             : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]',

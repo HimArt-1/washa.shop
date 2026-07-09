@@ -41,7 +41,7 @@ function TermsModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.96 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong w-full max-w-lg rounded-3xl p-6 sm:p-8 space-y-6 max-h-[90vh] flex flex-col"
+        className="glass-card-strong flex max-h-[90vh] w-full max-w-lg flex-col space-y-5 rounded-2xl p-5 sm:p-6"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
@@ -63,7 +63,7 @@ function TermsModal({
         </div>
 
         {/* Terms content */}
-        <div className="flex-1 overflow-y-auto space-y-4 text-sm text-washa-text-sec leading-relaxed pr-1 scrollbar-thin">
+        <div className="flex-1 space-y-3 overflow-y-auto pr-1 text-sm leading-relaxed text-washa-text-sec scrollbar-thin">
           {[
             {
               title: 'طبيعة الطلب',
@@ -86,7 +86,7 @@ function TermsModal({
               body: 'سيُضاف التصميم إلى السلة بسعره المحتسب من إعدادات القطعة والطباعة المعتمدة، ويمكنك مراجعة الطلب في صفحة الدفع قبل الإتمام. لأي تعديل لاحق يُرجى التواصل مع الدعم.',
             },
           ].map((item, i) => (
-            <div key={i} className="rounded-xl p-4 bg-washa-bg/40 border border-washa-border/20 space-y-1.5">
+            <div key={i} className="space-y-1.5 rounded-xl border border-washa-border/20 bg-washa-bg/40 p-3.5">
               <p className="font-semibold text-washa-text text-sm">{i + 1}. {item.title}</p>
               <p className="text-washa-text-faint text-xs leading-relaxed">{item.body}</p>
             </div>
@@ -158,18 +158,18 @@ function OrderSuccessCard({
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-8 sm:p-12 flex flex-col items-center text-center space-y-6"
+      className="glass-card-strong flex flex-col items-center space-y-5 p-6 text-center sm:p-8"
     >
       {/* Animated checkmark */}
       <div className="relative">
-        <div className="w-24 h-24 rounded-full bg-washa-gold/10 border border-washa-gold/25 flex items-center justify-center">
-          <CheckCircle2 className="w-12 h-12 text-washa-gold" />
+        <div className="flex h-20 w-20 items-center justify-center rounded-full border border-washa-gold/25 bg-washa-gold/10">
+          <CheckCircle2 className="h-10 w-10 text-washa-gold" />
         </div>
         <div className="absolute inset-0 rounded-full border-2 border-washa-gold/20 animate-ping" style={{ animationDuration: '2s' }} />
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-2xl font-bold text-washa-gold">تمت إضافة التصميم إلى السلة!</h3>
+        <h3 className="text-xl font-bold text-washa-gold">تمت إضافة التصميم إلى السلة</h3>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-washa-gold/10 border border-washa-gold/20">
           <span className="text-xs text-washa-text-faint">السعر</span>
           <span className="text-lg font-black text-washa-gold">{price.toFixed(2)} ر.س</span>
@@ -297,14 +297,14 @@ export default function StepResult() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -30, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-8 max-w-4xl mx-auto"
+        className="mx-auto max-w-3xl space-y-6"
       >
         {/* ===== GENERATING STATE ===== */}
         {isGenerating && (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-card-strong p-10 sm:p-20 flex flex-col items-center justify-center text-center space-y-10 min-h-[550px] relative overflow-hidden"
+            className="glass-card-strong relative flex min-h-[420px] flex-col items-center justify-center space-y-7 overflow-hidden p-8 text-center sm:p-12"
           >
             {/* AI Radar Background Effect - Center Focused */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -313,10 +313,10 @@ export default function StepResult() {
             </div>
 
             <div className="relative">
-              <div className="relative w-40 h-40 flex items-center justify-center">
+              <div className="relative flex h-32 w-32 items-center justify-center">
                 {/* Core Icon */}
-                <div className="relative z-20 w-20 h-20 rounded-full bg-washa-gold flex items-center justify-center shadow-[0_0_50px_rgba(201,168,106,0.4)] border border-white/20">
-                  <Wand2 className="w-10 h-10 text-washa-bg animate-pulse" />
+                <div className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-washa-gold shadow-[0_0_50px_rgba(201,168,106,0.4)]">
+                  <Wand2 className="h-8 w-8 animate-pulse text-washa-bg" />
                 </div>
                 
                 {/* Orbital Rings */}
@@ -349,15 +349,15 @@ export default function StepResult() {
             </div>
 
             <div className="space-y-4 relative z-10">
-              <h3 className="text-3xl font-serif text-washa-gold tracking-wide animate-pulse">
+              <h3 className="animate-pulse font-serif text-2xl tracking-wide text-washa-gold">
                 يتم الآن نسج إبداعك...
               </h3>
-              <p className="text-washa-text-sec text-lg max-w-sm mx-auto leading-relaxed">
+              <p className="mx-auto max-w-sm text-base leading-relaxed text-washa-text-sec">
                 ذكاء وشّى الاصطناعي يعمل على تحويل فكرتك إلى تصميم فريد يليق بك
               </p>
             </div>
 
-            <div className="w-64 h-1.5 bg-white/5 rounded-full overflow-hidden relative z-10 border border-white/5">
+            <div className="relative z-10 h-1.5 w-56 overflow-hidden rounded-full border border-white/5 bg-white/5">
               <motion.div
                 initial={{ x: '-100%' }}
                 animate={{ x: '100%' }}
@@ -373,10 +373,10 @@ export default function StepResult() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-card-strong p-10 sm:p-16 flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]"
+            className="glass-card-strong flex min-h-[320px] flex-col items-center justify-center space-y-5 p-8 text-center sm:p-10"
           >
-            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
-              <span className="text-4xl">⚠️</span>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10">
+              <span className="text-3xl">⚠️</span>
             </div>
             <div className="space-y-3">
               <h3 className="text-xl font-serif text-red-400">حدث خطأ</h3>
@@ -405,7 +405,7 @@ export default function StepResult() {
         {/* ===== RESULT STATE ===== */}
         {mockupImage && !isGenerating && !orderResult && (
           <>
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="step-badge border-washa-gold/30 bg-washa-gold/10 text-washa-gold">
                 <Sparkles className="w-3 h-3 text-washa-gold" />
                 الخطوة ٦ من ٦: النتيجة النهائية
@@ -439,7 +439,7 @@ export default function StepResult() {
               }}
             >
               {/* Image */}
-              <div className="aspect-square sm:aspect-[4/3] w-full relative">
+              <div className="relative aspect-[4/3] w-full">
                 <img
                   src={mockupImage}
                   alt="Generated Mockup"
@@ -457,8 +457,8 @@ export default function StepResult() {
               </div>
 
               {/* Persistent action bar — always visible, essential for mobile */}
-              <div className="border-t border-washa-border/20 px-5 py-4 flex items-center justify-between gap-3">
-                <div className="text-xs text-washa-text-faint">
+              <div className="flex items-center justify-between gap-3 border-t border-washa-border/20 px-4 py-3">
+                <div className="text-xs text-washa-text-faint line-clamp-2">
                   {state.style} · {state.technique} · {state.palette}
                 </div>
                 <Button
@@ -477,9 +477,9 @@ export default function StepResult() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.4 }}
-              className="glass-card-strong p-6 sm:p-8"
+              className="glass-card-strong p-5 sm:p-6"
             >
-              <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="flex-1 text-center sm:text-right space-y-1.5">
                   <h3 className="text-lg font-bold text-washa-text flex items-center justify-center sm:justify-end gap-2">
                     <ShoppingBag className="w-5 h-5 text-washa-gold" />
@@ -493,7 +493,7 @@ export default function StepResult() {
                   variant="gold"
                   size="lg"
                   onClick={handleConfirmOrder}
-                  className="gap-2 btn-shimmer-effect h-14 px-10 text-base rounded-xl font-bold shadow-[0_0_30px_rgba(201,168,106,0.25)] shrink-0 w-full sm:w-auto"
+                  className="h-12 w-full shrink-0 gap-2 rounded-xl px-8 text-base font-bold shadow-[0_0_30px_rgba(201,168,106,0.25)] btn-shimmer-effect sm:w-auto"
                 >
                   <ShoppingBag className="w-5 h-5" /> إضافة إلى السلة
                 </Button>

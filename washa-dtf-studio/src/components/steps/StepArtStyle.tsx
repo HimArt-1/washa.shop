@@ -104,7 +104,7 @@ export default function StepArtStyle() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -30, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong p-6 sm:p-10 space-y-10"
+        className="glass-card-strong wizard-panel"
       >
       <div className="flex items-center justify-between">
         <div className="step-badge">
@@ -113,12 +113,12 @@ export default function StepArtStyle() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="step-title-heading text-4xl bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           التقنيات والأساليب الفنية
         </motion.h2>
@@ -126,19 +126,19 @@ export default function StepArtStyle() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           اختر الأسلوب أو التقنية التي تريد أن يُنفذ بها تصميمك
         </motion.p>
       </div>
 
       {configLoading ? (
-        <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
+        <div className="rounded-2xl border border-washa-border/30 bg-washa-bg/40 p-7 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
           <p className="mt-4 text-sm text-washa-text-sec">جاري تحميل الأساليب والتقنيات...</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {configError ? (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {configError}
@@ -146,13 +146,13 @@ export default function StepArtStyle() {
           ) : null}
 
           {/* ── Tab Filter ── */}
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 border',
+                  'rounded-xl border px-3.5 py-2 text-sm font-medium transition-all duration-300',
                   tab === t.key
                     ? 'bg-washa-gold/15 border-washa-gold/40 text-washa-gold shadow-[0_0_15px_rgba(201,168,106,0.15)]'
                     : 'bg-white/[0.02] border-white/10 text-washa-text-sec hover:border-washa-gold/30 hover:text-washa-gold/80'
@@ -165,7 +165,7 @@ export default function StepArtStyle() {
           </div>
 
           {/* ── Card Grid ── */}
-          <div className="grid gap-5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((option, index) => {
               const isSelected = option.kind === 'style'
                 ? state.styleId === option.id
@@ -179,7 +179,7 @@ export default function StepArtStyle() {
                   transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
                   onClick={() => handleSelect(option)}
                   className={cn(
-                    'group relative h-52 overflow-hidden rounded-2xl border text-right transition-all duration-500',
+                    'group relative h-40 overflow-hidden rounded-2xl border text-right transition-all duration-500 sm:h-44',
                     isSelected
                       ? 'border-washa-gold shadow-[0_0_30px_rgba(201,168,106,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
                       : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
@@ -215,7 +215,7 @@ export default function StepArtStyle() {
 
                   {/* Kind Badge */}
                   <div className={cn(
-                    'absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md',
+                    'absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-md',
                     option.kind === 'style'
                       ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30'
                       : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
@@ -226,7 +226,7 @@ export default function StepArtStyle() {
 
                   {/* Selected Checkmark */}
                   {isSelected && (
-                    <div className="absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
+                    <div className="absolute left-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
@@ -234,8 +234,8 @@ export default function StepArtStyle() {
                   )}
 
                   {/* Content */}
-                  <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
-                    <p className="text-base font-bold text-white leading-tight drop-shadow-md">
+                  <div className="absolute inset-x-0 bottom-0 space-y-1 p-3">
+                    <p className="text-sm font-bold leading-tight text-white drop-shadow-md">
                       {option.name}
                     </p>
                     <p className="text-[11px] text-white/70 line-clamp-2 drop-shadow-md">

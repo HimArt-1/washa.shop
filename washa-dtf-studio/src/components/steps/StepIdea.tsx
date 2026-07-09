@@ -78,7 +78,7 @@ export default function StepIdea() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -30, scale: 0.97 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong p-6 sm:p-10 space-y-10"
+        className="glass-card-strong wizard-panel"
       >
       {/* Step Badge */}
       <div className="flex items-center justify-between">
@@ -89,12 +89,12 @@ export default function StepIdea() {
       </div>
 
       {/* Title */}
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="step-title-heading text-4xl bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           الفكرة والتصميم
         </motion.h2>
@@ -102,7 +102,7 @@ export default function StepIdea() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           {state.designMethod === 'calligraphy'
             ? 'اكتب الجملة التي تريدها تصميم مخطوطة فنية'
@@ -110,20 +110,20 @@ export default function StepIdea() {
         </motion.p>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Method Toggle */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="flex flex-wrap gap-2 p-2 bg-washa-bg/40 rounded-2xl border border-washa-border/30 w-fit mx-auto backdrop-blur-md"
+          className="mx-auto flex w-fit flex-wrap gap-1.5 rounded-2xl border border-washa-border/30 bg-washa-bg/40 p-1.5 backdrop-blur-md"
         >
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => updateState({ designMethod: id })}
               className={cn(
-                'px-6 py-3 rounded-xl text-sm font-bold transition-all duration-500 flex items-center gap-3 relative overflow-hidden group/tab',
+                'relative flex items-center gap-2 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold transition-all duration-500 group/tab',
                 state.designMethod === id
                   ? 'text-washa-bg'
                   : 'text-washa-text-sec hover:text-white hover:bg-white/5'
@@ -154,7 +154,7 @@ export default function StepIdea() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35 }}
-              className="space-y-5"
+              className="space-y-4"
             >
               <div className="relative group/input">
                 {/* AI Radar Background Effect */}
@@ -165,7 +165,7 @@ export default function StepIdea() {
 
                 <Textarea
                   placeholder="صف فكرتك بدقة... مثال: ذئب هندسي بخطوط حادة، يرمز للقوة"
-                  className="min-h-[180px] text-lg leading-relaxed p-6 resize-none rounded-2xl bg-washa-bg/40 border-washa-border/30 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(201,168,106,0.1)] transition-all duration-500 relative z-10"
+                  className="relative z-10 min-h-[140px] resize-none rounded-2xl border-washa-border/30 bg-washa-bg/40 p-4 text-base leading-relaxed transition-all duration-500 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(201,168,106,0.1)] sm:min-h-[150px]"
                   value={state.prompt}
                   onChange={e => updateState({ prompt: e.target.value })}
                 />
@@ -199,7 +199,7 @@ export default function StepIdea() {
                       transition={{ delay: 0.3 + i * 0.06, duration: 0.3 }}
                       onClick={() => updateState({ prompt: suggestion.text })}
                       className={cn(
-                        'px-4 py-2 text-sm rounded-full border transition-all duration-400 flex items-center gap-2 card-interactive',
+                        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all duration-400 card-interactive',
                         state.prompt === suggestion.text
                           ? 'border-washa-gold/50 bg-washa-gold/10 text-washa-gold'
                           : 'border-washa-border/30 text-washa-text-faint hover:text-washa-gold hover:border-washa-gold/30 bg-washa-bg/30'
@@ -222,10 +222,10 @@ export default function StepIdea() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35 }}
-              className="space-y-5"
+              className="space-y-4"
             >
               {/* Calligraphy Info Banner */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-washa-gold/5 border border-washa-gold/15">
+              <div className="flex items-start gap-3 rounded-xl border border-washa-gold/15 bg-washa-gold/5 p-3.5">
                 <PenLine className="w-5 h-5 text-washa-gold mt-0.5 shrink-0" />
                 <div className="text-sm text-washa-text-sec leading-relaxed text-right">
                   اكتب الجملة أو الكلمة التي تريدها، وسيحوّلها الذكاء الاصطناعي إلى تصميم مخطوطة فنية احترافية على قطعتك
@@ -234,7 +234,7 @@ export default function StepIdea() {
 
               <Textarea
                 placeholder="مثال: لا غالب إلا الله ، أو والفجر ، أو اسمك ..."
-                className="min-h-[140px] text-xl text-center resize-none rounded-xl bg-washa-bg/50 border-washa-border/40 focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(201,168,106,0.08)] transition-shadow font-serif tracking-wide"
+                className="min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(201,168,106,0.08)]"
                 value={state.calligraphyText}
                 onChange={e => updateState({ calligraphyText: e.target.value })}
                 dir="auto"
@@ -265,7 +265,7 @@ export default function StepIdea() {
                       transition={{ delay: 0.2 + i * 0.06, duration: 0.3 }}
                       onClick={() => updateState({ calligraphyText: s.text })}
                       className={cn(
-                        'px-4 py-2 text-sm rounded-full border transition-all duration-400 flex items-center gap-2 card-interactive font-serif',
+                        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all duration-400 card-interactive font-serif',
                         state.calligraphyText === s.text
                           ? 'border-washa-gold/50 bg-washa-gold/10 text-washa-gold'
                           : 'border-washa-border/30 text-washa-text-faint hover:text-washa-gold hover:border-washa-gold/30 bg-washa-bg/30'
@@ -288,13 +288,13 @@ export default function StepIdea() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.35 }}
-              className="space-y-5"
+              className="space-y-4"
             >
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 className={cn(
-                  'border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center text-center transition-all duration-500 bg-washa-bg/30',
+                  'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-washa-bg/30 p-6 text-center transition-all duration-500',
                   state.referenceImage
                     ? 'border-washa-gold/30'
                     : 'border-washa-border/40 hover:border-washa-gold/40 animate-pulse-border'
@@ -302,7 +302,7 @@ export default function StepIdea() {
               >
                 {state.referenceImage ? (
                   <div className="space-y-4">
-                    <div className="w-36 h-36 rounded-xl overflow-hidden border border-washa-gold/20 mx-auto shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                    <div className="mx-auto h-28 w-28 overflow-hidden rounded-xl border border-washa-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
                       <img
                         src={`data:${state.referenceImageMimeType};base64,${state.referenceImage}`}
                         alt="Reference"
@@ -322,8 +322,8 @@ export default function StepIdea() {
                   </div>
                 ) : (
                   <>
-                    <div className="w-20 h-20 rounded-2xl bg-washa-gold/5 flex items-center justify-center mb-4 border border-washa-gold/10">
-                      <ImageIcon className="w-10 h-10 text-washa-text-faint" />
+                    <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-2xl border border-washa-gold/10 bg-washa-gold/5">
+                      <ImageIcon className="h-8 w-8 text-washa-text-faint" />
                     </div>
                     <p className="text-sm text-washa-text-sec mb-4">
                       اسحب وأفلت الصورة هنا أو انقر للرفع
@@ -336,7 +336,7 @@ export default function StepIdea() {
                       onChange={handleImageUpload}
                     />
                     <label htmlFor="image-upload" className="cursor-pointer">
-                      <div className="bg-washa-gold/10 hover:bg-washa-gold/20 text-washa-gold px-6 py-3 rounded-xl transition-all duration-300 text-sm font-medium border border-washa-gold/20 hover:border-washa-gold/40">
+                      <div className="rounded-xl border border-washa-gold/20 bg-washa-gold/10 px-5 py-2.5 text-sm font-medium text-washa-gold transition-all duration-300 hover:border-washa-gold/40 hover:bg-washa-gold/20">
                         استعراض الملفات
                       </div>
                     </label>

@@ -111,7 +111,7 @@ function AppContent() {
 
           {/* Full-screen wizard, no side panel */}
           <main className="wizard-step-container">
-            <div className={`w-full ${step === 3 ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 relative z-10`}>
+            <div className={`w-full ${step === 3 ? 'max-w-4xl' : 'max-w-[44rem]'} mx-auto px-3 sm:px-5 relative z-10`}>
               <AnimatePresence mode="wait">
                 {step === 1 && <StepGarment key="step-garment" />}
                 {step === 2 && <StepIdea key="step-idea" />}
