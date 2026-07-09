@@ -32,7 +32,7 @@ export default function StepPosition() {
         <path
           d="M30 25 L10 45 L25 55 L25 130 L95 130 L95 55 L110 45 L90 25 L75 35 C70 40 50 40 45 35 L30 25Z"
           fill="rgba(18,18,18,0.86)"
-          stroke="rgba(201,168,106,0.45)"
+          stroke="rgba(64,48,40,0.45)"
           strokeWidth="1.8"
         />
         {/* Collar */}
@@ -55,8 +55,8 @@ export default function StepPosition() {
           width={highlightRect.w}
           height={highlightRect.h}
           rx="4"
-          fill={isSelected ? 'rgba(201,168,106,0.35)' : 'rgba(201,168,106,0.15)'}
-          stroke="rgba(201,168,106,0.7)"
+          fill={isSelected ? 'rgba(64,48,40,0.35)' : 'rgba(64,48,40,0.15)'}
+          stroke="rgba(64,48,40,0.7)"
           strokeWidth="1.5"
           strokeDasharray={isSelected ? 'none' : '4 2'}
           className="animate-pulse"
@@ -67,7 +67,7 @@ export default function StepPosition() {
           y={highlightRect.y + highlightRect.h / 2 + 4}
           textAnchor="middle"
           fontSize="10"
-          fill="rgba(201,168,106,0.8)"
+          fill="rgba(64,48,40,0.8)"
         >✦</text>
       </svg>
     </div>
@@ -207,7 +207,7 @@ export default function StepPosition() {
               className={cn(
                 'group relative flex flex-col overflow-hidden rounded-2xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
                 isSelected
-                  ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold'
+                  ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold'
                   : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
               )}
             >

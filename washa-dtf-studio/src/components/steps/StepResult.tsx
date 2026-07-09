@@ -197,7 +197,7 @@ function OrderSuccessCard({
       <div className="flex flex-col sm:flex-row gap-3">
         <a
           href="/checkout"
-          className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-washa-gold text-washa-bg font-bold text-base shadow-[0_0_24px_rgba(201,168,106,0.3)] hover:shadow-[0_0_36px_rgba(201,168,106,0.45)] transition-shadow"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-washa-gold text-washa-bg font-bold text-base shadow-[0_0_24px_rgba(64,48,40,0.3)] hover:shadow-[0_0_36px_rgba(64,48,40,0.45)] transition-shadow"
         >
           <ShoppingBag className="w-5 h-5" /> إتمام الطلب
         </a>
@@ -308,14 +308,14 @@ export default function StepResult() {
           >
             {/* AI Radar Background Effect - Center Focused */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(201,168,106,0.15)_360deg)] opacity-60" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(64,48,40,0.15)_360deg)] opacity-60" />
               <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-transparent to-transparent" />
             </div>
 
             <div className="relative">
               <div className="relative flex h-32 w-32 items-center justify-center">
                 {/* Core Icon */}
-                <div className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-washa-gold shadow-[0_0_50px_rgba(201,168,106,0.4)]">
+                <div className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-washa-gold shadow-[0_0_50px_rgba(64,48,40,0.4)]">
                   <Wand2 className="h-8 w-8 animate-pulse text-washa-bg" />
                 </div>
                 
@@ -335,7 +335,7 @@ export default function StepResult() {
                       rotate: { duration: 3 + i, repeat: Infinity, ease: "linear" },
                       scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                     }}
-                    className="absolute w-2 h-2 rounded-full bg-washa-gold/40 shadow-[0_0_10px_rgba(201,168,106,0.5)]"
+                    className="absolute w-2 h-2 rounded-full bg-washa-gold/40 shadow-[0_0_10px_rgba(64,48,40,0.5)]"
                     style={{
                       top: '50%',
                       left: '50%',
@@ -362,7 +362,7 @@ export default function StepResult() {
                 initial={{ x: '-100%' }}
                 animate={{ x: '100%' }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent shadow-[0_0_15px_rgba(201,168,106,0.5)]"
+                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent shadow-[0_0_15px_rgba(64,48,40,0.5)]"
               />
             </div>
           </motion.div>
@@ -493,7 +493,7 @@ export default function StepResult() {
                   variant="gold"
                   size="lg"
                   onClick={handleConfirmOrder}
-                  className="h-12 w-full shrink-0 gap-2 rounded-xl px-8 text-base font-bold shadow-[0_0_30px_rgba(201,168,106,0.25)] btn-shimmer-effect sm:w-auto"
+                  className="h-12 w-full shrink-0 gap-2 rounded-xl px-8 text-base font-bold shadow-[0_0_30px_rgba(64,48,40,0.25)] btn-shimmer-effect sm:w-auto"
                 >
                   <ShoppingBag className="w-5 h-5" /> إضافة إلى السلة
                 </Button>

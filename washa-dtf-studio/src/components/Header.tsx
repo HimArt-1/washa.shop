@@ -44,7 +44,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
               className={cn(
                 'h-2 w-2 rounded-full transition-all duration-300',
                 step === s.num
-                  ? 'w-6 bg-washa-gold shadow-[0_0_10px_rgba(201,168,106,0.5)]'
+                  ? 'w-6 bg-washa-gold shadow-[0_0_10px_rgba(64,48,40,0.5)]'
                   : step > s.num
                   ? 'bg-washa-gold/40'
                   : 'bg-washa-border/50'
@@ -63,7 +63,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
                   className={cn(
                     'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 relative',
                     step === s.num
-                      ? 'bg-washa-gold text-washa-bg shadow-[0_0_25px_rgba(201,168,106,0.5)] stepper-node-active scale-110'
+                      ? 'bg-washa-gold text-washa-bg shadow-[0_0_25px_rgba(64,48,40,0.5)] stepper-node-active scale-110'
                       : step > s.num
                       ? 'bg-washa-gold/20 text-washa-gold border border-washa-gold/40'
                       : 'bg-washa-surface text-washa-text-faint border border-washa-border/50'

@@ -154,7 +154,7 @@ export default function StepArtStyle() {
                 className={cn(
                   'rounded-xl border px-3.5 py-2 text-sm font-medium transition-all duration-300',
                   tab === t.key
-                    ? 'bg-washa-gold/15 border-washa-gold/40 text-washa-gold shadow-[0_0_15px_rgba(201,168,106,0.15)]'
+                    ? 'bg-washa-gold/15 border-washa-gold/40 text-washa-gold shadow-[0_0_15px_rgba(64,48,40,0.15)]'
                     : 'bg-white/[0.02] border-white/10 text-washa-text-sec hover:border-washa-gold/30 hover:text-washa-gold/80'
                 )}
               >
@@ -182,8 +182,8 @@ export default function StepArtStyle() {
                     className={cn(
                       'group relative h-40 touch-pan-y overflow-hidden rounded-2xl border text-right transition-all duration-500 sm:h-44',
                       isSelected
-                        ? 'border-washa-gold shadow-[0_0_30px_rgba(201,168,106,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
-                        : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
+                        ? 'border-washa-gold shadow-[0_0_30px_rgba(64,48,40,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
+                        : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(64,48,40,0.15)]'
                     )}
                   >
                     {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}

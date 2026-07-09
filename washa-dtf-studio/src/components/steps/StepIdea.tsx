@@ -132,7 +132,7 @@ export default function StepIdea() {
               {state.designMethod === id && (
                 <motion.div
                   layoutId="active-tab"
-                  className="absolute inset-0 bg-washa-gold shadow-[0_0_20px_rgba(201,168,106,0.3)]"
+                  className="absolute inset-0 bg-washa-gold shadow-[0_0_20px_rgba(64,48,40,0.3)]"
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -160,12 +160,12 @@ export default function StepIdea() {
                 {/* AI Radar Background Effect */}
                 <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
                   <div className="absolute inset-0 bg-washa-gold/[0.02] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
-                  <div className="absolute -inset-[100%] group-focus-within/input:animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(201,168,106,0.1)_360deg)] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
+                  <div className="absolute -inset-[100%] group-focus-within/input:animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(64,48,40,0.1)_360deg)] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
                 </div>
 
                 <Textarea
                   placeholder="صف فكرتك بدقة... مثال: ذئب هندسي بخطوط حادة، يرمز للقوة"
-                  className="relative z-10 min-h-[140px] resize-none rounded-2xl border-washa-border/30 bg-washa-bg/40 p-4 text-base leading-relaxed transition-all duration-500 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(201,168,106,0.1)] sm:min-h-[150px]"
+                  className="relative z-10 min-h-[140px] resize-none rounded-2xl border-washa-border/30 bg-washa-bg/40 p-4 text-base leading-relaxed transition-all duration-500 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(64,48,40,0.1)] sm:min-h-[150px]"
                   value={state.prompt}
                   onChange={e => updateState({ prompt: e.target.value })}
                 />
@@ -234,7 +234,7 @@ export default function StepIdea() {
 
               <Textarea
                 placeholder="مثال: لا غالب إلا الله ، أو والفجر ، أو اسمك ..."
-                className="min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(201,168,106,0.08)]"
+                className="min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(64,48,40,0.08)]"
                 value={state.calligraphyText}
                 onChange={e => updateState({ calligraphyText: e.target.value })}
                 dir="auto"

@@ -160,7 +160,7 @@ export default function StepGarment() {
                     className={cn(
                       'group relative scroll-mt-28 overflow-hidden rounded-2xl border bg-washa-surface/70 text-washa-text shadow-depth-sm transition-all duration-500 sm:scroll-mt-32',
                       isSelected
-                        ? 'col-span-2 border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold lg:col-span-3'
+                        ? 'col-span-2 border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold lg:col-span-3'
                         : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
                     )}
                   >
@@ -178,7 +178,7 @@ export default function StepGarment() {
                         )}
                       >
                         <div className={cn(
-                          'relative flex w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(255,255,255,0.96),rgba(241,232,215,0.78)_62%,rgba(154,123,61,0.18)_100%)] p-2.5',
+                          'relative flex w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(255,255,255,0.96),rgba(241,232,215,0.78)_62%,rgba(64,48,40,0.18)_100%)] p-2.5',
                           isSelected ? 'aspect-square border-b-0 border-l sm:aspect-[4/3]' : 'aspect-square'
                         )}>
                           {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
@@ -263,7 +263,7 @@ export default function StepGarment() {
                                       className={cn(
                                         'relative flex h-12 w-12 items-center justify-center rounded-2xl border bg-washa-ivory text-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.96]',
                                         colorSelected
-                                          ? 'border-washa-gold shadow-[0_12px_28px_rgba(154,123,61,0.18)] ring-2 ring-washa-gold/15'
+                                          ? 'border-washa-gold shadow-[0_12px_28px_rgba(64,48,40,0.18)] ring-2 ring-washa-gold/15'
                                           : 'border-washa-border/55 hover:border-washa-gold/45'
                                       )}
                                       title={cleanOptionName(color.name)}
@@ -318,7 +318,7 @@ export default function StepGarment() {
                                       className={cn(
                                         'rounded-2xl border px-2 py-2.5 text-center text-xs font-bold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 sm:py-3 sm:text-sm',
                                         sizeSelected
-                                          ? 'border-washa-gold bg-washa-gold text-washa-bg shadow-[0_12px_28px_rgba(154,123,61,0.16)]'
+                                          ? 'border-washa-gold bg-washa-gold text-washa-bg shadow-[0_12px_28px_rgba(64,48,40,0.16)]'
                                           : 'border-washa-border/50 bg-washa-ivory/85 text-washa-text hover:border-washa-gold/45 hover:bg-washa-ivory',
                                         isOut && 'border-red-500/30 bg-red-500/5 text-red-300',
                                         isLow && !sizeSelected && 'border-amber-400/40 bg-amber-400/5'
@@ -346,7 +346,7 @@ export default function StepGarment() {
                     </div>
 
                     {isSelected && (
-                      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-washa-gold shadow-[0_-4px_10px_rgba(201,168,106,0.35)]" />
+                      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-washa-gold shadow-[0_-4px_10px_rgba(64,48,40,0.35)]" />
                     )}
                   </motion.article>
                 );

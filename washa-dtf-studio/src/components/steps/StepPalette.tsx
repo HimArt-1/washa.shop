@@ -125,7 +125,7 @@ function CustomColorPicker({ value, onChange }: { value: string; onChange: (val:
               className={cn(
                 'relative aspect-square w-full rounded-lg border-2 transition-all duration-300',
                 isActive
-                  ? 'border-washa-gold scale-110 shadow-[0_0_12px_rgba(201,168,106,0.5)] z-10'
+                  ? 'border-washa-gold scale-110 shadow-[0_0_12px_rgba(64,48,40,0.5)] z-10'
                   : isFull
                     ? 'border-transparent opacity-30 cursor-not-allowed'
                     : 'border-transparent hover:border-white/40 hover:scale-105'
@@ -234,7 +234,7 @@ export default function StepPalette() {
                   className={cn(
                     'group relative flex flex-col gap-3 rounded-2xl border p-4 text-right transition-all duration-500',
                     state.paletteId === palette.id
-                      ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
+                      ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(64,48,40,0.15)] ring-1 ring-washa-gold'
                       : 'border-washa-border/45 bg-washa-bg/45 hover:border-washa-gold/40 hover:bg-washa-ivory'
                   )}
                 >
@@ -272,7 +272,7 @@ export default function StepPalette() {
                 className={cn(
                   'group relative flex flex-col gap-3 rounded-2xl border p-4 text-right transition-all duration-500',
                   customPaletteSelected
-                    ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
+                    ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(64,48,40,0.15)] ring-1 ring-washa-gold'
                     : 'border-washa-border/45 bg-washa-bg/45 hover:border-washa-gold/40 hover:bg-washa-ivory'
                 )}
               >
@@ -321,7 +321,7 @@ export default function StepPalette() {
                 className={cn(
                   'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
                   state.removeBackground
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
                     : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
                 )}
               >
@@ -357,7 +357,7 @@ export default function StepPalette() {
                 className={cn(
                   'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
                   state.avoidHardEdges
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
                     : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
                 )}
               >
