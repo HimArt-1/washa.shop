@@ -8,6 +8,7 @@ import { siteAsset } from '../../lib/assets';
 import StepNavigationBar from './StepNavigationBar';
 
 export default function StepGarment() {
+  const garmentListRef = useRef<HTMLDivElement | null>(null);
   const optionsRef = useRef<HTMLDivElement | null>(null);
   const {
     state,
@@ -27,6 +28,11 @@ export default function StepGarment() {
     window.setTimeout(() => {
       optionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
+  };
+  const revealGarments = () => {
+    window.setTimeout(() => {
+      garmentListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 40);
   };
 
   return (
@@ -78,7 +84,7 @@ export default function StepGarment() {
             </div>
           ) : null}
 
-          <div className="space-y-4">
+          <div ref={garmentListRef} className="scroll-mt-24 space-y-4 sm:scroll-mt-28">
             <div className="flex items-center justify-between">
               <span className="text-xs text-washa-gold/60">{garmentOptions.length} قطع متاحة</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
@@ -86,7 +92,7 @@ export default function StepGarment() {
                 نوع القطعة
               </label>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
               {garmentOptions.map((garment, index) => {
                 const isSelected = state.garmentId === garment.id;
                 return (
@@ -115,52 +121,57 @@ export default function StepGarment() {
                       revealOptions();
                     }}
                     className={cn(
-                      'group relative h-52 overflow-hidden rounded-2xl border transition-all duration-500 sm:h-56',
+                      'group relative flex flex-col overflow-hidden rounded-2xl border bg-washa-surface/70 text-washa-text shadow-depth-sm transition-all duration-500',
                       isSelected
-                        ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_40px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
-                        : 'border-washa-border/70 bg-washa-surface/55 hover:border-washa-gold/40 hover:bg-washa-ivory/80'
+                        ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold'
+                        : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
                     )}
                   >
-                    {/* Garment Image */}
-                    <div className="absolute inset-0 z-0">
+                    <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(255,255,255,0.96),rgba(241,232,215,0.78)_62%,rgba(154,123,61,0.18)_100%)] p-2.5">
+                      {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
                       {garment.imageUrl ? (
                         <img 
                           src={siteAsset(garment.imageUrl)} 
                           alt={garment.name} 
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                          className={cn(
+                            'relative z-[1] h-full w-full object-contain object-center drop-shadow-[0_18px_30px_rgba(44,36,24,0.18)] transition-transform duration-700',
+                            isSelected ? 'scale-[1.05]' : 'scale-100 group-hover:scale-[1.06]'
+                          )}
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full w-full bg-washa-surface/20">
-                          <Shirt className="w-16 h-16 text-white/5" />
+                          <Shirt className="h-12 w-12 text-washa-gold/25" />
+                        </div>
+                      )}
+                      {isSelected && (
+                        <div className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
+                          <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
                         </div>
                       )}
                     </div>
 
-                    {/* Gradient Overlay for Text Readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-washa-bg/70 to-transparent z-10 opacity-95" />
-
-                    {/* Content */}
-                    <div className="absolute inset-x-0 bottom-0 z-20 space-y-2 p-4 text-right">
-                      <div className="flex items-center justify-between">
-                        {isSelected && (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg">
-                            <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
-                          </div>
-                        )}
+                    <div className="z-10 flex-1 space-y-2 bg-washa-bg/90 p-3 text-right backdrop-blur-sm">
+                      <div className="flex items-center justify-between gap-2">
                         <p className={cn(
-                          "w-full text-lg font-bold transition-colors",
-                          isSelected ? "text-washa-gold" : "text-washa-text group-hover:text-washa-gold-deep"
+                          'min-w-0 text-sm font-bold leading-tight transition-colors',
+                          isSelected ? 'text-washa-gold-deep' : 'text-washa-text group-hover:text-washa-gold-deep'
                         )}>{garment.name}</p>
+                        <div className={cn(
+                          'rounded-lg p-1.5 transition-colors',
+                          isSelected ? 'bg-washa-gold/[0.18] text-washa-gold-deep' : 'bg-washa-gold/[0.08] text-washa-text-sec group-hover:text-washa-gold-deep'
+                        )}>
+                          <Shirt className="h-4 w-4" />
+                        </div>
                       </div>
-                      <div className="flex items-center justify-end gap-3 text-xs font-bold">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 text-[10px] font-bold">
                         <span className={cn(
-                          "rounded-md border px-2 py-1 backdrop-blur-md",
+                          "rounded-md border px-2 py-0.5 backdrop-blur-md",
                           isSelected
                             ? "border-washa-gold/30 bg-washa-gold/15 text-washa-gold"
                             : "border-washa-border bg-washa-bg/85 text-washa-text-sec"
                         )}>{garment.colors.length} ألوان</span>
                         <span className={cn(
-                          "rounded-md border px-2 py-1 backdrop-blur-md",
+                          "rounded-md border px-2 py-0.5 backdrop-blur-md",
                           isSelected
                             ? "border-washa-gold/30 bg-washa-gold/15 text-washa-gold"
                             : "border-washa-border bg-washa-bg/85 text-washa-text-sec"
@@ -168,9 +179,8 @@ export default function StepGarment() {
                       </div>
                     </div>
 
-                    {/* Subtle bottom accent for selected state */}
                     {isSelected && (
-                      <div className="absolute bottom-0 inset-x-0 h-1 bg-washa-gold shadow-[0_-4px_10px_rgba(201,168,106,0.5)] z-20" />
+                      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-washa-gold shadow-[0_-4px_10px_rgba(201,168,106,0.35)]" />
                     )}
                   </motion.button>
                 );
@@ -178,14 +188,33 @@ export default function StepGarment() {
             </div>
           </div>
 
-          <div ref={optionsRef} className="scroll-mt-24 space-y-6 sm:scroll-mt-28 sm:space-y-7">
+          <div
+            ref={optionsRef}
+            className="scroll-mt-24 space-y-5 rounded-2xl border border-washa-border/55 bg-washa-bg/45 p-4 shadow-[0_16px_44px_rgba(154,123,61,0.08)] sm:scroll-mt-28 sm:p-5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-washa-border/30 pb-3">
+              <div className="text-right">
+                <p className="text-sm font-bold text-washa-text">{state.garmentType || 'القطعة'}</p>
+                <p className="text-xs text-washa-text-faint">
+                  {state.garmentColor || 'اختر اللون'}{state.garmentSize ? ` · ${state.garmentSize}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={revealGarments}
+                className="rounded-xl border border-washa-gold/25 bg-washa-gold/5 px-3 py-2 text-xs font-bold text-washa-gold transition-colors hover:bg-washa-gold/10"
+              >
+                تغيير القطعة
+              </button>
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-washa-gold/60">{colorOptions.length} لوناً متوفراً</span>
-                <label className="text-lg text-washa-text font-medium">لون القطعة</label>
+                <label className="text-base font-medium text-washa-text">لون القطعة</label>
               </div>
               {colorOptions.length > 0 ? (
-                <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
+                <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-6">
                   {colorOptions.map((color, index) => (
                     <motion.button
                       key={color.id}
@@ -210,25 +239,30 @@ export default function StepGarment() {
                         });
                       }}
                       className={cn(
-                        'relative h-11 w-11 rounded-full border-2 transition-all duration-500 group/color sm:h-12 sm:w-12',
+                        'group/color flex min-w-0 flex-col items-center gap-1.5 rounded-xl border p-2 text-center transition-all duration-300',
                         state.garmentColorId === color.id
-                          ? 'border-washa-gold scale-115 shadow-[0_0_25px_rgba(201,168,106,0.5)] ring-2 ring-washa-gold/20 ring-offset-2 ring-offset-washa-bg'
-                          : 'border-white/10 hover:border-white/30 hover:scale-110'
+                          ? 'border-washa-gold bg-washa-ivory text-washa-gold-deep shadow-[0_10px_28px_rgba(154,123,61,0.14)]'
+                          : 'border-washa-border/45 bg-washa-ivory/55 text-washa-text-sec hover:border-washa-gold/35 hover:bg-washa-ivory'
                       )}
-                      style={{ backgroundColor: color.hexCode }}
                       title={color.name}
                     >
-                      {state.garmentColorId === color.id && (
-                        <CheckCircle2
-                          className={cn(
-                            'absolute inset-0 m-auto w-6 h-6 drop-shadow-lg',
-                            LIGHT_GARMENT_COLORS.includes(color.name)
-                              ? 'text-black'
-                              : 'text-white'
-                          )}
-                        />
-                      )}
-                      <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] sm:text-[11px] text-washa-text opacity-0 group-hover/color:opacity-100 transition-all transform translate-y-1 group-hover/color:translate-y-0 whitespace-nowrap font-medium pointer-events-none bg-washa-surface/90 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                      <span
+                        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-washa-border/40 shadow-sm"
+                        style={{ backgroundColor: color.hexCode }}
+                      >
+                        {state.garmentColorId === color.id && (
+                          <CheckCircle2
+                            className={cn(
+                              'h-5 w-5 drop-shadow-lg',
+                              LIGHT_GARMENT_COLORS.includes(color.name)
+                                ? 'text-black'
+                                : 'text-white'
+                            )}
+                            strokeWidth={3}
+                          />
+                        )}
+                      </span>
+                      <span className="block max-w-full truncate text-[10px] font-medium leading-4">
                         {color.name}
                       </span>
                     </motion.button>
@@ -244,13 +278,13 @@ export default function StepGarment() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات متاحة</span>
-                <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
-                  <Ruler className="h-5 w-5 text-washa-gold" />
+                <label className="flex items-center gap-2 text-base font-medium text-washa-text">
+                  <Ruler className="h-4 w-4 text-washa-gold" />
                   المقاس
                 </label>
               </div>
               {sizeOptions.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
                   {sizeOptions.map((size, index) => {
                     const isOut = size.stockStatus === 'out';
                     const isLow = size.stockStatus === 'low';
@@ -265,10 +299,10 @@ export default function StepGarment() {
                         }}
                         disabled={isOut}
                         className={cn(
-                        'rounded-xl border px-4 py-3 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
+                          'rounded-xl border px-3 py-3 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
                           state.garmentSizeId === size.id
-                            ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
-                            : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]',
+                            ? 'border-washa-gold bg-washa-ivory text-washa-gold-deep shadow-[0_10px_28px_rgba(154,123,61,0.14)]'
+                            : 'border-washa-border/45 bg-washa-ivory/55 text-washa-text-sec hover:border-washa-gold/35 hover:bg-washa-ivory',
                           isOut && 'border-red-500/30 bg-red-500/5 text-red-200',
                           isLow && 'border-amber-400/30 bg-amber-400/5'
                         )}
