@@ -223,9 +223,6 @@ function isUuid(value: string | null | undefined) {
 }
 
 function buildInitialState(config: DtfStudioConfig): DesignState {
-  const garment = config.garments[0] || null;
-  const color = garment?.colors[0] || null;
-  const size = resolveDefaultSize(garment, color?.id || null);
   const style = config.styles[0] || null;
   const technique = config.techniques[0] || null;
   const palette = config.palettes[0] || null;
@@ -234,13 +231,6 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 
   return {
     ...EMPTY_STATE,
-    garmentId: garment?.id || null,
-    garmentType: garment?.name || '',
-    garmentColorId: color?.id || null,
-    garmentColor: color?.name || '',
-    garmentColorHex: color?.hexCode || '#111111',
-    garmentSizeId: size?.id || null,
-    garmentSize: size?.name || '',
     styleId: style?.id || null,
     style: style?.name || '',
     techniqueId: technique?.id || null,
@@ -348,7 +338,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const positionOptions = useMemo(() => config?.positions ?? [], [config]);
 
   const selectedGarment = useMemo(
-    () => garmentOptions.find((item) => item.id === state.garmentId) || garmentOptions[0] || null,
+    () => garmentOptions.find((item) => item.id === state.garmentId) || null,
     [garmentOptions, state.garmentId]
   );
 
