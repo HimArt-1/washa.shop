@@ -8,7 +8,7 @@ interface HeaderProps {
   onOpenGallery: () => void;
 }
 
-const BRAND_MARK_SRC = 'header-logo-identity.png';
+const BRAND_MARK_SRC = 'header-logo-wordmark.png';
 
 export default function Header({ onOpenGallery }: HeaderProps) {
   const { step } = useDesign();
@@ -23,44 +23,38 @@ export default function Header({ onOpenGallery }: HeaderProps) {
   ];
 
   return (
-    <header className="border-b border-washa-border/50 bg-washa-surface/30 backdrop-blur-xl sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 min-h-20 md:h-20 py-3 md:py-0 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 relative">
+    <header className="sticky top-0 z-50 border-b border-washa-border/50 bg-washa-surface/30 backdrop-blur-xl">
+      <div className="relative mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-2 px-4 py-2 sm:gap-3 sm:px-6 md:h-20 md:gap-4 md:py-0">
         {/* Logo */}
-        <div className="flex items-center justify-between gap-3 md:justify-start">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-14 shrink-0 items-center justify-center">
-              <img
-                src={siteAsset(BRAND_MARK_SRC)}
-                alt="وشّى"
-                className="h-9 w-auto object-contain drop-shadow-[0_1px_0_rgba(255,255,255,0.45)]"
-              />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="font-serif text-xl tracking-wider text-washa-gold leading-none">وشّى</h1>
-              <p className="text-[10px] text-washa-text-faint tracking-[0.2em] uppercase leading-none mt-0.5">WASHA STUDIO</p>
-            </div>
-          </div>
-
-          {/* Mobile Step Indicator */}
-          <div className="md:hidden flex items-center gap-2">
-            {steps.map(s => (
-              <div
-                key={s.num}
-                className={cn(
-                  'w-2 h-2 rounded-full transition-all duration-300',
-                  step === s.num
-                    ? 'bg-washa-gold w-6 shadow-[0_0_10px_rgba(201,168,106,0.5)]'
-                    : step > s.num
-                    ? 'bg-washa-gold/40'
-                    : 'bg-washa-border/50'
-                )}
-              />
-            ))}
+        <div className="flex min-w-0 shrink-0 items-center">
+          <div className="flex h-12 w-[86px] shrink-0 items-center justify-center overflow-visible sm:h-14 sm:w-24">
+            <img
+              src={siteAsset(BRAND_MARK_SRC)}
+              alt="وشّى"
+              className="max-h-12 w-auto max-w-full object-contain drop-shadow-[0_1px_0_rgba(255,255,255,0.45)] sm:max-h-14"
+            />
           </div>
         </div>
 
+        {/* Mobile Step Indicator */}
+        <div className="flex flex-1 items-center justify-center gap-1.5 px-1 md:hidden">
+          {steps.map(s => (
+            <div
+              key={s.num}
+              className={cn(
+                'h-2 w-2 rounded-full transition-all duration-300',
+                step === s.num
+                  ? 'w-6 bg-washa-gold shadow-[0_0_10px_rgba(201,168,106,0.5)]'
+                  : step > s.num
+                  ? 'bg-washa-gold/40'
+                  : 'bg-washa-border/50'
+              )}
+            />
+          ))}
+        </div>
+
         {/* Interactive Stepper */}
-        <div className="hidden md:flex items-center gap-0">
+        <div className="hidden flex-1 items-center justify-center gap-0 md:flex">
           {steps.map((s, i) => (
             <div key={s.num} className="flex items-center">
               {/* Step Node */}
@@ -114,20 +108,20 @@ export default function Header({ onOpenGallery }: HeaderProps) {
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-2 md:justify-end">
+        <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           <a
             href="/"
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold"
+            className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold sm:h-auto sm:w-auto sm:px-3 sm:py-2"
             title="الرئيسية"
           >
             <Home className="w-4 h-4" />
-            <span>الرئيسية</span>
+            <span className="hidden sm:inline">الرئيسية</span>
           </a>
 
           {/* Gallery Button */}
           <button
             onClick={onOpenGallery}
-            className="flex shrink-0 items-center gap-2 rounded-xl border border-transparent px-3 py-2 text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold"
+            className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold sm:h-auto sm:w-auto sm:px-3 sm:py-2"
             title="تصاميمي السابقة"
           >
             <History className="w-4 h-4" />

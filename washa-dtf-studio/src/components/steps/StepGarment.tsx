@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { motion } from 'motion/react';
 import { Shirt, CheckCircle2, Loader2, Package2, Ruler } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -7,6 +8,7 @@ import { siteAsset } from '../../lib/assets';
 import StepNavigationBar from './StepNavigationBar';
 
 export default function StepGarment() {
+  const optionsRef = useRef<HTMLDivElement | null>(null);
   const {
     state,
     updateState,
@@ -21,6 +23,11 @@ export default function StepGarment() {
 
   const selectedSize = sizeOptions.find((size) => size.id === state.garmentSizeId);
   const canProceed = Boolean(state.garmentId && state.garmentColorId && state.garmentSizeId && selectedSize && selectedSize.stockStatus !== 'out');
+  const revealOptions = () => {
+    window.setTimeout(() => {
+      optionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
 
   return (
     <>
@@ -105,6 +112,7 @@ export default function StepGarment() {
                         garmentSizeId: nextSize?.id || null,
                         garmentSize: nextSize?.name || '',
                       });
+                      revealOptions();
                     }}
                     className={cn(
                       'group relative h-64 overflow-hidden rounded-3xl border transition-all duration-500',
@@ -170,115 +178,117 @@ export default function StepGarment() {
             </div>
           </div>
 
-          <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{colorOptions.length} لوناً متوفراً</span>
-              <label className="text-lg text-washa-text font-medium">لون القطعة</label>
-            </div>
-            {colorOptions.length > 0 ? (
-              <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
-                {colorOptions.map((color, index) => (
-                  <motion.button
-                    key={color.id}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.22 + index * 0.03, duration: 0.25 }}
-                    onClick={() => {
-                      const orderableSizes = selectedGarment?.sizes.filter((item) => item.stockStatus !== 'out') || [];
-                      const nextSize =
-                        orderableSizes.find((item) => item.colorId === color.id) ||
-                        orderableSizes.find((item) => item.colorId === null) ||
-                        orderableSizes[0] ||
-                        selectedGarment?.sizes.find((item) => item.colorId === color.id) ||
-                        null;
-
-                      updateState({
-                        garmentColorId: color.id,
-                        garmentColor: color.name,
-                        garmentColorHex: color.hexCode,
-                        garmentSizeId: nextSize?.id || null,
-                        garmentSize: nextSize?.name || '',
-                      });
-                    }}
-                    className={cn(
-                      'w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-500 relative group/color',
-                      state.garmentColorId === color.id
-                        ? 'border-washa-gold scale-115 shadow-[0_0_25px_rgba(201,168,106,0.5)] ring-2 ring-washa-gold/20 ring-offset-2 ring-offset-washa-bg'
-                        : 'border-white/10 hover:border-white/30 hover:scale-110'
-                    )}
-                    style={{ backgroundColor: color.hexCode }}
-                    title={color.name}
-                  >
-                    {state.garmentColorId === color.id && (
-                      <CheckCircle2
-                        className={cn(
-                          'absolute inset-0 m-auto w-6 h-6 drop-shadow-lg',
-                          LIGHT_GARMENT_COLORS.includes(color.name)
-                            ? 'text-black'
-                            : 'text-white'
-                        )}
-                      />
-                    )}
-                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] sm:text-[11px] text-washa-text opacity-0 group-hover/color:opacity-100 transition-all transform translate-y-1 group-hover/color:translate-y-0 whitespace-nowrap font-medium pointer-events-none bg-washa-surface/90 px-2 py-0.5 rounded-md backdrop-blur-sm">
-                      {color.name}
-                    </span>
-                  </motion.button>
-                ))}
+          <div ref={optionsRef} className="scroll-mt-24 space-y-8 sm:scroll-mt-28 sm:space-y-10">
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-washa-gold/60">{colorOptions.length} لوناً متوفراً</span>
+                <label className="text-lg text-washa-text font-medium">لون القطعة</label>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
-                لا توجد ألوان متاحة لهذه القطعة حالياً.
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات متاحة</span>
-              <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
-                <Ruler className="h-5 w-5 text-washa-gold" />
-                المقاس
-              </label>
-            </div>
-            {sizeOptions.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {sizeOptions.map((size, index) => {
-                  const isOut = size.stockStatus === 'out';
-                  const isLow = size.stockStatus === 'low';
-                  return (
+              {colorOptions.length > 0 ? (
+                <div className="flex flex-wrap gap-3 sm:gap-4 justify-center">
+                  {colorOptions.map((color, index) => (
                     <motion.button
-                      key={size.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.32 + index * 0.03, duration: 0.25 }}
+                      key={color.id}
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.22 + index * 0.03, duration: 0.25 }}
                       onClick={() => {
-                        if (!isOut) updateState({ garmentSizeId: size.id, garmentSize: size.name });
+                        const orderableSizes = selectedGarment?.sizes.filter((item) => item.stockStatus !== 'out') || [];
+                        const nextSize =
+                          orderableSizes.find((item) => item.colorId === color.id) ||
+                          orderableSizes.find((item) => item.colorId === null) ||
+                          orderableSizes[0] ||
+                          selectedGarment?.sizes.find((item) => item.colorId === color.id) ||
+                          null;
+
+                        updateState({
+                          garmentColorId: color.id,
+                          garmentColor: color.name,
+                          garmentColorHex: color.hexCode,
+                          garmentSizeId: nextSize?.id || null,
+                          garmentSize: nextSize?.name || '',
+                        });
                       }}
-                      disabled={isOut}
                       className={cn(
-                        'rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
-                        state.garmentSizeId === size.id
-                          ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
-                          : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]',
-                        isOut && 'border-red-500/30 bg-red-500/5 text-red-200',
-                        isLow && 'border-amber-400/30 bg-amber-400/5'
+                        'w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 transition-all duration-500 relative group/color',
+                        state.garmentColorId === color.id
+                          ? 'border-washa-gold scale-115 shadow-[0_0_25px_rgba(201,168,106,0.5)] ring-2 ring-washa-gold/20 ring-offset-2 ring-offset-washa-bg'
+                          : 'border-white/10 hover:border-white/30 hover:scale-110'
                       )}
+                      style={{ backgroundColor: color.hexCode }}
+                      title={color.name}
                     >
-                      <span>{size.name}</span>
-                      {size.stockStatus && size.stockStatus !== 'untracked' && (
-                        <span className="mt-1 block text-[10px] font-medium text-washa-text-faint">
-                          {isOut ? 'نفد' : `متبقي ${size.availableQuantity ?? 0}`}
-                        </span>
+                      {state.garmentColorId === color.id && (
+                        <CheckCircle2
+                          className={cn(
+                            'absolute inset-0 m-auto w-6 h-6 drop-shadow-lg',
+                            LIGHT_GARMENT_COLORS.includes(color.name)
+                              ? 'text-black'
+                              : 'text-white'
+                          )}
+                        />
                       )}
+                      <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] sm:text-[11px] text-washa-text opacity-0 group-hover/color:opacity-100 transition-all transform translate-y-1 group-hover/color:translate-y-0 whitespace-nowrap font-medium pointer-events-none bg-washa-surface/90 px-2 py-0.5 rounded-md backdrop-blur-sm">
+                        {color.name}
+                      </span>
                     </motion.button>
-                  );
-                })}
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
+                  لا توجد ألوان متاحة لهذه القطعة حالياً.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-washa-gold/60">{sizeOptions.length} مقاسات متاحة</span>
+                <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
+                  <Ruler className="h-5 w-5 text-washa-gold" />
+                  المقاس
+                </label>
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
-                لا توجد مقاسات متاحة لهذه القطعة/اللون حالياً.
-              </div>
-            )}
+              {sizeOptions.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {sizeOptions.map((size, index) => {
+                    const isOut = size.stockStatus === 'out';
+                    const isLow = size.stockStatus === 'low';
+                    return (
+                      <motion.button
+                        key={size.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.32 + index * 0.03, duration: 0.25 }}
+                        onClick={() => {
+                          if (!isOut) updateState({ garmentSizeId: size.id, garmentSize: size.name });
+                        }}
+                        disabled={isOut}
+                        className={cn(
+                          'rounded-2xl border px-4 py-4 text-center text-sm font-semibold transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-40',
+                          state.garmentSizeId === size.id
+                            ? 'border-washa-gold bg-washa-gold/12 text-washa-gold'
+                            : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]',
+                          isOut && 'border-red-500/30 bg-red-500/5 text-red-200',
+                          isLow && 'border-amber-400/30 bg-amber-400/5'
+                        )}
+                      >
+                        <span>{size.name}</span>
+                        {size.stockStatus && size.stockStatus !== 'untracked' && (
+                          <span className="mt-1 block text-[10px] font-medium text-washa-text-faint">
+                            {isOut ? 'نفد' : `متبقي ${size.availableQuantity ?? 0}`}
+                          </span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-washa-border/30 bg-washa-bg/30 px-4 py-6 text-center text-sm text-washa-text-faint">
+                  لا توجد مقاسات متاحة لهذه القطعة/اللون حالياً.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
