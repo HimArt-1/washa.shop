@@ -165,86 +165,88 @@ export default function StepArtStyle() {
           </div>
 
           {/* ── Card Grid ── */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((option, index) => {
-              const isSelected = option.kind === 'style'
-                ? state.styleId === option.id
-                : state.techniqueId === option.id;
+          <div className="-mx-1 h-[calc(100dvh-22rem)] min-h-72 overflow-y-auto overscroll-contain px-1 pb-28 touch-pan-y sm:h-[calc(100dvh-21rem)] sm:pb-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((option, index) => {
+                const isSelected = option.kind === 'style'
+                  ? state.styleId === option.id
+                  : state.techniqueId === option.id;
 
-              return (
-                <motion.button
-                  key={option.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
-                  onClick={() => handleSelect(option)}
-                  className={cn(
-                    'group relative h-40 overflow-hidden rounded-2xl border text-right transition-all duration-500 sm:h-44',
-                    isSelected
-                      ? 'border-washa-gold shadow-[0_0_30px_rgba(201,168,106,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
-                      : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
-                  )}
-                >
-                  {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
-                    {option.kind === 'style'
-                      ? <Palette className="h-12 w-12 text-white/10" />
-                      : <Brush className="h-12 w-12 text-white/10" />
-                    }
-                  </div>
-
-                  {/* Background Image */}
-                  {option.bgImage ? (
-                    <img
-                      src={option.bgImage}
-                      alt={option.name}
-                      className={cn(
-                        "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
-                        isSelected ? "scale-105" : "group-hover:scale-110"
-                      )}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  ) : null}
-
-                  {/* Gradient Overlay */}
-                  <div className={cn(
-                    "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
-                    option.gradient,
-                    isSelected ? 'opacity-90' : 'opacity-80'
-                  )} />
-
-                  {/* Kind Badge */}
-                  <div className={cn(
-                    'absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-md',
-                    option.kind === 'style'
-                      ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30'
-                      : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
-                  )}>
-                    {option.badgeIcon}
-                    {option.badge}
-                  </div>
-
-                  {/* Selected Checkmark */}
-                  {isSelected && (
-                    <div className="absolute left-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                return (
+                  <motion.button
+                    key={option.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
+                    onClick={() => handleSelect(option)}
+                    className={cn(
+                      'group relative h-40 touch-pan-y overflow-hidden rounded-2xl border text-right transition-all duration-500 sm:h-44',
+                      isSelected
+                        ? 'border-washa-gold shadow-[0_0_30px_rgba(201,168,106,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
+                        : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
+                    )}
+                  >
+                    {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
+                      {option.kind === 'style'
+                        ? <Palette className="h-12 w-12 text-white/10" />
+                        : <Brush className="h-12 w-12 text-white/10" />
+                      }
                     </div>
-                  )}
 
-                  {/* Content */}
-                  <div className="absolute inset-x-0 bottom-0 space-y-1 p-3">
-                    <p className="text-sm font-bold leading-tight text-white drop-shadow-md">
-                      {option.name}
-                    </p>
-                    <p className="text-[11px] text-white/70 line-clamp-2 drop-shadow-md">
-                      {option.description || (option.kind === 'style' ? 'اتجاه بصري مميز' : 'تقنية تنفيذ فنية')}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
+                    {/* Background Image */}
+                    {option.bgImage ? (
+                      <img
+                        src={option.bgImage}
+                        alt={option.name}
+                        className={cn(
+                          "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
+                          isSelected ? "scale-105" : "group-hover:scale-110"
+                        )}
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : null}
+
+                    {/* Gradient Overlay */}
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
+                      option.gradient,
+                      isSelected ? 'opacity-90' : 'opacity-80'
+                    )} />
+
+                    {/* Kind Badge */}
+                    <div className={cn(
+                      'absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-md',
+                      option.kind === 'style'
+                        ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30'
+                        : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                    )}>
+                      {option.badgeIcon}
+                      {option.badge}
+                    </div>
+
+                    {/* Selected Checkmark */}
+                    {isSelected && (
+                      <div className="absolute left-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="absolute inset-x-0 bottom-0 space-y-1 p-3">
+                      <p className="text-sm font-bold leading-tight text-white drop-shadow-md">
+                        {option.name}
+                      </p>
+                      <p className="text-[11px] text-white/70 line-clamp-2 drop-shadow-md">
+                        {option.description || (option.kind === 'style' ? 'اتجاه بصري مميز' : 'تقنية تنفيذ فنية')}
+                      </p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

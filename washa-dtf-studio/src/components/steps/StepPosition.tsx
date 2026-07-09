@@ -216,9 +216,7 @@ export default function StepPosition() {
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
                 
-                {'visual' in pos && typeof pos.visual === 'function' ? (
-                  pos.visual(isSelected)
-                ) : ('imageUrl' in pos && pos.imageUrl) ? (
+                {('imageUrl' in pos && pos.imageUrl) ? (
                   <img 
                     src={studioAsset(pos.imageUrl as string)} 
                     alt={pos.title} 
@@ -227,6 +225,8 @@ export default function StepPosition() {
                       isSelected ? "scale-[1.38]" : "scale-[1.3] group-hover:scale-[1.38]"
                     )} 
                   />
+                ) : 'visual' in pos && typeof pos.visual === 'function' ? (
+                  pos.visual(isSelected)
                 ) : null}
                 
                 {isSelected && (
