@@ -17,6 +17,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { resizeDataUrl } from './lib/image';
 import WashaDevStudio from './components/dev/WashaDevStudio';
 import WashaDevStudioV2 from './components/dev-v2/WashaDevStudioV2';
+import NeuralOrnament from './components/NeuralOrnament';
+import EntryBridge from './components/EntryBridge';
 
 type StudioMode = 'production' | 'dev' | 'dev-v2';
 
@@ -102,6 +104,9 @@ function AppContent() {
         <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
       ) : (
         <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-x-clip">
+          {/* Static neural lattice — visual continuity with the intro */}
+          <NeuralOrnament />
+
           {/* Ambient Background Orbs */}
           <div className="ambient-orb ambient-orb-1" />
           <div className="ambient-orb ambient-orb-2" />
@@ -140,6 +145,7 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
+      <EntryBridge />
       <DesignProvider>
         <AppContent />
       </DesignProvider>
