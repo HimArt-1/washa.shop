@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useEffect, useState } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
-  Wand2, Download, ChevronRight, Loader2, RotateCcw,
+  Download, ChevronRight, Loader2, RotateCcw,
   ZoomIn, Sparkles, ShoppingBag, CheckCircle2, X, FileCheck,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -14,6 +14,203 @@ function hexToRgb(hex: string) {
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
   return `${r}, ${g}, ${b}`;
+}
+
+// ── Generating State — "نسج" loom + neural progress ───────────
+const WEAVE_LINES = [20, 32, 44, 56, 68, 80];
+const WEAVE_NODES = [
+  { x: 32, y: 32 }, { x: 56, y: 44 }, { x: 44, y: 68 },
+  { x: 68, y: 56 }, { x: 44, y: 44 }, { x: 68, y: 32 },
+];
+const WEAVE_STAGES = [
+  { at: 0.0, text: 'نقرأ فكرتك ونفهم تفاصيلها' },
+  { at: 0.28, text: 'ننسج الخيوط الأولى للتكوين' },
+  { at: 0.58, text: 'نعاير الألوان والظلال بدقّة' },
+  { at: 0.82, text: 'نضيف اللمسات الأخيرة' },
+];
+const WEAVE_ESTIMATE_MS = 16000;
+const weaveEase = (t: number) => 1 - Math.pow(1 - t, 3);
+
+function GeneratingState({
+  garmentType,
+  garmentColor,
+  garmentHex,
+  style,
+}: {
+  garmentType: string;
+  garmentColor: string;
+  garmentHex: string;
+  style: string;
+}) {
+  const reduce = useReducedMotion();
+  const [progress, setProgress] = useState(reduce ? 60 : 0);
+
+  useEffect(() => {
+    if (reduce) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const e = Math.min(1, (t - start) / WEAVE_ESTIMATE_MS);
+      setProgress(Math.round(weaveEase(e) * 95));
+      if (e < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [reduce]);
+
+  const p = progress / 100;
+  const stage = WEAVE_STAGES.reduce((acc, s) => (p >= s.at ? s : acc), WEAVE_STAGES[0]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass-card-strong relative flex min-h-[440px] flex-col items-center justify-center gap-8 overflow-hidden p-8 text-center sm:p-12"
+    >
+      {/* Ambient bloom */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-[38%] h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ background: 'radial-gradient(circle, rgba(154,123,61,0.12) 0%, transparent 68%)' }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-washa-bg to-transparent" />
+
+      {/* ── Loom centerpiece ── */}
+      <div className="relative flex h-36 w-36 items-center justify-center">
+        {/* Rotating dashed ring */}
+        <motion.div
+          className="absolute inset-0 rounded-full border border-dashed border-washa-gold/15"
+          animate={reduce ? undefined : { rotate: 360 }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
+        />
+        <motion.div
+          className="absolute inset-3 rounded-full border border-washa-gold/10"
+          animate={reduce ? undefined : { rotate: -360 }}
+          transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+        />
+
+        <svg
+          viewBox="0 0 100 100"
+          className="absolute inset-4 h-[calc(100%-2rem)] w-[calc(100%-2rem)]"
+          style={{
+            maskImage: 'radial-gradient(circle at center, black 58%, transparent 82%)',
+            WebkitMaskImage: 'radial-gradient(circle at center, black 58%, transparent 82%)',
+          }}
+        >
+          {/* Woven grid — warp + weft threads */}
+          <g stroke="rgba(154,123,61,0.22)" strokeWidth={0.7}>
+            {WEAVE_LINES.map((x) => (
+              <line key={`v${x}`} x1={x} y1={16} x2={x} y2={84} />
+            ))}
+            {WEAVE_LINES.map((y) => (
+              <line key={`h${y}`} x1={16} y1={y} x2={84} y2={y} />
+            ))}
+          </g>
+
+          {/* Pulsing intersection nodes */}
+          {WEAVE_NODES.map((n, i) => (
+            <motion.circle
+              key={i}
+              cx={n.x}
+              cy={n.y}
+              r={1.5}
+              fill="rgba(184,150,79,0.9)"
+              animate={reduce ? undefined : { opacity: [0.25, 1, 0.25], r: [1.2, 1.9, 1.2] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut', delay: i * 0.28 }}
+            />
+          ))}
+
+          {/* Sweeping shuttle — the weave in progress */}
+          {!reduce && (
+            <motion.g
+              animate={{ y: [-34, 34] }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+            >
+              <line
+                x1={14}
+                y1={50}
+                x2={86}
+                y2={50}
+                stroke="rgba(200,168,106,0.95)"
+                strokeWidth={1.6}
+                strokeLinecap="round"
+                style={{ filter: 'drop-shadow(0 0 3px rgba(200,168,106,0.7))' }}
+              />
+            </motion.g>
+          )}
+        </svg>
+
+        {/* Center core node */}
+        <motion.div
+          className="relative z-10 h-3 w-3 rounded-full bg-washa-gold"
+          style={{ boxShadow: '0 0 18px rgba(184,150,79,0.7)' }}
+          animate={reduce ? undefined : { scale: [1, 1.35, 1], opacity: [0.85, 1, 0.85] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* ── Text ── */}
+      <div className="relative z-10 space-y-3">
+        <h3 className="font-serif text-2xl tracking-wide text-washa-gold">
+          يتم الآن نسج إبداعك
+        </h3>
+        <div className="h-6 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={stage.text}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.4 }}
+              className="text-base leading-relaxed text-washa-text-sec"
+            >
+              {stage.text}
+            </motion.p>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ── Progress ── */}
+      <div className="relative z-10 w-64 max-w-full space-y-2">
+        <div className="h-1.5 w-full overflow-hidden rounded-full border border-white/5 bg-white/5">
+          <motion.div
+            className="relative h-full rounded-full"
+            style={{
+              background: 'linear-gradient(90deg, rgba(154,123,61,0.5), rgba(200,168,106,0.95))',
+              boxShadow: '0 0 12px rgba(184,150,79,0.5)',
+            }}
+            animate={{ width: `${progress}%` }}
+            transition={{ ease: 'easeOut', duration: 0.3 }}
+          >
+            {!reduce && (
+              <motion.span
+                className="absolute inset-y-0 right-0 w-8 rounded-full"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5))' }}
+                animate={{ opacity: [0.3, 0.9, 0.3] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+          </motion.div>
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-washa-text-faint">
+          <span>ذكاء وشّى الاصطناعي يعمل الآن</span>
+          <span className="font-mono tabular-nums text-washa-gold/70">{progress}%</span>
+        </div>
+      </div>
+
+      {/* ── Personalized context chip ── */}
+      <div className="relative z-10 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5 rounded-full border border-washa-border/25 bg-washa-surface/40 px-4 py-2 text-xs text-washa-text-sec">
+        <span
+          className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/20 shadow-sm"
+          style={{ backgroundColor: garmentHex }}
+        />
+        <span className="font-medium text-washa-text">{garmentType}</span>
+        <span className="text-washa-text-faint/50">·</span>
+        <span>{garmentColor}</span>
+        <span className="text-washa-text-faint/50">·</span>
+        <span>{style}</span>
+      </div>
+    </motion.div>
+  );
 }
 
 // ── Terms & Conditions Modal ──────────────────────────────────
@@ -301,71 +498,12 @@ export default function StepResult() {
       >
         {/* ===== GENERATING STATE ===== */}
         {isGenerating && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card-strong relative flex min-h-[420px] flex-col items-center justify-center space-y-7 overflow-hidden p-8 text-center sm:p-12"
-          >
-            {/* AI Radar Background Effect - Center Focused */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(64,48,40,0.15)_360deg)] opacity-60" />
-              <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-transparent to-transparent" />
-            </div>
-
-            <div className="relative">
-              <div className="relative flex h-32 w-32 items-center justify-center">
-                {/* Core Icon */}
-                <div className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-washa-gold shadow-[0_0_50px_rgba(64,48,40,0.4)]">
-                  <Wand2 className="h-8 w-8 animate-pulse text-washa-bg" />
-                </div>
-                
-                {/* Orbital Rings */}
-                <div className="absolute inset-0 rounded-full border border-washa-gold/20 animate-slow-spin" style={{ animationDuration: '8s' }} />
-                <div className="absolute inset-4 rounded-full border border-dashed border-washa-gold/10 animate-slow-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }} />
-                
-                {/* Floating Particles */}
-                {[...Array(6)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{
-                      rotate: 360,
-                      scale: [1, 1.2, 1],
-                    }}
-                    transition={{
-                      rotate: { duration: 3 + i, repeat: Infinity, ease: "linear" },
-                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className="absolute w-2 h-2 rounded-full bg-washa-gold/40 shadow-[0_0_10px_rgba(64,48,40,0.5)]"
-                    style={{
-                      top: '50%',
-                      left: '50%',
-                      marginTop: '-4px',
-                      marginLeft: '-4px',
-                      transform: `rotate(${i * 60}deg) translateX(${60 + i * 5}px)`
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4 relative z-10">
-              <h3 className="animate-pulse font-serif text-2xl tracking-wide text-washa-gold">
-                يتم الآن نسج إبداعك...
-              </h3>
-              <p className="mx-auto max-w-sm text-base leading-relaxed text-washa-text-sec">
-                ذكاء وشّى الاصطناعي يعمل على تحويل فكرتك إلى تصميم فريد يليق بك
-              </p>
-            </div>
-
-            <div className="relative z-10 h-1.5 w-56 overflow-hidden rounded-full border border-white/5 bg-white/5">
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: '100%' }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent shadow-[0_0_15px_rgba(64,48,40,0.5)]"
-              />
-            </div>
-          </motion.div>
+          <GeneratingState
+            garmentType={state.garmentType}
+            garmentColor={state.garmentColor}
+            garmentHex={garmentHex}
+            style={state.style}
+          />
         )}
 
         {/* ===== ERROR STATE ===== */}
