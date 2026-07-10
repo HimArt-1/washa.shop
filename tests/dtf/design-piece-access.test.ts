@@ -58,6 +58,11 @@ describe("design-piece access", () => {
     });
 
     it("locks denied access failure mappings", () => {
+        expect(getDesignPieceAccessFailure("not_signed_in")).toEqual({
+            message: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك.",
+            status: 401,
+        });
+
         expect(getDesignPieceAccessFailure("guest_needs_approval")).toEqual({
             message: "غير مصرح لك باستخدام استوديو DTF",
             status: 403,

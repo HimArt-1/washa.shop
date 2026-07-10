@@ -53,7 +53,7 @@ export default function SplashScreen() {
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                'radial-gradient(ellipse 65% 50% at 50% 46%, rgba(201,168,106,0.09) 0%, transparent 70%)',
+                'radial-gradient(ellipse 65% 50% at 50% 46%, rgba(64,48,40,0.09) 0%, transparent 70%)',
             }}
           />
 
@@ -68,7 +68,7 @@ export default function SplashScreen() {
               width: '55vw', height: '55vw',
               maxWidth: 580, maxHeight: 580,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(201,168,106,0.07) 0%, transparent 68%)',
+              background: 'radial-gradient(circle, rgba(64,48,40,0.07) 0%, transparent 68%)',
               filter: 'blur(50px)',
             }}
           />
@@ -84,7 +84,7 @@ export default function SplashScreen() {
               width: '48vw', height: '48vw',
               maxWidth: 500, maxHeight: 500,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(142,107,53,0.06) 0%, transparent 68%)',
+              background: 'radial-gradient(circle, rgba(47,34,29,0.06) 0%, transparent 68%)',
               filter: 'blur(50px)',
             }}
           />
@@ -99,12 +99,12 @@ export default function SplashScreen() {
                 width: p.size,
                 height: p.size,
                 background:
-                  i % 4 === 0 ? 'rgba(226,196,142,0.72)' :
-                  i % 4 === 1 ? 'rgba(201,168,106,0.52)' :
+                  i % 4 === 0 ? 'rgba(143,116,100,0.72)' :
+                  i % 4 === 1 ? 'rgba(64,48,40,0.52)' :
                   i % 4 === 2 ? 'rgba(255,255,255,0.28)' :
-                               'rgba(201,168,106,0.38)',
+                               'rgba(64,48,40,0.38)',
                 boxShadow:
-                  i % 3 === 0 ? `0 0 ${p.size * 3.5}px rgba(201,168,106,0.55)` : 'none',
+                  i % 3 === 0 ? `0 0 ${p.size * 3.5}px rgba(64,48,40,0.55)` : 'none',
               }}
               initial={{ y: 0, x: 0, opacity: 0 }}
               animate={{ y: -920, x: p.drift, opacity: [0, 0.95, 0.95, 0] }}
@@ -138,7 +138,7 @@ export default function SplashScreen() {
                   inset: '-40%',
                   borderRadius: '50%',
                   background:
-                    'radial-gradient(circle, rgba(201,168,106,0.16) 0%, transparent 62%)',
+                    'radial-gradient(circle, rgba(64,48,40,0.16) 0%, transparent 62%)',
                   filter: 'blur(18px)',
                 }}
               />
@@ -148,7 +148,7 @@ export default function SplashScreen() {
                 <motion.span
                   key={i}
                   className="absolute inset-0 rounded-full pointer-events-none"
-                  style={{ border: '1px solid rgba(201,168,106,0.14)' }}
+                  style={{ border: '1px solid rgba(64,48,40,0.14)' }}
                   initial={{ scale: 0.65, opacity: 0 }}
                   animate={{ scale: 2.4 + i * 0.28, opacity: 0 }}
                   transition={{
@@ -163,7 +163,7 @@ export default function SplashScreen() {
               {/* Static outer trim ring */}
               <motion.span
                 className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ border: '1px solid rgba(201,168,106,0.09)' }}
+                style={{ border: '1px solid rgba(64,48,40,0.09)' }}
                 initial={{ scale: 0.78, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.65, delay: 0.18 }}
@@ -174,7 +174,7 @@ export default function SplashScreen() {
                 className="absolute rounded-full pointer-events-none"
                 style={{
                   inset: 10,
-                  border: '1px solid rgba(201,168,106,0.17)',
+                  border: '1px solid rgba(64,48,40,0.17)',
                 }}
                 initial={{ scale: 0.72, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -187,10 +187,10 @@ export default function SplashScreen() {
                 style={{
                   inset: 18,
                   background:
-                    'linear-gradient(148deg, rgba(201,168,106,0.24) 0%, rgba(10,10,11,0.97) 100%)',
-                  border: '1px solid rgba(201,168,106,0.28)',
+                    'linear-gradient(148deg, rgba(64,48,40,0.24) 0%, rgba(10,10,11,0.97) 100%)',
+                  border: '1px solid rgba(64,48,40,0.28)',
                   boxShadow:
-                    '0 0 52px rgba(201,168,106,0.2), 0 0 100px rgba(201,168,106,0.06), inset 0 1px 0 rgba(255,255,255,0.07)',
+                    '0 0 52px rgba(64,48,40,0.2), 0 0 100px rgba(64,48,40,0.06), inset 0 1px 0 rgba(255,255,255,0.07)',
                 }}
                 initial={{ scale: 0.68, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -235,7 +235,7 @@ export default function SplashScreen() {
                 style={{
                   fontSize: '8.5px',
                   letterSpacing: '0.62em',
-                  color: 'rgba(201,168,106,0.48)',
+                  color: 'rgba(64,48,40,0.48)',
                   textTransform: 'uppercase',
                   fontWeight: 300,
                 }}
@@ -260,7 +260,7 @@ export default function SplashScreen() {
                       lineHeight: 1.05,
                       margin: 0,
                       textShadow:
-                        '0 0 36px rgba(201,168,106,0.38), 0 0 72px rgba(201,168,106,0.12)',
+                        '0 0 36px rgba(64,48,40,0.38), 0 0 72px rgba(64,48,40,0.12)',
                     }}
                   >
                     وشّى
@@ -278,7 +278,7 @@ export default function SplashScreen() {
                     bottom: '-10%',
                     width: '38%',
                     background:
-                      'linear-gradient(to left, rgba(226,196,142,0.42) 0%, rgba(201,168,106,0.18) 55%, transparent 100%)',
+                      'linear-gradient(to left, rgba(143,116,100,0.42) 0%, rgba(64,48,40,0.18) 55%, transparent 100%)',
                     filter: 'blur(10px)',
                     pointerEvents: 'none',
                   }}
@@ -311,7 +311,7 @@ export default function SplashScreen() {
                   height: 1,
                   width: 88,
                   background:
-                    'linear-gradient(90deg, transparent 0%, rgba(201,168,106,0.55) 50%, transparent 100%)',
+                    'linear-gradient(90deg, transparent 0%, rgba(64,48,40,0.55) 50%, transparent 100%)',
                   transformOrigin: 'center',
                 }}
               />
@@ -357,9 +357,9 @@ export default function SplashScreen() {
                     borderRadius: 999,
                     background:
                       i < 3
-                        ? 'linear-gradient(90deg, rgba(201,168,106,0.55), rgba(226,196,142,0.92))'
-                        : 'linear-gradient(90deg, rgba(201,168,106,0.28), rgba(201,168,106,0.52))',
-                    boxShadow: '0 0 7px rgba(201,168,106,0.38)',
+                        ? 'linear-gradient(90deg, rgba(64,48,40,0.55), rgba(143,116,100,0.92))'
+                        : 'linear-gradient(90deg, rgba(64,48,40,0.28), rgba(64,48,40,0.52))',
+                    boxShadow: '0 0 7px rgba(64,48,40,0.38)',
                     transformOrigin: 'left',
                   }}
                 />

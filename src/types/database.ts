@@ -884,6 +884,75 @@ export type Database = {
                     }
                 ];
             };
+            dtf_daily_quota_usage: {
+                Row: {
+                    profile_id: string;
+                    quota_date: string;
+                    used_count: number;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    profile_id: string;
+                    quota_date: string;
+                    used_count?: number;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: Partial<{
+                    profile_id: string;
+                    quota_date: string;
+                    used_count: number;
+                    updated_at: string;
+                }>;
+                Relationships: any[];
+            };
+            washa_ai_credit_wallet: {
+                Row: {
+                    profile_id: string;
+                    balance: number;
+                    lifetime_purchased: number;
+                    lifetime_consumed: number;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    profile_id: string;
+                    balance?: number;
+                    lifetime_purchased?: number;
+                    lifetime_consumed?: number;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: Partial<{
+                    balance: number;
+                    lifetime_purchased: number;
+                    lifetime_consumed: number;
+                    updated_at: string;
+                }>;
+                Relationships: any[];
+            };
+            washa_ai_credit_ledger: {
+                Row: WashaAiCreditLedgerEntry;
+                Insert: Omit<WashaAiCreditLedgerEntry, "id" | "created_at"> & { id?: string; created_at?: string };
+                Update: Partial<Omit<WashaAiCreditLedgerEntry, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            washa_ai_credit_orders: {
+                Row: WashaAiCreditOrder;
+                Insert: Omit<WashaAiCreditOrder, "id" | "created_at" | "updated_at" | "paid_at" | "currency" | "status" | "transaction_no" | "metadata"> & {
+                    id?: string;
+                    currency?: string;
+                    status?: WashaAiCreditOrderStatus;
+                    transaction_no?: string | null;
+                    metadata?: Record<string, unknown> | null;
+                    created_at?: string;
+                    updated_at?: string;
+                    paid_at?: string | null;
+                };
+                Update: Partial<Omit<WashaAiCreditOrder, "id" | "created_at">>;
+                Relationships: any[];
+            };
             admin_notifications: {
                 Row: AdminNotification;
                 Insert: Omit<AdminNotification, "id" | "created_at" | "is_read"> & { id?: string; created_at?: string; is_read?: boolean };
@@ -1060,6 +1129,31 @@ export type Database = {
                 Args: { p_profile_id: string; p_daily_limit?: number };
                 Returns: Record<string, unknown>;
             };
+            consume_washa_ai_generation: {
+                Args: { p_profile_id: string; p_daily_limit?: number };
+                Returns: Record<string, unknown>;
+            };
+            refund_washa_ai_generation: {
+                Args: { p_profile_id: string; p_source: string; p_daily_limit?: number };
+                Returns: Record<string, unknown>;
+            };
+            admin_adjust_washa_ai_wallet: {
+                Args: { p_profile_id: string; p_delta: number; p_reason?: string | null; p_created_by?: string | null };
+                Returns: Record<string, unknown>;
+            };
+            credit_washa_ai_wallet: {
+                Args: {
+                    p_profile_id: string;
+                    p_amount: number;
+                    p_entry_type: string;
+                    p_reason?: string | null;
+                    p_ref_type?: string | null;
+                    p_ref_id?: string | null;
+                    p_created_by?: string | null;
+                    p_metadata?: Record<string, unknown> | null;
+                };
+                Returns: Record<string, unknown>;
+            };
             consume_rate_limit: {
                 Args: { p_identifier: string; p_limit: number; p_window_seconds: number };
                 Returns: Record<string, unknown>;
@@ -1073,6 +1167,83 @@ export type Database = {
         };
     };
 }
+
+// ─── WASHA AI Credit Types ───────────────────────────────
+
+export type WashaAiCreditEntryType =
+    | "purchase"
+    | "consume"
+    | "refund"
+    | "admin_grant"
+    | "admin_deduct";
+
+/** مفاتيح التحكّم في نظام حصص/رصيد WASHA AI — تُهيَّأ من إعدادات الموقع. */
+export type WashaAiControls = {
+    /** المفتاح الرئيسي لفرض الحصص. false = توليد بلا حدود للفئات المتاحة. */
+    quota_enabled: boolean;
+    /** نظام الرصيد المدفوع (شراء + استهلاك المحفظة). false = الحدّ اليومي المجاني فقط. */
+    credits_enabled: boolean;
+    /** إتاحة التوليد لكل فئة. false = يُمنع التوليد لهذه الفئة نهائياً. */
+    audience: {
+        guest: boolean;
+        subscriber: boolean;
+        wushsha: boolean;
+        booth: boolean;
+    };
+    /** من يحقّ له شراء الرصيد (يتطلب حساباً). */
+    purchase: {
+        subscriber: boolean;
+        wushsha: boolean;
+    };
+};
+
+/** حزمة رصيد قابلة للشراء — تُهيَّأ من إعدادات الموقع. */
+export type WashaAiCreditPackage = {
+    id: string;
+    /** اسم الحزمة المعروض (عربي). */
+    label: string;
+    /** عدد حصص التوليد. */
+    credits: number;
+    /** السعر بالريال السعودي (شامل الضريبة). */
+    price: number;
+    /** وسم "الأكثر رواجاً" لإبرازها في الواجهة. */
+    popular?: boolean;
+    /** تفعيل/تعطيل الحزمة دون حذفها. */
+    active?: boolean;
+};
+
+export type WashaAiCreditOrderStatus = "pending" | "paid" | "failed" | "cancelled";
+
+export type WashaAiCreditOrder = {
+    id: string;
+    order_number: string;
+    profile_id: string;
+    package_id: string;
+    credits: number;
+    amount: number;
+    currency: string;
+    status: WashaAiCreditOrderStatus;
+    transaction_no: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+    updated_at: string;
+    paid_at: string | null;
+};
+
+export type WashaAiCreditLedgerEntry = {
+    id: string;
+    profile_id: string;
+    /** موجب = إضافة، سالب = خصم. */
+    delta: number;
+    balance_after: number;
+    entry_type: WashaAiCreditEntryType;
+    reason: string | null;
+    ref_type: string | null;
+    ref_id: string | null;
+    created_by: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: string;
+};
 
 // ─── Design Order Types ──────────────────────────────────
 

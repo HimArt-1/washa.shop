@@ -172,23 +172,19 @@ describe("submit-order route", () => {
         });
     });
 
-    it("continues with a null Clerk profile when currentUser fails", async () => {
+    it("requires a Clerk profile before preparing the cart item", async () => {
         mockCurrentUser.mockRejectedValue(new Error("clerk unavailable"));
 
-        await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
+        const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
 
+        expect(response.status).toBe(401);
+        await expect(response.json()).resolves.toEqual({
+            error: "يجب تسجيل الدخول قبل إضافة تصميم WASHA AI إلى السلة.",
+        });
         expect(mockLogDiagnosticWarning).toHaveBeenCalledWith(
             "fetch-user-profile-clerk",
             expect.any(Error)
         );
-        expect(mockPrepareCartItem).toHaveBeenCalledWith(
-            expect.objectContaining({
-                garmentType: "تيشيرت",
-            }),
-            null,
-            expect.objectContaining({
-                traceId: expect.any(String),
-            })
-        );
+        expect(mockPrepareCartItem).not.toHaveBeenCalled();
     });
 });

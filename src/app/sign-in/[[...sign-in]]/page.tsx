@@ -9,6 +9,7 @@ type Props = { searchParams?: Promise<{ redirect_url?: string }> };
 export default async function SignInPage({ searchParams }: Props) {
     const params = (await searchParams) ?? {};
     const redirectUrl = params.redirect_url?.startsWith("/") ? params.redirect_url : "/account";
+    const signUpUrl = `/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`;
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-bg px-4 py-12 relative overflow-hidden">
@@ -34,7 +35,7 @@ export default async function SignInPage({ searchParams }: Props) {
                         <SignIn
                             path="/sign-in"
                             fallbackRedirectUrl={redirectUrl}
-                            signUpUrl="/sign-up"
+                            signUpUrl={signUpUrl}
                         />
                     </div>
                 </div>
@@ -42,7 +43,7 @@ export default async function SignInPage({ searchParams }: Props) {
                 <p className="text-center text-theme-subtle text-sm mt-6">
                     ليس لديك حساب؟{" "}
                     <Link
-                        href="/sign-up"
+                        href={signUpUrl}
                         className="text-gold hover:text-gold-light font-medium inline-flex items-center gap-1 transition-colors"
                     >
                         إنشاء حساب

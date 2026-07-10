@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { DesignProvider, useDesign } from './context/DesignContext';
+import { CreditsProvider } from './context/CreditsContext';
+import CreditPurchaseModal from './components/CreditPurchaseModal';
 import { useDesignHistory } from './hooks/useDesignHistory';
 import Header from './components/Header';
 import StepGarment from './components/steps/StepGarment';
@@ -17,6 +19,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { resizeDataUrl } from './lib/image';
 import WashaDevStudio from './components/dev/WashaDevStudio';
 import WashaDevStudioV2 from './components/dev-v2/WashaDevStudioV2';
+import NeuralOrnament from './components/NeuralOrnament';
+import EntryBridge from './components/EntryBridge';
 
 type StudioMode = 'production' | 'dev' | 'dev-v2';
 
@@ -37,6 +41,12 @@ function AppContent() {
   const { history, saveDesign, deleteDesign, clearHistory } = useDesignHistory();
   const prevMockupRef = useRef<string | null>(null);
   const studioMode = useMemo(() => getStudioMode(), []);
+
+  useEffect(() => {
+    if (studioMode !== 'production') return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step, studioMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +106,9 @@ function AppContent() {
         <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
       ) : (
         <div className="min-h-screen bg-washa-bg text-washa-text font-sans selection:bg-washa-gold selection:text-washa-bg bg-grid-pattern relative overflow-x-clip">
+          {/* Static neural lattice — visual continuity with the intro */}
+          <NeuralOrnament />
+
           {/* Ambient Background Orbs */}
           <div className="ambient-orb ambient-orb-1" />
           <div className="ambient-orb ambient-orb-2" />
@@ -103,9 +116,9 @@ function AppContent() {
 
           <Header onOpenGallery={() => setGalleryOpen(true)} />
 
-          {/* Full-Screen Wizard — centered, no side panel */}
+          {/* Full-screen wizard, no side panel */}
           <main className="wizard-step-container">
-            <div className={`w-full ${step === 3 ? 'max-w-5xl' : 'max-w-3xl'} mx-auto px-4 sm:px-6 relative z-10`}>
+            <div className={`w-full ${step === 3 ? 'max-w-4xl' : 'max-w-[44rem]'} mx-auto px-3 sm:px-5 relative z-10`}>
               <AnimatePresence mode="wait">
                 {step === 1 && <StepGarment key="step-garment" />}
                 {step === 2 && <StepIdea key="step-idea" />}
@@ -134,9 +147,13 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <DesignProvider>
-        <AppContent />
-      </DesignProvider>
+      <EntryBridge />
+      <CreditsProvider>
+        <DesignProvider>
+          <AppContent />
+        </DesignProvider>
+        <CreditPurchaseModal />
+      </CreditsProvider>
     </ErrorBoundary>
   );
 }

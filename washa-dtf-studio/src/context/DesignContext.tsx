@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CUSTOM_PALETTE_ID,
   CUSTOM_PALETTE_LABEL,
@@ -19,6 +19,13 @@ import {
 import { generateMockup, extractDesign } from '../services/geminiService';
 import { fetchDtfStudioConfig } from '../services/configService';
 import { makeEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import {
+  buildWashaAiSignInUrl,
+  consumeWashaAiAuthDraft,
+  fetchWashaAiSession,
+  saveWashaAiAuthDraft,
+  type WashaAiAuthIntent,
+} from '../lib/authFlow';
 import {
   resolvePrintPlacementFromOption,
   resolvePrintPositionFromDesignPosition,
@@ -216,9 +223,6 @@ function isUuid(value: string | null | undefined) {
 }
 
 function buildInitialState(config: DtfStudioConfig): DesignState {
-  const garment = config.garments[0] || null;
-  const color = garment?.colors[0] || null;
-  const size = resolveDefaultSize(garment, color?.id || null);
   const style = config.styles[0] || null;
   const technique = config.techniques[0] || null;
   const palette = config.palettes[0] || null;
@@ -227,13 +231,6 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 
   return {
     ...EMPTY_STATE,
-    garmentId: garment?.id || null,
-    garmentType: garment?.name || '',
-    garmentColorId: color?.id || null,
-    garmentColor: color?.name || '',
-    garmentColorHex: color?.hexCode || '#111111',
-    garmentSizeId: size?.id || null,
-    garmentSize: size?.name || '',
     styleId: style?.id || null,
     style: style?.name || '',
     techniqueId: technique?.id || null,
@@ -263,6 +260,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
+  const [pendingGenerateAfterAuth, setPendingGenerateAfterAuth] = useState(false);
+  const restoredAuthDraftRef = useRef(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -339,7 +338,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const positionOptions = useMemo(() => config?.positions ?? [], [config]);
 
   const selectedGarment = useMemo(
-    () => garmentOptions.find((item) => item.id === state.garmentId) || garmentOptions[0] || null,
+    () => garmentOptions.find((item) => item.id === state.garmentId) || null,
     [garmentOptions, state.garmentId]
   );
 
@@ -456,7 +455,35 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleGenerate = async (options: { promptOverride?: string } = {}) => {
+  const requireAuthenticatedAction = useCallback(async (intent: WashaAiAuthIntent) => {
+    try {
+      const session = await fetchWashaAiSession();
+      if (session.authenticated && session.canGenerate) {
+        return true;
+      }
+
+      const draft = saveWashaAiAuthDraft(state, intent);
+      const authMessage = intent === 'generate'
+        ? 'سجّل الدخول أولاً حتى نحفظ تصميمك ونبدأ التوليد بحسابك.'
+        : 'سجّل الدخول أولاً حتى نربط التصميم بسلتك وطلبك.';
+      const referenceNote = draft.referenceImageOmitted
+        ? ' لم نستطع حفظ الصورة المرجعية محلياً؛ ستحتاج رفعها مجدداً بعد الرجوع.'
+        : '';
+
+      showToast(`${authMessage}${referenceNote}`, 'info');
+      window.setTimeout(() => {
+        window.location.assign(session.signInUrl || buildWashaAiSignInUrl());
+      }, 650);
+      return false;
+    } catch (authError) {
+      const message = getReadableErrorMessage(authError, 'تعذر التحقق من جلسة الدخول حالياً. حاول مرة أخرى.');
+      setError(message);
+      showToast(message, 'error');
+      return false;
+    }
+  }, [showToast, state]);
+
+  const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
@@ -484,6 +511,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (state.paletteId === CUSTOM_PALETTE_ID && !state.customPalette.trim()) {
       setError('يرجى كتابة وصف لوحة الألوان المخصصة.');
       showToast('اكتب وصف لوحة الألوان المخصصة قبل التوليد', 'error');
+      return;
+    }
+
+    const canGenerateWithAccount = await requireAuthenticatedAction('generate');
+    if (!canGenerateWithAccount) {
       return;
     }
 
@@ -585,7 +617,93 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsGenerating(false);
     }
-  };
+  }, [
+    requireAuthenticatedAction,
+    selectedGarment,
+    selectedPalette,
+    selectedSize?.stockStatus,
+    selectedStyle,
+    selectedTechnique,
+    showToast,
+    state,
+  ]);
+
+  useEffect(() => {
+    if (restoredAuthDraftRef.current || configLoading || !config) return;
+    restoredAuthDraftRef.current = true;
+
+    const draft = consumeWashaAiAuthDraft();
+    if (!draft) return;
+    let cancelled = false;
+
+    setState((current) => ({
+      ...current,
+      ...draft.state,
+    }));
+    setMockupImage(null);
+    setExtractedImage(null);
+    setOrderResult(null);
+    setError(null);
+
+    if (draft.intent === 'generate') {
+      if (draft.referenceImageOmitted && draft.state.designMethod === 'image' && !draft.state.prompt.trim()) {
+        setStep(2);
+        showToast('استرجعنا اختياراتك، لكن أعد رفع الصورة المرجعية قبل التوليد.', 'info');
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      setStep(5);
+    } else {
+      setStep(5);
+    }
+
+    const restoredMessage = draft.intent === 'generate'
+      ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول فقط عند التوليد.'
+      : 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول عند إرسال الطلب.';
+    const authenticatedMessage = draft.intent === 'generate'
+      ? 'تم استرجاع اختياراتك بعد تسجيل الدخول. يبدأ التوليد الآن.'
+      : 'تم استرجاع اختياراتك بعد تسجيل الدخول. سنعيد توليد التصميم بحسابك قبل إضافته للسلة.';
+
+    async function continueAfterConfirmedAuth() {
+      try {
+        const session = await fetchWashaAiSession();
+        if (cancelled) return;
+
+        if (session.authenticated && session.canGenerate) {
+          setPendingGenerateAfterAuth(true);
+          showToast(authenticatedMessage, 'info');
+          return;
+        }
+      } catch {
+        // Restoring the draft should not force auth or block entry to the studio.
+      }
+
+      if (!cancelled) {
+        showToast(restoredMessage, 'info');
+      }
+    }
+
+    void continueAfterConfirmedAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [config, configLoading, showToast]);
+
+  useEffect(() => {
+    if (!pendingGenerateAfterAuth) return;
+
+    const timer = window.setTimeout(() => {
+      setPendingGenerateAfterAuth(false);
+      void handleGenerate();
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [handleGenerate, pendingGenerateAfterAuth]);
 
   const handleExtract = async () => {
     if (!mockupImage) return;
@@ -637,6 +755,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       const msg = 'لا يمكن إضافة التصميم للسلة حالياً لأن إعدادات القطع والأسعار لم تُحمّل من الخادم. حاول تحديث الصفحة بعد قليل.';
       setError(msg);
       showToast(msg, 'error');
+      return false;
+    }
+
+    const canSubmitWithAccount = await requireAuthenticatedAction('submit');
+    if (!canSubmitWithAccount) {
       return false;
     }
 

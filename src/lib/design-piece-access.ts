@@ -44,6 +44,13 @@ export function getDesignPieceAccessFailure(reason: DesignPieceAccessReason | un
     message: string;
     status: number;
 } {
+    if (reason === "not_signed_in") {
+        return {
+            message: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك.",
+            status: 401,
+        };
+    }
+
     if (reason === "supabase_error") {
         return {
             message: "خدمة التحقق غير متاحة مؤقتاً، يرجى المحاولة مجدداً.",

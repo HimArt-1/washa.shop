@@ -22,7 +22,7 @@ export default function PreviewPanel() {
             className="relative z-10 flex flex-col items-center text-center space-y-8"
           >
             <div
-              className="w-56 h-56 rounded-full border border-washa-border/30 flex items-center justify-center shadow-[0_0_50px_rgba(201,168,106,0.05)] transition-all duration-700 relative"
+              className="w-56 h-56 rounded-full border border-washa-border/30 flex items-center justify-center shadow-[0_0_50px_rgba(64,48,40,0.05)] transition-all duration-700 relative"
               style={{
                 backgroundColor: state.garmentColorHex || 'transparent',
               }}

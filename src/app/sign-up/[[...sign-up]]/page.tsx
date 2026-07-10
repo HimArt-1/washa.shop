@@ -4,7 +4,13 @@ import { Logo } from "@/components/ui/Logo";
 import { ArrowRight } from "lucide-react";
 import { CyberAuthBackground } from "@/components/auth/CyberAuthBackground";
 
-export default function SignUpPage() {
+type Props = { searchParams?: Promise<{ redirect_url?: string }> };
+
+export default async function SignUpPage({ searchParams }: Props) {
+    const params = (await searchParams) ?? {};
+    const redirectUrl = params.redirect_url?.startsWith("/") ? params.redirect_url : "/account";
+    const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(redirectUrl)}`;
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-bg px-4 py-12 relative overflow-hidden">
             <CyberAuthBackground />
@@ -24,9 +30,9 @@ export default function SignUpPage() {
                 <div className="glass-premium rounded-2xl p-2 shadow-2xl border border-gold/10">
                     <div className="rounded-xl overflow-hidden">
                         <SignUp
-                            signInUrl="/sign-in"
-                            afterSignUpUrl="/account"
-                            fallbackRedirectUrl="/account"
+                            signInUrl={signInUrl}
+                            afterSignUpUrl={redirectUrl}
+                            fallbackRedirectUrl={redirectUrl}
                         />
                     </div>
                 </div>
@@ -34,7 +40,7 @@ export default function SignUpPage() {
                 <p className="text-center text-theme-subtle text-sm mt-6">
                     لديك حساب؟{" "}
                     <Link
-                        href="/sign-in"
+                        href={signInUrl}
                         className="text-gold hover:text-gold-light font-medium inline-flex items-center gap-1 transition-colors"
                     >
                         تسجيل الدخول

@@ -49,11 +49,11 @@ export default function DesignGallery({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-washa-surface border-l border-washa-border z-[101] flex flex-col shadow-[−20px_0_50px_rgba(0,0,0,0.5)]"
+            className="fixed bottom-0 right-0 top-0 z-[101] flex w-full max-w-sm flex-col border-l border-washa-border bg-washa-surface shadow-[−20px_0_50px_rgba(0,0,0,0.35)] sm:max-w-md"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-washa-border">
-              <h2 className="text-xl font-serif text-washa-gold">تصاميمي السابقة</h2>
+            <div className="flex items-center justify-between border-b border-washa-border p-4 sm:p-5">
+              <h2 className="font-serif text-lg text-washa-gold">تصاميمي السابقة</h2>
               <div className="flex items-center gap-2">
                 {history.length > 0 && (
                   <Button variant="ghost" size="sm" onClick={onClear} className="text-red-400 hover:text-red-300 text-xs">
@@ -70,11 +70,11 @@ export default function DesignGallery({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto p-3.5 sm:p-4">
               {history.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-20">
-                  <div className="w-20 h-20 rounded-full bg-washa-elevated flex items-center justify-center">
-                    <ImageIcon className="w-8 h-8 text-washa-text-faint" />
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-washa-elevated">
+                    <ImageIcon className="h-7 w-7 text-washa-text-faint" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-washa-text-sec font-medium">لا توجد تصاميم سابقة</p>
@@ -90,11 +90,11 @@ export default function DesignGallery({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="bg-washa-bg rounded-xl border border-washa-border/50 overflow-hidden group hover:border-washa-gold/30 transition-colors"
+                    className="group overflow-hidden rounded-xl border border-washa-border/50 bg-washa-bg transition-colors hover:border-washa-gold/30"
                   >
                     {/* Thumbnail */}
                     {item.thumbnail && (
-                      <div className="aspect-video w-full overflow-hidden">
+                      <div className="aspect-[16/9] w-full overflow-hidden">
                         <img
                           src={studioAsset(item.thumbnail)}
                           alt={item.prompt || 'تصميم'}
@@ -104,7 +104,7 @@ export default function DesignGallery({
                     )}
 
                     {/* Info */}
-                    <div className="p-4 space-y-3">
+                    <div className="space-y-2.5 p-3.5">
                       <div className="flex flex-wrap gap-1.5">
                         <span className="px-2 py-0.5 text-[10px] rounded-full bg-washa-gold/10 text-washa-gold border border-washa-gold/20">
                           {item.garmentType}

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, ArrowLeft, ArrowRight, Loader2, Palette, Brush } from 'lucide-react';
-import { Button } from '../ui/Button';
+import { Sparkles, Loader2, Palette, Brush } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
+import StepNavigationBar from './StepNavigationBar';
 
 const STYLE_THUMBNAILS: Record<string, string> = {
   'ملصق (Sticker)': 'thumbnails/styles/sticker.png',
@@ -97,14 +97,15 @@ export default function StepArtStyle() {
   ];
 
   return (
-    <motion.div
-      key="step-artstyle"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step-artstyle"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong wizard-panel"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -112,12 +113,12 @@ export default function StepArtStyle() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="text-4xl font-serif bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           التقنيات والأساليب الفنية
         </motion.h2>
@@ -125,19 +126,19 @@ export default function StepArtStyle() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           اختر الأسلوب أو التقنية التي تريد أن يُنفذ بها تصميمك
         </motion.p>
       </div>
 
       {configLoading ? (
-        <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
+        <div className="rounded-2xl border border-washa-border/30 bg-washa-bg/40 p-7 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
           <p className="mt-4 text-sm text-washa-text-sec">جاري تحميل الأساليب والتقنيات...</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {configError ? (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {configError}
@@ -145,15 +146,15 @@ export default function StepArtStyle() {
           ) : null}
 
           {/* ── Tab Filter ── */}
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
             {tabs.map((t) => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={cn(
-                  'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 border',
+                  'rounded-xl border px-3.5 py-2 text-sm font-medium transition-all duration-300',
                   tab === t.key
-                    ? 'bg-washa-gold/15 border-washa-gold/40 text-washa-gold shadow-[0_0_15px_rgba(201,168,106,0.15)]'
+                    ? 'bg-washa-gold/15 border-washa-gold/40 text-washa-gold shadow-[0_0_15px_rgba(64,48,40,0.15)]'
                     : 'bg-white/[0.02] border-white/10 text-washa-text-sec hover:border-washa-gold/30 hover:text-washa-gold/80'
                 )}
               >
@@ -164,104 +165,101 @@ export default function StepArtStyle() {
           </div>
 
           {/* ── Card Grid ── */}
-          <div className="grid gap-5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((option, index) => {
-              const isSelected = option.kind === 'style'
-                ? state.styleId === option.id
-                : state.techniqueId === option.id;
+          <div className="-mx-1 max-h-[calc(100dvh-22rem)] min-h-72 overflow-y-auto overscroll-contain px-1 pb-28 touch-pan-y sm:max-h-[calc(100dvh-21rem)] sm:pb-4">
+            <div className="grid grid-cols-2 items-stretch gap-3.5 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((option, index) => {
+                const isSelected = option.kind === 'style'
+                  ? state.styleId === option.id
+                  : state.techniqueId === option.id;
 
-              return (
-                <motion.button
-                  key={option.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
-                  onClick={() => handleSelect(option)}
-                  className={cn(
-                    'group relative h-52 overflow-hidden rounded-2xl border text-right transition-all duration-500',
-                    isSelected
-                      ? 'border-washa-gold shadow-[0_0_30px_rgba(201,168,106,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
-                      : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(201,168,106,0.15)]'
-                  )}
-                >
-                  {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface">
-                    {option.kind === 'style'
-                      ? <Palette className="h-12 w-12 text-white/10" />
-                      : <Brush className="h-12 w-12 text-white/10" />
-                    }
-                  </div>
+                return (
+                  <motion.button
+                    key={option.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.08 + index * 0.03, duration: 0.35 }}
+                    onClick={() => handleSelect(option)}
+                    className={cn(
+                      'group relative flex min-h-[13.75rem] touch-pan-y flex-col overflow-hidden rounded-2xl border bg-washa-surface/80 text-right transition-all duration-500 sm:min-h-[14.5rem]',
+                      isSelected
+                        ? 'border-washa-gold shadow-[0_0_30px_rgba(64,48,40,0.3)] ring-2 ring-washa-gold ring-offset-2 ring-offset-washa-bg'
+                        : 'border-white/10 hover:border-washa-gold/50 hover:shadow-[0_0_20px_rgba(64,48,40,0.15)]'
+                    )}
+                  >
+                    {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
+                    <div className="relative min-h-[8rem] overflow-hidden border-b border-white/10 bg-gradient-to-br from-washa-surface via-washa-bg to-washa-surface sm:min-h-[8.75rem]">
+                      {/* Fallback pattern stays behind the artwork and appears if an image is missing or fails. */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {option.kind === 'style'
+                          ? <Palette className="h-12 w-12 text-white/10" />
+                          : <Brush className="h-12 w-12 text-white/10" />
+                        }
+                      </div>
 
-                  {/* Background Image */}
-                  {option.bgImage ? (
-                    <img
-                      src={option.bgImage}
-                      alt={option.name}
-                      className={cn(
-                        "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
-                        isSelected ? "scale-105" : "group-hover:scale-110"
-                      )}
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  ) : null}
+                      {/* Background Image */}
+                      {option.bgImage ? (
+                        <img
+                          src={option.bgImage}
+                          alt={option.name}
+                          className={cn(
+                            "absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out",
+                            isSelected ? "scale-[1.03]" : "group-hover:scale-[1.07]"
+                          )}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      ) : null}
 
-                  {/* Gradient Overlay */}
-                  <div className={cn(
-                    "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
-                    option.gradient,
-                    isSelected ? 'opacity-90' : 'opacity-80'
-                  )} />
-
-                  {/* Kind Badge */}
-                  <div className={cn(
-                    'absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold backdrop-blur-md',
-                    option.kind === 'style'
-                      ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30'
-                      : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
-                  )}>
-                    {option.badgeIcon}
-                    {option.badge}
-                  </div>
-
-                  {/* Selected Checkmark */}
-                  {isSelected && (
-                    <div className="absolute top-3 left-3 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      {/* Gradient Overlay */}
+                      <div className={cn(
+                        "absolute inset-0 bg-gradient-to-t transition-opacity duration-500 group-hover:opacity-100",
+                        option.gradient,
+                        isSelected ? 'opacity-75' : 'opacity-60'
+                      )} />
                     </div>
-                  )}
 
-                  {/* Content */}
-                  <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
-                    <p className="text-base font-bold text-white leading-tight drop-shadow-md">
-                      {option.name}
-                    </p>
-                    <p className="text-[11px] text-white/70 line-clamp-2 drop-shadow-md">
-                      {option.description || (option.kind === 'style' ? 'اتجاه بصري مميز' : 'تقنية تنفيذ فنية')}
-                    </p>
-                  </div>
-                </motion.button>
-              );
-            })}
+                    {/* Kind Badge */}
+                    <div className={cn(
+                      'absolute right-2.5 top-2.5 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold backdrop-blur-md',
+                      option.kind === 'style'
+                        ? 'bg-purple-500/30 text-purple-200 border border-purple-400/30'
+                        : 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/30'
+                    )}>
+                      {option.badgeIcon}
+                      {option.badge}
+                    </div>
+
+                    {/* Selected Checkmark */}
+                    {isSelected && (
+                      <div className="absolute left-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Content */}
+                    <div className="relative z-[1] flex flex-1 flex-col gap-1.5 bg-[linear-gradient(180deg,rgba(21,18,16,0.96),rgba(10,9,8,0.98))] p-3 text-white">
+                      <p className="text-sm font-bold leading-snug drop-shadow-md">
+                        {option.name}
+                      </p>
+                      <p className="text-[11px] leading-relaxed text-white/72 drop-shadow-md">
+                        {option.description || (option.kind === 'style' ? 'اتجاه بصري مميز' : 'تقنية تنفيذ فنية')}
+                      </p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="lg" onClick={prevStep} className="gap-2 rounded-xl">
-          <ArrowRight className="w-5 h-5" /> رجوع
-        </Button>
-        <Button
-          variant="gold"
-          size="lg"
-          onClick={nextStep}
-          disabled={(!state.styleId && !state.techniqueId) || configLoading}
-          className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          التالي <ArrowLeft className="w-5 h-5" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        onNext={nextStep}
+        nextDisabled={(!state.styleId && !state.techniqueId) || configLoading}
+      />
+    </>
   );
 }

@@ -7,28 +7,19 @@ import { useCallback } from "react";
 /**
  * WashaAiEntryGate
  * ────────────────
- * Shows ONLY the cinematic intro, then auto-navigates:
- *   • Authenticated (showWizard) → /design/washa-ai/app
- *   • Not authenticated → sign-up page with redirect back
+ * Shows the cinematic intro, then opens the studio.
+ * Authentication is requested later when the customer generates or submits.
  */
 export function WashaAiEntryGate({
     redirectUrl,
-    showWizard = false,
 }: {
     redirectUrl: string;
-    showWizard?: boolean;
 }) {
     const router = useRouter();
 
     const handleIntroComplete = useCallback(() => {
-        if (showWizard) {
-            // Authenticated → go straight to the studio
-            router.push(redirectUrl);
-        } else {
-            // Not authenticated → send to sign-up, then redirect back
-            router.push(`/sign-up?redirect_url=${encodeURIComponent(redirectUrl)}`);
-        }
-    }, [showWizard, redirectUrl, router]);
+        router.push(redirectUrl);
+    }, [redirectUrl, router]);
 
     return <WashaAiCinematicIntro onComplete={handleIntroComplete} />;
 }

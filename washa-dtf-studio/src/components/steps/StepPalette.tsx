@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Palette, Check, Sparkles, Wand2, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
-import { Button } from '../ui/Button';
-import { Textarea } from '../ui/Textarea';
+import { Check, Sparkles, Wand2, Loader2, X, LockKeyhole } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { CUSTOM_PALETTE_ID, CUSTOM_PALETTE_LABEL } from '../../types';
+import StepNavigationBar from './StepNavigationBar';
 
 /* ── Color Swatch Picker ── */
 const COLOR_SWATCHES = [
@@ -76,7 +75,7 @@ function CustomColorPicker({ value, onChange }: { value: string; onChange: (val:
   };
 
   return (
-    <div className="rounded-3xl border border-washa-gold/15 bg-washa-bg/35 p-5 sm:p-6 space-y-5">
+    <div className="space-y-4 rounded-2xl border border-washa-gold/15 bg-washa-bg/35 p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-sm font-bold text-washa-text">اختر حتى {MAX_COLORS} ألوان</p>
@@ -112,7 +111,7 @@ function CustomColorPicker({ value, onChange }: { value: string; onChange: (val:
       )}
 
       {/* Color Grid */}
-      <div className="grid grid-cols-8 sm:grid-cols-12 gap-2">
+      <div className="grid grid-cols-8 gap-1.5 sm:grid-cols-12">
         {COLOR_SWATCHES.map((swatch) => {
           const isActive = selected.includes(swatch.hex);
           const isFull = selected.length >= MAX_COLORS && !isActive;
@@ -124,9 +123,9 @@ function CustomColorPicker({ value, onChange }: { value: string; onChange: (val:
               disabled={isFull}
               title={swatch.name}
               className={cn(
-                'relative w-full aspect-square rounded-xl border-2 transition-all duration-300',
+                'relative aspect-square w-full rounded-lg border-2 transition-all duration-300',
                 isActive
-                  ? 'border-washa-gold scale-110 shadow-[0_0_12px_rgba(201,168,106,0.5)] z-10'
+                  ? 'border-washa-gold scale-110 shadow-[0_0_12px_rgba(64,48,40,0.5)] z-10'
                   : isFull
                     ? 'border-transparent opacity-30 cursor-not-allowed'
                     : 'border-transparent hover:border-white/40 hover:scale-105'
@@ -164,15 +163,23 @@ export default function StepPalette() {
     (!customPaletteSelected || state.customPalette?.trim())
   );
 
+  const generateHint = (
+    <span className="inline-flex items-center justify-center gap-1.5 sm:justify-end">
+      <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" />
+      يتطلب التوليد تسجيل الدخول لحفظ التصميم وربطه بطلبك
+    </span>
+  );
+
   return (
-    <motion.div
-      key="step-palette"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step-palette"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong wizard-panel"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -180,12 +187,12 @@ export default function StepPalette() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="text-4xl font-serif bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           الألوان وتفضيلات الإخراج
         </motion.h2>
@@ -193,30 +200,30 @@ export default function StepPalette() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           اختر لوحة الألوان وتفضيلات الإخراج لضمان طباعة أنظف على القطعة
         </motion.p>
       </div>
 
       {configLoading ? (
-        <div className="rounded-3xl border border-washa-border/30 bg-washa-bg/40 p-10 text-center">
+        <div className="rounded-2xl border border-washa-border/30 bg-washa-bg/40 p-7 text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-washa-gold" />
           <p className="mt-4 text-sm text-washa-text-sec">جاري التحميل...</p>
         </div>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-7">
           {configError ? (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {configError}
             </div>
           ) : null}
 
-          <section className="space-y-5">
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-washa-gold/60">{paletteOptions.length + 1} خيارات لونية</span>
             </div>
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {paletteOptions.map((palette, index) => (
                 <motion.button
                   key={palette.id}
@@ -225,10 +232,10 @@ export default function StepPalette() {
                   transition={{ delay: 0.22 + index * 0.04, duration: 0.35 }}
                   onClick={() => updateState({ paletteId: palette.id, palette: palette.name, customPalette: '' })}
                   className={cn(
-                    'group relative flex flex-col gap-4 rounded-2xl border p-5 text-right transition-all duration-500',
+                    'group relative flex flex-col gap-3 rounded-2xl border p-4 text-right transition-all duration-500',
                     state.paletteId === palette.id
-                      ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_30px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
-                      : 'border-white/10 bg-white/[0.02] hover:border-washa-gold/40 hover:bg-white/[0.04]'
+                      ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(64,48,40,0.15)] ring-1 ring-washa-gold'
+                      : 'border-washa-border/45 bg-washa-bg/45 hover:border-washa-gold/40 hover:bg-washa-ivory'
                   )}
                 >
                   <div className="flex items-center justify-between gap-3">
@@ -236,7 +243,7 @@ export default function StepPalette() {
                       {palette.colors.slice(0, 4).map((color, cIdx) => (
                         <div
                           key={`${palette.id}-${color.hex}-${cIdx}`}
-                          className="h-10 w-10 rounded-full border-2 border-washa-bg shadow-lg"
+                          className="h-8 w-8 rounded-full border-2 border-washa-bg shadow-lg"
                           style={{ backgroundColor: color.hex }}
                         />
                       ))}
@@ -248,9 +255,9 @@ export default function StepPalette() {
                     )}
                   </div>
                   
-                  <div className="space-y-1.5 pt-2">
-                    <p className="text-lg font-bold text-white group-hover:text-washa-gold transition-colors">{palette.name}</p>
-                    <p className="text-xs text-washa-text-faint line-clamp-2 leading-relaxed">
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-base font-bold text-washa-text transition-colors group-hover:text-washa-gold-deep">{palette.name}</p>
+                    <p className="text-xs text-washa-text-sec line-clamp-2 leading-relaxed">
                       {palette.description || 'لوحة ألوان متوازنة ومصممة بدقة للطباعة.'}
                     </p>
                   </div>
@@ -263,14 +270,14 @@ export default function StepPalette() {
                 transition={{ delay: 0.26 + paletteOptions.length * 0.04, duration: 0.35 }}
                 onClick={() => updateState({ paletteId: CUSTOM_PALETTE_ID, palette: CUSTOM_PALETTE_LABEL })}
                 className={cn(
-                  'group relative flex flex-col gap-4 rounded-2xl border p-5 text-right transition-all duration-500',
+                  'group relative flex flex-col gap-3 rounded-2xl border p-4 text-right transition-all duration-500',
                   customPaletteSelected
-                    ? 'border-washa-gold bg-washa-gold/10 shadow-[0_0_30px_rgba(201,168,106,0.15)] ring-1 ring-washa-gold'
-                    : 'border-white/10 bg-white/[0.02] hover:border-washa-gold/40 hover:bg-white/[0.04]'
+                    ? 'border-washa-gold bg-washa-ivory shadow-[0_0_30px_rgba(64,48,40,0.15)] ring-1 ring-washa-gold'
+                    : 'border-washa-border/45 bg-washa-bg/45 hover:border-washa-gold/40 hover:bg-washa-ivory'
                 )}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-washa-gold to-washa-gold-dark text-washa-bg shadow-lg">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-washa-gold to-washa-gold-dark text-washa-bg shadow-lg">
                     <Wand2 className="h-5 w-5" />
                   </div>
                   {customPaletteSelected && (
@@ -279,9 +286,9 @@ export default function StepPalette() {
                     </div>
                   )}
                 </div>
-                <div className="space-y-1.5 pt-2">
-                  <p className="text-lg font-bold text-white group-hover:text-washa-gold transition-colors">{CUSTOM_PALETTE_LABEL}</p>
-                  <p className="text-xs text-washa-text-faint leading-relaxed">
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-base font-bold text-washa-text transition-colors group-hover:text-washa-gold-deep">{CUSTOM_PALETTE_LABEL}</p>
+                  <p className="text-xs leading-relaxed text-washa-text-sec">
                     حدد ألوانك الخاصة بدقة لتحصل على نتيجة فريدة ومخصصة.
                   </p>
                 </div>
@@ -296,7 +303,7 @@ export default function StepPalette() {
             ) : null}
           </section>
 
-          <section className="space-y-5">
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs text-washa-gold/60">مهيّأة لنتيجة أنظف</span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
@@ -312,15 +319,15 @@ export default function StepPalette() {
                 transition={{ delay: 0.28, duration: 0.35 }}
                 onClick={() => updateState({ removeBackground: !state.removeBackground })}
                 className={cn(
-                  'rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
+                  'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
                   state.removeBackground
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
                     : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Sparkles className="h-6 w-6" />
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Sparkles className="h-5 w-5" />
                   </span>
                   <span
                     className={cn(
@@ -334,7 +341,7 @@ export default function StepPalette() {
                     {state.removeBackground ? 'مفعّل' : 'غير مفعّل'}
                   </span>
                 </div>
-                <div className="mt-5 space-y-1.5">
+                <div className="mt-4 space-y-1.5">
                   <p className="text-base font-bold">بدون خلفية</p>
                   <p className="text-xs leading-6 text-washa-text-faint">
                     يمنع أي مربع لوني أو مساحة مصمتة خلف العنصر حتى يظهر التصميم كطباعة مباشرة ونظيفة على القطعة.
@@ -348,15 +355,15 @@ export default function StepPalette() {
                 transition={{ delay: 0.32, duration: 0.35 }}
                 onClick={() => updateState({ avoidHardEdges: !state.avoidHardEdges })}
                 className={cn(
-                  'rounded-2xl border p-5 text-right transition-all duration-500 card-interactive',
+                  'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
                   state.avoidHardEdges
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(201,168,106,0.15)]'
+                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
                     : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-14 w-14 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Wand2 className="h-6 w-6" />
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                    <Wand2 className="h-5 w-5" />
                   </span>
                   <span
                     className={cn(
@@ -370,7 +377,7 @@ export default function StepPalette() {
                     {state.avoidHardEdges ? 'مفعّل' : 'غير مفعّل'}
                   </span>
                 </div>
-                <div className="mt-5 space-y-1.5">
+                <div className="mt-4 space-y-1.5">
                   <p className="text-base font-bold">بدون حواف إلزامية</p>
                   <p className="text-xs leading-6 text-washa-text-faint">
                     يمنع الإطار أو القصّة المربعة أو حدود الصورة القسرية ما لم تكن جزءًا مقصودًا من الفكرة نفسها.
@@ -386,25 +393,14 @@ export default function StepPalette() {
         </div>
       )}
 
-      <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          variant="ghost"
-          size="lg"
-          onClick={prevStep}
-          className="gap-2 rounded-xl"
-        >
-          <ChevronRight className="w-5 h-5" /> رجوع
-        </Button>
-        <Button
-          variant="gold"
-          size="lg"
-          onClick={() => void handleGenerate()}
-          disabled={!canGenerate || configLoading}
-          className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          توليد التصميم <ChevronLeft className="w-5 h-5" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        onNext={() => void handleGenerate()}
+        nextLabel="توليد التصميم"
+        nextDisabled={!canGenerate || configLoading}
+        hint={generateHint}
+      />
+    </>
   );
 }

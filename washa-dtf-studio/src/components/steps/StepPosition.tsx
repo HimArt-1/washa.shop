@@ -1,12 +1,12 @@
 import { motion } from 'motion/react';
-import { ArrowLeft, ArrowRight, LayoutDashboard, Search, FileImage, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, Search, FileImage, CheckCircle2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
 import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import type { PrintPosition, PrintSize } from '../../types';
+import StepNavigationBar from './StepNavigationBar';
 
 type PositionCard = {
   id: string;
@@ -26,13 +26,13 @@ export default function StepPosition() {
 
   /* ── Reusable SVG T-Shirt with configurable highlight zone ── */
   const TShirtDiagram = ({ highlightRect, isSelected }: { highlightRect: { x: number; y: number; w: number; h: number }; isSelected: boolean }) => (
-    <div className="relative flex h-full min-h-44 w-full items-center justify-center p-4">
-      <svg viewBox="0 0 120 140" className="h-[88%] w-[78%] max-w-44 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div className="relative flex h-full min-h-32 w-full items-center justify-center p-3">
+      <svg viewBox="0 0 120 140" className="h-[86%] w-[74%] max-w-36 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
         {/* T-shirt body */}
         <path
           d="M30 25 L10 45 L25 55 L25 130 L95 130 L95 55 L110 45 L90 25 L75 35 C70 40 50 40 45 35 L30 25Z"
           fill="rgba(18,18,18,0.86)"
-          stroke="rgba(201,168,106,0.45)"
+          stroke="rgba(64,48,40,0.45)"
           strokeWidth="1.8"
         />
         {/* Collar */}
@@ -55,8 +55,8 @@ export default function StepPosition() {
           width={highlightRect.w}
           height={highlightRect.h}
           rx="4"
-          fill={isSelected ? 'rgba(201,168,106,0.35)' : 'rgba(201,168,106,0.15)'}
-          stroke="rgba(201,168,106,0.7)"
+          fill={isSelected ? 'rgba(64,48,40,0.35)' : 'rgba(64,48,40,0.15)'}
+          stroke="rgba(64,48,40,0.7)"
           strokeWidth="1.5"
           strokeDasharray={isSelected ? 'none' : '4 2'}
           className="animate-pulse"
@@ -67,11 +67,24 @@ export default function StepPosition() {
           y={highlightRect.y + highlightRect.h / 2 + 4}
           textAnchor="middle"
           fontSize="10"
-          fill="rgba(201,168,106,0.8)"
+          fill="rgba(64,48,40,0.8)"
         >✦</text>
       </svg>
     </div>
   );
+
+  const getHighlightRect = (printPosition: PrintPosition, printSize: PrintSize) => {
+    if (printPosition === 'shoulder_right') return { x: 67, y: 48, w: 18, h: 18 };
+    if (printPosition === 'shoulder_left') return { x: 35, y: 48, w: 18, h: 18 };
+    if (printPosition === 'back') {
+      return printSize === 'small'
+        ? { x: 50, y: 52, w: 20, h: 20 }
+        : { x: 33, y: 48, w: 54, h: 60 };
+    }
+    return printSize === 'small'
+      ? { x: 50, y: 48, w: 20, h: 20 }
+      : { x: 35, y: 42, w: 50, h: 55 };
+  };
 
   const defaultPositions: PositionCard[] = [
     {
@@ -128,20 +141,27 @@ export default function StepPosition() {
           printPosition: placement.printPosition,
           printSize: placement.printSize,
           price: p.price,
-          icon: <LayoutDashboard className="h-5 w-5" />
+          icon: <LayoutDashboard className="h-5 w-5" />,
+          visual: (isSelected: boolean) => (
+            <TShirtDiagram
+              highlightRect={getHighlightRect(placement.printPosition, placement.printSize)}
+              isSelected={isSelected}
+            />
+          ),
         };
       })
     : defaultPositions;
 
   return (
-    <motion.div
-      key="step-position"
-      initial={{ opacity: 0, y: 40, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -30, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="glass-card-strong p-6 sm:p-10 space-y-10"
-    >
+    <>
+      <motion.div
+        key="step-position"
+        initial={{ opacity: 0, y: 40, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -30, scale: 0.97 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="glass-card-strong wizard-panel"
+      >
       <div className="flex items-center justify-between">
         <div className="step-badge">
           <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
@@ -149,12 +169,12 @@ export default function StepPosition() {
         </div>
       </div>
 
-      <div className="text-center space-y-3">
+      <div className="text-center space-y-2">
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4 }}
-          className="text-4xl font-serif bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
+          className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
           مكان التصميم
         </motion.h2>
@@ -162,13 +182,14 @@ export default function StepPosition() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="text-washa-text-sec text-lg"
+          className="wizard-copy text-washa-text-sec"
         >
           أين تفضل أن يظهر تصميمك على القطعة؟
         </motion.p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="max-h-[calc(100dvh-20rem)] min-h-72 overflow-y-auto overscroll-contain pb-28 touch-pan-y sm:max-h-none sm:pb-0">
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4">
         {displayPositions.map((pos, index) => {
           const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
           return (
@@ -185,58 +206,65 @@ export default function StepPosition() {
                 printPositionLabel: pos.title,
               })}
               className={cn(
-                'group relative flex flex-col overflow-hidden rounded-3xl border bg-washa-surface/70 text-washa-text transition-all duration-500 shadow-depth-sm',
+                'group relative flex min-h-[15rem] flex-col overflow-hidden rounded-2xl border bg-washa-ivory text-washa-text transition-all duration-500 shadow-depth-sm sm:min-h-[16rem]',
                 isSelected
-                  ? 'border-washa-gold bg-washa-ivory shadow-[0_20px_55px_rgba(154,123,61,0.16)] ring-1 ring-washa-gold'
-                  : 'border-washa-border/70 hover:border-washa-gold/45 hover:bg-washa-ivory'
+                  ? 'border-washa-gold shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold'
+                  : 'border-washa-border/80 hover:border-washa-gold/45'
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden border-b border-washa-border/25 bg-[radial-gradient(circle_at_50%_22%,rgba(239,226,199,0.94),rgba(36,34,30,0.88)_68%)] p-3 sm:p-4">
+              <div className="relative flex min-h-[8.75rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.94),rgba(232,221,203,0.82)_48%,rgba(64,48,40,0.42)_100%)] p-3 sm:min-h-[9.5rem]">
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
+
+                {'visual' in pos && typeof pos.visual === 'function' ? (
+                  <div className={cn(
+                    "absolute inset-0 z-0 transition-opacity duration-300",
+                    'imageUrl' in pos && pos.imageUrl ? "opacity-55" : "opacity-100"
+                  )}>
+                    {pos.visual(isSelected)}
+                  </div>
+                ) : null}
                 
                 {('imageUrl' in pos && pos.imageUrl) ? (
                   <img 
                     src={studioAsset(pos.imageUrl as string)} 
                     alt={pos.title} 
                     className={cn(
-                      "relative z-[1] h-full w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
-                      isSelected ? "scale-[1.02]" : "group-hover:scale-[1.04]"
+                      "relative z-[1] h-full w-full object-contain object-center drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
+                      isSelected ? "scale-[1.05]" : "scale-100 group-hover:scale-[1.05]"
                     )} 
                   />
-                ) : 'visual' in pos && typeof pos.visual === 'function' ? (
-                  pos.visual(isSelected)
                 ) : null}
                 
                 {isSelected && (
-                  <div className="absolute top-4 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg z-10 shadow-lg">
+                  <div className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">
                     <CheckCircle2 className="h-4 w-4" strokeWidth={3} />
                   </div>
                 )}
               </div>
 
               {/* Text Content */}
-              <div className="p-5 text-right space-y-2 z-10 bg-washa-bg/90 backdrop-blur-sm flex-1">
+              <div className="z-10 flex flex-1 flex-col gap-1.5 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(249,245,237,0.98))] p-3 text-right backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className={cn(
-                    "text-lg font-bold transition-colors",
+                    "min-w-0 text-sm font-bold leading-snug transition-colors",
                     isSelected ? "text-washa-gold-deep" : "text-washa-text group-hover:text-washa-gold-deep"
                   )}>
                     {pos.title}
                   </p>
                   <div className={cn(
-                    "p-2 rounded-lg transition-colors",
+                    "rounded-lg p-1.5 transition-colors",
                     isSelected ? "bg-washa-gold/[0.18] text-washa-gold-deep" : "bg-washa-gold/[0.08] text-washa-text-sec group-hover:text-washa-gold-deep"
                   )}>
                     {pos.icon}
                   </div>
                 </div>
-                <p className="text-xs leading-relaxed text-washa-text-sec transition-colors">
+                <p className="text-[11px] leading-relaxed text-washa-text-sec transition-colors">
                   {pos.description}
                 </p>
                 {typeof pos.price === 'number' && (
-                  <p className="text-xs font-bold text-washa-gold">
+                  <p className="mt-auto pt-1 text-xs font-bold text-washa-gold">
                     {pos.price > 0 ? `${pos.price} ر.س` : 'مجاني'}
                   </p>
                 )}
@@ -244,16 +272,14 @@ export default function StepPosition() {
             </motion.button>
           );
         })}
+        </div>
       </div>
 
-      <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button variant="ghost" size="lg" onClick={prevStep} className="gap-2 rounded-xl">
-          <ArrowRight className="w-5 h-5" /> رجوع
-        </Button>
-        <Button variant="gold" size="lg" onClick={nextStep} className="gap-2 btn-shimmer-effect h-12 px-8 text-base rounded-xl">
-          التالي <ArrowLeft className="w-5 h-5" />
-        </Button>
-      </div>
-    </motion.div>
+      </motion.div>
+      <StepNavigationBar
+        onBack={prevStep}
+        onNext={nextStep}
+      />
+    </>
   );
 }
