@@ -3,6 +3,7 @@ import { History, Home, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
+import CreditBalanceChip from './CreditBalanceChip';
 
 interface HeaderProps {
   onOpenGallery: () => void;
@@ -109,6 +110,8 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+          <CreditBalanceChip />
+
           <a
             href="/"
             className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold sm:h-auto sm:w-auto sm:px-3 sm:py-2"

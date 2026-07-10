@@ -12,6 +12,7 @@ import {
 } from "@/lib/operational-rules";
 import { getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+import type { WashaAiControls, WashaAiCreditPackage } from "@/types/database";
 
 const SITE_SETTINGS_CACHE_TAG = "site-settings";
 const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
@@ -86,6 +87,9 @@ export type SiteSettingsType = {
         dtf_daily_quota_limit?: number;
         dtf_guest_daily_quota_limit?: number;
         dtf_booth_daily_quota_limit?: number;
+        dtf_wushsha_daily_quota_limit?: number;
+        credit_packages?: WashaAiCreditPackage[];
+        controls?: WashaAiControls;
     };
     site_info: Record<string, string>;
     shipping: {
@@ -153,6 +157,18 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         dtf_daily_quota_limit: 5,
         dtf_guest_daily_quota_limit: 3,
         dtf_booth_daily_quota_limit: 25,
+        dtf_wushsha_daily_quota_limit: 15,
+        credit_packages: [
+            { id: "starter", label: "باقة البداية", credits: 20, price: 25, active: true },
+            { id: "popular", label: "الباقة الرائجة", credits: 60, price: 60, popular: true, active: true },
+            { id: "pro", label: "باقة المحترف", credits: 150, price: 120, active: true },
+        ],
+        controls: {
+            quota_enabled: true,
+            credits_enabled: true,
+            audience: { guest: true, subscriber: true, wushsha: true, booth: true },
+            purchase: { subscriber: true, wushsha: true },
+        },
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
@@ -259,6 +275,61 @@ function coerceDtfDailyQuotaLimit(value: unknown, fallback = 5) {
     return Math.max(1, Math.round(parsed));
 }
 
+function normalizeCreditPackages(value: unknown, fallback: WashaAiCreditPackage[]): WashaAiCreditPackage[] {
+    if (!Array.isArray(value)) return fallback;
+
+    const seenIds = new Set<string>();
+    const packages: WashaAiCreditPackage[] = [];
+
+    for (const raw of value) {
+        if (!raw || typeof raw !== "object") continue;
+        const item = raw as Record<string, unknown>;
+
+        const id = typeof item.id === "string" ? item.id.trim() : "";
+        const credits = Math.round(Number(item.credits));
+        const price = Math.round(Number(item.price) * 100) / 100;
+        if (!id || seenIds.has(id) || !Number.isFinite(credits) || credits <= 0) continue;
+        if (!Number.isFinite(price) || price < 0) continue;
+
+        seenIds.add(id);
+        packages.push({
+            id,
+            label: typeof item.label === "string" && item.label.trim() ? item.label.trim() : id,
+            credits,
+            price,
+            popular: item.popular === true,
+            active: item.active !== false,
+        });
+    }
+
+    return packages.length > 0 ? packages : fallback;
+}
+
+function coerceBool(value: unknown, fallback: boolean) {
+    return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeWashaAiControls(value: unknown, fallback: WashaAiControls): WashaAiControls {
+    const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+    const audience = (raw.audience && typeof raw.audience === "object" ? raw.audience : {}) as Record<string, unknown>;
+    const purchase = (raw.purchase && typeof raw.purchase === "object" ? raw.purchase : {}) as Record<string, unknown>;
+
+    return {
+        quota_enabled: coerceBool(raw.quota_enabled, fallback.quota_enabled),
+        credits_enabled: coerceBool(raw.credits_enabled, fallback.credits_enabled),
+        audience: {
+            guest: coerceBool(audience.guest, fallback.audience.guest),
+            subscriber: coerceBool(audience.subscriber, fallback.audience.subscriber),
+            wushsha: coerceBool(audience.wushsha, fallback.audience.wushsha),
+            booth: coerceBool(audience.booth, fallback.audience.booth),
+        },
+        purchase: {
+            subscriber: coerceBool(purchase.subscriber, fallback.purchase.subscriber),
+            wushsha: coerceBool(purchase.wushsha, fallback.purchase.wushsha),
+        },
+    };
+}
+
 function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSettingsType["washa_ai"]>> {
     const washaAi = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
     const fallback = DEFAULT_SITE_SETTINGS.washa_ai;
@@ -275,6 +346,18 @@ function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSett
         dtf_booth_daily_quota_limit: coerceDtfDailyQuotaLimit(
             washaAi.dtf_booth_daily_quota_limit,
             fallback?.dtf_booth_daily_quota_limit ?? 25
+        ),
+        dtf_wushsha_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            washaAi.dtf_wushsha_daily_quota_limit,
+            fallback?.dtf_wushsha_daily_quota_limit ?? 15
+        ),
+        credit_packages: normalizeCreditPackages(
+            washaAi.credit_packages,
+            fallback?.credit_packages ?? []
+        ),
+        controls: normalizeWashaAiControls(
+            washaAi.controls,
+            fallback?.controls ?? DEFAULT_SITE_SETTINGS.washa_ai!.controls!
         ),
     };
 }
@@ -795,6 +878,13 @@ export async function getCreationPrices() {
 export async function getWashaAiSettings() {
     const settings = await getSiteSettings();
     return normalizeWashaAiSettings(settings.washa_ai);
+}
+
+/** الحزم النشطة فقط — لعرضها للمستخدم في نافذة الشراء. فارغة إن كان نظام الرصيد معطّلاً. */
+export async function getActiveWashaAiCreditPackages(): Promise<WashaAiCreditPackage[]> {
+    const settings = await getWashaAiSettings();
+    if (settings.controls?.credits_enabled === false) return [];
+    return (settings.credit_packages ?? []).filter((pkg) => pkg.active !== false);
 }
 
 // ─── Public visibility (للصفحات العامة — بدون صلاحية أدمن) ───
