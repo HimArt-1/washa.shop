@@ -109,8 +109,25 @@ export async function POST(request: NextRequest) {
             total_duration_ms: Date.now() - routeStartedAt,
         });
 
+        if (quota.reason === "audience_disabled") {
+            return attachDtfTraceId(NextResponse.json(
+                {
+                    error: "توليد وشّى AI غير متاح لحسابك حالياً.",
+                    code: "audience_disabled",
+                    canPurchase: false,
+                },
+                { status: 403 }
+            ), traceId);
+        }
+
         return attachDtfTraceId(NextResponse.json(
-            { error: "بلغت حصتك اليومية في Washa AI لهذا اليوم. ننتظرك مجددًا غدًا." },
+            {
+                error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
+                code: "quota_exceeded",
+                freeRemaining: quota.freeRemaining,
+                paidBalance: quota.paidBalance,
+                canPurchase: quota.canPurchase === true,
+            },
             { status: 403 }
         ), traceId);
     }
@@ -150,6 +167,9 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(NextResponse.json({
             imageUrl,
             remainingPoints: quota.tracked ? quota.remaining : null,
+            freeRemaining: quota.tracked ? quota.freeRemaining : null,
+            paidBalance: quota.tracked ? quota.paidBalance : null,
+            consumedSource: quota.tracked ? quota.source : null,
         }), traceId);
     } catch (error) {
         console.error("[washa-dtf-studio.generate-mockup]", { traceId, error });
@@ -162,9 +182,10 @@ export async function POST(request: NextRequest) {
 
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
-            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role);
+            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source);
             logDtfTrace("dtf.generate-mockup", traceId, "quota_released", {
                 duration_ms: Date.now() - releaseStartedAt,
+                source: quota.source,
             });
         }
 
