@@ -14,6 +14,35 @@ interface GenerationPreferences {
   garmentReferenceSide?: 'front' | 'back';
 }
 
+// أحداث تحدّث واجهة الرصيد بعد كل توليد أو عند نفاد الحصة.
+export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
+export const QUOTA_EXCEEDED_EVENT = 'washa:quota-exceeded';
+
+function dispatchQuotaChanged(data: { freeRemaining?: unknown; paidBalance?: unknown }) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(QUOTA_CHANGED_EVENT, {
+      detail: {
+        freeRemaining: typeof data?.freeRemaining === 'number' ? data.freeRemaining : null,
+        paidBalance: typeof data?.paidBalance === 'number' ? data.paidBalance : null,
+      },
+    })
+  );
+}
+
+function dispatchQuotaExceeded(info: { canPurchase?: unknown; freeRemaining?: unknown; paidBalance?: unknown }) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(QUOTA_EXCEEDED_EVENT, {
+      detail: {
+        canPurchase: info?.canPurchase === true,
+        freeRemaining: typeof info?.freeRemaining === 'number' ? info.freeRemaining : 0,
+        paidBalance: typeof info?.paidBalance === 'number' ? info.paidBalance : 0,
+      },
+    })
+  );
+}
+
 function compactPrompt(parts: Array<string | null | undefined>) {
   return parts
     .map((part) => (typeof part === 'string' ? part.trim() : ''))
@@ -37,7 +66,11 @@ async function parseApiResponse(response: Response) {
           : (typeof data?.message === 'string' && data.message.trim())
             ? data.message
             : `HTTP ${response.status}`;
-      throw new Error(withTrace(msg));
+      const error = new Error(withTrace(msg));
+      // نحمّل جسم الاستجابة على الخطأ ليتمكن المستدعي من فحص code/canPurchase.
+      (error as Error & { data?: unknown; status?: number }).data = data;
+      (error as Error & { data?: unknown; status?: number }).status = response.status;
+      throw error;
     }
     return data;
   }
@@ -206,8 +239,13 @@ export async function generateMockup(
 
     const data = await parseApiResponse(response);
     if (data?.error) throw new Error(data.error);
+    dispatchQuotaChanged(data);
     return data.imageUrl || null;
   } catch (error) {
+    const info = (error as { data?: Record<string, unknown> })?.data;
+    if (info && info.code === 'quota_exceeded') {
+      dispatchQuotaExceeded(info);
+    }
     console.error("Error generating mockup via proxy:", error);
     throw error;
   }
