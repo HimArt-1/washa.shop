@@ -578,6 +578,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         showToast('فشل في توليد الصورة', 'error');
       }
     } catch (generationError) {
+      // نفاد الحصة ليس خطأً — نافذة الرصيد اللطيفة تتكفّل به (حدث washa:quota-exceeded).
+      // نُخفي الرسالة الخام (بما فيها trace id) ولا نضع حالة خطأ في الواجهة.
+      const errorCode = (generationError as { data?: { code?: string } })?.data?.code;
+      if (errorCode === 'quota_exceeded' || errorCode === 'audience_disabled') {
+        setError(null);
+        return;
+      }
+
       const message = getReadableErrorMessage(generationError, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
       const canRetryWithLighterReference = Boolean(
         isLikelyGenerationTimeout(message) &&

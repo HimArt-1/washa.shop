@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { X, Sparkles, Loader2, Check } from 'lucide-react';
+import { X, Sparkles, Loader2, Check, Clock, Ban } from 'lucide-react';
 import { useCredits } from '../context/CreditsContext';
 import {
   fetchCreditPackages,
@@ -15,7 +15,7 @@ import {
 import { cn } from '../lib/utils';
 
 export default function CreditPurchaseModal() {
-  const { purchaseOpen, closePurchase, status } = useCredits();
+  const { purchaseOpen, closePurchase, status, noticeReason } = useCredits();
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -23,8 +23,12 @@ export default function CreditPurchaseModal() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canPurchase = status?.canPurchase === true;
+  const isBlocked = noticeReason === 'blocked';
+  const showPurchase = canPurchase && !isBlocked;
+
   useEffect(() => {
-    if (!purchaseOpen) return;
+    if (!purchaseOpen || !showPurchase) return;
     const controller = new AbortController();
     setLoadingPackages(true);
     setError(null);
@@ -35,7 +39,7 @@ export default function CreditPurchaseModal() {
       setLoadingPackages(false);
     });
     return () => controller.abort();
-  }, [purchaseOpen]);
+  }, [purchaseOpen, showPurchase]);
 
   useEffect(() => {
     if (!purchaseOpen) return;
@@ -84,15 +88,26 @@ export default function CreditPurchaseModal() {
             {/* Header */}
             <div className="flex items-start justify-between gap-3 border-b border-washa-border/40 p-5">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-washa-gold/10 text-washa-gold">
-                  <Sparkles className="h-5 w-5" />
+                <div
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-2xl',
+                    isBlocked ? 'bg-red-500/10 text-red-300' : 'bg-washa-gold/10 text-washa-gold'
+                  )}
+                >
+                  {isBlocked ? <Ban className="h-5 w-5" /> : noticeReason === 'exhausted' && !showPurchase ? <Clock className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-washa-text">شراء حصص توليد</h2>
+                  <h2 className="text-lg font-bold text-washa-text">
+                    {isBlocked ? 'التوليد غير متاح' : noticeReason === 'exhausted' ? 'نفدت حصتك اليومية' : 'شراء حصص توليد'}
+                  </h2>
                   <p className="text-xs text-washa-text-sec">
-                    {status && status.paidBalance > 0
-                      ? `رصيدك الحالي: ${status.paidBalance} حصة`
-                      : 'أضف رصيداً لمواصلة التوليد بلا انتظار'}
+                    {isBlocked
+                      ? 'لحسابك حالياً'
+                      : showPurchase
+                        ? status && status.paidBalance > 0
+                          ? `رصيدك الحالي: ${status.paidBalance} حصة`
+                          : 'أضف رصيداً لمواصلة التوليد بلا انتظار'
+                        : 'تتجدد حصتك المجانية غداً'}
                   </p>
                 </div>
               </div>
@@ -107,7 +122,23 @@ export default function CreditPurchaseModal() {
 
             {/* Body */}
             <div className="max-h-[65vh] overflow-y-auto p-5">
-              {loadingPackages ? (
+              {!showPurchase ? (
+                <div className="flex flex-col items-center gap-4 py-6 text-center">
+                  <div
+                    className={cn(
+                      'flex h-16 w-16 items-center justify-center rounded-full',
+                      isBlocked ? 'bg-red-500/10 text-red-300' : 'bg-washa-gold/10 text-washa-gold'
+                    )}
+                  >
+                    {isBlocked ? <Ban className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+                  </div>
+                  <p className="max-w-xs text-sm leading-7 text-washa-text-sec">
+                    {isBlocked
+                      ? 'توليد وشّى AI غير متاح لحسابك حالياً. تواصل مع الدعم إن كنت تعتقد أن هذا خطأ.'
+                      : 'استهلكت كامل حصتك المجانية لهذا اليوم. تتجدد تلقائياً غدًا — نراك حينها ✨'}
+                  </p>
+                </div>
+              ) : loadingPackages ? (
                 <div className="flex items-center justify-center py-12 text-washa-text-sec">
                   <Loader2 className="h-6 w-6 animate-spin" />
                 </div>
@@ -115,6 +146,12 @@ export default function CreditPurchaseModal() {
                 <p className="py-10 text-center text-sm text-washa-text-sec">لا توجد باقات متاحة حالياً.</p>
               ) : (
                 <div className="grid gap-3">
+                  {noticeReason === 'exhausted' && (
+                    <div className="mb-1 flex items-center gap-2.5 rounded-xl border border-washa-gold/20 bg-washa-gold/5 px-3.5 py-2.5 text-xs leading-6 text-washa-text-sec">
+                      <Sparkles className="h-4 w-4 shrink-0 text-washa-gold" />
+                      <span>انتهت حصتك المجانية لليوم. اختر باقة لمواصلة التوليد فوراً، أو انتظر تجديدها غدًا.</span>
+                    </div>
+                  )}
                   {packages.map((pkg) => {
                     const active = pkg.id === selectedId;
                     return (
@@ -184,25 +221,36 @@ export default function CreditPurchaseModal() {
 
             {/* Footer */}
             <div className="border-t border-washa-border/40 p-5">
-              <button
-                onClick={handleCheckout}
-                disabled={!selected || submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-washa-gold py-3.5 font-bold text-washa-bg transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    جارٍ التحويل للدفع…
-                  </>
-                ) : selected ? (
-                  <>الدفع — {selected.price} ريال مقابل {selected.credits} حصة</>
-                ) : (
-                  'اختر باقة'
-                )}
-              </button>
-              <p className="mt-2.5 text-center text-[11px] text-washa-text-faint">
-                دفع آمن عبر Paylink · مدى، فيزا، Apple Pay، STC Pay، تابي، تمارا
-              </p>
+              {showPurchase ? (
+                <>
+                  <button
+                    onClick={handleCheckout}
+                    disabled={!selected || submitting}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-washa-gold py-3.5 font-bold text-washa-bg transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        جارٍ التحويل للدفع…
+                      </>
+                    ) : selected ? (
+                      <>الدفع — {selected.price} ريال مقابل {selected.credits} حصة</>
+                    ) : (
+                      'اختر باقة'
+                    )}
+                  </button>
+                  <p className="mt-2.5 text-center text-[11px] text-washa-text-faint">
+                    دفع آمن عبر Paylink · مدى، فيزا، Apple Pay، STC Pay، تابي، تمارا
+                  </p>
+                </>
+              ) : (
+                <button
+                  onClick={closePurchase}
+                  className="w-full rounded-2xl border border-washa-border/50 py-3.5 font-bold text-washa-text transition-colors hover:bg-washa-border/20"
+                >
+                  حسنًا
+                </button>
+              )}
             </div>
           </motion.div>
         </motion.div>
