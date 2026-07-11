@@ -263,7 +263,7 @@ describe("generate-mockup route", () => {
         );
     });
 
-    it("releases tracked quota and preserves normalized provider failures", async () => {
+    it("releases tracked quota and returns a public provider failure", async () => {
         mockGenerateMockup.mockRejectedValue(new Error("provider timeout"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
             message: "انتهت مهلة التوليد من المزود الخارجي.",
@@ -275,7 +275,7 @@ describe("generate-mockup route", () => {
         expect(response.status).toBe(504);
         expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
-            error: "انتهت مهلة التوليد من المزود الخارجي.",
+            error: "تعذر إنشاء التصميم الآن. عدّل الوصف قليلًا أو جرّب مرة أخرى بعد لحظات.",
         });
         expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free");
         expect(mockLogActivity).toHaveBeenCalledWith(

@@ -14,6 +14,7 @@ import {
     logDtfTrace,
     resolveDtfTraceId,
 } from "../utils/trace";
+import { DTF_PUBLIC_GENERATION_ERROR } from "../utils/public-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
         });
 
         return attachDtfTraceId(NextResponse.json(
-            { error: handled.message },
+            { error: DTF_PUBLIC_GENERATION_ERROR },
             { status: handled.status }
         ), traceId);
     }

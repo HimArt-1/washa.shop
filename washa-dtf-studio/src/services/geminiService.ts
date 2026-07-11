@@ -1,4 +1,11 @@
 // Use the integrated Next.js API instead of a separate local proxy server.
+import {
+  getPublicStudioErrorMessage,
+  PUBLIC_EXTRACTION_ERROR,
+  PUBLIC_GENERATION_ERROR,
+  type PublicStudioErrorScope,
+} from '../lib/publicErrors';
+
 const API_BASE_URL = '/api/washa-dtf-studio';
 
 interface GenerationPreferences {
@@ -58,10 +65,23 @@ function compactPrompt(parts: Array<string | null | undefined>) {
     .trim();
 }
 
-async function parseApiResponse(response: Response) {
+function createPublicApiError(
+  message: string | null | undefined,
+  scope: PublicStudioErrorScope,
+  response?: Response,
+  data?: unknown
+) {
+  const publicMessage = getPublicStudioErrorMessage(message, scope);
+  const error = new Error(publicMessage);
+  (error as Error & { data?: unknown; status?: number }).data = data;
+  if (response) {
+    (error as Error & { data?: unknown; status?: number }).status = response.status;
+  }
+  return error;
+}
+
+async function parseApiResponse(response: Response, scope: PublicStudioErrorScope) {
   const contentType = response.headers.get('content-type') || '';
-  const traceId = response.headers.get('x-trace-id') || response.headers.get('X-Trace-Id');
-  const withTrace = (message: string) => (traceId ? `${message} (trace: ${traceId})` : message);
 
   if (contentType.includes('application/json')) {
     const data = await response.json();
@@ -72,11 +92,7 @@ async function parseApiResponse(response: Response) {
           : (typeof data?.message === 'string' && data.message.trim())
             ? data.message
             : `HTTP ${response.status}`;
-      const error = new Error(withTrace(msg));
-      // نحمّل جسم الاستجابة على الخطأ ليتمكن المستدعي من فحص code/canPurchase.
-      (error as Error & { data?: unknown; status?: number }).data = data;
-      (error as Error & { data?: unknown; status?: number }).status = response.status;
-      throw error;
+      throw createPublicApiError(msg, scope, response, data);
     }
     return data;
   }
@@ -84,13 +100,13 @@ async function parseApiResponse(response: Response) {
   const text = await response.text();
   if (!response.ok) {
     if (response.status === 413) {
-      throw new Error(withTrace('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.'));
+      throw createPublicApiError('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.', scope, response);
     }
 
-    throw new Error(withTrace(text || 'فشل الاتصال بالخادم'));
+    throw createPublicApiError(text || null, scope, response);
   }
 
-  throw new Error(withTrace(text || 'استجابة غير متوقعة من الخادم'));
+  throw createPublicApiError(text || null, scope, response);
 }
 
 export async function generateMockup(
@@ -243,8 +259,8 @@ export async function generateMockup(
       body: JSON.stringify(body),
     });
 
-    const data = await parseApiResponse(response);
-    if (data?.error) throw new Error(data.error);
+    const data = await parseApiResponse(response, 'generation');
+    if (data?.error) throw createPublicApiError(data.error, 'generation', response, data);
     dispatchQuotaChanged(data);
     return data.imageUrl || null;
   } catch (error) {
@@ -253,7 +269,8 @@ export async function generateMockup(
       dispatchQuotaExceeded(info);
     }
     console.error("Error generating mockup via proxy:", error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(PUBLIC_GENERATION_ERROR);
   }
 }
 
@@ -271,11 +288,12 @@ export async function extractDesign(mockupImageBase64: string, mimeType: string)
       }),
     });
 
-    const data = await parseApiResponse(response);
-    if (data?.error) throw new Error(data.error);
+    const data = await parseApiResponse(response, 'extraction');
+    if (data?.error) throw createPublicApiError(data.error, 'extraction', response, data);
     return data.imageUrl || null;
   } catch (error) {
     console.error("Error extracting design via proxy:", error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(PUBLIC_EXTRACTION_ERROR);
   }
 }
