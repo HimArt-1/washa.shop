@@ -1,6 +1,7 @@
 import { Hero } from "@/components/sections/Hero";
 import { AISection } from "@/components/sections/AISection";
 import { Store, type ProductWithArtist } from "@/components/sections/Store";
+import { HomeNeuralField } from "@/components/sections/HomeNeuralField";
 import { getSiteSettings } from "@/app/actions/settings";
 import { getProducts } from "@/app/actions/products";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
@@ -27,6 +28,7 @@ export default async function Home() {
                 />
                 {showFlowStack ? (
                     <div className="home-flow-stack">
+                        <HomeNeuralField />
                         <div className="home-section-smoke home-flow-stack-smoke" aria-hidden="true">
                             <span />
                             <span />
