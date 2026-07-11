@@ -53,8 +53,8 @@ export interface DailyQuotaReservation {
     freeRemaining: number;
     /** رصيد المحفظة المدفوع الحالي. */
     paidBalance: number;
-    /** سبب الرفض عند allowed=false: 'audience_disabled' أو 'quota_exceeded'. */
-    reason?: "audience_disabled" | "quota_exceeded";
+    /** سبب الرفض عند allowed=false. */
+    reason?: "audience_disabled" | "quota_exceeded" | "quota_unavailable";
     /** هل يحقّ لهذا المستخدم شراء رصيد إضافي (حسب مفاتيح التحكّم)؟ */
     canPurchase?: boolean;
 }
@@ -89,6 +89,10 @@ export class DtfTelemetryService {
     // (منحة يومية أعلى + رصيد مدفوع). التجاوز حصراً للمشرفين والمطورين.
     private static isQuotaBypassedRole(userRole: string | null | undefined) {
         return userRole === "admin" || userRole === "dev";
+    }
+
+    private static shouldFailOpenOnQuotaBackendFailure() {
+        return process.env.WASHA_AI_QUOTA_FAIL_OPEN === "true";
     }
 
     private static normalizeQuotaPayload(data: DailyQuotaRpcPayload | null) {
@@ -241,9 +245,16 @@ export class DtfTelemetryService {
                     };
                 } catch (error) {
                     logDiagnosticWarning("dtf-telemetry-guest-quota-reserve", error);
+                    if (DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()) {
+                        return {
+                            allowed: true, remaining: guestDailyLimit, used: 0, tracked: false,
+                            source: "guest", freeRemaining: guestDailyLimit, paidBalance: 0,
+                        };
+                    }
+
                     return {
-                        allowed: true, remaining: guestDailyLimit, used: 0, tracked: false,
-                        source: "guest", freeRemaining: guestDailyLimit, paidBalance: 0,
+                        allowed: false, remaining: 0, used: 0, tracked: false,
+                        source: "none", freeRemaining: 0, paidBalance: 0, reason: "quota_unavailable",
                     };
                 }
             }
@@ -252,10 +263,20 @@ export class DtfTelemetryService {
 
         const dailyLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
         const canPurchase = DtfTelemetryService.canRolePurchase(controls, userRole);
-        const fallbackOpen = (): DailyQuotaReservation => ({
-            allowed: true, remaining: dailyLimit, used: 0, tracked: false,
-            source: "free", freeRemaining: dailyLimit, paidBalance: 0, canPurchase,
-        });
+        const backendFailureReservation = (): DailyQuotaReservation => {
+            if (DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()) {
+                return {
+                    allowed: true, remaining: dailyLimit, used: 0, tracked: false,
+                    source: "free", freeRemaining: dailyLimit, paidBalance: 0, canPurchase,
+                };
+            }
+
+            return {
+                allowed: false, remaining: 0, used: 0, tracked: false,
+                source: "none", freeRemaining: 0, paidBalance: 0,
+                reason: "quota_unavailable", canPurchase,
+            };
+        };
 
         try {
             const sb = getSupabaseAdminClient();
@@ -269,13 +290,13 @@ export class DtfTelemetryService {
 
                 if (error) {
                     logDiagnosticWarning("dtf-telemetry-quota-reserve", error);
-                    return fallbackOpen();
+                    return backendFailureReservation();
                 }
 
                 const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
                 if (!payload || typeof payload.granted !== "boolean") {
                     logDiagnosticWarning("dtf-telemetry-quota-reserve-invalid", data);
-                    return fallbackOpen();
+                    return backendFailureReservation();
                 }
 
                 const freeRemaining = typeof payload.free_remaining === "number" ? payload.free_remaining : 0;
@@ -305,13 +326,13 @@ export class DtfTelemetryService {
 
             if (error) {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve", error);
-                return fallbackOpen();
+                return backendFailureReservation();
             }
 
             const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
             if (!payload || typeof payload.granted !== "boolean") {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve-invalid", data);
-                return fallbackOpen();
+                return backendFailureReservation();
             }
 
             const freeRemaining = typeof payload.remaining === "number" ? payload.remaining : 0;
@@ -329,7 +350,7 @@ export class DtfTelemetryService {
             };
         } catch (err) {
             logDiagnosticWarning("dtf-telemetry-quota-reserve-fatal", err);
-            return fallbackOpen();
+            return backendFailureReservation();
         }
     }
 

@@ -130,4 +130,31 @@ describe("settings visibility normalization", () => {
         expect(settings.dtf_guest_daily_quota_limit).toBe(3);
         expect(settings.dtf_booth_daily_quota_limit).toBe(18);
     });
+
+    it("drops Washa AI credit packages that cannot be purchased", async () => {
+        mockCreateClient.mockReturnValue({
+            from: vi.fn(() => ({
+                select: vi.fn(async () => ({
+                    data: [
+                        {
+                            key: "washa_ai",
+                            value: {
+                                credit_packages: [
+                                    { id: "free", label: "حزمة صفرية", credits: 10, price: 0, active: true },
+                                    { id: "starter", label: "بداية", credits: 20, price: "25", active: true },
+                                ],
+                            },
+                        },
+                    ],
+                    error: null,
+                })),
+            })),
+        });
+
+        const settings = await getWashaAiSettings();
+
+        expect(settings.credit_packages).toEqual([
+            { id: "starter", label: "بداية", credits: 20, price: 25, popular: false, active: true },
+        ]);
+    });
 });

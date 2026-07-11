@@ -13,6 +13,7 @@ import {
 import {
     getPaylinkInvoiceAmount,
     getPaylinkInvoiceOrderNumber,
+    getPaylinkInvoiceTransactionNo,
     isPaylinkInvoicePaid,
     moneyMatches,
 } from "@/lib/paylink-security";
@@ -53,6 +54,15 @@ function fail(status: number, error: string): ServiceResult<never> {
     return { ok: false, status, error };
 }
 
+type CreditOrderRecord = {
+    order_number: string;
+    profile_id: string;
+    credits: number;
+    amount: number | string;
+    status: string;
+    transaction_no: string | null;
+};
+
 /** يجلب profile المستخدم الحالي مع الدور وبيانات التواصل. */
 export async function resolveCreditPurchaseProfile(clerkId: string): Promise<CreditPurchaseProfile | null> {
     const sb = getSupabaseAdminClient();
@@ -83,6 +93,111 @@ function generateOrderNumber() {
     const stamp = Date.now().toString(36).toUpperCase();
     const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
     return `WAI-${stamp}-${rand}`;
+}
+
+async function readWalletBalance(profileId: string) {
+    const sb = getSupabaseAdminClient();
+    const { data: wallet } = await sb
+        .from("washa_ai_credit_wallet")
+        .select("balance")
+        .eq("profile_id", profileId)
+        .maybeSingle();
+
+    return typeof wallet?.balance === "number" ? wallet.balance : null;
+}
+
+async function confirmVerifiedCreditOrder(params: {
+    order: CreditOrderRecord;
+    transactionNo?: string | null;
+    invoice?: unknown;
+}): Promise<ServiceResult<VerifyResult>> {
+    const sb = getSupabaseAdminClient();
+
+    if (params.order.status === "paid") {
+        return {
+            ok: true,
+            data: {
+                credited: false,
+                alreadyProcessed: true,
+                credits: params.order.credits,
+                balance: await readWalletBalance(params.order.profile_id),
+            },
+        };
+    }
+
+    const effectiveTransactionNo = (params.transactionNo || params.order.transaction_no || "").trim();
+    if (!effectiveTransactionNo) {
+        return fail(400, "رقم معاملة Paylink غير متاح");
+    }
+
+    let invoice = params.invoice;
+    if (!invoice) {
+        try {
+            invoice = await getPaylinkInvoice(effectiveTransactionNo);
+        } catch (error) {
+            return fail(502, error instanceof Error ? error.message : "تعذّر التحقق من الفاتورة");
+        }
+    }
+
+    const invoiceLike = invoice as Parameters<typeof isPaylinkInvoicePaid>[0];
+    if (!isPaylinkInvoicePaid(invoiceLike)) {
+        return fail(402, "لم يكتمل الدفع بعد");
+    }
+
+    const invoiceTransactionNo = getPaylinkInvoiceTransactionNo(invoiceLike);
+    if (invoiceTransactionNo && invoiceTransactionNo !== effectiveTransactionNo) {
+        return fail(409, "رقم معاملة Paylink لا يطابق الطلب");
+    }
+
+    const invoiceOrderNumber = getPaylinkInvoiceOrderNumber(invoiceLike);
+    if (invoiceOrderNumber !== params.order.order_number) {
+        return fail(409, "فاتورة Paylink لا تطابق رقم الطلب");
+    }
+
+    const invoiceAmount = getPaylinkInvoiceAmount(invoiceLike);
+    if (invoiceAmount === null || !moneyMatches(params.order.amount, invoiceAmount)) {
+        return fail(409, "مبلغ فاتورة Paylink لا يطابق قيمة الباقة");
+    }
+
+    // شحن المحفظة idempotent عبر (ref_type, ref_id).
+    const { data: creditData, error: creditError } = await sb.rpc("credit_washa_ai_wallet", {
+        p_profile_id: params.order.profile_id,
+        p_amount: params.order.credits,
+        p_entry_type: "purchase",
+        p_reason: `شراء رصيد — ${params.order.credits} حصة`,
+        p_ref_type: "washa_ai_credit_order",
+        p_ref_id: params.order.order_number,
+        p_metadata: { transaction_no: effectiveTransactionNo, amount: invoiceAmount },
+    });
+
+    if (creditError) {
+        return fail(500, "تعذّر شحن الرصيد");
+    }
+
+    const payload = (creditData && typeof creditData === "object" ? creditData : {}) as Record<string, unknown>;
+    const balance = typeof payload.balance === "number" ? payload.balance : null;
+    const duplicate = payload.duplicate === true;
+
+    await sb
+        .from("washa_ai_credit_orders")
+        .update({
+            status: "paid",
+            transaction_no: effectiveTransactionNo,
+            paid_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+        .eq("order_number", params.order.order_number)
+        .neq("status", "paid");
+
+    return {
+        ok: true,
+        data: {
+            credited: payload.credited === true,
+            alreadyProcessed: duplicate,
+            credits: params.order.credits,
+            balance,
+        },
+    };
 }
 
 // ─── إنشاء طلب شراء + فاتورة Paylink ─────────────────────────
@@ -229,88 +344,31 @@ export async function verifyCreditPurchase(params: {
         return fail(403, "غير مصرح لهذا الطلب");
     }
 
-    // مُعالَج مسبقاً — idempotent
-    if (order.status === "paid") {
-        const { data: wallet } = await sb
-            .from("washa_ai_credit_wallet")
-            .select("balance")
-            .eq("profile_id", params.profile.id)
-            .maybeSingle();
-        return {
-            ok: true,
-            data: {
-                credited: false,
-                alreadyProcessed: true,
-                credits: order.credits,
-                balance: wallet?.balance ?? null,
-            },
-        };
-    }
-
-    const effectiveTransactionNo = (params.transactionNo || order.transaction_no || "").trim();
-    if (!effectiveTransactionNo) {
-        return fail(400, "رقم معاملة Paylink غير متاح");
-    }
-
-    let invoice: unknown;
-    try {
-        invoice = await getPaylinkInvoice(effectiveTransactionNo);
-    } catch (error) {
-        return fail(502, error instanceof Error ? error.message : "تعذّر التحقق من الفاتورة");
-    }
-
-    const invoiceLike = invoice as Parameters<typeof isPaylinkInvoicePaid>[0];
-    if (!isPaylinkInvoicePaid(invoiceLike)) {
-        return fail(402, "لم يكتمل الدفع بعد");
-    }
-
-    const invoiceOrderNumber = getPaylinkInvoiceOrderNumber(invoiceLike);
-    if (invoiceOrderNumber !== order.order_number) {
-        return fail(409, "فاتورة Paylink لا تطابق رقم الطلب");
-    }
-
-    const invoiceAmount = getPaylinkInvoiceAmount(invoiceLike);
-    if (invoiceAmount === null || !moneyMatches(order.amount, invoiceAmount)) {
-        return fail(409, "مبلغ فاتورة Paylink لا يطابق قيمة الباقة");
-    }
-
-    // شحن المحفظة idempotent عبر (ref_type, ref_id)
-    const { data: creditData, error: creditError } = await sb.rpc("credit_washa_ai_wallet", {
-        p_profile_id: params.profile.id,
-        p_amount: order.credits,
-        p_entry_type: "purchase",
-        p_reason: `شراء رصيد — ${order.credits} حصة`,
-        p_ref_type: "washa_ai_credit_order",
-        p_ref_id: order.order_number,
-        p_metadata: { transaction_no: effectiveTransactionNo, amount: invoiceAmount },
+    return confirmVerifiedCreditOrder({
+        order: order as CreditOrderRecord,
+        transactionNo: params.transactionNo,
     });
+}
 
-    if (creditError) {
-        return fail(500, "تعذّر شحن الرصيد");
+export async function verifyCreditPurchaseWebhook(params: {
+    orderNumber: string;
+    transactionNo: string;
+    invoice?: unknown;
+}): Promise<ServiceResult<VerifyResult>> {
+    const sb = getSupabaseAdminClient();
+    const { data: order } = await sb
+        .from("washa_ai_credit_orders")
+        .select("order_number, profile_id, credits, amount, status, transaction_no")
+        .eq("order_number", params.orderNumber)
+        .maybeSingle();
+
+    if (!order) {
+        return fail(404, "طلب شراء رصيد WASHA AI غير موجود");
     }
 
-    const payload = (creditData && typeof creditData === "object" ? creditData : {}) as Record<string, unknown>;
-    const balance = typeof payload.balance === "number" ? payload.balance : null;
-    const duplicate = payload.duplicate === true;
-
-    await sb
-        .from("washa_ai_credit_orders")
-        .update({
-            status: "paid",
-            transaction_no: effectiveTransactionNo,
-            paid_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        })
-        .eq("order_number", order.order_number)
-        .neq("status", "paid");
-
-    return {
-        ok: true,
-        data: {
-            credited: payload.credited === true,
-            alreadyProcessed: duplicate,
-            credits: order.credits,
-            balance,
-        },
-    };
+    return confirmVerifiedCreditOrder({
+        order: order as CreditOrderRecord,
+        transactionNo: params.transactionNo,
+        invoice: params.invoice,
+    });
 }

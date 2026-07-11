@@ -784,11 +784,12 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                     className="col-span-4 sm:col-span-2 bg-theme-input border border-theme-subtle/40 rounded-lg px-2 py-1.5 text-sm text-theme"
                                     dir="ltr"
                                     type="number"
+                                    min="1"
                                     value={String(pkg.price)}
                                     placeholder="ريال"
                                     onChange={(e) => {
                                         const next = [...washaAi.credit_packages];
-                                        next[index] = { ...pkg, price: Math.max(0, Number(e.target.value) || 0) };
+                                        next[index] = { ...pkg, price: Math.max(1, Number(e.target.value) || 1) };
                                         setWashaAi({ ...washaAi, credit_packages: next });
                                     }}
                                 />

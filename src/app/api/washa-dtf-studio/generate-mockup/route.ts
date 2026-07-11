@@ -93,15 +93,18 @@ export async function POST(request: NextRequest) {
     });
     if (!quota.allowed) {
         const telemetryStartedAt = Date.now();
+        const quotaUnavailable = quota.reason === "quota_unavailable";
         await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "generate-mockup",
-            status: "quota_exceeded",
+            status: quotaUnavailable ? "error" : "quota_exceeded",
+            errorMessage: quotaUnavailable ? "تعذّر التحقق من رصيد WASHA AI قبل التوليد." : undefined,
             metadata: {
                 remainingPoints: quota.remaining,
                 usedPoints: quota.used,
                 quotaDate: quota.quotaDate,
+                quotaReason: quota.reason ?? null,
             },
         });
         logDtfTrace("dtf.generate-mockup", traceId, "quota_exceeded_logged", {
@@ -117,6 +120,17 @@ export async function POST(request: NextRequest) {
                     canPurchase: false,
                 },
                 { status: 403 }
+            ), traceId);
+        }
+
+        if (quota.reason === "quota_unavailable") {
+            return attachDtfTraceId(NextResponse.json(
+                {
+                    error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
+                    code: "quota_unavailable",
+                    canPurchase: false,
+                },
+                { status: 503 }
             ), traceId);
         }
 

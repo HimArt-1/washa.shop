@@ -289,7 +289,7 @@ function normalizeCreditPackages(value: unknown, fallback: WashaAiCreditPackage[
         const credits = Math.round(Number(item.credits));
         const price = Math.round(Number(item.price) * 100) / 100;
         if (!id || seenIds.has(id) || !Number.isFinite(credits) || credits <= 0) continue;
-        if (!Number.isFinite(price) || price < 0) continue;
+        if (!Number.isFinite(price) || price <= 0) continue;
 
         seenIds.add(id);
         packages.push({
