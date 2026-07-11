@@ -20,10 +20,15 @@ import {
 } from '../services/creditsService';
 import { QUOTA_CHANGED_EVENT, QUOTA_EXCEEDED_EVENT } from '../services/geminiService';
 
+/** سبب فتح النافذة: نفاد الحصة، أو الفئة ممنوعة، أو فتح يدوي للشراء. */
+export type CreditsNoticeReason = 'exhausted' | 'blocked' | null;
+
 interface CreditsContextValue {
   status: QuotaStatus | null;
   loading: boolean;
   purchaseOpen: boolean;
+  /** غير null عندما تُفتح النافذة بسبب نفاد/منع (لعرض لافتة مناسبة). */
+  noticeReason: CreditsNoticeReason;
   refresh: () => void;
   openPurchase: () => void;
   closePurchase: () => void;
@@ -35,6 +40,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<QuotaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [noticeReason, setNoticeReason] = useState<CreditsNoticeReason>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(() => {
@@ -49,8 +55,14 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const openPurchase = useCallback(() => setPurchaseOpen(true), []);
-  const closePurchase = useCallback(() => setPurchaseOpen(false), []);
+  const openPurchase = useCallback(() => {
+    setNoticeReason(null); // فتح يدوي من الشريحة — شراء صرف بلا لافتة.
+    setPurchaseOpen(true);
+  }, []);
+  const closePurchase = useCallback(() => {
+    setPurchaseOpen(false);
+    setNoticeReason(null);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -79,11 +91,15 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     }
 
     function onExceeded(event: Event) {
-      const detail = (event as CustomEvent).detail as { canPurchase?: boolean };
+      const detail = (event as CustomEvent).detail as {
+        reason?: 'exhausted' | 'blocked';
+        canPurchase?: boolean;
+      };
+      const reason: CreditsNoticeReason = detail?.reason === 'blocked' ? 'blocked' : 'exhausted';
       setStatus((prev) => (prev ? { ...prev, freeRemaining: 0, paidBalance: 0 } : prev));
-      if (detail?.canPurchase) {
-        setPurchaseOpen(true);
-      }
+      // نفتح النافذة اللطيفة دائماً — سواء لعرض الشراء أو رسالة «تتجدد غداً».
+      setNoticeReason(reason);
+      setPurchaseOpen(true);
     }
 
     window.addEventListener(QUOTA_CHANGED_EVENT, onChanged);
@@ -95,8 +111,8 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<CreditsContextValue>(
-    () => ({ status, loading, purchaseOpen, refresh, openPurchase, closePurchase }),
-    [status, loading, purchaseOpen, refresh, openPurchase, closePurchase]
+    () => ({ status, loading, purchaseOpen, noticeReason, refresh, openPurchase, closePurchase }),
+    [status, loading, purchaseOpen, noticeReason, refresh, openPurchase, closePurchase]
   );
 
   return <CreditsContext.Provider value={value}>{children}</CreditsContext.Provider>;

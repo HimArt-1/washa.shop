@@ -30,11 +30,17 @@ function dispatchQuotaChanged(data: { freeRemaining?: unknown; paidBalance?: unk
   );
 }
 
-function dispatchQuotaExceeded(info: { canPurchase?: unknown; freeRemaining?: unknown; paidBalance?: unknown }) {
+function dispatchQuotaExceeded(info: {
+  code?: unknown;
+  canPurchase?: unknown;
+  freeRemaining?: unknown;
+  paidBalance?: unknown;
+}) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
     new CustomEvent(QUOTA_EXCEEDED_EVENT, {
       detail: {
+        reason: info?.code === 'audience_disabled' ? 'blocked' : 'exhausted',
         canPurchase: info?.canPurchase === true,
         freeRemaining: typeof info?.freeRemaining === 'number' ? info.freeRemaining : 0,
         paidBalance: typeof info?.paidBalance === 'number' ? info.paidBalance : 0,
@@ -243,7 +249,7 @@ export async function generateMockup(
     return data.imageUrl || null;
   } catch (error) {
     const info = (error as { data?: Record<string, unknown> })?.data;
-    if (info && info.code === 'quota_exceeded') {
+    if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {
       dispatchQuotaExceeded(info);
     }
     console.error("Error generating mockup via proxy:", error);
