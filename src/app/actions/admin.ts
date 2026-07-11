@@ -18,6 +18,7 @@ import { FULFILLMENT_RATES, calculateUnitFulfillmentCost } from "@/config/fulfil
 import { createPaylinkInvoice } from "@/lib/paylink";
 import { moneyMatches } from "@/lib/paylink-security";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
@@ -643,7 +644,7 @@ export async function getAdminInventory(filter: "all" | "low" | "out" = "all") {
         const { supabase } = await requireAdmin(INVENTORY_OPERATIONS_ROLES);
         const { data, error } = await supabase
             .from("products")
-            .select("id, title, image_url, type, in_stock, stock_quantity, price, artist:profiles!products_artist_id_fkey(display_name)")
+            .select("id, title, image_url, thumbnail_url, type, in_stock, stock_quantity, price, artist:profiles!products_artist_id_fkey(display_name)")
             .order("title");
         if (error) throw error;
         const allProducts = data || [];
@@ -3788,7 +3789,7 @@ export async function updateArtworkStatus(
 }
 
 /** رفع صورة عمل فني (للأدمن) */
-export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ success: true; url: string; thumbnailUrl: string | null } | { success: false; error: string }> {
     const { supabase } = await requireAdmin();
 
     const file = formData.get("file") as File | null;
@@ -3797,17 +3798,25 @@ export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ suc
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(file.type)) return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
 
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase,
+            bucket: "artworks",
+            folder: "uploads/admin",
+            file,
+            originalFileName: file.name,
+            contentType: file.type,
+            profile: "display",
+            createThumbnail: true,
+            returnPublicUrl: true,
+        });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await supabase.storage
-        .from("artworks")
-        .upload(path, buffer, { cacheControl: "3600", upsert: false, contentType: file.type });
-
-    if (error) {
+        return {
+            success: true,
+            url: uploaded.publicUrl ?? "",
+            thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+        };
+    } catch (error) {
         console.error("[uploadArtworkImageAdmin]", error);
         await reportAdminActionAlert({
             dispatchKey: "admin:upload_artwork_image_failed",
@@ -3822,14 +3831,16 @@ export async function uploadArtworkImageAdmin(formData: FormData): Promise<{ suc
                 file_name: file.name,
                 file_type: file.type,
                 file_size: file.size,
-                error: error.message,
+                error: error instanceof Error ? error.message : "unknown",
             },
         });
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = supabase.storage.from("artworks").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 /** إنشاء عمل فني (للأدمن) */
@@ -3839,6 +3850,7 @@ export async function createArtworkAdmin(data: {
     description?: string | null;
     category_id?: string | null;
     image_url: string;
+    thumbnail_url?: string | null;
     medium?: string | null;
     dimensions?: string | null;
     year?: number | null;
@@ -3856,6 +3868,7 @@ export async function createArtworkAdmin(data: {
         description: data.description?.trim() || null,
         category_id: data.category_id || null,
         image_url: data.image_url,
+        thumbnail_url: data.thumbnail_url ?? null,
         medium: data.medium?.trim() || null,
         dimensions: data.dimensions?.trim() || null,
         year: data.year ?? null,
@@ -3900,6 +3913,7 @@ export async function updateArtworkAdmin(id: string, data: {
     description?: string | null;
     category_id?: string | null;
     image_url?: string;
+    thumbnail_url?: string | null;
     medium?: string | null;
     dimensions?: string | null;
     year?: number | null;
@@ -3917,6 +3931,7 @@ export async function updateArtworkAdmin(id: string, data: {
     if (data.description !== undefined) update.description = data.description?.trim() || null;
     if (data.category_id !== undefined) update.category_id = data.category_id || null;
     if (data.image_url !== undefined) update.image_url = data.image_url;
+    if (data.thumbnail_url !== undefined) update.thumbnail_url = data.thumbnail_url;
     if (data.medium !== undefined) update.medium = data.medium?.trim() || null;
     if (data.dimensions !== undefined) update.dimensions = data.dimensions?.trim() || null;
     if (data.year !== undefined) update.year = data.year ?? null;
@@ -3959,6 +3974,12 @@ export async function updateArtworkAdmin(id: string, data: {
 export async function deleteArtworkAdmin(id: string, imageUrl?: string | null): Promise<{ success: true } | { success: false; error: string }> {
     const { supabase } = await requireAdmin();
 
+    const { data: existingArtwork } = await supabase
+        .from("artworks")
+        .select("image_url, thumbnail_url")
+        .eq("id", id)
+        .maybeSingle();
+
     const { error } = await supabase.from("artworks").delete().eq("id", id);
 
     if (error) {
@@ -3982,9 +4003,11 @@ export async function deleteArtworkAdmin(id: string, imageUrl?: string | null): 
         return { success: false, error: error.message };
     }
 
-    if (imageUrl && imageUrl.includes("/artworks/")) {
-        const path = imageUrl.split("/artworks/").pop();
-        if (path) await supabase.storage.from("artworks").remove([path]);
+    const storagePaths = [existingArtwork?.image_url || imageUrl, existingArtwork?.thumbnail_url]
+        .map((url) => url?.split("/artworks/").pop())
+        .filter((path): path is string => Boolean(path));
+    if (storagePaths.length) {
+        await supabase.storage.from("artworks").remove(storagePaths);
     }
 
     revalidatePath("/dashboard/artworks");

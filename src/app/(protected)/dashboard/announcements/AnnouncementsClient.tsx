@@ -10,7 +10,7 @@ import {
     MousePointerClick, ArrowDown, Globe2, ImagePlus, Clapperboard,
 } from "lucide-react";
 import {
-    createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementActive, createAnnouncementMediaUploadUrl,
+    createAnnouncement, updateAnnouncement, deleteAnnouncement, toggleAnnouncementActive, uploadAnnouncementMediaFile,
 } from "@/app/actions/announcements";
 import {
     ANNOUNCEMENT_MEDIA_ACCEPT,
@@ -26,7 +26,6 @@ import {
     type TriggerType,
     validateAnnouncementMediaFile,
 } from "@/lib/announcement-types";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 // ─── Template Definitions ───────────────────────────────
 
@@ -567,7 +566,6 @@ export function AnnouncementsClient({
     engagement: AnnouncementEngagementSnapshot;
 }) {
     const router = useRouter();
-    const supabase = useMemo(() => getSupabaseBrowserClient(), []);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -664,40 +662,14 @@ export function AnnouncementsClient({
             return { success: false as const, error: validation.error };
         }
 
-        const signedUpload = await createAnnouncementMediaUploadUrl({
-            fileName: file.name,
-            fileType: file.type,
-            fileSize: file.size,
-            purpose,
-        });
-        if (!signedUpload.success) {
-            return signedUpload;
-        }
-
-        const { error } = await supabase.storage.from("smart-store").uploadToSignedUrl(
-            signedUpload.path,
-            signedUpload.token,
-            file,
-            {
-                cacheControl: "3600",
-                contentType: file.type,
-            }
-        );
-
-        if (error) {
-            console.error("[uploadAnnouncementFile]", error);
-            return { success: false as const, error: error.message || "فشل رفع الملف" };
-        }
-
-        return {
-            success: true as const,
-            url: signedUpload.url,
-            mediaType: signedUpload.mediaType,
-        };
+        const formData = new FormData();
+        formData.append("file", file);
+        return uploadAnnouncementMediaFile(formData, purpose);
     };
 
     const handleMediaSelected = async (file: File | null) => {
         if (!file) return;
+        if (uploadingMedia) return;
         setUploadingMedia(true);
         try {
             const result = await uploadAnnouncementFile(file, "media");
@@ -723,6 +695,7 @@ export function AnnouncementsClient({
 
     const handlePosterSelected = async (file: File | null) => {
         if (!file || form.mediaType !== "video") return;
+        if (uploadingPoster) return;
         setUploadingPoster(true);
         try {
             const result = await uploadAnnouncementFile(file, "poster");

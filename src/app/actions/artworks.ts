@@ -8,6 +8,7 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { unstable_noStore as noStore, revalidatePath } from "next/cache";
 import { resolveStudioAccess } from "@/lib/studio-access";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 
 const MAX_ARTWORK_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_ARTWORK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -141,7 +142,11 @@ export async function getArtistArtworks(page = 1) {
 
 // ─── UPLOAD ARTWORK IMAGE (Server-side, bypasses RLS) ────────
 
-export async function uploadArtworkImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+type ArtworkImageUploadResult =
+    | { success: true; url: string; thumbnailUrl: string | null }
+    | { success: false; error: string };
+
+export async function uploadArtworkImage(formData: FormData): Promise<ArtworkImageUploadResult> {
     const access = await resolveStudioAccess();
     if (!access.ok) return { success: false, error: access.error };
 
@@ -156,28 +161,33 @@ export async function uploadArtworkImage(formData: FormData): Promise<{ success:
         return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF فقط)" };
     }
 
-    const adminSupabase = getSupabaseAdminClient();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `uploads/${access.profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await adminSupabase.storage
-        .from("artworks")
-        .upload(fileName, buffer, {
-            cacheControl: "3600",
-            upsert: false,
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getSupabaseAdminClient(),
+            bucket: "artworks",
+            folder: `uploads/${access.profile.id}`,
+            file,
+            originalFileName: file.name,
             contentType: file.type,
+            profile: "display",
+            createThumbnail: true,
+            returnPublicUrl: true,
         });
 
-    if (error) {
+        return {
+            success: true,
+            url: uploaded.publicUrl ?? "",
+            thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+        };
+    } catch (error) {
         console.error("[uploadArtworkImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = adminSupabase.storage.from("artworks").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 // ─── WRITE ACTIONS ───────────────────────────────────────────
@@ -187,6 +197,7 @@ export async function createArtwork(formData: {
     description?: string;
     category_id?: string;
     image_url: string;
+    thumbnail_url?: string | null;
     tags?: string[];
     price?: number | null;
     medium?: string;
@@ -207,6 +218,7 @@ export async function createArtwork(formData: {
         description: formData.description?.trim() || null,
         category_id: formData.category_id || null,
         image_url: formData.image_url,
+        thumbnail_url: formData.thumbnail_url ?? null,
         status: "pending",
         tags: formData.tags || [],
         currency: "SAR",
@@ -236,7 +248,7 @@ export async function deleteArtwork(id: string, imageUrl: string) {
     // Verify ownership
     const { data: artwork } = await adminSupabase
         .from("artworks")
-        .select("artist_id")
+        .select("artist_id, image_url, thumbnail_url")
         .eq("id", id)
         .single();
 
@@ -251,9 +263,11 @@ export async function deleteArtwork(id: string, imageUrl: string) {
     if (error) return { success: false, error: error.message };
 
     // Delete from Storage
-    const path = imageUrl.split("/artworks/").pop();
-    if (path) {
-        await adminSupabase.storage.from("artworks").remove([path]);
+    const paths = [artwork.image_url || imageUrl, artwork.thumbnail_url]
+        .map((url) => url?.split("/artworks/").pop())
+        .filter((path): path is string => Boolean(path));
+    if (paths.length) {
+        await adminSupabase.storage.from("artworks").remove(paths);
     }
 
     revalidatePath("/studio/artworks");

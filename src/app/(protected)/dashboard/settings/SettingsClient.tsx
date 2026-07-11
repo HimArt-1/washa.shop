@@ -631,8 +631,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
             <SettingsCard title="Washa AI — حدود التوليد" icon={Sparkles}>
                 <p className="text-theme-subtle text-sm mb-4">
-                    يتحكم في عدد توليدات WASHA AI اليومية. الزائر يدخل الاستوديو بدون حساب، ثم يُطلب منه التسجيل عند إكمال الشراء.
-                    لا تنطبق هذه الحدود على فرق الإدارة والصيانة.
+                    يتحكم في عدد توليدات WASHA AI اليومية لكل فئة. التوليد يتطلب تسجيل الدخول، ولا تنطبق هذه الحدود على فرق الإدارة والصيانة.
                 </p>
 
                 {/* ── مفاتيح التحكّم الرئيسية ── */}
@@ -651,11 +650,6 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
                     <div className="pt-2 mt-2 border-t border-theme-subtle/30">
                         <div className="text-xs font-bold text-theme-subtle mb-1.5">إتاحة التوليد للفئات (تعطيلها = منع نهائي)</div>
-                        <Toggle
-                            label="الزوّار"
-                            checked={washaAi.controls.audience.guest}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, guest: v } } })}
-                        />
                         <Toggle
                             label="المشتركون"
                             checked={washaAi.controls.audience.subscriber}
@@ -689,16 +683,6 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Field
-                        label="حد الزائر اليومي"
-                        value={String(washaAi.dtf_guest_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_guest_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
-                    />
                     <Field
                         label="حد المشترك اليومي"
                         value={String(washaAi.dtf_daily_quota_limit)}

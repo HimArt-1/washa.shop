@@ -145,11 +145,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     const supabase2 = getSupabaseServerClient();
     const [byArtist, byType] = await Promise.all([
         product.artist_id
-            ? supabase2.from("products").select("id, title, price, image_url, type, rating")
+            ? supabase2.from("products").select("id, title, price, image_url, thumbnail_url, type, rating")
                 .eq("artist_id", product.artist_id).neq("id", id).eq("in_stock", true)
                 .order("rating", { ascending: false }).limit(2)
             : Promise.resolve({ data: [] }),
-        supabase2.from("products").select("id, title, price, image_url, type, rating")
+        supabase2.from("products").select("id, title, price, image_url, thumbnail_url, type, rating")
             .eq("type", product.type).neq("id", id).eq("in_stock", true)
             .order("rating", { ascending: false }).limit(6),
     ]);
@@ -315,7 +315,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 >
                                     <div className="aspect-square relative">
                                         <Image
-                                            src={sanitizeCommerceImageUrl(item.image_url)}
+                                            src={sanitizeCommerceImageUrl(item.thumbnail_url || item.image_url)}
                                             alt={item.title}
                                             fill
                                             className="object-cover group-hover:scale-105 transition-transform duration-700"

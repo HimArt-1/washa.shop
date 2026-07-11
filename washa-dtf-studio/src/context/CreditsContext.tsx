@@ -94,9 +94,32 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       const detail = (event as CustomEvent).detail as {
         reason?: 'exhausted' | 'blocked';
         canPurchase?: boolean;
+        paidBalance?: number;
       };
       const reason: CreditsNoticeReason = detail?.reason === 'blocked' ? 'blocked' : 'exhausted';
-      setStatus((prev) => (prev ? { ...prev, freeRemaining: 0, paidBalance: 0 } : prev));
+      const canPurchase = detail?.canPurchase === true;
+      const paidBalance = typeof detail?.paidBalance === 'number' ? detail.paidBalance : 0;
+
+      // نعتمد قيمة الـ403 الموثوقة (canPurchase) حتى لو لم يكتمل نداء /quota-status بعد.
+      setStatus((prev) => {
+        const base: QuotaStatus = prev ?? {
+          unlimited: false,
+          blocked: false,
+          freeLimit: 0,
+          freeUsed: 0,
+          freeRemaining: 0,
+          paidBalance: 0,
+          canPurchase: false,
+        };
+        return {
+          ...base,
+          blocked: reason === 'blocked',
+          freeRemaining: 0,
+          paidBalance,
+          canPurchase,
+        };
+      });
+
       // نفتح النافذة اللطيفة دائماً — سواء لعرض الشراء أو رسالة «تتجدد غداً».
       setNoticeReason(reason);
       setPurchaseOpen(true);

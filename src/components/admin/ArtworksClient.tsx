@@ -194,10 +194,11 @@ export function ArtworksClient({
                         <div className="relative aspect-[4/3] overflow-hidden bg-theme-faint">
                             {artwork.image_url ? (
                                 <Image
-                                    src={artwork.image_url}
+                                    src={artwork.thumbnail_url || artwork.image_url}
                                     alt={artwork.title}
                                     fill
                                     className="object-cover group-hover:scale-105 transition-transform duration-700"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 320px"
                                 />
                             ) : (
                                 <div className="flex items-center justify-center h-full">

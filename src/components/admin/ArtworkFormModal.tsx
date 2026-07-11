@@ -42,6 +42,7 @@ interface ArtworkFormModalProps {
         description?: string | null;
         category_id?: string | null;
         image_url: string;
+        thumbnail_url?: string | null;
         medium?: string | null;
         dimensions?: string | null;
         year?: number | null;
@@ -151,6 +152,7 @@ export function ArtworkFormModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
         setError("");
         if (!form.title.trim()) {
             setError("العنوان مطلوب");
@@ -169,12 +171,14 @@ export function ArtworkFormModal({
 
         try {
             let imageUrl = artwork?.image_url;
+            let thumbnailUrl = artwork?.thumbnail_url ?? null;
             if (file) {
                 const fd = new FormData();
                 fd.append("file", file);
                 const upload = await uploadArtworkImageAdmin(fd);
                 if (!upload.success) throw new Error(upload.error);
                 imageUrl = upload.url;
+                thumbnailUrl = upload.thumbnailUrl;
             }
 
             if (!imageUrl) throw new Error("صورة مطلوبة");
@@ -185,6 +189,7 @@ export function ArtworkFormModal({
                 description: form.description.trim() || null,
                 category_id: form.category_id || null,
                 image_url: imageUrl,
+                thumbnail_url: thumbnailUrl,
                 medium: form.medium.trim() || null,
                 dimensions: form.dimensions.trim() || null,
                 year: form.year ? parseInt(form.year, 10) : null,

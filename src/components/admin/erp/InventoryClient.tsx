@@ -319,15 +319,16 @@ export default function InventoryClient({
                                 const soldCount = item.sold_count || 0;
                                 const totalFlow = item.quantity + soldCount;
                                 const turnover = totalFlow > 0 ? ((soldCount / totalFlow) * 100).toFixed(0) : "0";
+                                const productImage = item.sku?.product?.thumbnail_url || item.sku?.product?.image_url;
 
                                 return (
                                     <tr key={item.id} className={`hover:bg-theme-faint transition-colors ${item.quantity === 0 ? "bg-red-500/[0.02]" : item.quantity <= 5 ? "bg-amber-500/[0.02]" : ""}`}>
                                         {/* Product */}
                                         <td className="px-4 py-3.5">
                                             <div className="flex items-center gap-3">
-                                                {item.sku?.product?.image_url && (
+                                                {productImage && (
                                                     <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
-                                                        <Image src={item.sku.product.image_url} alt="" fill className="object-cover" />
+                                                        <Image src={productImage} alt="" fill className="object-cover" />
                                                     </div>
                                                 )}
                                                 <div className="min-w-0">

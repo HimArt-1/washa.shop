@@ -22,6 +22,7 @@ export interface TopProduct {
     id: string;
     title: string;
     image_url: string;
+    thumbnail_url?: string | null;
     total_sold: number;
     revenue: number;
 }
@@ -35,6 +36,7 @@ export interface LowStockItem {
         id: string;
         title: string;
         image_url: string;
+        thumbnail_url?: string | null;
     };
     warehouse: {
         name: string;
@@ -152,7 +154,7 @@ async function fetchTopSellingProductsWithClient(supabase: AnalyticsSupabase, li
             total_price,
             product_id,
             orders!inner ( status, payment_status ),
-            products ( id, title, image_url )
+            products ( id, title, image_url, thumbnail_url )
         `)
         .not("orders.status", "eq", "cancelled")
         .not("orders.status", "eq", "refunded")
@@ -172,6 +174,7 @@ async function fetchTopSellingProductsWithClient(supabase: AnalyticsSupabase, li
                 id: item.products.id,
                 title: item.products.title,
                 image_url: item.products.image_url,
+                thumbnail_url: item.products.thumbnail_url ?? null,
                 total_sold: 0,
                 revenue: 0,
             });
@@ -198,7 +201,7 @@ async function fetchLowStockAlertsWithClient(supabase: AnalyticsSupabase, thresh
                 id,
                 sku,
                 size,
-                product:products ( id, title, image_url )
+                product:products ( id, title, image_url, thumbnail_url )
             )
         `)
         .lte("quantity", threshold)
@@ -216,6 +219,7 @@ async function fetchLowStockAlertsWithClient(supabase: AnalyticsSupabase, thresh
             id: inv.sku.product.id,
             title: inv.sku.product.title,
             image_url: inv.sku.product.image_url,
+            thumbnail_url: inv.sku.product.thumbnail_url ?? null,
         },
         warehouse: {
             name: inv.warehouse?.name || "مستودع غير معروف",

@@ -1099,6 +1099,7 @@ function StepGarment({ garments, selected, onSelect, onNext }: {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {garments.map((g) => {
                         const isSelected = selected?.id === g.id;
+                        const cardImage = g.thumbnail_url || g.image_url;
                         return (
                             <motion.button
                                 key={g.id}
@@ -1110,8 +1111,8 @@ function StepGarment({ garments, selected, onSelect, onNext }: {
                   ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
-                                {g.image_url ? (
-                                    <img src={g.image_url} alt={g.name} className="w-full aspect-[3/4] object-cover rounded-xl bg-theme-subtle" />
+                                {cardImage ? (
+                                    <img src={cardImage} alt={g.name} className="w-full aspect-[3/4] object-cover rounded-xl bg-theme-subtle" />
                                 ) : (
                                     <div className="w-full aspect-[3/4] rounded-xl bg-theme-subtle flex items-center justify-center">
                                         <Shirt className="w-12 h-12 text-theme-faint" />
@@ -1166,6 +1167,7 @@ function StepColor({ colors, loading, selected, onSelect, onBack, onNext }: {
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
                     {colors.map((c) => {
                         const isSelected = selected?.id === c.id;
+                        const cardImage = c.thumbnail_url || c.image_url;
                         return (
                             <motion.button
                                 key={c.id}
@@ -1177,8 +1179,8 @@ function StepColor({ colors, loading, selected, onSelect, onBack, onNext }: {
                   ${isSelected ? "border-gold bg-gold/5" : "border-theme-subtle hover:border-white/20"}
                 `}
                             >
-                                {c.image_url ? (
-                                    <img src={c.image_url} alt={c.name} className="w-full aspect-square object-cover rounded-xl" />
+                                {cardImage ? (
+                                    <img src={cardImage} alt={c.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div
                                         className="w-16 h-16 rounded-2xl border-2 border-theme-soft shadow-inner"
@@ -1412,6 +1414,7 @@ function StepMethod({
                                         if (mockup?.mockup_model_url) galleryImages.push({ url: mockup.mockup_model_url, label: "موديل" });
                                         // Fallback to studio item images if no mockup
                                         if (galleryImages.length === 0) {
+                                            if (item.thumbnail_url) galleryImages.push({ url: item.thumbnail_url, label: "معاينة" });
                                             if (item.model_image_url) galleryImages.push({ url: item.model_image_url, label: "موديل" });
                                             if (item.mockup_image_url) galleryImages.push({ url: item.mockup_image_url, label: "موكب" });
                                             if (item.main_image_url) galleryImages.push({ url: item.main_image_url, label: "التصميم" });
@@ -1610,6 +1613,7 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
                     {items.map((entry) => {
                         const s = entry.item;
                         const isSelected = selected?.id === s.id;
+                        const cardImage = s.thumbnail_url || s.image_url;
                         return (
                             <motion.button
                                 key={s.id}
@@ -1621,8 +1625,8 @@ function StepStyle({ items, selected, onSelect, onBack, onNext }: {
                   ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
-                                {s.image_url ? (
-                                    <img src={s.image_url} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
+                                {cardImage ? (
+                                    <img src={cardImage} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center">
                                         <Sparkles className="w-10 h-10 text-theme-faint" />
@@ -1708,6 +1712,7 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
                     {items.map((entry) => {
                         const a = entry.item;
                         const isSelected = selected?.id === a.id;
+                        const cardImage = a.thumbnail_url || a.image_url;
                         return (
                             <motion.button
                                 key={a.id}
@@ -1719,8 +1724,8 @@ function StepArtStyle({ items, selected, onSelect, onBack, onNext }: {
                   ${isSelected ? "border-gold shadow-lg shadow-gold/20" : "border-theme-soft hover:border-white/20"}
                 `}
                             >
-                                {a.image_url ? (
-                                    <img src={a.image_url} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
+                                {cardImage ? (
+                                    <img src={cardImage} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
                                 ) : (
                                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-white/[0.04] to-white/[0.01] flex items-center justify-center">
                                         <Paintbrush className="w-10 h-10 text-theme-faint" />
@@ -2000,8 +2005,8 @@ function StepPrintPlacement({ garment, positions, selectedPosition, selectedSize
                                         }`}
                                 >
                                     <div className="h-full overflow-hidden rounded-xl border border-theme-soft bg-theme-subtle">
-                                        {pos.image_url ? (
-                                            <img src={pos.image_url} alt={pos.name} className="h-full min-h-[106px] w-full object-cover" />
+                                        {(pos.thumbnail_url || pos.image_url) ? (
+                                            <img src={pos.thumbnail_url || pos.image_url || ""} alt={pos.name} className="h-full min-h-[106px] w-full object-cover" />
                                         ) : (
                                             <div className="flex h-full min-h-[106px] items-center justify-center">
                                                 <MapPin className={`h-8 w-8 ${isActive ? "text-gold" : "text-theme-faint"}`} />

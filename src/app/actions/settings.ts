@@ -12,6 +12,7 @@ import {
 } from "@/lib/operational-rules";
 import { getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import type { WashaAiControls, WashaAiCreditPackage } from "@/types/database";
 
 const SITE_SETTINGS_CACHE_TAG = "site-settings";
@@ -1094,6 +1095,8 @@ export async function updateProduct(id: string, updates: Partial<{
     type: string;
     price: number;
     image_url: string;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     images: string[];
     artist_id: string;
     in_stock: boolean;
@@ -1407,6 +1410,8 @@ export async function createProductAdmin(data: {
     type: string;
     price: number;
     image_url: string;
+    thumbnail_url?: string | null;
+    thumbnail_path?: string | null;
     images?: string[];
     sizes?: string[];
     colors?: string[];
@@ -1444,6 +1449,8 @@ export async function createProductAdmin(data: {
             type: data.type,
             price: Number(data.price),
             image_url: data.image_url.trim(),
+            thumbnail_url: data.thumbnail_url?.trim() || null,
+            thumbnail_path: data.thumbnail_path?.trim() || null,
             images: data.images && data.images.length > 0 ? data.images : [],
             sizes: data.sizes && data.sizes.length > 0 ? data.sizes : null,
             in_stock: (data.in_stock ?? true) && productStockQuantity > 0,
@@ -1539,7 +1546,13 @@ export async function getAdminArtistsForSelect() {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-export async function uploadProductImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+export async function uploadProductImage(formData: FormData): Promise<{
+    success: true;
+    url: string;
+    path: string;
+    thumbnailUrl: string | null;
+    thumbnailPath: string | null;
+} | { success: false; error: string }> {
     await requireAdmin();
     const file = formData.get("file") as File | null;
     if (!file || !(file instanceof File)) {
@@ -1552,28 +1565,35 @@ export async function uploadProductImage(formData: FormData): Promise<{ success:
         return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF فقط)" };
     }
 
-    const supabase = getAdminSupabase();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await supabase.storage
-        .from("products")
-        .upload(fileName, buffer, {
-            cacheControl: "3600",
-            upsert: false,
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getAdminSupabase(),
+            bucket: "products",
+            folder: "products",
+            file,
+            originalFileName: file.name,
             contentType: file.type,
+            profile: "product",
+            createThumbnail: true,
+            returnPublicUrl: true,
         });
 
-    if (error) {
+        return {
+            success: true,
+            url: uploaded.publicUrl ?? "",
+            path: uploaded.path,
+            thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+            thumbnailPath: uploaded.thumbnailPath ?? null,
+        };
+    } catch (error) {
         console.error("[uploadProductImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1704,24 +1724,29 @@ export async function uploadExclusiveDesignImage(formData: FormData): Promise<{ 
         return { success: false, error: "نوع الملف غير مدعوم" };
     }
 
-    const supabase = getAdminSupabase();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `exclusive-designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getAdminSupabase(),
+            bucket: "products",
+            folder: "exclusive-designs",
+            file,
+            originalFileName: file.name,
+            contentType: file.type,
+            profile: "display",
+            createThumbnail: true,
+            returnPublicUrl: true,
+        });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await supabase.storage
-        .from("products")
-        .upload(fileName, buffer, { cacheControl: "3600", upsert: false, contentType: file.type });
-
-    if (error) {
+        return { success: true, url: uploaded.publicUrl ?? "" };
+    } catch (error) {
         console.error("[uploadExclusiveDesignImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 export async function deleteSubscriber(id: string) {

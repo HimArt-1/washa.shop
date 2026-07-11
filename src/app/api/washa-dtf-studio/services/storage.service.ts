@@ -1,4 +1,6 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { uploadOptimizedImage, StorageUploadError as OptimizedStorageUploadError } from "@/lib/storage/upload-optimized-image";
+import { splitStoragePath } from "@/lib/storage/upload-file";
 import { logDiagnosticWarning } from "../utils/api-error";
 
 export interface StorageServiceOptions {
@@ -18,12 +20,12 @@ export class StorageService {
         const bucket = options?.bucket ?? "smart-store";
         const maxBytes = options?.maxBytes ?? 6 * 1024 * 1024;
 
-        const match = dataUrl.match(/^data:(image\/[a-z+]+);base64,(.+)$/);
+        const match = dataUrl.match(/^data:(image\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i);
         if (!match) {
             return { error: "صيغة الصورة غير صحيحة", status: 400 };
         }
 
-        const mimeType = match[1];
+        const mimeType = match[1].toLowerCase();
         const base64 = match[2];
         const buffer = Buffer.from(base64, "base64");
 
@@ -32,19 +34,27 @@ export class StorageService {
             return { error: `حجم الصورة كبير جدًا (الحد الأقصى المسموح ${maxMb} ميجابايت)`, status: 400 };
         }
 
-        const sb = getSupabaseAdminClient();
-        const { data, error } = await sb.storage.from(bucket).upload(path, buffer, {
-            contentType: mimeType,
-            cacheControl: "31536000",
-            upsert: false,
-        });
+        try {
+            const { folder, fileName } = splitStoragePath(path);
+            const uploaded = await uploadOptimizedImage({
+                supabase: getSupabaseAdminClient(),
+                bucket,
+                folder,
+                file: buffer,
+                originalFileName: fileName,
+                contentType: mimeType,
+                profile: path.includes("mockup") || path.includes("design-orders") ? "mockup" : "display",
+                createThumbnail: false,
+                returnPublicUrl: true,
+            });
 
-        if (error || !data?.path) {
+            return { url: uploaded.publicUrl ?? "" };
+        } catch (error) {
             logDiagnosticWarning("StorageService.uploadBase64Image", error);
-            return { error: error?.message || "تعذر رفع الصورة السحابية", status: 503 };
+            const message = error instanceof OptimizedStorageUploadError
+                ? error.causeMessage || error.message
+                : "تعذر رفع الصورة السحابية";
+            return { error: message, status: 503 };
         }
-
-        const { data: urlData } = sb.storage.from(bucket).getPublicUrl(data.path);
-        return { url: urlData.publicUrl };
     }
 }

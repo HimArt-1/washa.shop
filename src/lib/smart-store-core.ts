@@ -23,6 +23,9 @@ import {
     normalizeColorTokens,
     normalizeDesignMetadata,
 } from "@/lib/design-intelligence";
+import { isImageContentType, type ImageOptimizationProfile } from "@/lib/storage/image-optimization";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
+import { splitStoragePath, uploadFile } from "@/lib/storage/upload-file";
 
 export type SmartStoreSb = SupabaseClient<Database>;
 
@@ -720,24 +723,59 @@ export function getPricingSnapshotForOrder(
 export async function uploadSmartStoreBinary(
     sb: SmartStoreSb,
     file: File,
-    path: string
+    path: string,
+    options?: {
+        profile?: ImageOptimizationProfile;
+        createThumbnail?: boolean;
+    }
 ) {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const { data, error } = await sb.storage
-        .from("smart-store")
-        .upload(path, buffer, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: file.type,
+    const { folder, fileName } = splitStoragePath(path);
+
+    try {
+        if (isImageContentType(file.type)) {
+            const uploaded = await uploadOptimizedImage({
+                supabase: sb,
+                bucket: "smart-store",
+                folder,
+                file,
+                originalFileName: fileName || file.name,
+                contentType: file.type,
+                profile: options?.profile ?? "display",
+                createThumbnail: options?.createThumbnail ?? false,
+                returnPublicUrl: true,
+            });
+
+            return {
+                url: uploaded.publicUrl ?? "",
+                path: uploaded.path,
+                thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+                thumbnailPath: uploaded.thumbnailPath ?? null,
+                optimizedSize: uploaded.optimizedSize,
+                originalSize: uploaded.originalSize,
+                compressionRatio: uploaded.compressionRatio,
+            } as const;
+        }
+
+        const uploaded = await uploadFile({
+            supabase: sb,
+            bucket: "smart-store",
+            folder,
+            file,
+            originalFileName: fileName || file.name,
+            contentType: file.type || "application/octet-stream",
+            returnPublicUrl: true,
         });
 
-    if (error || !data?.path) {
+        return { url: uploaded.publicUrl ?? "", path: uploaded.path } as const;
+    } catch (error) {
         console.error("[uploadSmartStoreBinary]", error);
-        return { error: error?.message || "فشل رفع الملف" } as const;
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الملف";
+        return { error: message } as const;
     }
-
-    const { data: publicUrlData } = sb.storage.from("smart-store").getPublicUrl(data.path);
-    return { url: publicUrlData.publicUrl } as const;
 }
 
 export function normalizeStyleRow(row: CustomDesignStyle): CustomDesignStyle {

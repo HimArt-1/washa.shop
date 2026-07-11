@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureProfileWithStatus } from "@/lib/ensure-profile";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { uploadOptimizedImage } from "@/lib/storage/upload-optimized-image";
 import type { Database } from "@/types/database";
 
 const HISTORY_LIMIT = 12;
@@ -198,24 +199,26 @@ async function uploadThumbnail(
         return { thumbnailPath: null as string | null, thumbnailUrl: null as string | null };
     }
 
-    const extension = parsed.mimeType === "image/png" ? "png" : parsed.mimeType === "image/webp" ? "webp" : "jpg";
-    const thumbnailPath = `${THUMBNAIL_PREFIX}/${profileId}/${itemId}.${extension}`;
-    const { data, error } = await supabase.storage.from(THUMBNAIL_BUCKET).upload(thumbnailPath, parsed.buffer, {
-        upsert: true,
-        contentType: parsed.mimeType,
-        cacheControl: "31536000",
-    });
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase,
+            bucket: THUMBNAIL_BUCKET,
+            folder: `${THUMBNAIL_PREFIX}/${profileId}`,
+            file: parsed.buffer,
+            originalFileName: `${itemId}.png`,
+            contentType: parsed.mimeType,
+            profile: "thumbnail",
+            createThumbnail: false,
+            returnPublicUrl: true,
+        });
 
-    if (error) {
+        return {
+            thumbnailPath: uploaded.path,
+            thumbnailUrl: uploaded.publicUrl ?? null,
+        };
+    } catch {
         throw new Error("تعذر رفع صورة المعاينة");
     }
-
-    const { data: publicData } = supabase.storage.from(THUMBNAIL_BUCKET).getPublicUrl(data.path);
-
-    return {
-        thumbnailPath: data.path,
-        thumbnailUrl: publicData.publicUrl,
-    };
 }
 
 async function removeThumbnailPaths(

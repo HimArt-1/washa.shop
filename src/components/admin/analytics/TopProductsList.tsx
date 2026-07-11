@@ -36,7 +36,9 @@ export default function TopProductsList({ products }: TopProductsListProps) {
             </div>
 
             <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-                {products.map((product, index) => (
+                {products.map((product, index) => {
+                    const productImage = product.thumbnail_url || product.image_url;
+                    return (
                     <div
                         key={product.id}
                         className="group flex flex-col gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-4 transition-colors hover:border-gold/30 hover:bg-theme-subtle sm:flex-row sm:items-center sm:justify-between"
@@ -46,9 +48,9 @@ export default function TopProductsList({ products }: TopProductsListProps) {
                                 {index + 1}
                             </span>
                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_74%,transparent)]">
-                                {product.image_url ? (
+                                {productImage ? (
                                     <Image 
-                                        src={product.image_url} 
+                                        src={productImage}
                                         alt={product.title}
                                         fill
                                         className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -70,7 +72,8 @@ export default function TopProductsList({ products }: TopProductsListProps) {
                             </span>
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         </motion.div>
     );

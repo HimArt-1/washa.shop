@@ -258,7 +258,7 @@ export default async function ArtworkDetailPage({ params }: { params: Promise<{ 
                                         style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'var(--wusha-surface)' }}>
                                         <div className="aspect-square relative overflow-hidden">
                                             <Image
-                                                src={item.image_url}
+                                                src={item.thumbnail_url || item.image_url}
                                                 alt={item.title}
                                                 fill
                                                 className="object-cover group-hover:scale-105 transition-transform duration-700"

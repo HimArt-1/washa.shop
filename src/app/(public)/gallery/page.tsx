@@ -137,7 +137,7 @@ export default async function GalleryPage({
                                         {/* Image */}
                                         <div className="aspect-square relative overflow-hidden">
                                             <Image
-                                                src={artwork.image_url}
+                                                src={artwork.thumbnail_url || artwork.image_url}
                                                 alt={artwork.title}
                                                 fill
                                                 className="object-cover transition-transform duration-700 group-hover:scale-110"

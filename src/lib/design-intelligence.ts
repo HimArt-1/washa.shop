@@ -38,6 +38,8 @@ export type DesignPreset = {
     story: string | null;
     badge: string | null;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     garment_id: string | null;
     design_method: DesignMethod | null;
     style_id: string | null;

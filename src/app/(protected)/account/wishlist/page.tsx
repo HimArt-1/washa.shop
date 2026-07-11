@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, ArrowLeft, ShoppingBag, Sparkles } from "lucide-react";
 import { WishlistActions } from "./WishlistActions";
+import { sanitizeCommerceImageUrl } from "@/lib/commerce-safety";
 
 export const metadata = {
     title: "محفوظاتي — وشّى",
@@ -66,14 +67,16 @@ export default async function WishlistPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {products.map((product: any) => (
+                        {products.map((product: any) => {
+                            const productCardImage = sanitizeCommerceImageUrl(product.thumbnail_url || product.image_url);
+                            return (
                             <div
                                 key={product.id}
                                 className="theme-surface-panel group overflow-hidden rounded-[1.75rem] p-3 transition-all hover:border-gold/20 sm:p-4"
                             >
                                 <Link href={`/products/${product.id}`} className="relative block aspect-[4/3] overflow-hidden rounded-[1.25rem]">
                                     <Image
-                                        src={product.image_url}
+                                        src={productCardImage}
                                         alt={product.title}
                                         fill
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -103,7 +106,8 @@ export default async function WishlistPage() {
                                     <WishlistActions productId={product.id} />
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>

@@ -404,6 +404,8 @@ export async function upsertGarment(formData: FormData) {
         name: formData.get("name"),
         slug: formData.get("slug"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         ai_reference_front_url: formData.get("ai_reference_front_url"),
         ai_reference_back_url: formData.get("ai_reference_back_url"),
         ai_reference_mode: formData.get("ai_reference_mode"),
@@ -421,6 +423,8 @@ export async function upsertGarment(formData: FormData) {
         name: data.name,
         slug: data.slug,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         ai_reference_front_url: data.ai_reference_front_url ?? null,
         ai_reference_back_url: data.ai_reference_back_url ?? null,
         ai_reference_mode: data.ai_reference_mode,
@@ -452,6 +456,8 @@ export async function upsertColor(formData: FormData) {
         name: formData.get("name"),
         hex_code: formData.get("hex_code"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         print_position: formData.get("print_position"),
         price_large: formData.get("price_large"),
         price_small: formData.get("price_small"),
@@ -469,6 +475,8 @@ export async function upsertColor(formData: FormData) {
         name: data.name,
         hex_code: data.hex_code,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         sort_order: data.sort_order,
         is_active: data.is_active,
     };
@@ -549,6 +557,8 @@ export async function upsertStyle(formData: FormData) {
         name: formData.get("name"),
         description: formData.get("description"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
@@ -564,6 +574,8 @@ export async function upsertStyle(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
@@ -587,6 +599,8 @@ export async function upsertArtStyle(formData: FormData) {
         name: formData.get("name"),
         description: formData.get("description"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
@@ -602,6 +616,8 @@ export async function upsertArtStyle(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
@@ -625,6 +641,8 @@ export async function upsertPosition(formData: FormData) {
         name: formData.get("name"),
         description: formData.get("description"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         print_position: formData.get("print_position"),
         print_size: formData.get("print_size"),
         price: formData.get("price"),
@@ -643,6 +661,8 @@ export async function upsertPosition(formData: FormData) {
         name: data.name,
         description: data.description ?? null,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         print_position: data.print_position ?? null,
         print_size: data.print_size ?? null,
         price: data.price,
@@ -669,6 +689,8 @@ export async function upsertColorPackage(formData: FormData) {
         name: formData.get("name"),
         colors: formData.get("colors"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         catalog_scope: formData.get("catalog_scope"),
         sort_order: formData.get("sort_order"),
         is_active: formData.get("is_active"),
@@ -684,6 +706,8 @@ export async function upsertColorPackage(formData: FormData) {
         name: data.name,
         colors: data.colors,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         catalog_scope: data.catalog_scope,
         metadata: buildDesignMetadataFromInput(data),
         sort_order: data.sort_order,
@@ -806,6 +830,8 @@ export async function upsertStudioItem(formData: FormData) {
         description: formData.get("description"),
         price: formData.get("price"),
         main_image_url: formData.get("main_image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         mockup_image_url: formData.get("mockup_image_url"),
         model_image_url: formData.get("model_image_url"),
         sort_order: formData.get("sort_order"),
@@ -823,6 +849,8 @@ export async function upsertStudioItem(formData: FormData) {
         description: data.description ?? null,
         price: data.price,
         main_image_url: data.main_image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         mockup_image_url: data.mockup_image_url ?? null,
         model_image_url: data.model_image_url ?? null,
         metadata: buildDesignMetadataFromInput(data),
@@ -850,6 +878,8 @@ export async function upsertDesignPreset(formData: FormData) {
         story: formData.get("story"),
         badge: formData.get("badge"),
         image_url: formData.get("image_url"),
+        thumbnail_url: formData.get("thumbnail_url"),
+        thumbnail_path: formData.get("thumbnail_path"),
         garment_id: formData.get("garment_id"),
         design_method: formData.get("design_method"),
         style_id: formData.get("style_id"),
@@ -876,6 +906,8 @@ export async function upsertDesignPreset(formData: FormData) {
         story: data.story ?? null,
         badge: data.badge ?? null,
         image_url: data.image_url ?? null,
+        thumbnail_url: data.thumbnail_url ?? null,
+        thumbnail_path: data.thumbnail_path ?? null,
         garment_id: data.garment_id ?? null,
         design_method: data.design_method ?? null,
         style_id: data.style_id ?? null,
@@ -1516,7 +1548,10 @@ export async function uploadDesignResultFile(id: string, field: DesignResultFiel
     }
 
     const objectPath = getDesignResultPath(id, file);
-    const upload = await uploadSmartStoreBinary(sb, file, objectPath);
+    const upload = await uploadSmartStoreBinary(sb, file, objectPath, {
+        profile: field === "result_mockup_url" ? "mockup" : "display",
+        createThumbnail: false,
+    });
     if ("error" in upload) {
         return { error: upload.error };
     }
@@ -1559,12 +1594,22 @@ export async function uploadSmartStoreImage(folder: string, formData: FormData) 
         return { success: false as const, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
     }
 
-    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath(folder, file));
+    const profile = folder.includes("mockup") || folder === "studio-items" ? "mockup" : "display";
+    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath(folder, file), {
+        profile,
+        createThumbnail: true,
+    });
     if ("error" in upload) {
         return { success: false as const, error: upload.error };
     }
 
-    return { success: true as const, url: upload.url };
+    return {
+        success: true as const,
+        url: upload.url,
+        path: upload.path,
+        thumbnailUrl: "thumbnailUrl" in upload ? upload.thumbnailUrl : null,
+        thumbnailPath: "thumbnailPath" in upload ? upload.thumbnailPath : null,
+    };
 }
 
 export async function uploadDesignReferenceImage(formData: FormData) {
@@ -1587,7 +1632,10 @@ export async function uploadDesignReferenceImage(formData: FormData) {
         return { success: false as const, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF)" };
     }
 
-    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath("design-references", file));
+    const upload = await uploadSmartStoreBinary(sb, file, buildSmartStoreImagePath("design-references", file), {
+        profile: "display",
+        createThumbnail: false,
+    });
     if ("error" in upload) {
         return { success: false as const, error: upload.error };
     }

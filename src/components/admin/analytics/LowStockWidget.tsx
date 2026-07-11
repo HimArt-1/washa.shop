@@ -51,6 +51,7 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
             <div className="relative z-10 flex-1 flex flex-col gap-3 overflow-y-auto pr-2 custom-scrollbar">
                 {items.map((item) => {
                     const isCritical = item.quantity <= 2;
+                    const productImage = item.product.thumbnail_url || item.product.image_url;
                     
                     return (
                         <div
@@ -62,9 +63,9 @@ export default function LowStockWidget({ items }: LowStockWidgetProps) {
                             }`}
                         >
                             <div className="relative mt-1 h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-theme-subtle bg-[color:color-mix(in_srgb,var(--wusha-surface)_74%,transparent)]">
-                                {item.product.image_url ? (
+                                {productImage ? (
                                     <Image 
-                                        src={item.product.image_url} 
+                                        src={productImage}
                                         alt={item.product.title}
                                         fill
                                         className="object-cover"

@@ -40,7 +40,7 @@ export async function getSalesRecords(method?: SalesMethodType) {
     const supabase = getAdminSb();
     let query = supabase
         .from("sales_records")
-        .select("*, sku:product_skus(sku, size, color_code, product:products(title, image_url, price))")
+        .select("*, sku:product_skus(sku, size, color_code, product:products(title, image_url, thumbnail_url, price))")
         .order("created_at", { ascending: false });
 
     if (profile?.role === "booth") {

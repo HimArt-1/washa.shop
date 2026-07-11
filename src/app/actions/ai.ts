@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { runGeminiImagenDataUrl, runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import {
     FLUX_IMG2IMG,
     FLUX_SCHNELL,
@@ -308,25 +309,32 @@ async function uploadImageToStorage(
     base64Data: string
 ): Promise<string | null> {
     const bucket = "designs";
-    const match = base64Data.match(/^data:image\/(\w+);base64,(.+)$/);
+    const match = base64Data.match(/^data:(image\/([a-zA-Z0-9.+-]+));base64,([A-Za-z0-9+/=]+)$/);
     if (!match) return null;
 
-    const ext = match[1] === "jpeg" ? "jpg" : match[1];
-    const buffer = Buffer.from(match[2], "base64");
-    const path = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const mimeType = match[1].toLowerCase();
+    const ext = match[2].toLowerCase();
+    if (!ALLOWED_BASE64_IMAGE_MIME_TYPES.has(ext)) return null;
 
-    const { data, error } = await supabase.storage.from(bucket).upload(path, buffer, {
-        contentType: `image/${ext}`,
-        upsert: false,
-    });
+    const buffer = Buffer.from(match[3], "base64");
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase,
+            bucket,
+            folder: "temp",
+            file: buffer,
+            originalFileName: `generated.${ext === "jpeg" ? "jpg" : ext}`,
+            contentType: mimeType,
+            profile: "display",
+            createThumbnail: false,
+            returnPublicUrl: true,
+        });
 
-    if (error) {
-        console.error("Upload design image error:", error.message);
+        return uploaded.publicUrl ?? null;
+    } catch (error) {
+        console.error("Upload design image error:", error instanceof StorageUploadError ? error.causeMessage || error.message : error);
         return null;
     }
-
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
-    return urlData?.publicUrl ?? null;
 }
 
 export async function generateImage(prompt: string, style: string): Promise<GenerateImageResult> {

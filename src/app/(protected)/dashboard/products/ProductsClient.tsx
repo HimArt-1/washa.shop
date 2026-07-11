@@ -1163,6 +1163,7 @@ export function ProductsClient({
                             {filteredProducts.length > 0 ? filteredProducts.map((product: any) => {
                                 const productSkus = getProductSkus(product.id);
                                 const firstSku = productSkus[0];
+                                const productListImage = product.thumbnail_url || product.image_url;
                                 return (
                                     <tr key={product.id} className={`border-b border-theme-faint transition-colors ${selectedIds.has(product.id) ? "bg-gold/[0.03]" : "hover:bg-theme-faint"}`}>
                                         {/* Checkbox */}
@@ -1177,8 +1178,8 @@ export function ProductsClient({
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded-lg bg-theme-subtle overflow-hidden shrink-0 relative">
-                                                    {product.image_url && (
-                                                        <Image src={product.image_url} alt="" fill className="object-cover" sizes="40px" />
+                                                    {productListImage && (
+                                                        <Image src={productListImage} alt="" fill className="object-cover" sizes="40px" />
                                                     )}
                                                 </div>
                                                 <div className="min-w-0">
@@ -1453,6 +1454,7 @@ function BarcodeModal({ product, skus, onClose, onCreated, onError }: {
     const [customSku, setCustomSku] = useState("");
     const [initialQuantity, setInitialQuantity] = useState("");
     const sku = skus.find((item) => item.id === selectedSkuId) || skus[0] || null;
+    const productListImage = product.thumbnail_url || product.image_url;
 
     const syncProductSizesFromSkus = async (rows: ProductSkuRow[]) => {
         const activeSizes = uniqueSizes(
@@ -1632,9 +1634,9 @@ function BarcodeModal({ product, skus, onClose, onCreated, onError }: {
 
                 {/* Product Info */}
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-theme-subtle border border-theme-subtle">
-                    {product.image_url && (
+                    {productListImage && (
                         <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 relative">
-                            <Image src={product.image_url} alt="" fill className="object-cover" sizes="48px" />
+                            <Image src={productListImage} alt="" fill className="object-cover" sizes="48px" />
                         </div>
                     )}
                     <div>
@@ -1818,6 +1820,8 @@ function ProductFormModal({
     const colorImageInputRef = useRef<HTMLInputElement>(null);
     const [loading, setLoading] = useState(false);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [thumbnailUrl, setThumbnailUrl] = useState("");
+    const [thumbnailPath, setThumbnailPath] = useState("");
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [pendingColorImage, setPendingColorImage] = useState<string | null>(null);
     const [colorImageFiles, setColorImageFiles] = useState<Record<string, File>>({});
@@ -1874,6 +1878,8 @@ function ProductFormModal({
                 sizes: activeSkuSizes.join(", "),
                 colors: activeSkuColors.join(", "),
             });
+            setThumbnailUrl(product.thumbnail_url || "");
+            setThumbnailPath(product.thumbnail_path || "");
             setColorImageUrls(activeSkuColorImages);
             setExistingImages(product.images || []);
         } else if (mode === "add") {
@@ -1882,6 +1888,8 @@ function ProductFormModal({
                 price: "", image_url: "", in_stock: true, stock_quantity: "",
                 store_name: "WASHA.SHOP", sizes: "", colors: "",
             });
+            setThumbnailUrl("");
+            setThumbnailPath("");
             setColorImageUrls({});
             setExistingImages([]);
         }
@@ -1973,9 +1981,12 @@ function ProductFormModal({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (loading) return;
         const title = form.title.trim();
         const price = parseFloat(form.price);
         let imageUrl = form.image_url.trim();
+        let nextThumbnailUrl = thumbnailUrl.trim();
+        let nextThumbnailPath = thumbnailPath.trim();
 
         if (!title) { onError("الاسم مطلوب"); return; }
         if (mode === "add" && !form.artist_id) { onError("اختر الوشّاي"); return; }
@@ -1994,6 +2005,8 @@ function ProductFormModal({
             const uploadResult = await uploadProductImage(fd);
             if (!uploadResult.success) { setLoading(false); onError(uploadResult.error || "فشل رفع الصورة"); return; }
             imageUrl = uploadResult.url;
+            nextThumbnailUrl = uploadResult.thumbnailUrl ?? "";
+            nextThumbnailPath = uploadResult.thumbnailPath ?? "";
         }
 
         if (mode === "add" && !imageUrl) { setLoading(false); onError("ارفع صورة أو أدخل رابط الصورة"); return; }
@@ -2027,7 +2040,8 @@ function ProductFormModal({
         if (mode === "add") {
             const result = await createProductAdmin({
                 artist_id: form.artist_id, title, description: form.description || undefined,
-                type: form.type, price, image_url: imageUrl, images: allImages, in_stock: form.in_stock,
+                type: form.type, price, image_url: imageUrl, thumbnail_url: nextThumbnailUrl || null,
+                thumbnail_path: nextThumbnailPath || null, images: allImages, in_stock: form.in_stock,
                 stock_quantity: variantInventoryTotal,
                 store_name: form.store_name.trim() || undefined, sizes: parsedSizes, colors: parsedColors, colorImages, variantQuantities: variantInventoryQuantities,
             });
@@ -2036,7 +2050,10 @@ function ProductFormModal({
         } else {
             const result = await updateProduct(product.id, {
                 title, description: form.description || null, type: form.type, price,
-                image_url: imageUrl || product.image_url, images: allImages, artist_id: form.artist_id,
+                image_url: imageUrl || product.image_url,
+                thumbnail_url: nextThumbnailUrl || null,
+                thumbnail_path: nextThumbnailPath || null,
+                images: allImages, artist_id: form.artist_id,
                 in_stock: form.in_stock,
                 sizes: parsedSizes && parsedSizes.length > 0 ? parsedSizes : null,
                 store_name: form.store_name.trim() || null,
@@ -2188,7 +2205,11 @@ function ProductFormModal({
                             </div>
                             <p className="text-[10px] text-theme-subtle">أو أدخل رابط الصورة:</p>
                             <input type="url" value={form.image_url}
-                                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                                onChange={(e) => {
+                                    setForm((f) => ({ ...f, image_url: e.target.value }));
+                                    setThumbnailUrl("");
+                                    setThumbnailPath("");
+                                }}
                                 placeholder="https://..."
                                 className="input-dark w-full rounded-xl px-4 py-2.5 text-sm" dir="ltr" />
                         </div>

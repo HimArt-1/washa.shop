@@ -5,6 +5,7 @@ import { profileSchema, type ProfileFormData } from "@/lib/validations";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 import { STORAGE_BUCKETS } from "@/lib/constants";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 
 const MAX_AVATAR_SIZE = 10 * 1024 * 1024; // 10MB — phone camera photos can be large, they get compressed client-side
 const ALLOWED_AVATAR_TYPES = [
@@ -154,9 +155,6 @@ export async function uploadProfileImage(
         return { success: false, error: `نوع الملف غير مدعوم. الأنواع المدعومة: JPG, PNG, WebP, GIF, HEIC, BMP, TIFF, SVG, AVIF` };
     }
 
-    const adminSupabase = getSupabaseAdminClient();
-    const fileName = `${userId}/${type}-${Date.now()}.${ext || "jpg"}`;
-
     // Determine the correct contentType for upload
     const extToMime: Record<string, string> = {
         jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp",
@@ -166,24 +164,29 @@ export async function uploadProfileImage(
     };
     const contentType = fileType || extToMime[ext] || "application/octet-stream";
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await adminSupabase.storage
-        .from(STORAGE_BUCKETS.AVATARS)
-        .upload(fileName, buffer, {
-            cacheControl: "3600",
-            upsert: true,
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getSupabaseAdminClient(),
+            bucket: STORAGE_BUCKETS.AVATARS,
+            folder: userId,
+            file,
+            originalFileName: `${type}-${file.name}`,
             contentType,
+            profile: type === "avatar" ? "thumbnail" : "display",
+            createThumbnail: type === "cover",
+            returnPublicUrl: true,
         });
 
-    if (error) {
+        return { success: true, url: uploaded.publicUrl ?? "" };
+    } catch (error) {
         console.error("[uploadProfileImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = adminSupabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 import { type Profile } from "@/types/database";

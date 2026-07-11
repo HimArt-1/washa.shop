@@ -245,6 +245,7 @@ export function AdditionalDesignMiniWizard({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {styles.map((s) => {
                                 const isSelected = selectedStyle?.id === s.id;
+                                const cardImage = s.thumbnail_url || s.image_url;
                                 return (
                                     <motion.button
                                         key={s.id}
@@ -253,8 +254,8 @@ export function AdditionalDesignMiniWizard({
                                         onClick={() => setSelectedStyle(s)}
                                         className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-theme-soft hover:border-white/20"}`}
                                     >
-                                        {s.image_url ? (
-                                            <img src={s.image_url} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
+                                        {cardImage ? (
+                                            <img src={cardImage} alt={s.name} className="w-full aspect-square object-cover rounded-xl" />
                                         ) : (
                                             <div className="w-full aspect-square rounded-xl bg-theme-subtle flex items-center justify-center">
                                                 <Sparkles className="w-8 h-8 text-theme-faint" />
@@ -290,6 +291,7 @@ export function AdditionalDesignMiniWizard({
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {artStyles.map((a) => {
                                 const isSelected = selectedArtStyle?.id === a.id;
+                                const cardImage = a.thumbnail_url || a.image_url;
                                 return (
                                     <motion.button
                                         key={a.id}
@@ -298,8 +300,8 @@ export function AdditionalDesignMiniWizard({
                                         onClick={() => setSelectedArtStyle(a)}
                                         className={`relative rounded-2xl overflow-hidden border-2 p-1 ${isSelected ? "border-gold" : "border-theme-soft hover:border-white/20"}`}
                                     >
-                                        {a.image_url ? (
-                                            <img src={a.image_url} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
+                                        {cardImage ? (
+                                            <img src={cardImage} alt={a.name} className="w-full aspect-square object-cover rounded-xl" />
                                         ) : (
                                             <div className="w-full aspect-square rounded-xl bg-theme-subtle flex items-center justify-center">
                                                 <Paintbrush className="w-8 h-8 text-theme-faint" />

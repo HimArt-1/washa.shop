@@ -133,6 +133,8 @@ export type Product = {
     original_price: number | null; // before discount
     currency: string;
     image_url: string;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     images: string[];             // additional images
     sizes: ApparelSize[] | null;  // for apparel
     in_stock: boolean;
@@ -341,6 +343,8 @@ export type CustomDesignGarment = {
     name: string;
     slug: string;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     ai_reference_front_url: string | null;
     ai_reference_back_url: string | null;
     ai_reference_mode: "match_reference" | "prompt_realistic";
@@ -364,6 +368,8 @@ export type CustomDesignColor = {
     name: string;
     hex_code: string;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     sort_order: number;
     is_active: boolean;
     created_at: string;
@@ -392,6 +398,8 @@ export type CustomDesignStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
@@ -405,6 +413,8 @@ export type CustomDesignArtStyle = {
     name: string;
     description: string | null;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
@@ -418,6 +428,8 @@ export type CustomDesignColorPackage = {
     name: string;
     colors: DesignColorToken[];
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     catalog_scope: CreativeCatalogScope;
     metadata: DesignIntelligenceMetadata;
     sort_order: number;
@@ -432,6 +444,8 @@ export type CustomDesignStudioItem = {
     description: string | null;
     price: number;
     main_image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     mockup_image_url: string | null;
     model_image_url: string | null;
     metadata: DesignIntelligenceMetadata;
@@ -446,6 +460,8 @@ export type CustomDesignPosition = {
     name: string;
     description: string | null;
     image_url: string | null;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     print_position: PrintPosition | null;
     print_size: PrintSize | null;
     price: number;
@@ -610,7 +626,14 @@ export type Database = {
             };
             products: {
                 Row: Product;
-                Insert: Omit<Product, "id" | "created_at" | "updated_at" | "reviews_count" | "is_featured" | "in_stock" | "rating" | "images"> & { is_featured?: boolean; in_stock?: boolean; rating?: number; images?: string[] };
+                Insert: Omit<Product, "id" | "created_at" | "updated_at" | "reviews_count" | "is_featured" | "in_stock" | "rating" | "images" | "thumbnail_url" | "thumbnail_path"> & {
+                    is_featured?: boolean;
+                    in_stock?: boolean;
+                    rating?: number;
+                    images?: string[];
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<Product, "id" | "created_at" | "artist_id">>;
                 Relationships: [
                     {
@@ -728,12 +751,14 @@ export type Database = {
             };
             custom_design_garments: {
                 Row: CustomDesignGarment;
-                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "ai_reference_front_url" | "ai_reference_back_url" | "ai_reference_mode" | "price_chest_large" | "price_chest_small" | "price_back_large" | "price_back_small" | "price_shoulder_large" | "price_shoulder_small"> & {
+                Insert: Omit<CustomDesignGarment, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "ai_reference_front_url" | "ai_reference_back_url" | "ai_reference_mode" | "price_chest_large" | "price_chest_small" | "price_back_large" | "price_back_small" | "price_shoulder_large" | "price_shoulder_small" | "thumbnail_url" | "thumbnail_path"> & {
                     sort_order?: number;
                     is_active?: boolean;
                     ai_reference_front_url?: string | null;
                     ai_reference_back_url?: string | null;
                     ai_reference_mode?: "match_reference" | "prompt_realistic";
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
                     price_chest_large?: number;
                     price_chest_small?: number;
                     price_back_large?: number;
@@ -746,7 +771,12 @@ export type Database = {
             };
             custom_design_colors: {
                 Row: CustomDesignColor;
-                Insert: Omit<CustomDesignColor, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignColor, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "thumbnail_url" | "thumbnail_path"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignColor, "id" | "created_at">>;
                 Relationships: any[];
             };
@@ -765,19 +795,29 @@ export type Database = {
             };
             custom_design_styles: {
                 Row: CustomDesignStyle;
-                Insert: Omit<CustomDesignStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "thumbnail_url" | "thumbnail_path"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignStyle, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_art_styles: {
                 Row: CustomDesignArtStyle;
-                Insert: Omit<CustomDesignArtStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignArtStyle, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "thumbnail_url" | "thumbnail_path"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignArtStyle, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_positions: {
                 Row: CustomDesignPosition;
-                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "print_position" | "print_size" | "price" | "price_large" | "price_small"> & {
+                Insert: Omit<CustomDesignPosition, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "print_position" | "print_size" | "price" | "price_large" | "price_small" | "thumbnail_url" | "thumbnail_path"> & {
                     sort_order?: number;
                     is_active?: boolean;
                     print_position?: PrintPosition | null;
@@ -785,19 +825,32 @@ export type Database = {
                     price?: number;
                     price_large?: number;
                     price_small?: number;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
                 };
                 Update: Partial<Omit<CustomDesignPosition, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_color_packages: {
                 Row: CustomDesignColorPackage;
-                Insert: Omit<CustomDesignColorPackage, "id" | "created_at" | "updated_at" | "sort_order" | "is_active"> & { sort_order?: number; is_active?: boolean };
+                Insert: Omit<CustomDesignColorPackage, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "thumbnail_url" | "thumbnail_path"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignColorPackage, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_studio_items: {
                 Row: CustomDesignStudioItem;
-                Insert: Omit<CustomDesignStudioItem, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "price"> & { sort_order?: number; is_active?: boolean; price?: number };
+                Insert: Omit<CustomDesignStudioItem, "id" | "created_at" | "updated_at" | "sort_order" | "is_active" | "price" | "thumbnail_url" | "thumbnail_path"> & {
+                    sort_order?: number;
+                    is_active?: boolean;
+                    price?: number;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
+                };
                 Update: Partial<Omit<CustomDesignStudioItem, "id" | "created_at">>;
                 Relationships: any[];
             };
@@ -809,10 +862,12 @@ export type Database = {
             };
             custom_design_presets: {
                 Row: CustomDesignPreset;
-                Insert: Omit<CustomDesignPreset, "id" | "created_at" | "updated_at" | "sort_order" | "is_featured" | "is_active"> & {
+                Insert: Omit<CustomDesignPreset, "id" | "created_at" | "updated_at" | "sort_order" | "is_featured" | "is_active" | "thumbnail_url" | "thumbnail_path"> & {
                     sort_order?: number;
                     is_featured?: boolean;
                     is_active?: boolean;
+                    thumbnail_url?: string | null;
+                    thumbnail_path?: string | null;
                 };
                 Update: Partial<Omit<CustomDesignPreset, "id" | "created_at">>;
                 Relationships: any[];

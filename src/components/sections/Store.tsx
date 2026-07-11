@@ -117,11 +117,12 @@ export function Store({
                   const originalPrice = Number(product.original_price || 0);
                   const hasDiscount = originalPrice > price && price > 0;
                   const rating = Number(product.rating || 0);
+                  const productImage = product.thumbnail_url || product.image_url;
                   return (
                     <Link key={product.id} href={`/products/${product.id}`} className="home-store-card group">
                       <div className="home-store-card-media relative">
                         <Image
-                          src={sanitizeCommerceImageUrl(product.image_url)}
+                          src={sanitizeCommerceImageUrl(productImage)}
                           alt={product.title}
                           fill
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
