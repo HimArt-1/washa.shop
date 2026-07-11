@@ -151,6 +151,7 @@ export default function StepPalette() {
     updateState,
     prevStep,
     handleGenerate,
+    isGenerating,
     configLoading,
     configError,
     paletteOptions,
@@ -397,8 +398,8 @@ export default function StepPalette() {
       <StepNavigationBar
         onBack={prevStep}
         onNext={() => void handleGenerate()}
-        nextLabel="توليد التصميم"
-        nextDisabled={!canGenerate || configLoading}
+        nextLabel={isGenerating ? 'جاري تجهيز التوليد...' : 'توليد التصميم'}
+        nextDisabled={!canGenerate || configLoading || isGenerating}
         hint={generateHint}
       />
     </>

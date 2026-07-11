@@ -3,7 +3,7 @@
 //  تعرض الحزم، تبدأ الدفع عبر Paylink، ثم تحوّل المستخدم.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, Sparkles, Loader2, Check, Clock, Ban } from 'lucide-react';
 import { useCredits } from '../context/CreditsContext';
@@ -27,6 +27,10 @@ export default function CreditPurchaseModal() {
   const isBlocked = noticeReason === 'blocked';
   const showPurchase = canPurchase && !isBlocked;
 
+  const dismiss = useCallback(() => {
+    if (!submitting) closePurchase();
+  }, [closePurchase, submitting]);
+
   useEffect(() => {
     if (!purchaseOpen || !showPurchase) return;
     const controller = new AbortController();
@@ -44,11 +48,11 @@ export default function CreditPurchaseModal() {
   useEffect(() => {
     if (!purchaseOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !submitting) closePurchase();
+      if (e.key === 'Escape') dismiss();
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [purchaseOpen, submitting, closePurchase]);
+  }, [purchaseOpen, dismiss]);
 
   async function handleCheckout() {
     if (!selectedId || submitting) return;
@@ -74,7 +78,9 @@ export default function CreditPurchaseModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={() => !submitting && closePurchase()}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) dismiss();
+          }}
           dir="rtl"
         >
           <motion.div
@@ -112,7 +118,13 @@ export default function CreditPurchaseModal() {
                 </div>
               </div>
               <button
-                onClick={() => !submitting && closePurchase()}
+                type="button"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dismiss();
+                }}
                 className="rounded-lg p-1.5 text-washa-text-faint transition-colors hover:bg-washa-border/30 hover:text-washa-text"
                 aria-label="إغلاق"
               >
@@ -156,6 +168,7 @@ export default function CreditPurchaseModal() {
                     const active = pkg.id === selectedId;
                     return (
                       <button
+                        type="button"
                         key={pkg.id}
                         onClick={() => setSelectedId(pkg.id)}
                         className={cn(
@@ -224,6 +237,7 @@ export default function CreditPurchaseModal() {
               {showPurchase ? (
                 <>
                   <button
+                    type="button"
                     onClick={handleCheckout}
                     disabled={!selected || submitting}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-washa-gold py-3.5 font-bold text-washa-bg transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
@@ -245,7 +259,8 @@ export default function CreditPurchaseModal() {
                 </>
               ) : (
                 <button
-                  onClick={closePurchase}
+                  type="button"
+                  onClick={dismiss}
                   className="w-full rounded-2xl border border-washa-border/50 py-3.5 font-bold text-washa-text transition-colors hover:bg-washa-border/20"
                 >
                   حسنًا

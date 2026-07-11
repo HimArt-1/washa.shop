@@ -17,6 +17,7 @@ import {
   type DtfStudioSizeOption,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
+import { useCredits } from './CreditsContext';
 import { fetchDtfStudioConfig } from '../services/configService';
 import { makeEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 import {
@@ -256,6 +257,7 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 }
 
 export function DesignProvider({ children }: { children: React.ReactNode }) {
+  const { requestGenerationAccess } = useCredits();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(EMPTY_STATE);
   const [config, setConfig] = useState<DtfStudioConfig | null>(null);
@@ -531,6 +533,20 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     setIsGenerating(true);
     setError(null);
+
+    const creditAccess = await requestGenerationAccess();
+    if (creditAccess.allowed === false) {
+      if (creditAccess.reason === 'unavailable') {
+        const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
+        setError(message);
+        showToast(message, 'error');
+      } else {
+        setError(null);
+      }
+      setIsGenerating(false);
+      return;
+    }
+
     setMockupImage(null);
     setExtractedImage(null);
     setStep(6);
@@ -592,6 +608,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       // نُخفي الرسالة الخام (بما فيها trace id) ولا نضع حالة خطأ في الواجهة.
       const errorCode = (generationError as { data?: { code?: string } })?.data?.code;
       if (errorCode === 'quota_exceeded' || errorCode === 'audience_disabled') {
+        setStep(5);
+        setMockupImage(null);
+        setExtractedImage(null);
         setError(null);
         return;
       }
@@ -637,6 +656,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
   }, [
     requireAuthenticatedAction,
+    requestGenerationAccess,
     selectedGarment,
     selectedPalette,
     selectedSize?.stockStatus,

@@ -22,6 +22,9 @@ import { QUOTA_CHANGED_EVENT, QUOTA_EXCEEDED_EVENT } from '../services/geminiSer
 
 /** سبب فتح النافذة: نفاد الحصة، أو الفئة ممنوعة، أو فتح يدوي للشراء. */
 export type CreditsNoticeReason = 'exhausted' | 'blocked' | null;
+export type GenerationCreditCheckResult =
+  | { allowed: true }
+  | { allowed: false; reason: CreditsNoticeReason | 'unavailable' };
 
 interface CreditsContextValue {
   status: QuotaStatus | null;
@@ -30,6 +33,7 @@ interface CreditsContextValue {
   /** غير null عندما تُفتح النافذة بسبب نفاد/منع (لعرض لافتة مناسبة). */
   noticeReason: CreditsNoticeReason;
   refresh: () => void;
+  requestGenerationAccess: () => Promise<GenerationCreditCheckResult>;
   openPurchase: () => void;
   closePurchase: () => void;
 }
@@ -62,6 +66,35 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   const closePurchase = useCallback(() => {
     setPurchaseOpen(false);
     setNoticeReason(null);
+  }, []);
+
+  const requestGenerationAccess = useCallback(async (): Promise<GenerationCreditCheckResult> => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+
+    const next = await fetchQuotaStatus(controller.signal);
+    if (controller.signal.aborted) {
+      return { allowed: false, reason: 'unavailable' };
+    }
+
+    if (next) setStatus(next);
+    setLoading(false);
+
+    if (!next) {
+      return { allowed: false, reason: 'unavailable' };
+    }
+
+    if (next.unlimited || (!next.blocked && next.freeRemaining + next.paidBalance > 0)) {
+      return { allowed: true };
+    }
+
+    const reason: CreditsNoticeReason = next.blocked ? 'blocked' : 'exhausted';
+    setNoticeReason(reason);
+    setPurchaseOpen(true);
+
+    return { allowed: false, reason };
   }, []);
 
   useEffect(() => {
@@ -134,8 +167,17 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<CreditsContextValue>(
-    () => ({ status, loading, purchaseOpen, noticeReason, refresh, openPurchase, closePurchase }),
-    [status, loading, purchaseOpen, noticeReason, refresh, openPurchase, closePurchase]
+    () => ({
+      status,
+      loading,
+      purchaseOpen,
+      noticeReason,
+      refresh,
+      requestGenerationAccess,
+      openPurchase,
+      closePurchase,
+    }),
+    [status, loading, purchaseOpen, noticeReason, refresh, requestGenerationAccess, openPurchase, closePurchase]
   );
 
   return <CreditsContext.Provider value={value}>{children}</CreditsContext.Provider>;
