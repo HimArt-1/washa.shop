@@ -32,6 +32,61 @@ const BUILD_VERSION =
   process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
   "dev";
 const THEME_INIT_SCRIPT = `(function(){try{var key='wusha-theme';var stored=localStorage.getItem(key);var theme=(stored==='light'||stored==='dark')?stored:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',theme);document.documentElement.style.colorScheme=theme;}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.style.colorScheme='light';}})();`;
+const HYDRATION_ATTRIBUTE_GUARD_SCRIPT = String.raw`(function(){
+  var ATTRIBUTES = ["fdprocessedid"];
+  var selector = ATTRIBUTES.map(function(name) { return "[" + name + "]"; }).join(",");
+
+  function cleanElement(element) {
+    if (!element || element.nodeType !== 1) {
+      return;
+    }
+    for (var i = 0; i < ATTRIBUTES.length; i += 1) {
+      if (element.hasAttribute && element.hasAttribute(ATTRIBUTES[i])) {
+        element.removeAttribute(ATTRIBUTES[i]);
+      }
+    }
+  }
+
+  function cleanTree(root) {
+    cleanElement(root);
+    if (!root || !root.querySelectorAll || !selector) {
+      return;
+    }
+    var nodes = root.querySelectorAll(selector);
+    for (var i = 0; i < nodes.length; i += 1) {
+      cleanElement(nodes[i]);
+    }
+  }
+
+  cleanTree(document.documentElement);
+
+  var observer = new MutationObserver(function(mutations) {
+    for (var i = 0; i < mutations.length; i += 1) {
+      var mutation = mutations[i];
+      if (mutation.type === "attributes") {
+        cleanElement(mutation.target);
+        continue;
+      }
+      for (var j = 0; j < mutation.addedNodes.length; j += 1) {
+        cleanTree(mutation.addedNodes[j]);
+      }
+    }
+  });
+
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ATTRIBUTES,
+    childList: true,
+    subtree: true
+  });
+
+  window.addEventListener("load", function() {
+    cleanTree(document.documentElement);
+    window.setTimeout(function() {
+      observer.disconnect();
+    }, 3000);
+  }, { once: true });
+})();`;
 /* لا نخفي body أثناء pending — كان يسبب شاشة بيضاء طويلة وبطء ملاحظ حتى يكتمل فحص CSS */
 const CSS_GUARD_STYLE = `
 html[data-css-ready="fallback"] body {
@@ -430,6 +485,11 @@ export default async function RootLayout({
           <script
             dangerouslySetInnerHTML={{
               __html: THEME_INIT_SCRIPT,
+            }}
+          />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: HYDRATION_ATTRIBUTE_GUARD_SCRIPT,
             }}
           />
           <script
