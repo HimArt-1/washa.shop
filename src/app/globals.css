@@ -2073,6 +2073,15 @@ body.reamaze-active [data-reamaze-widget] {
   color: var(--auth-gold) !important;
 }
 
+.auth-clerk-shell .cl-footer,
+.auth-clerk-shell .cl-footerAction,
+.auth-clerk-shell .cl-footerPages,
+.auth-clerk-shell .cl-footerPagesLink,
+.auth-clerk-shell [class*="footerAction"],
+.auth-clerk-shell [class*="footerPages"] {
+  display: none !important;
+}
+
 .auth-clerk-shell .auth-clerk-divider,
 .auth-clerk-shell .cl-dividerLine {
   background-color: rgba(206, 174, 127, 0.16) !important;
@@ -2098,24 +2107,36 @@ body.reamaze-active [data-reamaze-widget] {
 .auth-clerk-shell [class*="otpCodeField"] {
   direction: ltr !important;
   unicode-bidi: isolate !important;
+  gap: 0.55rem !important;
+  justify-content: center !important;
 }
 
 .auth-clerk-shell .auth-clerk-otp,
 .auth-clerk-shell .cl-otpCodeFieldInput,
-.auth-clerk-shell input[autocomplete="one-time-code"],
-.auth-clerk-shell input[name*="code" i],
-.auth-clerk-shell input[aria-label*="code" i],
-.auth-clerk-shell input[aria-label*="رمز" i],
 .auth-clerk-shell input[inputmode="numeric"][maxlength="1"] {
+  width: clamp(2.5rem, 11vw, 3rem) !important;
+  height: 3.25rem !important;
+  padding: 0 !important;
   direction: ltr !important;
   unicode-bidi: isolate !important;
   text-align: center !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
   font-variant-numeric: tabular-nums;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
   color: var(--auth-text) !important;
-  background-color: rgba(255, 241, 220, 0.095) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 241, 220, 0.13), rgba(255, 241, 220, 0.065)) !important;
   border-color: rgba(206, 174, 127, 0.38) !important;
-  caret-color: var(--auth-gold) !important;
+  border-radius: 0.95rem !important;
+  caret-color: transparent !important;
+  outline: none !important;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 246, 232, 0.08),
     0 0 0 1px rgba(206, 174, 127, 0.08) !important;
@@ -2123,18 +2144,23 @@ body.reamaze-active [data-reamaze-widget] {
 
 .auth-clerk-shell .auth-clerk-otp:focus,
 .auth-clerk-shell .cl-otpCodeFieldInput:focus,
-.auth-clerk-shell input[autocomplete="one-time-code"]:focus,
-.auth-clerk-shell input[name*="code" i]:focus,
-.auth-clerk-shell input[aria-label*="code" i]:focus,
-.auth-clerk-shell input[aria-label*="رمز" i]:focus,
 .auth-clerk-shell input[inputmode="numeric"][maxlength="1"]:focus {
   color: #fff8eb !important;
-  background-color: rgba(255, 241, 220, 0.13) !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(241, 211, 164, 0.28), rgba(255, 241, 220, 0.1) 54%, rgba(255, 241, 220, 0.07)) !important;
   border-color: rgba(241, 211, 164, 0.78) !important;
+  transform: translateY(-1px);
   box-shadow:
-    0 0 0 1px rgba(241, 211, 164, 0.3),
+    0 0 0 1px rgba(241, 211, 164, 0.34),
+    0 0 0 4px rgba(206, 174, 127, 0.1),
     0 0 26px rgba(206, 174, 127, 0.18),
     inset 0 1px 0 rgba(255, 246, 232, 0.1) !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp::selection,
+.auth-clerk-shell .cl-otpCodeFieldInput::selection,
+.auth-clerk-shell input[inputmode="numeric"][maxlength="1"]::selection {
+  background: transparent !important;
 }
 
 /* ═══════════════════════════════════════════════════════════

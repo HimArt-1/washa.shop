@@ -44,8 +44,8 @@ export function AuthPageShell({
                                 src="/header-logo-identity.png"
                                 toneColor="rgb(206, 174, 127)"
                             />
-                            <span className="font-mono text-[10px] text-[#ceae7f]/70">
-                                WASHA://AI.GATE
+                            <span className="text-xs font-semibold text-[#ceae7f]/78">
+                                وشّى
                             </span>
                             <ArrowLeft className="h-4 w-4 transition-transform duration-300 group-hover:-translate-x-1" />
                         </Link>
@@ -58,20 +58,20 @@ export function AuthPageShell({
                                 {title}
                             </h1>
                             <p className="mt-6 max-w-[34rem] text-base leading-8 text-[#e7ceb0]/62">
-                                دخول آمن إلى حساب وشّى بنفس لغة الاستوديو الذكي.
+                                تابع تصاميمك وطلباتك من مكان واحد.
                             </p>
                         </div>
                     </div>
 
                     <div className="grid max-w-[560px] grid-cols-3 gap-px border border-[#ceae7f]/14 bg-[#ceae7f]/14">
-                        {["IDENTITY", "STUDIO", "STORE"].map((label) => (
+                        {["الحساب", "التصاميم", "السلة"].map((label) => (
                             <div key={label} className="bg-[#090705]/88 px-4 py-4">
-                                <p className="font-mono text-[10px] text-[#ceae7f]/44">
+                                <p className="text-xs font-medium text-[#ceae7f]/58">
                                     {label}
                                 </p>
                                 <div className="mt-3 flex items-center gap-2 text-xs text-[#fff1dc]/68">
                                     <ShieldCheck className="h-3.5 w-3.5 text-[#ceae7f]" />
-                                    <span>READY</span>
+                                    <span>جاهز</span>
                                 </div>
                             </div>
                         ))}
@@ -92,8 +92,8 @@ export function AuthPageShell({
 
                     <div className="mb-5 flex items-center justify-between gap-4">
                         <div>
-                            <p className="font-mono text-[10px] text-[#ceae7f]/52">
-                                SECURE ACCESS
+                            <p className="text-xs font-semibold text-[#ceae7f]/60">
+                                حساب وشّى
                             </p>
                             <h2 className="mt-2 text-2xl font-bold text-[#fff1dc]">{title}</h2>
                         </div>

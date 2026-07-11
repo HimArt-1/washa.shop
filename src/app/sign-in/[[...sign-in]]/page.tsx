@@ -11,7 +11,7 @@ export default async function SignInPage({ searchParams }: Props) {
     return (
         <AuthPageShell
             title="تسجيل الدخول"
-            eyebrow="WASHA AUTH"
+            eyebrow="حساب وشّى"
             switchPrompt="ليس لديك حساب؟"
             switchHref={signUpUrl}
             switchLabel="إنشاء حساب"

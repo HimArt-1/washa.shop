@@ -371,7 +371,12 @@ const clerkAppearance = {
     card: "auth-clerk-card shadow-2xl border border-gold/10",
     formButtonPrimary:
       "auth-clerk-primary bg-gradient-to-r from-gold to-gold-light hover:shadow-[0_0_30px_var(--neon-gold)] font-bold transition-all duration-500",
-    footerActionLink: "text-gold hover:text-gold-light",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    footerPages: "hidden",
+    footerPagesLink: "hidden",
     headerTitle: "font-bold",
     headerSubtitle: "",
     formFieldLabel: "auth-clerk-label",
