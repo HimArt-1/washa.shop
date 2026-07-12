@@ -20,7 +20,8 @@ describe("Tap payment security", () => {
     it("accepts only a captured matching SAR charge", () => {
         expect(assertTapChargeMatchesOrder(charge, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: true });
         expect(assertTapChargeMatchesOrder({ ...charge, amount: 1 }, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: false });
-        expect(assertTapChargeMatchesOrder({ ...charge, status: "FAILED" }, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: false });
+        expect(assertTapChargeMatchesOrder({ ...charge, status: "FAILED" }, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: false, error: "فشلت عملية الدفع في Tap. جرّب وسيلة دفع أخرى." });
+        expect(assertTapChargeMatchesOrder({ ...charge, status: "CANCELLED" }, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: false, error: "تم إلغاء عملية الدفع في Tap قبل اكتمالها." });
     });
 
     it("builds the documented HMAC SHA-256 hash deterministically", () => {

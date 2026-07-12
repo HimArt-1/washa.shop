@@ -146,7 +146,20 @@ export function assertTapChargeMatchesOrder(
     charge: TapCharge,
     order: { id: string; order_number: string; total: unknown },
 ) {
-    if (charge.status !== "CAPTURED") return { ok: false as const, status: 409, error: "عملية الدفع لم تكتمل بنجاح" };
+    if (charge.status !== "CAPTURED") {
+        const statusMessage: Record<string, string> = {
+            CANCELLED: "تم إلغاء عملية الدفع في Tap قبل اكتمالها.",
+            FAILED: "فشلت عملية الدفع في Tap. جرّب وسيلة دفع أخرى.",
+            DECLINED: "رفض البنك عملية الدفع. راجع بيانات البطاقة أو استخدم بطاقة أخرى.",
+            TIMEDOUT: "انتهت مهلة عملية الدفع. يمكنك إنشاء محاولة جديدة.",
+            ABANDONED: "لم تكتمل عملية الدفع. يمكنك إعادة المحاولة.",
+        };
+        return {
+            ok: false as const,
+            status: 409,
+            error: statusMessage[charge.status] || "عملية الدفع لم تكتمل بنجاح",
+        };
+    }
     if (charge.currency !== "SAR") return { ok: false as const, status: 409, error: "عملة عملية الدفع غير مطابقة" };
     if (!moneyMatches(charge.amount, order.total)) return { ok: false as const, status: 409, error: "مبلغ عملية الدفع غير مطابق للطلب" };
     if (getTapOrderId(charge) !== order.id) return { ok: false as const, status: 409, error: "عملية الدفع لا تخص هذا الطلب" };
