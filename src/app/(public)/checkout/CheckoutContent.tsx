@@ -14,6 +14,7 @@ import { createOrder } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
+import { SignIn } from "@clerk/nextjs";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
 import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
@@ -172,54 +173,46 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     // ─── AUTH GATE ───────────────────────────────
     if (!isLoggedIn && !success) {
         return (
-            <div className="container-wusha flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
-                 <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="theme-surface-panel max-w-xl rounded-[2.5rem] p-10 sm:p-14 border border-gold/20 shadow-2xl relative overflow-hidden"
-                 >
-                    {/* Background glow */}
-                    <div className="absolute -top-24 -right-24 w-48 h-48 bg-gold/10 blur-[100px] rounded-full" />
-                    <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-gold/5 blur-[80px] rounded-full" />
-                    
-                    <div className="relative z-10 space-y-8">
-                        <div className="flex justify-center">
-                            <div className="w-20 h-20 bg-gold/10 rounded-[1.8rem] flex items-center justify-center border border-gold/20">
-                                <Lock className="w-10 h-10 text-gold" />
+            <div className="relative min-h-[calc(100dvh-5rem)] overflow-hidden px-4 pb-16 pt-28 sm:px-6">
+                <div aria-hidden="true" className="container-wusha grid gap-6 opacity-30 blur-[2px] lg:grid-cols-[1.2fr_0.8fr]">
+                    <div className="theme-surface-panel min-h-[30rem] rounded-[2rem] border border-theme-subtle" />
+                    <div className="theme-surface-panel min-h-[24rem] rounded-[2rem] border border-theme-subtle" />
+                </div>
+
+                <div
+                    className="fixed inset-0 z-[70] flex items-start justify-center overflow-y-auto bg-[color:var(--wusha-bg)]/80 px-4 pb-10 pt-20 backdrop-blur-md sm:items-center sm:pt-10"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="checkout-sign-in-title"
+                >
+                    <motion.div
+                        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ type: "spring", stiffness: 180, damping: 22 }}
+                        className="w-full max-w-md"
+                    >
+                        <div className="mb-4 flex items-center justify-between rounded-2xl border border-white/10 bg-[color:var(--surface-elevated)]/95 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-gold/20 bg-gold/10">
+                                    <Lock className="h-4 w-4 text-gold" />
+                                </span>
+                                <div>
+                                    <h1 id="checkout-sign-in-title" className="text-sm font-bold text-theme-strong">سجّل الدخول لإكمال طلبك</h1>
+                                    <p className="mt-0.5 text-xs text-theme-subtle">ستبقى السلة محفوظة بعد الدخول.</p>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <h2 className="text-3xl font-bold tracking-tight">بقي خطوة واحدة فقط</h2>
-                            <p className="text-theme-subtle text-lg leading-relaxed">
-                                لإكمال طلبك وحفظ تصاميمك الفريدة في خزانتك، يرجى تسجيل الدخول أو إنشاء حساب جديد.
-                            </p>
-                        </div>
-                        
-                        <div className="grid gap-4 pt-4">
-                            <Link 
-                                href={`/sign-up?redirect_url=${encodeURIComponent('/checkout')}`}
-                                className="btn-gold py-4 rounded-2xl text-lg font-bold shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                            >
-                                <Check className="w-5 h-5" />
-                                إنشاء حساب جديد
-                            </Link>
-                            <Link 
-                                href={`/sign-in?redirect_url=${encodeURIComponent('/checkout')}`}
-                                className="border border-gold/40 text-gold hover:bg-gold/10 py-4 rounded-2xl text-lg font-medium transition-all"
-                            >
-                                لدي حساب بالفعل .. تسجيل الدخول
+                            <Link href="/cart" className="rounded-lg px-3 py-2 text-xs font-bold text-theme-subtle transition-colors hover:bg-white/5 hover:text-gold active:scale-[0.98]">
+                                العودة للسلة
                             </Link>
                         </div>
-                        
-                        <div className="flex flex-col items-center gap-2 pt-4">
-                            <p className="text-[10px] text-theme-faint uppercase tracking-[0.3em]">
-                                WASHA PREMIUM EXPERIENCE
-                            </p>
-                            <div className="h-px w-12 bg-gold/20" />
-                        </div>
-                    </div>
-                 </motion.div>
+
+                        <SignIn
+                            routing="hash"
+                            fallbackRedirectUrl="/checkout"
+                            signUpUrl="/sign-up?redirect_url=%2Fcheckout"
+                        />
+                    </motion.div>
+                </div>
             </div>
         );
     }

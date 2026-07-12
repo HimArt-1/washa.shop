@@ -4,12 +4,16 @@ import { Loader2 } from "lucide-react";
 import { getSiteSettings } from "@/app/actions/settings";
 import { getProfile } from "@/app/actions/profile";
 import { CheckoutContent } from "./CheckoutContent";
+import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic"; // لا cache — دائماً حديث
 
 export default async function CheckoutPage() {
-    const settings = await getSiteSettings();
-    const profile = await getProfile();
+    const [settings, profile, session] = await Promise.all([
+        getSiteSettings(),
+        getProfile(),
+        auth(),
+    ]);
 
     const shippingConfig = {
         flat_rate: settings.shipping.flat_rate ?? 30,
@@ -28,7 +32,7 @@ export default async function CheckoutPage() {
             <CheckoutContent 
                 shippingConfig={shippingConfig} 
                 userRole={profile?.role as any} 
-                isLoggedIn={!!profile}
+                isLoggedIn={Boolean(session.userId)}
             />
         </Suspense>
     );
