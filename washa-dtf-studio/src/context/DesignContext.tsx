@@ -31,6 +31,18 @@ import {
   resolvePrintPositionFromDesignPosition,
   resolvePrintSizeFromDesignPosition,
 } from '../lib/placement';
+import {
+  clearStudioDraft,
+  getHighestReachableStep,
+  hasMeaningfulStudioDraft,
+  isStudioAppPath,
+  loadStudioDraft,
+  readStudioStepFromUrl,
+  reconcileStudioDraftState,
+  resolveStudioRestoreStep,
+  saveStudioDraft,
+  syncStudioStepInUrl,
+} from '../lib/studioDraft';
 
 export interface OrderResult {
   itemTitle: string;
@@ -261,7 +273,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
   const [pendingGenerateAfterAuth, setPendingGenerateAfterAuth] = useState(false);
+  const [studioDraftReady, setStudioDraftReady] = useState(false);
   const restoredAuthDraftRef = useRef(false);
+  const studioDraftReferenceOmittedRef = useRef(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -633,8 +647,39 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     restoredAuthDraftRef.current = true;
 
     const draft = consumeWashaAiAuthDraft();
-    if (!draft) return;
+    if (!draft) {
+      const studioDraft = loadStudioDraft();
+      const initialState = buildInitialState(config);
+
+      if (studioDraft) {
+        studioDraftReferenceOmittedRef.current = studioDraft.referenceImageOmitted;
+        const restoredState = reconcileStudioDraftState(studioDraft.state, config, initialState);
+        const highestStep = getHighestReachableStep(restoredState);
+        const requestedStep = readStudioStepFromUrl() ?? studioDraft.step;
+        const restoredStep = resolveStudioRestoreStep(requestedStep, studioDraft.step, highestStep);
+
+        setState(restoredState);
+        setStep(restoredStep);
+
+        const hasMeaningfulDraft = hasMeaningfulStudioDraft(restoredState, studioDraft.step);
+        if (hasMeaningfulDraft) {
+          const imageNote = studioDraft.referenceImageOmitted
+            ? ' أعد رفع الصورة المرجعية لحماية خصوصيتك.'
+            : '';
+          showToast(`استعدنا مسودة تصميمك من حيث توقفت.${imageNote}`, 'info');
+        }
+      } else {
+        const requestedStep = readStudioStepFromUrl();
+        if (requestedStep) {
+          setStep(Math.min(requestedStep, getHighestReachableStep(initialState)));
+        }
+      }
+
+      setStudioDraftReady(true);
+      return;
+    }
     let cancelled = false;
+    studioDraftReferenceOmittedRef.current = draft.referenceImageOmitted;
 
     setState((current) => ({
       ...current,
@@ -648,6 +693,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (draft.intent === 'generate') {
       if (draft.referenceImageOmitted && draft.state.designMethod === 'image' && !draft.state.prompt.trim()) {
         setStep(2);
+        setStudioDraftReady(true);
         showToast('استرجعنا اختياراتك، لكن أعد رفع الصورة المرجعية قبل التوليد.', 'info');
         return () => {
           cancelled = true;
@@ -658,6 +704,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     } else {
       setStep(5);
     }
+    setStudioDraftReady(true);
 
     const restoredMessage = draft.intent === 'generate'
       ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول فقط عند التوليد.'
@@ -691,6 +738,43 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [config, configLoading, showToast]);
+
+  useEffect(() => {
+    if (!studioDraftReady || configLoading || !config || isGenerating || isSubmittingOrder) return;
+
+    if (state.designMethod !== 'image') {
+      studioDraftReferenceOmittedRef.current = false;
+    } else if (state.referenceImage) {
+      studioDraftReferenceOmittedRef.current = true;
+    }
+
+    const persistDraft = () => {
+      if (hasMeaningfulStudioDraft(state, step)) {
+        saveStudioDraft(state, step, studioDraftReferenceOmittedRef.current);
+      } else {
+        clearStudioDraft();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') persistDraft();
+    };
+
+    const timer = window.setTimeout(persistDraft, 450);
+    window.addEventListener('pagehide', persistDraft);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('pagehide', persistDraft);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [config, configLoading, isGenerating, isSubmittingOrder, state, step, studioDraftReady]);
+
+  useEffect(() => {
+    if (!studioDraftReady || !isStudioAppPath(window.location.pathname)) return;
+    syncStudioStepInUrl(step);
+  }, [step, studioDraftReady]);
 
   useEffect(() => {
     if (!pendingGenerateAfterAuth) return;
@@ -886,6 +970,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetDesign = () => {
+    clearStudioDraft();
     setStep(1);
     setState(config ? buildInitialState(config) : EMPTY_STATE);
     setMockupImage(null);
