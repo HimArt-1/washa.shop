@@ -33,6 +33,11 @@ export default async function CheckoutPage() {
                 shippingConfig={shippingConfig} 
                 userRole={profile?.role as any} 
                 isLoggedIn={Boolean(session.userId)}
+                bankTransferConfig={{
+                    bankName: process.env.BANK_TRANSFER_BANK_NAME?.trim() || null,
+                    accountName: process.env.BANK_TRANSFER_ACCOUNT_NAME?.trim() || null,
+                    iban: process.env.BANK_TRANSFER_IBAN?.trim() || null,
+                }}
             />
         </Suspense>
     );

@@ -5,7 +5,7 @@ import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelInitiateCheckout } from "@/lib/meta-pixel";
 import { useCartStore } from "@/stores/cartStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Check, Loader2, Mail, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
+import { ArrowRight, Banknote, Check, Loader2, Mail, MapPin, Phone, User, CreditCard, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,7 +41,13 @@ const addressSchema = z.object({
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
-type PaymentMethod = "cod" | "tap" | "pos_cash" | "pos_card";
+type PaymentMethod = "cod" | "bank_transfer" | "tap" | "pos_cash" | "pos_card";
+
+type BankTransferConfig = {
+    bankName: string | null;
+    accountName: string | null;
+    iban: string | null;
+};
 
 export interface ShippingConfig {
     flat_rate: number;
@@ -84,7 +90,7 @@ async function verifyTapPayment(params: {
 
 // ─── Main Client Component ───────────────────────────────
 
-export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean }) {
+export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTransferConfig }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean; bankTransferConfig: BankTransferConfig }) {
     const { items: rawItems, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
     const { user } = useUser();
     const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
@@ -97,7 +103,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tap");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank_transfer");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState("");
@@ -354,7 +360,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         const address = { ...data, state: "" };
         
         let finalPaymentMethod: PaymentMethod = "cod";
-        if (paymentMethod === "tap") finalPaymentMethod = "tap";
+        if (paymentMethod === "bank_transfer") finalPaymentMethod = "bank_transfer";
         if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
         if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
 
@@ -481,8 +487,18 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                         transition={{ delay: 0.5 }}
                         className="text-theme-subtle mb-8 max-w-md mx-auto relative z-10"
                     >
-                        شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً.
+                        {paymentMethod === "bank_transfer"
+                            ? "تم تسجيل الطلب وهو بانتظار التحويل البنكي والتحقق من الدفعة. استخدم رقم الطلب كمرجع للتحويل."
+                            : "شكراً لتسوقك معنا. سيتم إرسال تفاصيل الطلب إلى بريدك الإلكتروني قريباً."}
                     </motion.p>
+
+                    {paymentMethod === "bank_transfer" && (bankTransferConfig.bankName || bankTransferConfig.accountName || bankTransferConfig.iban) ? (
+                        <div className="relative z-10 mb-8 rounded-2xl border border-theme-soft bg-theme-faint p-4 text-right text-sm">
+                            {bankTransferConfig.bankName ? <p><span className="text-theme-faint">البنك:</span> <strong>{bankTransferConfig.bankName}</strong></p> : null}
+                            {bankTransferConfig.accountName ? <p className="mt-2"><span className="text-theme-faint">اسم الحساب:</span> <strong>{bankTransferConfig.accountName}</strong></p> : null}
+                            {bankTransferConfig.iban ? <p className="mt-2 break-all" dir="ltr"><span className="text-theme-faint">IBAN:</span> <strong className="font-mono">{bankTransferConfig.iban}</strong></p> : null}
+                        </div>
+                    ) : null}
                     
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -655,22 +671,22 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                             </h2>
 
                             <div className="space-y-3">
-                                {/* Tap hosted checkout */}
+                                {/* Bank transfer — active temporary method */}
                                 <motion.button
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.99 }}
                                     type="button"
-                                    onClick={() => setPaymentMethod("tap")}
-                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "tap"
+                                    onClick={() => setPaymentMethod("bank_transfer")}
+                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "bank_transfer"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "tap" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "bank_transfer" ? "border-gold bg-gold" : "border-theme-soft"}`}>
                                                 <AnimatePresence>
-                                                    {paymentMethod === "tap" && (
+                                                    {paymentMethod === "bank_transfer" && (
                                                         <motion.div 
                                                             initial={{ scale: 0 }}
                                                             animate={{ scale: 1 }}
@@ -681,24 +697,48 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                                 </AnimatePresence>
                                             </div>
                                             <div>
-                                                <span className="font-bold">الدفع الإلكتروني الآمن</span>
+                                                <span className="font-bold">التحويل البنكي</span>
                                                 <p className="mt-1 text-xs text-theme-subtle">
-                                                    دفع مشفّر عبر وسائل الدفع المفعلة في حساب Tap.
+                                                    سجّل طلبك الآن وحوّل المبلغ باستخدام رقم الطلب كمرجع.
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="inline-flex items-center gap-1.5 rounded bg-white/5 px-2 py-1 text-[10px] text-theme-subtle">
-                                            <Lock className="w-3 h-3 text-gold" />
-                                            مشفّر 100%
+                                        <span className="inline-flex items-center gap-1.5 rounded bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
+                                            <Banknote className="h-3 w-3" />
+                                            متاح الآن
                                         </span>
                                     </div>
-                                    <div className="mt-3 mr-7 flex flex-wrap gap-2">
-                                        {/* Mock visual logos for cards */}
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">mada</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">VISA/MC</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tap</div>
-                                    </div>
                                 </motion.button>
+
+                                {(bankTransferConfig.bankName || bankTransferConfig.accountName || bankTransferConfig.iban) ? (
+                                    <div className="mr-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs leading-6 text-theme-subtle">
+                                        {bankTransferConfig.bankName ? <p>البنك: <strong className="text-theme">{bankTransferConfig.bankName}</strong></p> : null}
+                                        {bankTransferConfig.accountName ? <p>اسم الحساب: <strong className="text-theme">{bankTransferConfig.accountName}</strong></p> : null}
+                                        {bankTransferConfig.iban ? <p dir="ltr" className="break-all text-left">IBAN: <strong className="font-mono text-theme">{bankTransferConfig.iban}</strong></p> : null}
+                                    </div>
+                                ) : (
+                                    <p className="px-2 text-xs leading-5 text-theme-faint">ستصلك بيانات التحويل من فريق وشّى بعد تسجيل الطلب.</p>
+                                )}
+
+                                {/* Tap — visible but unavailable until account activation */}
+                                <div
+                                    aria-disabled="true"
+                                    className="relative w-full cursor-not-allowed rounded-xl border border-theme-subtle bg-theme-faint p-4 text-right opacity-55 grayscale"
+                                >
+                                    <span className="absolute -top-2.5 right-4 rounded-full border border-theme-soft bg-[color:var(--wusha-bg)] px-3 py-1 text-[10px] font-black tracking-wide text-theme-faint">
+                                        قيد التطوير
+                                    </span>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="mt-0.5 h-4 w-4 rounded-full border-2 border-theme-soft" />
+                                            <div>
+                                                <span className="font-bold text-theme-subtle">الدفع الإلكتروني الآمن</span>
+                                                <p className="mt-1 text-xs text-theme-faint">مدى وVisa وMastercard عبر Tap — سيتوفر قريبًا.</p>
+                                            </div>
+                                        </div>
+                                        <Lock className="h-4 w-4 text-theme-faint" />
+                                    </div>
+                                </div>
                                 
                                 {/* Booth POS Options */}
                                 {userRole === "booth" && (
@@ -787,7 +827,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
                                 <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "tap" ? "دفع إلكتروني — Tap" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
+                                    {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
                                 </span>
                             </div>
 
@@ -925,7 +965,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "tap" ? "الانتقال للدفع" : "تأكيد الطلب"}
+                                            {paymentMethod === "bank_transfer" ? "تأكيد طلب التحويل" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

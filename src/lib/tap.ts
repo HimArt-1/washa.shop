@@ -5,6 +5,7 @@ const secretKey = process.env.TAP_SECRET_KEY?.trim();
 const merchantId = process.env.TAP_MERCHANT_ID?.trim();
 
 export const TAP_ENABLED = Boolean(secretKey && merchantId);
+export const TAP_CHECKOUT_ENABLED = TAP_ENABLED && process.env.TAP_CHECKOUT_ENABLED === "true";
 
 export type TapCharge = {
     id: string;

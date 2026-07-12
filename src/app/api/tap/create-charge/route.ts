@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { createTapCharge, retrieveTapCharge, TAP_ENABLED } from "@/lib/tap";
+import { createTapCharge, retrieveTapCharge, TAP_CHECKOUT_ENABLED } from "@/lib/tap";
 import { emitPaymentInvoiceCreatedAlert } from "@/lib/operational-event-alerts";
 
 function appUrl(path: string) {
@@ -16,7 +16,7 @@ function asRecord(value: unknown) {
 
 export async function POST(req: NextRequest) {
     try {
-        if (!TAP_ENABLED) return NextResponse.json({ error: "بوابة Tap غير مهيأة حالياً" }, { status: 503 });
+        if (!TAP_CHECKOUT_ENABLED) return NextResponse.json({ error: "الدفع الإلكتروني عبر Tap قيد التطوير حالياً" }, { status: 503 });
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "يجب تسجيل الدخول" }, { status: 401 });
 

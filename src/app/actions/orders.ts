@@ -41,7 +41,7 @@ interface ShippingAddressInput {
     phone?: string;
 }
 
-type OrderPaymentMethod = "cod" | "tap" | "stripe" | "paylink" | "pos_cash" | "pos_card";
+type OrderPaymentMethod = "cod" | "bank_transfer" | "tap" | "stripe" | "paylink" | "pos_cash" | "pos_card";
 type OrdersSupabaseClient = ReturnType<typeof getSupabaseAdminClient>;
 
 type ProductPricingRow = {
@@ -89,6 +89,7 @@ type ServerOrderPayload =
 
 const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = [
     "cod",
+    "bank_transfer",
     "tap",
     "pos_cash",
     "pos_card",
@@ -501,7 +502,7 @@ async function dispatchOrderCreatedSideEffects(params: {
     orderNumber: string;
     total: number;
     buyerId: string;
-    isCod: boolean;
+    sendCustomerEmail: boolean;
     paymentLabel: string;
     customerEmail?: string | null;
     customerName?: string | null;
@@ -513,7 +514,7 @@ async function dispatchOrderCreatedSideEffects(params: {
         tax: number;
     };
 }) {
-    const { orderId, orderNumber, total, buyerId, isCod, paymentLabel, customerEmail, customerName, emailItems, breakdown } = params;
+    const { orderId, orderNumber, total, buyerId, sendCustomerEmail, paymentLabel, customerEmail, customerName, emailItems, breakdown } = params;
     const metadata = buildOrderDispatchMetadata(orderId, orderNumber, total);
 
     const sideEffects = [
@@ -578,7 +579,7 @@ async function dispatchOrderCreatedSideEffects(params: {
         ),
     ];
 
-    if (isCod && customerEmail) {
+    if (sendCustomerEmail && customerEmail) {
         sideEffects.push(
             runIdempotentDispatch(
                 {
@@ -913,12 +914,19 @@ export async function createOrder(
     const total = roundMoney(taxableAmount + shipping_cost + tax);
 
     const isCod = paymentMethod === "cod";
+    const isBankTransfer = paymentMethod === "bank_transfer";
     const isPos = paymentMethod === "pos_cash" || paymentMethod === "pos_card";
     const initialStatus = (isCod || isPos) ? "confirmed" : "pending";
     const initialPaymentStatus = isPos ? "paid" : "pending";
-    const orderNotes = isPos ? (paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)") : null;
+    const orderNotes = isPos
+        ? (paymentMethod === "pos_cash" ? "الدفع: نقطة بيع (كاش)" : "الدفع: نقطة بيع (شبكة)")
+        : isBankTransfer
+            ? "طريقة الدفع: تحويل بنكي — بانتظار التحقق"
+            : null;
     const paymentLabel = isCod
         ? "عند الاستلام"
+        : isBankTransfer
+            ? "تحويل بنكي (بانتظار التحقق)"
         : paymentMethod === "pos_cash"
             ? "نقطة بيع (كاش)"
             : paymentMethod === "pos_card"
@@ -1011,13 +1019,13 @@ export async function createOrder(
     }
 
 
-    if (isCod || isPos) {
+    if (isCod || isPos || isBankTransfer) {
         await dispatchOrderCreatedSideEffects({
             orderId: order.id,
             orderNumber: order.order_number,
             total,
             buyerId,
-            isCod,
+            sendCustomerEmail: isCod || isBankTransfer,
             paymentLabel,
             customerEmail: user.emailAddresses?.[0]?.emailAddress,
             customerName: shippingAddress.name || user.firstName || "عميل",
