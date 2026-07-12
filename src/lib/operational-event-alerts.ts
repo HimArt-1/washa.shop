@@ -20,6 +20,8 @@ function paymentProviderLabel(provider?: string | null) {
             return "Stripe";
         case "paylink":
             return "Paylink";
+        case "tap":
+            return "Tap";
         case "pos_cash":
             return "نقطة بيع كاش";
         case "pos_card":

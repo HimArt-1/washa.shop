@@ -40,7 +40,7 @@ const addressSchema = z.object({
 });
 
 type AddressFormValues = z.infer<typeof addressSchema>;
-type PaymentMethod = "cod" | "paylink" | "pos_cash" | "pos_card";
+type PaymentMethod = "cod" | "tap" | "pos_cash" | "pos_card";
 
 export interface ShippingConfig {
     flat_rate: number;
@@ -50,13 +50,12 @@ export interface ShippingConfig {
     tax_enabled: boolean;
 }
 
-async function verifyPaylinkPayment(params: {
-    orderId?: string;
-    orderNumber: string;
-    transactionNo?: string;
+async function verifyTapPayment(params: {
+    orderId: string;
+    chargeId: string;
 }) {
     try {
-        const response = await fetch("/api/paylink/verify", {
+        const response = await fetch("/api/tap/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(params),
@@ -72,7 +71,7 @@ async function verifyPaylinkPayment(params: {
 
         return {
             success: true as const,
-            orderNumber: typeof json.orderNumber === "string" ? json.orderNumber : params.orderNumber,
+            orderNumber: typeof json.orderNumber === "string" ? json.orderNumber : "",
         };
     } catch {
         return {
@@ -97,7 +96,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paylink");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tap");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState("");
@@ -111,17 +110,17 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         pixelInitiateCheckout({ numItems: items.length, value: subtotal });
     }, []);
 
-    // Auto-verify on return from Paylink
+    // Auto-verify on return from Tap. The server retrieves the charge before confirming payment.
     useEffect(() => {
         const orderNum = searchParams.get("order");
         const orderId = searchParams.get("order_id");
-        const transactionNo = searchParams.get("transactionNo") || searchParams.get("transaction_no");
+        const chargeId = searchParams.get("tap_id");
 
-        if (searchParams.get("success") !== "1" || !orderNum) {
+        if (searchParams.get("tap_return") !== "1" || !orderNum || !orderId || !chargeId) {
             return;
         }
 
-        const verificationKey = `${orderId || "unknown"}:${transactionNo || "unknown"}:${orderNum}`;
+        const verificationKey = `${orderId}:${chargeId}:${orderNum}`;
         if (verifiedPaymentKeyRef.current === verificationKey) {
             return;
         }
@@ -131,11 +130,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         setError(null);
 
         void (async () => {
-            const result = await verifyPaylinkPayment({
-                orderId: orderId || undefined,
-                orderNumber: orderNum,
-                transactionNo: transactionNo || undefined,
-            });
+            const result = await verifyTapPayment({ orderId, chargeId });
 
             if (!result.success) {
                 setError(result.error);
@@ -229,24 +224,24 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         );
     }
 
-    const isReturningFromPaylink =
-        searchParams.get("success") === "1" && Boolean(searchParams.get("order"));
+    const isReturningFromTap =
+        searchParams.get("tap_return") === "1" && Boolean(searchParams.get("order"));
 
-    if ((isVerifyingPayment || (isReturningFromPaylink && !error)) && !success) {
+    if ((isVerifyingPayment || (isReturningFromTap && !error)) && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center gap-4 pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
                 <Loader2 className="h-10 w-10 animate-spin text-gold" />
                 <div className="space-y-2">
                     <h1 className="text-2xl font-bold">جاري التحقق من الدفع</h1>
                     <p className="text-sm text-theme-subtle">
-                        نتحقق من Paylink ونؤكد الطلب داخل النظام.
+                        نتحقق من Tap ونؤكد الطلب داخل النظام.
                     </p>
                 </div>
             </div>
         );
     }
 
-    if (isReturningFromPaylink && error && !success) {
+    if (isReturningFromTap && error && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
                 <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
@@ -335,7 +330,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         const address = { ...data, state: "" };
         
         let finalPaymentMethod: PaymentMethod = "cod";
-        if (paymentMethod === "paylink") finalPaymentMethod = "paylink";
+        if (paymentMethod === "tap") finalPaymentMethod = "tap";
         if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
         if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
 
@@ -351,45 +346,16 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
             return;
         }
 
-        if (paymentMethod === "paylink" && result.order_id && result.order_number && result.total) {
+        if (paymentMethod === "tap" && result.order_id && result.order_number && result.total) {
             try {
-                const products = items.map((item) => ({
-                    title: item.title,
-                    price: item.price,
-                    qty: item.quantity,
-                }));
-
-                if (shippingCost > 0) {
-                    products.push({ title: "تكلفة الشحن", price: shippingCost, qty: 1 });
-                }
-
-                if (discount > 0) {
-                    products.push({ 
-                        title: `خصم ${coupon ? `(${coupon.code})` : "كود خصم"}`, 
-                        price: -discount, 
-                        qty: 1 
-                    });
-                }
-
-                if (taxAmount > 0) {
-                    const taxRate = shippingConfig.tax_rate ?? 15;
-                    products.push({ 
-                        title: `ضريبة القيمة المضافة (${taxRate}%)`, 
-                        price: taxAmount, 
-                        qty: 1 
-                    });
-                }
-
-                const response = await fetch("/api/paylink/create-invoice", {
+                const response = await fetch("/api/tap/create-charge", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         orderId: result.order_id,
-                        orderNumber: result.order_number,
-                        total: result.total,
                         clientName: data.name,
                         clientMobile: data.phone,
-                        products,
+                        clientEmail: accountEmail || undefined,
                     }),
                 });
 
@@ -665,22 +631,22 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                             </h2>
 
                             <div className="space-y-3">
-                                {/* Paylink */}
+                                {/* Tap hosted checkout */}
                                 <motion.button
                                     whileHover={{ scale: 1.01 }}
                                     whileTap={{ scale: 0.99 }}
                                     type="button"
-                                    onClick={() => setPaymentMethod("paylink")}
-                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "paylink"
+                                    onClick={() => setPaymentMethod("tap")}
+                                    className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "tap"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
                                         }`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "paylink" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 transition-colors ${paymentMethod === "tap" ? "border-gold bg-gold" : "border-theme-soft"}`}>
                                                 <AnimatePresence>
-                                                    {paymentMethod === "paylink" && (
+                                                    {paymentMethod === "tap" && (
                                                         <motion.div 
                                                             initial={{ scale: 0 }}
                                                             animate={{ scale: 1 }}
@@ -693,7 +659,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                             <div>
                                                 <span className="font-bold">الدفع الإلكتروني الآمن</span>
                                                 <p className="mt-1 text-xs text-theme-subtle">
-                                                    دفع مشفّر عبر مدى، Visa/Mastercard، STC Pay، Tabby أو Tamara.
+                                                    دفع مشفّر عبر وسائل الدفع المفعلة في حساب Tap.
                                                 </p>
                                             </div>
                                         </div>
@@ -706,9 +672,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                         {/* Mock visual logos for cards */}
                                         <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">mada</div>
                                         <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">VISA/MC</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">STC Pay</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tabby</div>
-                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tamara</div>
+                                        <div className="rounded border border-theme-soft bg-white/5 px-2 py-0.5 text-[10px] font-bold tracking-wider text-theme-faint">Tap</div>
                                     </div>
                                 </motion.button>
                                 
@@ -799,7 +763,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
                                 <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "paylink" ? "دفع إلكتروني — Paylink" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
+                                    {paymentMethod === "tap" ? "دفع إلكتروني — Tap" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
                                 </span>
                             </div>
 
@@ -937,7 +901,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "paylink" ? "ادفع" : "تأكيد الطلب"}
+                                            {paymentMethod === "tap" ? "الانتقال للدفع" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

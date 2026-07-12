@@ -9,6 +9,13 @@ import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+    if (process.env.LEGACY_PAYMENT_CREATION_ENABLED !== "true") {
+        return NextResponse.json(
+            { error: "إنشاء مدفوعات Stripe الجديدة متوقف. استخدم Tap." },
+            { status: 410 }
+        );
+    }
+
     if (!stripe) {
         return NextResponse.json({ error: "Stripe غير مفعّل" }, { status: 500 });
     }

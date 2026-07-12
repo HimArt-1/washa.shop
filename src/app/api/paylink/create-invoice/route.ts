@@ -169,6 +169,13 @@ function buildInvoiceProducts(orderNumber: string, total: number, items: any[]):
 
 export async function POST(req: NextRequest) {
     try {
+        if (process.env.LEGACY_PAYMENT_CREATION_ENABLED !== "true") {
+            return NextResponse.json(
+                { error: "إنشاء مدفوعات Paylink الجديدة متوقف. استخدم Tap." },
+                { status: 410 }
+            );
+        }
+
         if (!PAYLINK_ENABLED) {
             return NextResponse.json(
                 { error: "بوابة الدفع غير مفعّلة حالياً" },

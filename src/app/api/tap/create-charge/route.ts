@@ -1,0 +1,91 @@
+import { currentUser } from "@clerk/nextjs/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdminClient } from "@/lib/supabase";
+import { createTapCharge, TAP_ENABLED } from "@/lib/tap";
+import { emitPaymentInvoiceCreatedAlert } from "@/lib/operational-event-alerts";
+
+function appUrl(path: string) {
+    const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
+    if (!base) throw new Error("NEXT_PUBLIC_APP_URL is not configured");
+    return new URL(path, base).toString();
+}
+
+function asRecord(value: unknown) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        if (!TAP_ENABLED) return NextResponse.json({ error: "بوابة Tap غير مهيأة حالياً" }, { status: 503 });
+        const user = await currentUser();
+        if (!user) return NextResponse.json({ error: "يجب تسجيل الدخول" }, { status: 401 });
+
+        const body = await req.json() as { orderId?: string; clientName?: string; clientMobile?: string; clientEmail?: string };
+        if (!body.orderId || !body.clientMobile) return NextResponse.json({ error: "بيانات الدفع ناقصة" }, { status: 400 });
+
+        const supabase = getSupabaseAdminClient();
+        const [{ data: profile }, { data: order }] = await Promise.all([
+            supabase.from("profiles").select("id").eq("clerk_id", user.id).single(),
+            supabase.from("orders").select("id, buyer_id, order_number, total, status, payment_status, metadata").eq("id", body.orderId).single(),
+        ]);
+
+        if (!profile || !order) return NextResponse.json({ error: "تعذر العثور على الطلب" }, { status: 404 });
+        if (order.buyer_id !== profile.id) return NextResponse.json({ error: "غير مصرح لهذا الطلب" }, { status: 403 });
+        if (order.payment_status === "paid") return NextResponse.json({ error: "هذا الطلب مدفوع مسبقاً" }, { status: 409 });
+        if (order.status !== "pending") return NextResponse.json({ error: "لا يمكن إنشاء عملية دفع لهذا الطلب" }, { status: 409 });
+
+        const amount = Math.round(Number(order.total) * 100) / 100;
+        if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "إجمالي الطلب غير صالح" }, { status: 409 });
+
+        const redirect = new URL("/checkout", appUrl("/"));
+        redirect.searchParams.set("tap_return", "1");
+        redirect.searchParams.set("order", order.order_number);
+        redirect.searchParams.set("order_id", order.id);
+
+        const charge = await createTapCharge({
+            amount,
+            orderId: order.id,
+            orderNumber: order.order_number,
+            customer: {
+                name: body.clientName || user.firstName || "عميل وشّى",
+                email: body.clientEmail || user.emailAddresses?.[0]?.emailAddress || null,
+                phone: body.clientMobile,
+            },
+            redirectUrl: redirect.toString(),
+            postUrl: appUrl("/api/webhooks/tap"),
+        });
+
+        if (!charge.id || !charge.transaction?.url) {
+            return NextResponse.json({ error: charge.response?.message || "لم تُرجع Tap رابط دفع صالحًا" }, { status: 502 });
+        }
+
+        const metadata = asRecord(order.metadata);
+        const previousTap = asRecord(metadata.tap);
+        const attempts = Array.isArray(previousTap.attempts) ? previousTap.attempts : [];
+        const tapAttempt = { charge_id: charge.id, status: charge.status, amount, currency: "SAR", created_at: new Date().toISOString() };
+        const { error: updateError } = await supabase.from("orders").update({
+            metadata: {
+                ...metadata,
+                tap: { ...previousTap, ...tapAttempt, attempts: [...attempts, tapAttempt].slice(-25) },
+                payment_provider: "tap",
+            },
+            updated_at: new Date().toISOString(),
+        }).eq("id", order.id).eq("payment_status", "pending");
+
+        if (updateError) return NextResponse.json({ error: "تعذر حفظ عملية الدفع على الطلب" }, { status: 500 });
+
+        await emitPaymentInvoiceCreatedAlert({
+            orderId: order.id,
+            orderNumber: order.order_number,
+            amount,
+            provider: "tap",
+            transactionNo: charge.id,
+            customerName: body.clientName || user.firstName || "عميل وشّى",
+        }).catch(console.error);
+
+        return NextResponse.json({ success: true, url: charge.transaction.url, chargeId: charge.id });
+    } catch (error) {
+        console.error("[Tap] create charge error:", error);
+        return NextResponse.json({ error: error instanceof Error ? error.message : "فشل إنشاء عملية الدفع" }, { status: 500 });
+    }
+}

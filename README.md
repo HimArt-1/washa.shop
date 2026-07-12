@@ -23,7 +23,7 @@
 | **TypeScript** | أمان الأنواع |
 | **Supabase** | قاعدة البيانات + التخزين + RLS |
 | **Clerk** | المصادقة وإدارة المستخدمين |
-| **Stripe** | بوابة الدفع |
+| **Tap Payments** | بوابة الدفع الأساسية |
 | **Resend** | البريد الإلكتروني |
 | **Framer Motion** | الحركات والانتقالات |
 | **Zustand** | إدارة الحالة |
@@ -63,7 +63,12 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_WEBHOOK_SIGNING_SECRET=
 
-# Stripe
+# Tap Payments
+TAP_SECRET_KEY=sk_test_xxxx
+TAP_MERCHANT_ID=merchant_id_from_tap_dashboard
+NEXT_PUBLIC_TAP_PUBLIC_KEY=pk_test_xxxx
+
+# Stripe (قديم — لاستقبال العمليات السابقة فقط)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=

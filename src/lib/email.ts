@@ -411,7 +411,7 @@ export async function sendAdminOrderNotificationEmail(
     const title = isNew ? "طلب جديد 🛒" : "تم استلام الدفع 💳";
     const desc = isNew
         ? "تم إنشاء طلب جديد في المتجر."
-        : "تم تأكيد الدفع لطلب عبر Stripe.";
+        : "تم تأكيد الدفع الإلكتروني للطلب.";
     const subject = isNew
         ? `طلب جديد #${safeOrderNumber} — ${total.toLocaleString()} ر.س`
         : `تم استلام الدفع #${safeOrderNumber} — ${total.toLocaleString()} ر.س`;

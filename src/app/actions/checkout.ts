@@ -31,6 +31,10 @@ export async function createStripeCheckoutUrl(params: {
     successUrl: string;
     cancelUrl: string;
 }) {
+    if (process.env.LEGACY_PAYMENT_CREATION_ENABLED !== "true") {
+        return { success: false, error: "إنشاء مدفوعات Stripe الجديدة متوقف. استخدم Tap." };
+    }
+
     if (!STRIPE_ENABLED || !stripe) {
         return { success: false, error: "الدفع الإلكتروني غير متاح حالياً" };
     }

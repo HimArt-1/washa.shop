@@ -41,7 +41,7 @@ interface ShippingAddressInput {
     phone?: string;
 }
 
-type OrderPaymentMethod = "cod" | "stripe" | "paylink" | "pos_cash" | "pos_card";
+type OrderPaymentMethod = "cod" | "tap" | "stripe" | "paylink" | "pos_cash" | "pos_card";
 type OrdersSupabaseClient = ReturnType<typeof getSupabaseAdminClient>;
 
 type ProductPricingRow = {
@@ -87,7 +87,7 @@ type ServerOrderPayload =
         error: string;
     };
 
-const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = ["cod", "stripe", "paylink", "pos_cash", "pos_card"];
+const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = ["cod", "tap", "stripe", "paylink", "pos_cash", "pos_card"];
 const POS_PAYMENT_METHODS: OrderPaymentMethod[] = ["pos_cash", "pos_card"];
 const POS_ALLOWED_ROLES: UserRole[] = ["admin", "dev", "booth"];
 
@@ -807,7 +807,7 @@ export async function createOrder(
     items: OrderItemInput[],
     shippingAddress: ShippingAddressInput,
     options?: {
-        paymentMethod?: "cod" | "stripe" | "paylink" | "pos_cash" | "pos_card";
+        paymentMethod?: OrderPaymentMethod;
         couponId?: string | null;
         discountAmount?: number;
     }
@@ -917,6 +917,8 @@ export async function createOrder(
             ? "نقطة بيع (كاش)"
             : paymentMethod === "pos_card"
                 ? "نقطة بيع (شبكة)"
+                : paymentMethod === "tap"
+                    ? "Tap (بانتظار الدفع)"
                 : paymentMethod === "stripe"
                     ? "Stripe (بانتظار الدفع)"
                     : paymentMethod === "paylink"
@@ -926,7 +928,7 @@ export async function createOrder(
     // 4. Create order
     // COD: مؤكد — الدفع عند الاستلام
     // POS: مؤكد — الدفع فوري (مدفوع)
-    // Paylink/Stripe: معلق — ينتظر تأكيد الدفع عبر Webhook أو Callback
+    // Tap/Paylink/Stripe: معلق — ينتظر تأكيد الدفع عبر Webhook أو Callback
     const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
