@@ -4,12 +4,14 @@ const {
     mockGetWashaAiSettings,
     mockCheckRateLimit,
     mockReleaseRateLimit,
+    mockPeekRateLimit,
     mockGetSupabaseAdminClient,
     mockRpc,
 } = vi.hoisted(() => ({
     mockGetWashaAiSettings: vi.fn(),
     mockCheckRateLimit: vi.fn(),
     mockReleaseRateLimit: vi.fn(),
+    mockPeekRateLimit: vi.fn(),
     mockGetSupabaseAdminClient: vi.fn(),
     mockRpc: vi.fn(),
 }));
@@ -21,6 +23,7 @@ vi.mock("@/app/actions/settings", () => ({
 vi.mock("@/lib/rate-limit", () => ({
     checkRateLimit: mockCheckRateLimit,
     releaseRateLimit: mockReleaseRateLimit,
+    peekRateLimit: mockPeekRateLimit,
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -34,6 +37,7 @@ describe("DtfTelemetryService quota reservation", () => {
         mockGetWashaAiSettings.mockReset();
         mockCheckRateLimit.mockReset();
         mockReleaseRateLimit.mockReset();
+        mockPeekRateLimit.mockReset();
         mockGetSupabaseAdminClient.mockReset();
         mockRpc.mockReset();
         delete process.env.WASHA_AI_QUOTA_FAIL_OPEN;
@@ -56,6 +60,7 @@ describe("DtfTelemetryService quota reservation", () => {
             resetAt: Date.now() + 86_400_000,
         });
         mockReleaseRateLimit.mockResolvedValue(true);
+        mockPeekRateLimit.mockResolvedValue({ success: true, remaining: 1, resetAt: Date.now() + 86_400_000 });
         mockRpc.mockResolvedValue({
             data: {
                 granted: true,
@@ -113,6 +118,27 @@ describe("DtfTelemetryService quota reservation", () => {
             86_400_000
         );
         expect(released).toBe(true);
+    });
+
+    it("reports the guest quota without consuming another generation", async () => {
+        const result = await DtfTelemetryService.getQuotaStatus(undefined, "guest", {
+            guestIdentifier: "guest:127.0.0.1",
+        });
+
+        expect(mockPeekRateLimit).toHaveBeenCalledWith(
+            "dtf-guest-daily-guest:127.0.0.1",
+            3,
+            86_400_000
+        );
+        expect(mockCheckRateLimit).not.toHaveBeenCalled();
+        expect(result).toMatchObject({
+            audience: "guest",
+            freeLimit: 3,
+            freeUsed: 2,
+            freeRemaining: 1,
+            paidBalance: 0,
+            canPurchase: false,
+        });
     });
 
     it("reserves booth generation quota with the configured booth limit", async () => {

@@ -2,7 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import type { WashaAiControls } from "@/types/database";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
-import { checkRateLimit, releaseRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, peekRateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
 import { StorageService } from "./storage.service";
 
@@ -64,6 +64,7 @@ type DailyQuotaOptions = {
 };
 
 export interface QuotaStatus {
+    audience: "guest" | "subscriber" | "wushsha" | "booth" | "privileged";
     /** المشرفون/المطورون أو عند تعطيل الحصص عالمياً — رصيد غير محدود. */
     unlimited: boolean;
     /** الفئة معطّلة — يُمنع التوليد. */
@@ -406,26 +407,48 @@ export class DtfTelemetryService {
      */
     static async getQuotaStatus(
         profileId: string | null | undefined,
-        userRole: string | null | undefined
+        userRole: string | null | undefined,
+        options: DailyQuotaOptions = {}
     ): Promise<QuotaStatus> {
-        if (!profileId) {
-            return { unlimited: false, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
-        }
+        const audience = DtfTelemetryService.audienceKey(userRole);
 
         if (DtfTelemetryService.isQuotaBypassedRole(userRole)) {
-            return { unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+            return { audience: "privileged", unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
         }
 
         const controls = await DtfTelemetryService.resolveControls();
 
         // الفئة معطّلة → يُمنع التوليد.
         if (!controls.audience[DtfTelemetryService.audienceKey(userRole)]) {
-            return { unlimited: false, blocked: true, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+            return { audience, unlimited: false, blocked: true, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
         }
 
         // الحصص معطّلة عالمياً → غير محدود.
         if (!controls.quota_enabled) {
-            return { unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+            return { audience, unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+        }
+
+        if (userRole === "guest") {
+            const freeLimit = await DtfTelemetryService.resolveGuestDailyLimit();
+            const guestIdentifier = options.guestIdentifier?.trim();
+            const usage = guestIdentifier
+                ? await peekRateLimit(`dtf-guest-daily-${guestIdentifier}`, freeLimit, DtfTelemetryService.GUEST_DAILY_WINDOW_MS)
+                : { remaining: freeLimit };
+            const freeRemaining = Math.max(Number(usage.remaining) || 0, 0);
+            return {
+                audience: "guest",
+                unlimited: false,
+                blocked: false,
+                freeLimit,
+                freeUsed: Math.max(freeLimit - freeRemaining, 0),
+                freeRemaining,
+                paidBalance: 0,
+                canPurchase: false,
+            };
+        }
+
+        if (!profileId) {
+            return { audience, unlimited: false, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
         }
 
         const freeLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
@@ -458,6 +481,7 @@ export class DtfTelemetryService {
                 : 0;
 
             return {
+                audience,
                 unlimited: false,
                 blocked: false,
                 freeLimit,
@@ -469,6 +493,7 @@ export class DtfTelemetryService {
         } catch (err) {
             logDiagnosticWarning("dtf-telemetry-quota-status-fatal", err);
             return {
+                audience,
                 unlimited: false,
                 blocked: false,
                 freeLimit,

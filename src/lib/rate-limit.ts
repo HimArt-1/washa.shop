@@ -119,3 +119,28 @@ export async function releaseRateLimit(identifier: string, windowMs: number): Pr
         return releaseLocalRateLimit(identifier);
     }
 }
+
+export async function peekRateLimit(identifier: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+    const now = Date.now();
+    try {
+        const sb = getSupabaseAdminClient();
+        const { data, error } = await sb.rpc("peek_rate_limit" as never, {
+            p_identifier: identifier,
+            p_limit: limit,
+            p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+        } as never);
+        if (error) throw error;
+        const payload = normalizeRateLimitPayload(data as RateLimitRpcPayload | null);
+        const resetAt = typeof payload?.reset_at === "string" ? new Date(payload.reset_at).getTime() : NaN;
+        if (!payload || typeof payload.success !== "boolean" || Number.isNaN(resetAt)) throw new Error("invalid payload");
+        return {
+            success: payload.success,
+            remaining: typeof payload.remaining === "number" ? payload.remaining : 0,
+            resetAt,
+        };
+    } catch {
+        const record = globalRateLimitCache.get(identifier);
+        if (!record || now > record.resetAt) return { success: true, remaining: limit, resetAt: now + windowMs };
+        return { success: record.count < limit, remaining: Math.max(limit - record.count, 0), resetAt: record.resetAt };
+    }
+}

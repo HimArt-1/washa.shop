@@ -5,21 +5,24 @@
 //  المدفوع، دون استهلاك أي حصة.
 // ═══════════════════════════════════════════════════════════
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import { requireDtfRouteAccess } from "../utils/route-runtime";
+import { getRequestClientIdentifier } from "@/lib/request-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-    const accessResult = await requireDtfRouteAccess();
+export async function GET(request: NextRequest) {
+    const accessResult = await requireDtfRouteAccess({ allowPublicGeneration: true });
     if (accessResult.response) {
         return accessResult.response;
     }
 
     const access = accessResult.access;
-    const status = await DtfTelemetryService.getQuotaStatus(access.profileId, access.role);
+    const status = await DtfTelemetryService.getQuotaStatus(access.profileId, access.role, {
+        guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
+    });
 
     return NextResponse.json(status, {
         headers: { "Cache-Control": "private, no-store" },

@@ -161,6 +161,85 @@ function Field({
     );
 }
 
+function QuotaAudienceCard({
+    title,
+    description,
+    limitLabel,
+    limit,
+    enabled,
+    purchasable,
+    onLimitChange,
+    onEnabledChange,
+    onPurchaseChange,
+}: {
+    title: string;
+    description: string;
+    limitLabel: string;
+    limit: number;
+    enabled: boolean;
+    purchasable?: boolean;
+    onLimitChange: (value: number) => void;
+    onEnabledChange: (value: boolean) => void;
+    onPurchaseChange?: (value: boolean) => void;
+}) {
+    return (
+        <div className={`rounded-[22px] border p-4 transition-all duration-300 ${enabled ? "border-gold/20 bg-gold/[0.035]" : "border-theme-subtle bg-theme-faint/30 opacity-70"}`}>
+            <div className="flex items-start justify-between gap-4">
+                <div>
+                    <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${enabled ? "bg-emerald-400" : "bg-theme-faint"}`} />
+                        <h5 className="text-sm font-black text-theme">{title}</h5>
+                    </div>
+                    <p className="mt-1.5 text-xs leading-5 text-theme-subtle">{description}</p>
+                </div>
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    aria-label={`إتاحة التوليد لفئة ${title}`}
+                    onClick={() => onEnabledChange(!enabled)}
+                    className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors active:scale-[0.98] ${enabled ? "border-emerald-400/30 bg-emerald-500/80" : "border-theme-soft bg-theme-subtle"}`}
+                >
+                    <motion.span
+                        className="absolute right-1 top-1 h-[18px] w-[18px] rounded-full bg-white shadow-sm"
+                        animate={{ x: enabled ? -22 : 0 }}
+                        transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                    />
+                </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-[1fr_auto] items-end gap-3 border-t border-theme-subtle/40 pt-4">
+                <label className="space-y-1.5">
+                    <span className="block text-[11px] font-bold text-theme-subtle">{limitLabel}</span>
+                    <div className="flex items-baseline gap-2 rounded-xl border border-theme-subtle bg-theme-input px-3 py-2">
+                        <input
+                            type="number"
+                            min={1}
+                            max={999}
+                            dir="ltr"
+                            value={limit}
+                            onChange={(event) => onLimitChange(Math.max(1, Number(event.target.value) || 1))}
+                            className="w-full bg-transparent text-xl font-black tabular-nums text-theme outline-none"
+                        />
+                        <span className="text-[10px] text-theme-faint">توليد</span>
+                    </div>
+                </label>
+                {onPurchaseChange ? (
+                    <button
+                        type="button"
+                        onClick={() => onPurchaseChange(!purchasable)}
+                        className={`min-h-[42px] rounded-xl border px-3 text-[11px] font-bold transition active:scale-[0.98] ${purchasable ? "border-gold/25 bg-gold/10 text-gold" : "border-theme-subtle text-theme-faint"}`}
+                    >
+                        {purchasable ? "الشراء متاح" : "الشراء مغلق"}
+                    </button>
+                ) : (
+                    <span className="pb-3 text-[10px] text-theme-faint">مجاني فقط</span>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function SignalStateBadge({ state }: { state: OperationalRuleSignal["state"] }) {
     const map = {
         healthy: "bg-emerald-500/15 text-emerald-300 border-emerald-500/20",
@@ -634,100 +713,46 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     يتحكم في عدد توليدات WASHA AI اليومية لكل فئة. يستطيع الزائر التجربة ضمن حد مستقل، ويُطلب منه تسجيل الدخول عند اعتماد التصميم.
                 </p>
 
-                {/* ── مفاتيح التحكّم الرئيسية ── */}
-                <div className="mb-6 space-y-2 rounded-xl border border-theme-subtle/40 p-4">
-                    <h4 className="text-sm font-bold text-theme mb-2">مفاتيح التحكّم</h4>
-                    <Toggle
-                        label="فرض حصص التوليد (تعطيله = توليد بلا حدود)"
-                        checked={washaAi.controls.quota_enabled}
-                        onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, quota_enabled: v } })}
-                    />
-                    <Toggle
-                        label="نظام الرصيد المدفوع (الشراء + المحفظة)"
-                        checked={washaAi.controls.credits_enabled}
-                        onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, credits_enabled: v } })}
-                    />
-
-                    <div className="pt-2 mt-2 border-t border-theme-subtle/30">
-                        <div className="text-xs font-bold text-theme-subtle mb-1.5">إتاحة التوليد للفئات (تعطيلها = منع نهائي)</div>
-                        <Toggle
-                            label="الزوار بدون حساب"
-                            checked={washaAi.controls.audience.guest}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, guest: v } } })}
-                        />
-                        <Toggle
-                            label="المشتركون"
-                            checked={washaAi.controls.audience.subscriber}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, subscriber: v } } })}
-                        />
-                        <Toggle
-                            label="الوشّايون"
-                            checked={washaAi.controls.audience.wushsha}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, wushsha: v } } })}
-                        />
-                        <Toggle
-                            label="البوث"
-                            checked={washaAi.controls.audience.booth}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, booth: v } } })}
-                        />
+                <div className="mb-6 grid gap-3 md:grid-cols-[1.2fr_.8fr]">
+                    <div className="rounded-[24px] border border-gold/20 bg-gold/[0.045] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-bold tracking-wide text-gold">حالة نظام التوليد</p>
+                                <h4 className="mt-2 text-xl font-black tracking-tight text-theme">
+                                    {washaAi.controls.quota_enabled ? "حصص يومية مضبوطة" : "توليد غير محدود"}
+                                </h4>
+                                <p className="mt-2 max-w-xl text-xs leading-6 text-theme-subtle">
+                                    تُستهلك المنحة المجانية أولًا، ثم ينتقل المستخدم تلقائيًا إلى رصيده المدفوع إن كان متاحًا.
+                                </p>
+                            </div>
+                            <span className={`mt-1 h-3 w-3 rounded-full ${washaAi.controls.quota_enabled ? "bg-emerald-400" : "bg-amber-400"}`} />
+                        </div>
+                        <div className="mt-5 grid grid-cols-2 divide-x divide-x-reverse divide-theme-subtle/50 border-t border-theme-subtle/50 pt-4">
+                            <button type="button" onClick={() => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, quota_enabled: !washaAi.controls.quota_enabled } })} className="px-3 text-right active:scale-[0.98]">
+                                <span className="block text-[10px] text-theme-faint">الحدود اليومية</span>
+                                <strong className="mt-1 block text-sm text-theme">{washaAi.controls.quota_enabled ? "مفعّلة" : "معطلة"}</strong>
+                            </button>
+                            <button type="button" onClick={() => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, credits_enabled: !washaAi.controls.credits_enabled } })} className="px-3 text-right active:scale-[0.98]">
+                                <span className="block text-[10px] text-theme-faint">المحفظة المدفوعة</span>
+                                <strong className="mt-1 block text-sm text-theme">{washaAi.controls.credits_enabled ? "مفعّلة" : "معطلة"}</strong>
+                            </button>
+                        </div>
                     </div>
-
-                    <div className="pt-2 mt-2 border-t border-theme-subtle/30">
-                        <div className="text-xs font-bold text-theme-subtle mb-1.5">من يحقّ له شراء الرصيد</div>
-                        <Toggle
-                            label="المشتركون"
-                            checked={washaAi.controls.purchase.subscriber}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, subscriber: v } } })}
-                        />
-                        <Toggle
-                            label="الوشّايون"
-                            checked={washaAi.controls.purchase.wushsha}
-                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, wushsha: v } } })}
-                        />
+                    <div className="rounded-[24px] border border-theme-subtle bg-theme-faint/35 p-5">
+                        <p className="text-[11px] font-bold text-theme-subtle">ملخص الوصول</p>
+                        <div className="mt-4 space-y-3">
+                            <div className="flex items-center justify-between text-xs"><span className="text-theme-subtle">فئات مسموحة</span><strong className="font-mono text-theme">{Object.values(washaAi.controls.audience).filter(Boolean).length} / 4</strong></div>
+                            <div className="flex items-center justify-between text-xs"><span className="text-theme-subtle">فئات يمكنها الشراء</span><strong className="font-mono text-theme">{Object.values(washaAi.controls.purchase).filter(Boolean).length} / 2</strong></div>
+                            <div className="flex items-center justify-between text-xs"><span className="text-theme-subtle">باقات نشطة</span><strong className="font-mono text-theme">{washaAi.credit_packages.filter((pkg) => pkg.active !== false).length}</strong></div>
+                        </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <Field
-                        label="حد الزائر خلال 24 ساعة"
-                        value={String(washaAi.dtf_guest_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_guest_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
-                    />
-                    <Field
-                        label="حد المشترك اليومي"
-                        value={String(washaAi.dtf_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
-                    />
-                    <Field
-                        label="حد البوث اليومي"
-                        value={String(washaAi.dtf_booth_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_booth_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
-                    />
-                    <Field
-                        label="حد الوشّاي اليومي"
-                        value={String(washaAi.dtf_wushsha_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_wushsha_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
-                    />
+                <div className="grid gap-3 md:grid-cols-2">
+                    <QuotaAudienceCard title="الزوار" description="تجربة محدودة بحسب معرّف الشبكة والمتصفح ضمن نافذة يومية." limitLabel="الحد في النافذة اليومية" limit={washaAi.dtf_guest_daily_quota_limit} enabled={washaAi.controls.audience.guest} onLimitChange={(value) => setWashaAi({ ...washaAi, dtf_guest_daily_quota_limit: value })} onEnabledChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, guest: value } } })} />
+                    <QuotaAudienceCard title="المشتركون" description="منحة يومية، ثم استهلاك تلقائي من المحفظة." limitLabel="المنحة اليومية" limit={washaAi.dtf_daily_quota_limit} enabled={washaAi.controls.audience.subscriber} purchasable={washaAi.controls.purchase.subscriber} onLimitChange={(value) => setWashaAi({ ...washaAi, dtf_daily_quota_limit: value })} onEnabledChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, subscriber: value } } })} onPurchaseChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, subscriber: value } } })} />
+                    <QuotaAudienceCard title="الوشّايون" description="منحة أعلى للمصممين المعتمدين مع دعم شراء الرصيد." limitLabel="المنحة اليومية" limit={washaAi.dtf_wushsha_daily_quota_limit} enabled={washaAi.controls.audience.wushsha} purchasable={washaAi.controls.purchase.wushsha} onLimitChange={(value) => setWashaAi({ ...washaAi, dtf_wushsha_daily_quota_limit: value })} onEnabledChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, wushsha: value } } })} onPurchaseChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, wushsha: value } } })} />
+                    <QuotaAudienceCard title="البوث" description="تشغيل داخلي بحصة مرتفعة ومن دون شراء رصيد." limitLabel="الحد اليومي" limit={washaAi.dtf_booth_daily_quota_limit} enabled={washaAi.controls.audience.booth} onLimitChange={(value) => setWashaAi({ ...washaAi, dtf_booth_daily_quota_limit: value })} onEnabledChange={(value) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, booth: value } } })} />
                 </div>
 
                 {/* ── حزم الرصيد القابلة للشراء ── */}
@@ -752,11 +777,16 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         رصيد دائم لا ينتهي، يُستهلك بعد نفاد الحصة اليومية المجانية. متاح للمشتركين والوشّايين.
                     </p>
                     <div className="space-y-3">
+                        {washaAi.credit_packages.length > 0 && (
+                            <div className="hidden grid-cols-12 gap-2 px-3 text-[10px] font-bold text-theme-faint sm:grid">
+                                <span className="col-span-4">اسم الباقة</span><span className="col-span-2">الحصص</span><span className="col-span-2">السعر</span><span className="col-span-2">التمييز</span><span className="col-span-1">الحالة</span>
+                            </div>
+                        )}
                         {washaAi.credit_packages.length === 0 && (
                             <p className="text-theme-subtle text-xs text-center py-3">لا توجد باقات — أضف واحدة.</p>
                         )}
                         {washaAi.credit_packages.map((pkg, index) => (
-                            <div key={pkg.id} className="grid grid-cols-12 gap-2 items-center bg-theme-subtle/20 rounded-xl p-3">
+                            <div key={pkg.id} className="grid grid-cols-12 items-center gap-2 rounded-[18px] border border-theme-subtle/60 bg-theme-faint/25 p-3 transition-colors hover:border-gold/20">
                                 <input
                                     className="col-span-12 sm:col-span-4 bg-theme-input border border-theme-subtle/40 rounded-lg px-2 py-1.5 text-sm text-theme"
                                     value={pkg.label}
@@ -797,8 +827,10 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                         type="checkbox"
                                         checked={pkg.popular === true}
                                         onChange={(e) => {
-                                            const next = [...washaAi.credit_packages];
-                                            next[index] = { ...pkg, popular: e.target.checked };
+                                            const next = washaAi.credit_packages.map((item, itemIndex) => ({
+                                                ...item,
+                                                popular: e.target.checked ? itemIndex === index : itemIndex === index ? false : item.popular,
+                                            }));
                                             setWashaAi({ ...washaAi, credit_packages: next });
                                         }}
                                     />

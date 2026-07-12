@@ -9,6 +9,7 @@ import {
     createPaylinkInvoice,
     getPaylinkInvoice,
     PAYLINK_ENABLED,
+    PAYLINK_CREATION_ENABLED,
 } from "@/lib/paylink";
 import {
     getPaylinkInvoiceAmount,
@@ -21,6 +22,15 @@ import { getWashaAiSettings } from "@/app/actions/settings";
 import type { WashaAiCreditPackage } from "@/types/database";
 
 const PURCHASE_ROLES = new Set(["subscriber", "wushsha"]);
+
+export type CreditCheckoutProvider = "paylink" | "tap";
+
+export function getCreditCheckoutCapability() {
+    const provider = process.env.WASHA_AI_CREDIT_CHECKOUT_PROVIDER === "tap" ? "tap" : "paylink";
+    const enabled = process.env.WASHA_AI_CREDIT_CHECKOUT_ENABLED === "true"
+        && (provider === "paylink" ? PAYLINK_ENABLED && PAYLINK_CREATION_ENABLED : false);
+    return { provider: provider as CreditCheckoutProvider, enabled };
+}
 
 /** يتحقق من مفاتيح التحكّم: نظام الرصيد مفعّل + الدور مسموح له بالشراء. */
 async function purchaseAllowedByControls(role: string | null | undefined): Promise<boolean> {
@@ -217,7 +227,8 @@ export async function createCreditCheckout(params: {
     clientName?: string | null;
     clientEmail?: string | null;
 }): Promise<ServiceResult<CheckoutResult>> {
-    if (!PAYLINK_ENABLED) {
+    const checkoutCapability = getCreditCheckoutCapability();
+    if (!checkoutCapability.enabled) {
         return fail(503, "بوابة الدفع غير مفعّلة حالياً");
     }
 

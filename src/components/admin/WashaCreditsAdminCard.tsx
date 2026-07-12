@@ -21,6 +21,14 @@ const ENTRY_LABELS: Record<string, string> = {
     admin_deduct: "خصم إداري",
 };
 
+const ROLE_LABELS: Record<string, string> = {
+    subscriber: "مشترك",
+    wushsha: "وشّاي",
+    booth: "بوث",
+    admin: "مشرف",
+    dev: "تطوير",
+};
+
 export default function WashaCreditsAdminCard() {
     const [identifier, setIdentifier] = useState("");
     const [overview, setOverview] = useState<CreditOverview | null>(null);
@@ -67,23 +75,24 @@ export default function WashaCreditsAdminCard() {
     }
 
     return (
-        <div className="space-y-4">
-            <p className="text-theme-subtle text-sm">
-                ابحث بالاسم المستخدم أو البريد أو معرّف الحساب، ثم امنح أو اخصم رصيد توليد يدوياً. كل حركة تُقيَّد في السجل.
-            </p>
+        <div className="space-y-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div><p className="text-sm font-black text-theme">محفظة المستخدم</p><p className="mt-1 text-xs leading-6 text-theme-subtle">بحث، مراجعة الرصيد، وتعديل موثق في سجل واحد.</p></div>
+                <span className="w-fit rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[10px] font-bold text-theme-subtle">كل حركة قابلة للتدقيق</span>
+            </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 rounded-[20px] border border-theme-subtle bg-theme-faint/35 p-2">
                 <input
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     placeholder="اسم المستخدم / البريد / المعرّف"
-                    className="flex-1 bg-theme-input border border-theme-subtle/40 rounded-xl px-3 py-2.5 text-sm text-theme"
+                    className="min-w-0 flex-1 rounded-xl border border-transparent bg-transparent px-3 py-2.5 text-sm text-theme outline-none placeholder:text-theme-faint focus:border-gold/30 focus:bg-theme-input"
                 />
                 <button
                     onClick={handleSearch}
                     disabled={loading}
-                    className="btn-gold px-4 rounded-xl flex items-center gap-2 text-sm font-bold disabled:opacity-50"
+                    className="btn-gold flex items-center gap-2 rounded-xl px-4 text-sm font-bold active:scale-[0.98] disabled:opacity-50"
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                     بحث
@@ -103,26 +112,26 @@ export default function WashaCreditsAdminCard() {
             )}
 
             {overview && (
-                <div className="rounded-xl border border-theme-subtle/40 p-4 space-y-4">
+                <div className="space-y-5 rounded-[24px] border border-theme-subtle bg-theme-faint/25 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                     <div className="flex items-center justify-between">
                         <div>
                             <div className="font-bold text-theme">
                                 {overview.user.display_name || overview.user.username || overview.user.id}
                             </div>
-                            <div className="text-xs text-theme-subtle">
-                                {overview.user.username ? `@${overview.user.username}` : overview.user.email} · {overview.user.role}
+                            <div className="mt-1 text-xs text-theme-subtle">
+                                {overview.user.username ? `@${overview.user.username}` : overview.user.email} · {ROLE_LABELS[overview.user.role || ""] || overview.user.role}
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 text-amber-500">
+                        <div className="flex items-end gap-2 rounded-2xl border border-gold/20 bg-gold/[0.06] px-4 py-3 text-gold">
                             <Wallet className="w-5 h-5" />
                             <span className="text-2xl font-extrabold tabular-nums">{overview.balance}</span>
                             <span className="text-xs text-theme-subtle">حصة</span>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs text-theme-subtle">
-                        <span>إجمالي المُشترى: <b className="text-theme">{overview.lifetimePurchased}</b></span>
-                        <span>إجمالي المُستهلك: <b className="text-theme">{overview.lifetimeConsumed}</b></span>
+                    <div className="grid grid-cols-2 divide-x divide-x-reverse divide-theme-subtle/50 rounded-2xl border border-theme-subtle/50 py-3 text-xs text-theme-subtle">
+                        <span className="px-4">إجمالي المُشترى <b className="mt-1 block font-mono text-base text-theme">{overview.lifetimePurchased}</b></span>
+                        <span className="px-4">إجمالي المُستهلك <b className="mt-1 block font-mono text-base text-theme">{overview.lifetimeConsumed}</b></span>
                     </div>
 
                     {/* أدوات المنح/الخصم */}

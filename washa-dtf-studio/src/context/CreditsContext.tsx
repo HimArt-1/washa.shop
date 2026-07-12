@@ -112,6 +112,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           if (detail?.guest) {
             const freeRemaining = typeof detail.freeRemaining === 'number' ? detail.freeRemaining : 0;
             return {
+              audience: 'guest',
               guest: true,
               unlimited: false,
               blocked: false,
@@ -151,6 +152,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       // نعتمد قيمة الـ403 الموثوقة (canPurchase) حتى لو لم يكتمل نداء /quota-status بعد.
       setStatus((prev) => {
         const base: QuotaStatus = prev ?? {
+          audience: detail?.guest === true ? 'guest' : 'subscriber',
           unlimited: false,
           blocked: false,
           freeLimit: 0,
@@ -169,10 +171,6 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           guest: detail?.guest === true || base.guest,
         };
       });
-
-      if (detail?.guest === true) {
-        return;
-      }
 
       // نفتح النافذة اللطيفة دائماً — سواء لعرض الشراء أو رسالة «تتجدد غداً».
       setNoticeReason(reason);

@@ -18,6 +18,7 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/paylink", () => ({
     PAYLINK_ENABLED: true,
+    PAYLINK_CREATION_ENABLED: false,
     createPaylinkInvoice: vi.fn(),
     getPaylinkInvoice: mockGetPaylinkInvoice,
 }));
@@ -26,7 +27,7 @@ vi.mock("@/app/actions/settings", () => ({
     getWashaAiSettings: mockGetWashaAiSettings,
 }));
 
-import { verifyCreditPurchaseWebhook } from "@/app/api/washa-ai/credits/service";
+import { createCreditCheckout, verifyCreditPurchaseWebhook } from "@/app/api/washa-ai/credits/service";
 
 function createSupabaseMock(params: {
     order?: Record<string, unknown> | null;
@@ -79,6 +80,18 @@ describe("WASHA AI credit purchase service", () => {
         mockRpc.mockReset();
         mockGetPaylinkInvoice.mockReset();
         mockGetWashaAiSettings.mockReset();
+    });
+
+    it("does not create a credit order while the checkout provider is disabled", async () => {
+        process.env.WASHA_AI_CREDIT_CHECKOUT_ENABLED = "true";
+        const result = await createCreditCheckout({
+            profile: { id: "profile_1", role: "subscriber", displayName: "عميل", email: null, phone: "0500000000" },
+            packageId: "starter",
+        });
+
+        expect(result).toEqual({ ok: false, status: 503, error: "بوابة الدفع غير مفعّلة حالياً" });
+        expect(mockGetSupabaseAdminClient).not.toHaveBeenCalled();
+        delete process.env.WASHA_AI_CREDIT_CHECKOUT_ENABLED;
     });
 
     it("confirms a paid Paylink webhook and credits the wallet idempotently", async () => {

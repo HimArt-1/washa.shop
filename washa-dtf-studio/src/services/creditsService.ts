@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 export interface QuotaStatus {
+  audience: 'guest' | 'subscriber' | 'wushsha' | 'booth' | 'privileged';
   guest?: boolean;
   unlimited: boolean;
   blocked?: boolean;
@@ -19,6 +20,11 @@ export interface CreditPackage {
   credits: number;
   price: number;
   popular?: boolean;
+}
+
+export interface CreditCatalog {
+  packages: CreditPackage[];
+  checkoutEnabled: boolean;
 }
 
 export interface CheckoutResponse {
@@ -44,14 +50,17 @@ export async function fetchQuotaStatus(signal?: AbortSignal): Promise<QuotaStatu
   }
 }
 
-export async function fetchCreditPackages(signal?: AbortSignal): Promise<CreditPackage[]> {
+export async function fetchCreditPackages(signal?: AbortSignal): Promise<CreditCatalog> {
   try {
     const res = await fetch(`${CREDITS_BASE}/packages`, { signal, cache: 'no-store' });
-    if (!res.ok) return [];
+    if (!res.ok) return { packages: [], checkoutEnabled: false };
     const data = await res.json();
-    return Array.isArray(data?.packages) ? (data.packages as CreditPackage[]) : [];
+    return {
+      packages: Array.isArray(data?.packages) ? (data.packages as CreditPackage[]) : [],
+      checkoutEnabled: data?.checkoutEnabled === true,
+    };
   } catch {
-    return [];
+    return { packages: [], checkoutEnabled: false };
   }
 }
 

@@ -98,14 +98,6 @@ export async function resolveDesignPieceAccess(
 
         if (error) {
             console.error("[design-piece-access] Supabase profile lookup failed:", error);
-            if (allowPublicAccess) {
-                return {
-                    allowed: true,
-                    reason: "public_access",
-                    clerkId: userId,
-                    role: "guest",
-                };
-            }
             return { allowed: false, reason: "supabase_error" };
         }
 
@@ -134,14 +126,6 @@ export async function resolveDesignPieceAccess(
         }
     } catch (err) {
         console.error("[design-piece-access] Supabase profile lookup failed:", err);
-        if (allowPublicAccess) {
-            return {
-                allowed: true,
-                reason: "public_access",
-                clerkId: userId,
-                role: "guest",
-            };
-        }
         return { allowed: false, reason: "supabase_error" };
     }
 

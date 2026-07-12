@@ -5,11 +5,17 @@
 
 import { NextResponse } from "next/server";
 import { getActiveWashaAiCreditPackages } from "@/app/actions/settings";
+import { getCreditCheckoutCapability } from "../service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
     const packages = await getActiveWashaAiCreditPackages();
-    return NextResponse.json({ packages });
+    const capability = getCreditCheckoutCapability();
+    return NextResponse.json({
+        packages,
+        checkoutEnabled: capability.enabled,
+        checkoutProvider: capability.provider,
+    });
 }
