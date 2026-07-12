@@ -41,8 +41,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-
 
 function getPrintPositionLabel(position: PrintPosition) {
     if (position === "back") return "الظهر";
-    if (position === "shoulder_right") return "الكتف الأيمن";
-    if (position === "shoulder_left") return "الكتف الأيسر";
+    if (position === "shoulder_right") return "لوقو صغير في الصدر (يمين)";
+    if (position === "shoulder_left") return "لوقو صغير في الصدر (يسار)";
     return "الصدر";
 }
 
@@ -324,7 +324,7 @@ export class DtfOrderService {
                 parsePrintSizeValue(printSize ?? null) ??
                 DEFAULT_DTF_PRINT_SIZE;
             const selectedPrintPositionLabel =
-                (positionRow?.name?.trim() || printPositionLabel?.trim()) ||
+                (printPositionLabel?.trim() || positionRow?.name?.trim()) ||
                 `${getPrintPositionLabel(selectedPrintPosition)} — ${getPrintSizeLabel(selectedPrintSize)}`;
 
             if (garmentId && !garmentRow) {

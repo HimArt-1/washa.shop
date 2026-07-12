@@ -3,7 +3,7 @@ import {
   type DesignState,
   type DtfStudioConfig,
 } from '../types';
-import { resolvePrintPlacementFromOption } from './placement';
+import { findSupportedPrintOption, getPrintPlacementCopy, resolvePrintPlacementFromOption } from './placement';
 
 const STUDIO_DRAFT_KEY = 'washa-ai-studio-draft-v1';
 const STUDIO_DRAFT_VERSION = 1;
@@ -277,14 +277,15 @@ export function reconcileStudioDraftState(
     restored.palette = palette?.name ?? fallback.palette;
   }
 
-  const position = config.positions.find((item) => item.id === saved.printOptionId) ?? null;
+  const position = findSupportedPrintOption(config.positions, saved.printOptionId);
   if (position) {
     const placement = resolvePrintPlacementFromOption(position);
+    const placementCopy = getPrintPlacementCopy(placement.printPosition, placement.printSize);
     restored.designPosition = placement.designPosition;
     restored.printOptionId = position.id;
     restored.printPosition = placement.printPosition;
     restored.printSize = placement.printSize;
-    restored.printPositionLabel = position.name;
+    restored.printPositionLabel = placementCopy.title;
   } else {
     restored.designPosition = fallback.designPosition;
     restored.printOptionId = fallback.printOptionId;
@@ -294,4 +295,20 @@ export function reconcileStudioDraftState(
   }
 
   return restored;
+}
+
+export function reconcileAuthDraftState(
+  saved: DesignState,
+  config: DtfStudioConfig,
+  fallback: DesignState,
+  referenceImageOmitted: boolean,
+) {
+  const restored = reconcileStudioDraftState(saved, config, fallback);
+  if (referenceImageOmitted) return restored;
+
+  return {
+    ...restored,
+    referenceImage: saved.referenceImage,
+    referenceImageMimeType: saved.referenceImageMimeType,
+  };
 }

@@ -96,16 +96,15 @@ export default function StepIdea() {
     <>
       <motion.div
         key="step2"
-        initial={{ opacity: 0, y: 40, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -30, scale: 0.97 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="glass-card-strong wizard-panel"
       >
       {/* Step Badge */}
       <div className="flex items-center justify-between">
         <div className="step-badge">
-          <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-washa-gold" aria-hidden="true" />
           الخطوة ٢ من ٦
         </div>
       </div>

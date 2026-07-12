@@ -2,6 +2,8 @@ import type { DtfStudioPositionOption, PrintPosition, PrintSize } from '../types
 
 type PlacementInput = Pick<DtfStudioPositionOption, 'id' | 'name' | 'description' | 'printPosition' | 'printSize'> | null | undefined;
 
+export const SUPPORTED_PRINT_DESIGN_POSITIONS = ['front_large', 'back_large', 'logo_right', 'logo_left'] as const;
+
 function normalizeArabic(value: string) {
   return value
     .toLowerCase()
@@ -34,6 +36,53 @@ export function resolvePrintPositionFromDesignPosition(designPosition: string): 
 export function resolvePrintSizeFromDesignPosition(designPosition: string): PrintSize {
   if (designPosition.includes('small') || designPosition.startsWith('logo_')) return 'small';
   return 'large';
+}
+
+export function getPrintPlacementCopy(position: PrintPosition, size: PrintSize) {
+  if (position === 'back') {
+    return {
+      title: size === 'small' ? 'طباعة خلفية صغيرة' : 'تصميم خلفي كبير',
+      description: size === 'small'
+        ? 'يظهر بحجم صغير في أعلى الظهر.'
+        : 'يظهر في الظهر بحجم كبير ومميز ليمنح التصميم حضورًا واضحًا.',
+    };
+  }
+
+  if (position === 'shoulder_right') {
+    return {
+      title: 'لوقو صغير في الصدر (يمين)',
+      description: 'يظهر كلوقو صغير في أعلى الصدر من الجهة اليمنى.',
+    };
+  }
+
+  if (position === 'shoulder_left') {
+    return {
+      title: 'لوقو صغير في الصدر (يسار)',
+      description: 'يظهر كلوقو صغير في أعلى الصدر من الجهة اليسرى، جهة القلب.',
+    };
+  }
+
+  return {
+    title: size === 'small' ? 'طباعة أمامية صغيرة' : 'تصميم أمامي كبير',
+    description: size === 'small'
+      ? 'يظهر بحجم صغير في أعلى الصدر.'
+      : 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.',
+  };
+}
+
+export function isSupportedPrintDesignPosition(value: string) {
+  return (SUPPORTED_PRINT_DESIGN_POSITIONS as readonly string[]).includes(value);
+}
+
+export function findSupportedPrintOption(options: DtfStudioPositionOption[], preferredId?: string | null) {
+  const preferred = options.find((option) => option.id === preferredId) ?? null;
+  if (preferred && isSupportedPrintDesignPosition(resolvePrintPlacementFromOption(preferred).designPosition)) {
+    return preferred;
+  }
+
+  return options.find((option) => resolvePrintPlacementFromOption(option).designPosition === 'front_large') ??
+    options.find((option) => isSupportedPrintDesignPosition(resolvePrintPlacementFromOption(option).designPosition)) ??
+    null;
 }
 
 export function resolvePrintPlacementFromOption(option: PlacementInput): {

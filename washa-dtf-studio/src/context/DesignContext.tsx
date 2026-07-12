@@ -27,6 +27,8 @@ import {
   type WashaAiAuthIntent,
 } from '../lib/authFlow';
 import {
+  findSupportedPrintOption,
+  getPrintPlacementCopy,
   resolvePrintPlacementFromOption,
   resolvePrintPositionFromDesignPosition,
   resolvePrintSizeFromDesignPosition,
@@ -38,6 +40,7 @@ import {
   isStudioAppPath,
   loadStudioDraft,
   readStudioStepFromUrl,
+  reconcileAuthDraftState,
   reconcileStudioDraftState,
   resolveStudioRestoreStep,
   saveStudioDraft,
@@ -245,8 +248,9 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
   const style = config.styles[0] || null;
   const technique = config.techniques[0] || null;
   const palette = config.palettes[0] || null;
-  const printOption = config.positions[0] || null;
+  const printOption = findSupportedPrintOption(config.positions);
   const placement = resolvePrintPlacementFromOption(printOption);
+  const placementCopy = getPrintPlacementCopy(placement.printPosition, placement.printSize);
 
   return {
     ...EMPTY_STATE,
@@ -260,7 +264,7 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
     printOptionId: printOption?.id ?? null,
     printPosition: placement.printPosition,
     printSize: placement.printSize,
-    printPositionLabel: printOption?.name ?? 'تصميم أمامي كبير',
+    printPositionLabel: placementCopy.title,
   };
 }
 
@@ -578,9 +582,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         printPosition: effectivePrintPosition,
         printSize: effectivePrintSize,
         printPositionLabel: state.printPositionLabel ?? undefined,
-        printScale: state.printScale,
-        printOffsetX: state.printOffsetX,
-        printOffsetY: state.printOffsetY,
         garmentColorHex: state.garmentColorHex,
         garmentReferenceImageBase64: garmentReference?.base64,
         garmentReferenceImageMimeType: garmentReference?.mimeType,
@@ -690,18 +691,21 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
     let cancelled = false;
     studioDraftReferenceOmittedRef.current = draft.referenceImageOmitted;
+    const restoredAuthState = reconcileAuthDraftState(
+      draft.state,
+      config,
+      buildInitialState(config),
+      draft.referenceImageOmitted,
+    );
 
-    setState((current) => ({
-      ...current,
-      ...draft.state,
-    }));
+    setState(restoredAuthState);
     setMockupImage(null);
     setExtractedImage(null);
     setOrderResult(null);
     setError(null);
 
     if (draft.intent === 'generate') {
-      if (draft.referenceImageOmitted && draft.state.designMethod === 'image' && !draft.state.prompt.trim()) {
+      if (draft.referenceImageOmitted && restoredAuthState.designMethod === 'image' && !restoredAuthState.prompt.trim()) {
         setStep(2);
         setStudioDraftReady(true);
         showToast('استرجعنا اختياراتك، لكن أعد رفع الصورة المرجعية قبل التوليد.', 'info');

@@ -1,5 +1,3 @@
-import { buildPrintAdjustmentDirective } from '../lib/printPreview';
-
 // Use the integrated Next.js API instead of a separate local proxy server.
 const API_BASE_URL = '/api/washa-dtf-studio';
 
@@ -10,9 +8,6 @@ interface GenerationPreferences {
   printPosition?: 'chest' | 'back' | 'shoulder_right' | 'shoulder_left' | null;
   printSize?: 'large' | 'small' | null;
   printPositionLabel?: string | null;
-  printScale?: number;
-  printOffsetX?: number;
-  printOffsetY?: number;
   garmentColorHex?: string | null;
   garmentReferenceImageBase64?: string;
   garmentReferenceImageMimeType?: string;
@@ -117,33 +112,26 @@ export async function generateMockup(
   const effectivePrintSize =
     preferences.printSize ||
     (preferences.designPosition?.includes('small') || preferences.designPosition?.startsWith('logo_') ? 'small' : 'large');
-  const adjustmentDirective = buildPrintAdjustmentDirective({
-    scale: preferences.printScale ?? 100,
-    offsetX: preferences.printOffsetX ?? 0,
-    offsetY: preferences.printOffsetY ?? 0,
-  }, effectivePrintPosition, effectivePrintSize);
-
   let sceneDirectives = '';
   if (effectivePrintPosition === 'shoulder_right' || effectivePrintPosition === 'shoulder_left') {
     const imageSide = effectivePrintPosition === 'shoulder_right'
-      ? 'RIGHT side of the image / viewer-right shoulder and upper sleeve'
-      : 'LEFT side of the image / viewer-left shoulder and upper sleeve';
+      ? "LEFT side of the image / viewer-left upper chest (the wearer's right side)"
+      : "RIGHT side of the image / viewer-right upper chest over the heart area (the wearer's left side)";
     const forbiddenSide = effectivePrintPosition === 'shoulder_right'
-      ? 'left side'
-      : 'right side';
+      ? 'viewer-right upper chest'
+      : 'viewer-left upper chest';
     const placementCode = effectivePrintPosition === 'shoulder_right'
-      ? 'LOGO_ON_IMAGE_RIGHT'
-      : 'LOGO_ON_IMAGE_LEFT';
+      ? 'LOGO_ON_IMAGE_LEFT'
+      : 'LOGO_ON_IMAGE_RIGHT';
 
     sceneDirectives = compactPrompt([
       `Front-facing medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
       `Placement code: ${placementCode}.`,
-      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small'} DTF print is placed strictly on the ${imageSide} of the ${color} ${garmentType}.`,
+      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo is placed strictly on the ${imageSide} of the ${color} ${garmentType}.`,
       `Use screen/image coordinates only: image right means the viewer's right side, image left means the viewer's left side.`,
       `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `Keep the center chest blank. Do not place the print on the ${forbiddenSide}, do not center it on the chest, and do not move it to the back.`,
+      `Keep the center chest blank. Do not place the logo on the ${forbiddenSide}, do not center it on the chest, do not place it on a sleeve or shoulder, and do not move it to the back.`,
       preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
-      adjustmentDirective,
       `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
     ]);
   } else {
@@ -163,7 +151,6 @@ export async function generateMockup(
         ? 'The artwork must be on the rear back panel, not on the front chest. The front of the garment must not be visible as the printed side.'
         : 'The artwork must be on the front chest panel, not on the rear back panel.',
       preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
-      adjustmentDirective,
       `Full garment visible, clean studio background.`,
     ]);
   }

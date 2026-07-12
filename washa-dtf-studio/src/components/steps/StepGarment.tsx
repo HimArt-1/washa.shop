@@ -367,10 +367,9 @@ export default function StepGarment() {
     <>
       <motion.div
         key="step1"
-        initial={{ opacity: 0, y: 28 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        transition={{ type: 'spring', stiffness: 150, damping: 23 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="glass-card-strong wizard-panel"
       >
         <div className="flex items-center justify-between">

@@ -293,10 +293,9 @@ export default function StepResult() {
 
       <motion.div
         key="step4"
-        initial={{ opacity: 0, y: 40, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -30, scale: 0.97 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="mx-auto max-w-3xl space-y-6"
       >
         {/* ===== GENERATING STATE ===== */}

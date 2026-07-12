@@ -7,6 +7,7 @@ import {
   isStudioAppPath,
   parseStudioDraft,
   parseStudioStep,
+  reconcileAuthDraftState,
   reconcileStudioDraftState,
   resolveStudioRestoreStep,
   studioStepToSlug,
@@ -133,7 +134,20 @@ describe("WASHA AI studio draft", () => {
 
     expect(restored.printPosition).toBe("chest");
     expect(restored.printSize).toBe("large");
-    expect(restored.printPositionLabel).toBe("أمامي");
+    expect(restored.printPositionLabel).toBe("تصميم أمامي كبير");
+  });
+
+  it("preserves an included reference image only for the authentication draft flow", () => {
+    const saved = designState({ referenceImage: "image-data", referenceImageMimeType: "image/png" });
+
+    expect(reconcileAuthDraftState(saved, config, designState(), false)).toMatchObject({
+      referenceImage: "image-data",
+      referenceImageMimeType: "image/png",
+    });
+    expect(reconcileAuthDraftState(saved, config, designState(), true)).toMatchObject({
+      referenceImage: null,
+      referenceImageMimeType: null,
+    });
   });
 
   it("limits restoration to the highest completed step", () => {

@@ -4,17 +4,19 @@ import type { ReactNode } from 'react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
-import { resolvePrintPlacementFromOption } from '../../lib/placement';
+import { getPrintPlacementCopy, resolvePrintPlacementFromOption, SUPPORTED_PRINT_DESIGN_POSITIONS } from '../../lib/placement';
 import type { PrintPosition, PrintSize } from '../../types';
 import { DEFAULT_PRINT_ADJUSTMENT } from '../../lib/printPreview';
 import StepNavigationBar from './StepNavigationBar';
 import InteractivePlacementPreview from './InteractivePlacementPreview';
 
+const SHOW_INTERACTIVE_PRINT_PREVIEW = false;
+
 type PositionCard = {
   id: string;
+  printOptionId?: string | null;
   title: string;
   description: string | null;
-  imageUrl?: string | null;
   designPosition: string;
   printPosition: PrintPosition;
   printSize: PrintSize;
@@ -69,7 +71,6 @@ export default function StepPosition() {
           stroke="rgba(64,48,40,0.7)"
           strokeWidth="1.5"
           strokeDasharray={isSelected ? 'none' : '4 2'}
-          className="animate-pulse"
         />
         {/* Design zone icon - sparkle */}
         <text
@@ -84,8 +85,8 @@ export default function StepPosition() {
   );
 
   const getHighlightRect = (printPosition: PrintPosition, printSize: PrintSize) => {
-    if (printPosition === 'shoulder_right') return { x: 67, y: 48, w: 18, h: 18 };
-    if (printPosition === 'shoulder_left') return { x: 35, y: 48, w: 18, h: 18 };
+    if (printPosition === 'shoulder_right') return { x: 35, y: 48, w: 18, h: 18 };
+    if (printPosition === 'shoulder_left') return { x: 67, y: 48, w: 18, h: 18 };
     if (printPosition === 'back') {
       return printSize === 'small'
         ? { x: 50, y: 52, w: 20, h: 20 }
@@ -99,7 +100,7 @@ export default function StepPosition() {
   const defaultPositions: PositionCard[] = [
     {
       id: 'front_large',
-      title: 'تصميم أمامي',
+      title: 'تصميم أمامي كبير',
       description: 'يظهر في الصدر بحجم كبير ومميز ليكون واجهة القطعة الأساسية.',
       designPosition: 'front_large',
       printPosition: 'chest',
@@ -109,8 +110,8 @@ export default function StepPosition() {
     },
     {
       id: 'back_large',
-      title: 'تصميم خلفي',
-      description: 'يظهر في الظهر بشكل كبير، مثالي للتصاميم المعقدة والملفتة.',
+      title: 'تصميم خلفي كبير',
+      description: 'يظهر في الظهر بحجم كبير ومميز ليمنح التصميم حضورًا واضحًا.',
       designPosition: 'back_large',
       printPosition: 'back',
       printSize: 'large',
@@ -119,34 +120,34 @@ export default function StepPosition() {
     },
     {
       id: 'logo_right',
-      title: 'طباعة الكتف الأيمن',
-      description: 'طباعة صغيرة على أعلى الكم والكتف من الجهة اليمنى.',
+      title: 'لوقو صغير في الصدر (يمين)',
+      description: 'يظهر كلوقو صغير في أعلى الصدر من الجهة اليمنى.',
       designPosition: 'logo_right',
       printPosition: 'shoulder_right',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
     {
       id: 'logo_left',
-      title: 'طباعة الكتف الأيسر',
-      description: 'طباعة صغيرة على أعلى الكم والكتف من الجهة اليسرى.',
+      title: 'لوقو صغير في الصدر (يسار)',
+      description: 'يظهر كلوقو صغير في أعلى الصدر من الجهة اليسرى، جهة القلب.',
       designPosition: 'logo_left',
       printPosition: 'shoulder_left',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
     },
   ];
 
-  const displayPositions: PositionCard[] = positionOptions.length > 0
-    ? positionOptions.map(p => {
+  const catalogPositions: PositionCard[] = positionOptions.map(p => {
         const placement = resolvePrintPlacementFromOption(p);
+        const copy = getPrintPlacementCopy(placement.printPosition, placement.printSize);
         return {
           id: p.id,
-          title: p.name,
-          description: p.description,
-          imageUrl: p.imageUrl,
+          printOptionId: p.id,
+          title: copy.title,
+          description: copy.description,
           designPosition: placement.designPosition,
           printPosition: placement.printPosition,
           printSize: placement.printSize,
@@ -159,22 +160,24 @@ export default function StepPosition() {
             />
           ),
         };
-      })
-    : defaultPositions;
+      });
+  const displayPositions = SUPPORTED_PRINT_DESIGN_POSITIONS.map((designPosition) =>
+    catalogPositions.find((position) => position.designPosition === designPosition) ??
+    defaultPositions.find((position) => position.designPosition === designPosition)!
+  );
 
   return (
     <>
       <motion.div
         key="step-position"
-        initial={{ opacity: 0, y: 40, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -30, scale: 0.97 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className="glass-card-strong wizard-panel"
       >
       <div className="flex items-center justify-between">
         <div className="step-badge">
-          <span className="w-1.5 h-1.5 rounded-full bg-washa-gold animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-washa-gold" aria-hidden="true" />
           الخطوة ٣ من ٦
         </div>
       </div>
@@ -194,12 +197,12 @@ export default function StepPosition() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="wizard-copy text-washa-text-sec"
         >
-          اختر المنطقة، ثم اضبط الحجم والمحاذاة قبل التوليد
+          اختر مكان الطباعة بدقة؛ سيُطبّق الاختيار نفسه عند التوليد
         </motion.p>
       </div>
 
-      <div className="max-h-[calc(100dvh-20rem)] min-h-72 space-y-7 overflow-y-auto overscroll-contain pb-28 touch-pan-y sm:max-h-none sm:pb-0">
-        <InteractivePlacementPreview
+      <div className="min-h-72 space-y-5">
+        {SHOW_INTERACTIVE_PRINT_PREVIEW ? <InteractivePlacementPreview
           adjustment={adjustment}
           garmentImage={garmentImageUrl ? studioAsset(garmentImageUrl) : null}
           garmentColor={state.garmentColorHex}
@@ -214,26 +217,23 @@ export default function StepPosition() {
             printOffsetX: next.offsetX,
             printOffsetY: next.offsetY,
           })}
-        />
+        /> : null}
 
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 border-t border-washa-border/35 pt-5">
-            <span className="text-xs text-washa-text-faint">يمكن تعديلها لاحقًا</span>
+            <span className="text-xs text-washa-text-faint">أربع مناطق معتمدة</span>
             <h3 className="text-sm font-bold text-washa-text">اختر منطقة الطباعة</h3>
           </div>
         <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4" role="group" aria-label="مناطق الطباعة المتاحة">
-        {displayPositions.map((pos, index) => {
-          const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
+        {displayPositions.map((pos) => {
+          const isSelected = state.designPosition === pos.designPosition && (!state.printOptionId || state.printOptionId === pos.printOptionId);
           return (
-            <motion.button
+            <button
               key={pos.id}
               aria-pressed={isSelected}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 + index * 0.05, duration: 0.35 }}
               onClick={() => updateState({
                 designPosition: pos.designPosition,
-                printOptionId: pos.id,
+                printOptionId: pos.printOptionId ?? null,
                 printPosition: pos.printPosition,
                 printSize: pos.printSize,
                 printPositionLabel: pos.title,
@@ -254,23 +254,9 @@ export default function StepPosition() {
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
 
                 {'visual' in pos && typeof pos.visual === 'function' ? (
-                  <div className={cn(
-                    "absolute inset-0 z-0 transition-opacity duration-300",
-                    'imageUrl' in pos && pos.imageUrl ? "opacity-55" : "opacity-100"
-                  )}>
+                  <div className="absolute inset-0">
                     {pos.visual(isSelected)}
                   </div>
-                ) : null}
-                
-                {('imageUrl' in pos && pos.imageUrl) ? (
-                  <img 
-                    src={studioAsset(pos.imageUrl as string)} 
-                    alt={pos.title} 
-                    className={cn(
-                      "relative z-[1] h-full w-full object-contain object-center drop-shadow-[0_18px_30px_rgba(0,0,0,0.4)] transition-transform duration-700",
-                      isSelected ? "scale-[1.05]" : "scale-100 group-hover:scale-[1.05]"
-                    )} 
-                  />
                 ) : null}
                 
                 {isSelected && (
@@ -305,7 +291,7 @@ export default function StepPosition() {
                   </p>
                 )}
               </div>
-            </motion.button>
+            </button>
           );
         })}
         </div>

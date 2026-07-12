@@ -1,5 +1,4 @@
-import { motion } from 'motion/react';
-import { History, Home, Sparkles } from 'lucide-react';
+import { Droplets, History, Home, Lightbulb, MapPin, Palette, Shirt, Sparkles } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
@@ -14,12 +13,12 @@ export default function Header({ onOpenGallery }: HeaderProps) {
   const { step } = useDesign();
 
   const steps = [
-    { num: 1, label: 'القطعة', icon: '👕' },
-    { num: 2, label: 'الفكرة', icon: '💡' },
-    { num: 3, label: 'المكان', icon: '🎯' },
-    { num: 4, label: 'الأسلوب', icon: '🎨' },
-    { num: 5, label: 'الألوان', icon: '🌈' },
-    { num: 6, label: 'النتيجة', icon: '✨' },
+    { num: 1, label: 'القطعة', icon: Shirt },
+    { num: 2, label: 'الفكرة', icon: Lightbulb },
+    { num: 3, label: 'المكان', icon: MapPin },
+    { num: 4, label: 'الأسلوب', icon: Palette },
+    { num: 5, label: 'الألوان', icon: Droplets },
+    { num: 6, label: 'النتيجة', icon: Sparkles },
   ];
 
   return (
@@ -56,15 +55,17 @@ export default function Header({ onOpenGallery }: HeaderProps) {
 
         {/* Interactive Stepper */}
         <div className="hidden flex-1 items-center justify-center gap-0 md:flex">
-          {steps.map((s, i) => (
+          {steps.map((s, i) => {
+            const StepIcon = s.icon;
+            return (
             <div key={s.num} className="flex items-center">
               {/* Step Node */}
               <div className="flex flex-col items-center relative">
                 <div
                   className={cn(
-                    'w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 relative',
+                    'relative flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-[background-color,border-color,color,transform] duration-200',
                     step === s.num
-                      ? 'bg-washa-gold text-washa-bg shadow-[0_0_25px_rgba(64,48,40,0.5)] stepper-node-active scale-110'
+                      ? 'scale-105 bg-washa-gold text-washa-bg shadow-[0_8px_20px_rgba(64,48,40,0.18)]'
                       : step > s.num
                       ? 'bg-washa-gold/20 text-washa-gold border border-washa-gold/40'
                       : 'bg-washa-surface text-washa-text-faint border border-washa-border/50'
@@ -73,15 +74,10 @@ export default function Header({ onOpenGallery }: HeaderProps) {
                   {step > s.num ? (
                     <Sparkles className="w-4 h-4" />
                   ) : (
-                    <span className="text-xs">{s.icon}</span>
+                    <StepIcon className="h-4 w-4" aria-hidden="true" />
                   )}
                   {step === s.num && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full border-2 border-washa-gold/30"
-                      initial={{ scale: 1, opacity: 0.5 }}
-                      animate={{ scale: 1.6, opacity: 0 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
-                    />
+                    <div className="absolute -inset-1 rounded-full border border-washa-gold/25" aria-hidden="true" />
                   )}
                 </div>
                 <span
@@ -97,16 +93,11 @@ export default function Header({ onOpenGallery }: HeaderProps) {
               {/* Connecting Line */}
               {i < steps.length - 1 && (
                 <div className="w-10 lg:w-16 h-[2px] mx-1 bg-washa-border/30 relative overflow-hidden rounded-full mt-[-14px]">
-                  <motion.div
-                    className="absolute inset-y-0 left-0 bg-washa-gold rounded-full"
-                    initial={{ width: '0%' }}
-                    animate={{ width: step > s.num ? '100%' : '0%' }}
-                    transition={{ duration: 0.6, ease: 'easeInOut' }}
-                  />
+                  <div className={cn('absolute inset-y-0 left-0 rounded-full bg-washa-gold transition-[width] duration-200', step > s.num ? 'w-full' : 'w-0')} />
                 </div>
               )}
             </div>
-          ))}
+          )})}
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
