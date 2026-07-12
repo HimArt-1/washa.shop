@@ -40,7 +40,7 @@ function getTextFromGenAiResponse(response: any) {
         .trim();
 }
 
-function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
+export function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
     const forbiddenPattern = /DTF|prompt|WASHA AI|مواصفات القطعة|موضع الطباعة|لون القطعة|المقاس|خلفية شفافة|قيود مهمة|الأسلوب الفني المطلوب|طريقة التنفيذ البصرية|لوحة الألوان|كاتلوج|كتالوج|برومبت|نموذج الذكاء|تعليمات/i;
     const cleaned = value
         .replace(/```[\s\S]*?```/g, "")
@@ -57,11 +57,14 @@ function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
         .replace(/\s+/g, " ")
         .trim();
 
+    const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+    const minimumUsefulLength = Math.min(90, Math.max(65, Math.round(fallbackIdea.length * 0.45)));
     const isTooSmallForShortIdea = fallbackIdea.length <= 60 && cleaned.length < Math.max(55, fallbackIdea.length + 24);
+    const isIncompleteEnhancement = cleaned.length < minimumUsefulLength || wordCount < 12;
     const isGeneric = /خلفية مناسبة|تفاصيل جميلة|مشهد غني وواضح|تصميم جذاب/i.test(cleaned) && cleaned.length < 95;
 
-    if (!cleaned || forbiddenPattern.test(cleaned) || isTooSmallForShortIdea || isGeneric) {
-        throw new Error(`Idea enhancer returned an internal prompt for: ${fallbackIdea}`);
+    if (!cleaned || forbiddenPattern.test(cleaned) || isTooSmallForShortIdea || isIncompleteEnhancement || isGeneric) {
+        throw new Error(`Idea enhancer returned incomplete or invalid output for: ${fallbackIdea}`);
     }
 
     return cleaned.slice(0, 420).trim();
@@ -100,7 +103,9 @@ async function runGeminiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
         config: {
             temperature: 0.92,
             topP: 0.92,
-            maxOutputTokens: 260,
+            // Gemini thinking tokens share this budget with the visible answer.
+            // A small cap can leave only the first few Arabic words for the user.
+            maxOutputTokens: 768,
             httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
         } as any,
     });
@@ -134,7 +139,7 @@ async function runOpenAiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
                 ],
                 temperature: 0.92,
                 top_p: 0.92,
-                max_tokens: 260,
+                max_tokens: 420,
             }),
             signal: abortController.signal,
         });

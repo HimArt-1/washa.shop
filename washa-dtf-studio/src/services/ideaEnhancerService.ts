@@ -46,7 +46,11 @@ function sanitizeEnhancedIdea(value: string, fallback: string) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (!cleaned || INTERNAL_OUTPUT_PATTERN.test(cleaned)) {
+  const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
+  const minimumUsefulLength = Math.min(90, Math.max(65, Math.round(cleanIdea(fallback).length * 0.45)));
+  const isIncomplete = cleaned.length < minimumUsefulLength || wordCount < 12;
+
+  if (!cleaned || INTERNAL_OUTPUT_PATTERN.test(cleaned) || isIncomplete) {
     return buildLocalEnhancedIdea({ idea: fallback }).enhancedIdea;
   }
 
