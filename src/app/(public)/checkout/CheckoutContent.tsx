@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createOrder } from "@/app/actions/orders";
+import { createOrder, getCheckoutAttemptStatus } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
@@ -19,6 +19,13 @@ import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
 import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
 import { buildBankTransferWhatsAppUrl, type BankTransferWhatsAppDetails } from "@/lib/bank-transfer";
+import {
+    CheckoutSubmissionTimeoutError,
+    runCheckoutSubmission,
+} from "@/lib/checkout-submission";
+
+const CHECKOUT_SUBMISSION_TIMEOUT_MS = 15_000;
+type CheckoutSubmissionStage = "idle" | "saving" | "redirecting" | "complete" | "timeout";
 
 function normalizeSaudiPhone(value: string) {
     const compact = value.replace(/[\s\-()]/g, "");
@@ -100,6 +107,8 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const cartWasCleaned = rawItemsSignature !== cleanItemsSignature;
     const searchParams = useSearchParams();
     const verifiedPaymentKeyRef = useRef<string | null>(null);
+    const submissionLockRef = useRef(false);
+    const checkoutAttemptIdRef = useRef<string | null>(null);
     const trackEvent = useTrackEvent();
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,7 +117,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferWhatsAppDetails | null>(null);
-    const [checkoutAttemptId, setCheckoutAttemptId] = useState<string | null>(null);
+    const [submissionStage, setSubmissionStage] = useState<CheckoutSubmissionStage>("idle");
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
@@ -332,8 +341,33 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         : 0;
     const total = taxableAmount + shippingCost + taxAmount;
 
-    async function onSubmit(data: AddressFormValues) {
+    function completeCheckoutOrder(
+        result: { order_number?: string; total?: number },
+        data: AddressFormValues
+    ) {
+        if (paymentMethod === "bank_transfer" && result.order_number) {
+            setBankTransferConfirmation({
+                orderNumber: result.order_number,
+                total: result.total || total,
+                customerName: data.name,
+                customerPhone: data.phone,
+                items: items.map((item) => ({
+                    title: item.title,
+                    quantity: item.quantity,
+                    size: item.size || null,
+                })),
+            });
+        }
+        setSubmissionStage("complete");
+        setSuccess(result.order_number || "#ORDER");
+        checkoutAttemptIdRef.current = null;
+        clearCart();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function onValidSubmit(data: AddressFormValues) {
         setIsSubmitting(true);
+        setSubmissionStage("saving");
         setError(null);
 
         const orderItems = items.map((item) => {
@@ -367,70 +401,94 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
         if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
 
-        const currentCheckoutAttemptId = checkoutAttemptId || crypto.randomUUID();
-        setCheckoutAttemptId(currentCheckoutAttemptId);
-        const result = await createOrder(orderItems, address, {
-            paymentMethod: finalPaymentMethod,
-            couponId: coupon?.id,
-            discountAmount: discount,
-            checkoutAttemptId: currentCheckoutAttemptId,
-        });
+        const currentCheckoutAttemptId = checkoutAttemptIdRef.current || crypto.randomUUID();
+        checkoutAttemptIdRef.current = currentCheckoutAttemptId;
+        let awaitingTapRedirect = false;
+        try {
+            const result = await runCheckoutSubmission(
+                createOrder(orderItems, address, {
+                    paymentMethod: finalPaymentMethod,
+                    couponId: coupon?.id,
+                    discountAmount: discount,
+                    checkoutAttemptId: currentCheckoutAttemptId,
+                }),
+                CHECKOUT_SUBMISSION_TIMEOUT_MS
+            );
 
-        if (!result.success) {
-            setError(result.error || "حدث خطأ أثناء إنشاء الطلب");
-            setIsSubmitting(false);
-            return;
-        }
+            if (!result.success) {
+                setSubmissionStage("idle");
+                setError(result.error || "حدث خطأ أثناء إنشاء الطلب");
+                return;
+            }
 
-        if (paymentMethod === "tap" && result.order_id && result.order_number && result.total) {
-            try {
-                const response = await fetch("/api/tap/create-charge", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        orderId: result.order_id,
-                        clientName: data.name,
-                        clientMobile: data.phone,
-                        clientEmail: accountEmail || undefined,
-                    }),
-                });
-
-                const json = await response.json();
+            if (paymentMethod === "tap" && result.order_id && result.order_number && result.total) {
+                awaitingTapRedirect = true;
+                setSubmissionStage("redirecting");
+                const { response, json } = await runCheckoutSubmission(
+                    fetch("/api/tap/create-charge", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId: result.order_id,
+                            clientName: data.name,
+                            clientMobile: data.phone,
+                            clientEmail: accountEmail || undefined,
+                        }),
+                    }).then(async (response) => ({ response, json: await response.json() })),
+                    CHECKOUT_SUBMISSION_TIMEOUT_MS
+                );
 
                 if (!response.ok || !json.url) {
+                    setSubmissionStage("idle");
                     setError(json.error || "فشل في إنشاء رابط الدفع");
-                    setIsSubmitting(false);
                     return;
                 }
 
                 window.location.href = json.url;
                 return;
-            } catch {
-                setError("خطأ في الاتصال — تحقق من الإنترنت وأعد المحاولة");
-                setIsSubmitting(false);
-                return;
+            } else {
+                completeCheckoutOrder(result, data);
             }
-        } else {
-            if (paymentMethod === "bank_transfer" && result.order_number) {
-                setBankTransferConfirmation({
-                    orderNumber: result.order_number,
-                    total: result.total || total,
-                    customerName: data.name,
-                    customerPhone: data.phone,
-                    items: items.map((item) => ({
-                        title: item.title,
-                        quantity: item.quantity,
-                        size: item.size || null,
-                    })),
-                });
+        } catch (submissionError) {
+            if (submissionError instanceof CheckoutSubmissionTimeoutError) {
+                if (!awaitingTapRedirect) {
+                    try {
+                        const reconciliation = await runCheckoutSubmission(
+                            getCheckoutAttemptStatus(currentCheckoutAttemptId),
+                            5_000
+                        );
+                        if (reconciliation.success && reconciliation.state === "ready") {
+                            completeCheckoutOrder(reconciliation, data);
+                            return;
+                        }
+                    } catch {
+                        // The recovery panel below keeps the form and attempt id available.
+                    }
+                }
+                setSubmissionStage("timeout");
+                setError("استغرق تثبيت الطلب وقتًا أطول من المعتاد. قد يكون الطلب تم تسجيله؛ تحقق من طلباتك أو أعد المحاولة بأمان.");
+            } else {
+                setSubmissionStage("idle");
+                setError("تعذر الاتصال بخادم الطلبات. بقيت بياناتك محفوظة ويمكنك إعادة المحاولة.");
             }
-            setSuccess(result.order_number || "#ORDER");
-            setCheckoutAttemptId(null);
-            clearCart();
-            window.scrollTo({ top: 0, behavior: "smooth" });
+        } finally {
+            submissionLockRef.current = false;
+            setIsSubmitting(false);
         }
+    }
 
-        setIsSubmitting(false);
+    function handleCheckoutFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+        if (submissionLockRef.current) {
+            event.preventDefault();
+            return;
+        }
+        submissionLockRef.current = true;
+        void form.handleSubmit(
+            onValidSubmit,
+            () => {
+                submissionLockRef.current = false;
+            }
+        )(event);
     }
 
     async function handleApplyCoupon(e: React.FormEvent) {
@@ -591,7 +649,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 عنوان الشحن
                             </h2>
 
-                            <form id="checkout-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <form id="checkout-form" onSubmit={handleCheckoutFormSubmit} className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <label htmlFor="checkout-name" className="text-sm text-theme-soft">الاسم الكامل</label>
@@ -984,7 +1042,40 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 </div>
                             </div>
 
-                            {error && (
+                            <AnimatePresence mode="wait">
+                                {(isSubmitting || submissionStage === "timeout") && (
+                                    <motion.div
+                                        key={submissionStage}
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -4 }}
+                                        className={`mt-6 rounded-2xl border px-4 py-3 ${submissionStage === "timeout" ? "border-amber-500/25 bg-amber-500/10" : "border-gold/20 bg-gold/[0.06]"}`}
+                                        role={submissionStage === "timeout" ? "alert" : "status"}
+                                        aria-live={submissionStage === "timeout" ? "assertive" : "polite"}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {submissionStage === "timeout" ? (
+                                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"><Lock className="h-4 w-4" /></span>
+                                            ) : (
+                                                <Loader2 className="h-5 w-5 animate-spin text-gold" />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold text-theme">
+                                                    {submissionStage === "redirecting" ? "جارٍ تجهيز صفحة الدفع" : submissionStage === "timeout" ? "لم نفقد بيانات طلبك" : "جارٍ تثبيت الطلب"}
+                                                </p>
+                                                <p className="mt-1 text-xs leading-5 text-theme-subtle">
+                                                    {submissionStage === "timeout" ? "يمكنك التحقق من الطلبات أو إعادة الإرسال؛ سنستخدم محاولة الطلب نفسها لتجنب التكرار." : "نتحقق من السلة ونثبت المنتجات والحجز. لا تغلق الصفحة."}
+                                                </p>
+                                            </div>
+                                            {submissionStage === "timeout" ? (
+                                                <Link href="/account/orders" className="shrink-0 rounded-xl border border-amber-500/25 px-3 py-2 text-[11px] font-bold text-amber-300 transition hover:bg-amber-500/10">طلباتي</Link>
+                                            ) : null}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {error && submissionStage !== "timeout" && (
                                 <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 rounded-xl mt-6">
                                     {error}
                                 </div>
@@ -999,7 +1090,10 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 className="mt-8 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold btn-gold disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>{submissionStage === "redirecting" ? "تجهيز الدفع…" : "تثبيت الطلب…"}</span>
+                                    </>
                                 ) : (
                                     <>
                                         <span>

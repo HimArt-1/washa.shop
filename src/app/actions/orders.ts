@@ -1216,6 +1216,47 @@ export async function createOrder(
     };
 }
 
+export async function getCheckoutAttemptStatus(checkoutAttemptId: string) {
+    const normalizedAttemptId = checkoutAttemptId.trim();
+    if (!/^[0-9a-f-]{36}$/i.test(normalizedAttemptId)) {
+        return { success: false as const, state: "not_found" as const };
+    }
+
+    const user = await currentUser();
+    if (!user) return { success: false as const, state: "not_found" as const };
+
+    const supabase = getSupabaseAdminClient();
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("clerk_id", user.id)
+        .maybeSingle();
+    if (!profile) return { success: false as const, state: "not_found" as const };
+
+    const { data: order } = await supabase
+        .from("orders")
+        .select("id, order_number, total, metadata")
+        .eq("buyer_id", profile.id)
+        .contains("metadata", { checkout_attempt_id: normalizedAttemptId })
+        .maybeSingle();
+
+    if (!order) return { success: false as const, state: "not_found" as const };
+    const metadata = order.metadata && typeof order.metadata === "object"
+        ? order.metadata as Record<string, unknown>
+        : {};
+    if (metadata.creation_state !== "ready") {
+        return { success: true as const, state: "processing" as const };
+    }
+
+    return {
+        success: true as const,
+        state: "ready" as const,
+        order_id: order.id,
+        order_number: order.order_number,
+        total: Number(order.total),
+    };
+}
+
 // ─── Confirm Order Payment (Stripe webhook) ──────────────────
 
 export async function confirmOrderPayment(
