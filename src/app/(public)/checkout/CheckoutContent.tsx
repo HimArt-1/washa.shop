@@ -18,6 +18,7 @@ import { SignIn } from "@clerk/nextjs";
 import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
 import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
+import { buildBankTransferWhatsAppUrl, type BankTransferWhatsAppDetails } from "@/lib/bank-transfer";
 
 function normalizeSaudiPhone(value: string) {
     const compact = value.replace(/[\s\-()]/g, "");
@@ -106,6 +107,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank_transfer");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferWhatsAppDetails | null>(null);
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
@@ -405,6 +407,19 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                 return;
             }
         } else {
+            if (paymentMethod === "bank_transfer" && result.order_number) {
+                setBankTransferConfirmation({
+                    orderNumber: result.order_number,
+                    total: result.total || total,
+                    customerName: data.name,
+                    customerPhone: data.phone,
+                    items: items.map((item) => ({
+                        title: item.title,
+                        quantity: item.quantity,
+                        size: item.size || null,
+                    })),
+                });
+            }
             setSuccess(result.order_number || "#ORDER");
             clearCart();
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -497,6 +512,24 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                             {bankTransferConfig.bankName ? <p><span className="text-theme-faint">البنك:</span> <strong>{bankTransferConfig.bankName}</strong></p> : null}
                             {bankTransferConfig.accountName ? <p className="mt-2"><span className="text-theme-faint">اسم الحساب:</span> <strong>{bankTransferConfig.accountName}</strong></p> : null}
                             {bankTransferConfig.iban ? <p className="mt-2 break-all" dir="ltr"><span className="text-theme-faint">IBAN:</span> <strong className="font-mono">{bankTransferConfig.iban}</strong></p> : null}
+                        </div>
+                    ) : null}
+
+                    {paymentMethod === "bank_transfer" && bankTransferConfirmation ? (
+                        <div className="relative z-10 mb-8 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-right">
+                            <p className="text-sm font-bold text-theme-strong">هل أتممت التحويل؟</p>
+                            <p className="mt-1 text-xs leading-6 text-theme-subtle">
+                                افتح واتساب لإرسال بيانات الطلب الجاهزة، ثم أرفق صورة إيصال التحويل داخل المحادثة.
+                            </p>
+                            <a
+                                href={buildBankTransferWhatsAppUrl(bankTransferConfirmation)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition-transform hover:bg-emerald-500 active:scale-[0.98] sm:w-auto"
+                            >
+                                <Smartphone className="h-4 w-4" />
+                                تأكيد التحويل وإرسال الإيصال عبر واتساب
+                            </a>
                         </div>
                     ) : null}
                     
