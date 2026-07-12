@@ -41,6 +41,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
           {steps.map(s => (
             <div
               key={s.num}
+              aria-hidden="true"
               className={cn(
                 'h-2 w-2 rounded-full transition-all duration-300',
                 step === s.num
@@ -111,6 +112,7 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
           <a
             href="/"
+            aria-label="العودة إلى الرئيسية"
             className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold sm:h-auto sm:w-auto sm:px-3 sm:py-2"
             title="الرئيسية"
           >
@@ -120,7 +122,9 @@ export default function Header({ onOpenGallery }: HeaderProps) {
 
           {/* Gallery Button */}
           <button
+            type="button"
             onClick={onOpenGallery}
+            aria-label="فتح تصاميمي السابقة"
             className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-transparent text-sm text-washa-text-sec transition-all duration-300 hover:border-washa-gold/20 hover:bg-washa-gold/5 hover:text-washa-gold sm:h-auto sm:w-auto sm:px-3 sm:py-2"
             title="تصاميمي السابقة"
           >

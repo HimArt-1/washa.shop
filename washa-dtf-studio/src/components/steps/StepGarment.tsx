@@ -11,6 +11,12 @@ function cleanOptionName(value: string) {
   return value.trim().replace(/\s+/g, ' ').replace(/^ابيض$/i, 'أبيض');
 }
 
+function arabicCount(count: number, singular: string, dual: string, plural: string) {
+  if (count === 1) return `${count} ${singular}`;
+  if (count === 2) return `${count} ${dual}`;
+  return `${count} ${plural}`;
+}
+
 function stockLabel(size: DtfStudioSizeOption) {
   if (size.stockStatus === 'out') return 'نفد';
   if (size.stockStatus === 'low') return `متبقي ${size.availableQuantity ?? 0}`;
@@ -138,7 +144,9 @@ export default function StepGarment() {
 
           <div ref={garmentListRef} className="scroll-mt-24 space-y-4 sm:scroll-mt-28">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">{garmentOptions.length} قطع متاحة</span>
+              <span className="text-xs font-medium text-washa-gold/75">
+                {arabicCount(garmentOptions.length, 'قطعة متاحة', 'قطعتان متاحتان', 'قطع متاحة')}
+              </span>
               <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
                 <Package2 className="h-5 w-5 text-washa-gold" />
                 نوع القطعة
@@ -231,8 +239,12 @@ export default function StepGarment() {
                               </>
                             ) : (
                               <>
-                                <span className="rounded-md border border-washa-border bg-washa-bg/85 px-2 py-0.5 text-washa-text-sec backdrop-blur-md">{garment.colors.length} ألوان</span>
-                                <span className="rounded-md border border-washa-border bg-washa-bg/85 px-2 py-0.5 text-washa-text-sec backdrop-blur-md">{garment.sizes.length} مقاسات</span>
+                                <span className="rounded-md border border-washa-border bg-washa-bg/85 px-2 py-0.5 text-washa-text-sec backdrop-blur-md">
+                                  {arabicCount(garment.colors.length, 'لون', 'لونان', 'ألوان')}
+                                </span>
+                                <span className="rounded-md border border-washa-border bg-washa-bg/85 px-2 py-0.5 text-washa-text-sec backdrop-blur-md">
+                                  {arabicCount(garment.sizes.length, 'مقاس', 'مقاسان', 'مقاسات')}
+                                </span>
                               </>
                             )}
                           </div>
@@ -248,7 +260,9 @@ export default function StepGarment() {
                         >
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-xs font-bold text-washa-gold/70">{visibleColors.length} لون متوفر</span>
+                              <span className="text-xs font-bold text-washa-gold/80">
+                                {arabicCount(visibleColors.length, 'لون متوفر', 'لونان متوفران', 'ألوان متوفرة')}
+                              </span>
                               <label className="text-sm font-bold text-washa-text">لون القطعة</label>
                             </div>
                             {visibleColors.length > 0 ? (
@@ -295,7 +309,9 @@ export default function StepGarment() {
 
                           <div className="space-y-2.5">
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-xs font-bold text-washa-gold/70">{visibleSizes.length} مقاسات متاحة</span>
+                              <span className="text-xs font-bold text-washa-gold/80">
+                                {arabicCount(visibleSizes.length, 'مقاس متاح', 'مقاسان متاحان', 'مقاسات متاحة')}
+                              </span>
                               <label className="flex items-center gap-2 text-sm font-bold text-washa-text">
                                 <Ruler className="h-4 w-4 text-washa-gold" />
                                 المقاس
@@ -360,6 +376,7 @@ export default function StepGarment() {
       <StepNavigationBar
         onNext={nextStep}
         nextDisabled={!canProceed || configLoading}
+        hint={canProceed ? `${cleanOptionName(state.garmentType)} · ${cleanOptionName(state.garmentColor)} · ${state.garmentSize}` : 'اختر القطعة واللون والمقاس للمتابعة'}
       />
     </>
   );

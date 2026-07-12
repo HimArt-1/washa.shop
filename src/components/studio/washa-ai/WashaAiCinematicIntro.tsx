@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, MotionConfig, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 
@@ -14,7 +14,7 @@ import { ArrowLeft } from "lucide-react";
 // reads as one system with the rest of وشّى.
 
 const GOLD = "206, 174, 127"; // --wusha-gold (dark) → rgb
-const BOOT_MS = 4200;
+const BOOT_MS = 2000;
 const springSnappy = { type: "spring" as const, damping: 20, stiffness: 220 };
 
 // Each boot stage unlocks at a fraction of total progress.
@@ -145,8 +145,14 @@ function ScrambleText({
     speed?: number;
 }) {
     const [out, setOut] = useState("");
+    const reduceMotion = useReducedMotion();
 
     useEffect(() => {
+        if (reduceMotion) {
+            setOut(text);
+            return;
+        }
+
         let frame = 0;
         let tick: ReturnType<typeof setTimeout>;
         const run = () => {
@@ -166,7 +172,7 @@ function ScrambleText({
             clearTimeout(start);
             clearTimeout(tick);
         };
-    }, [text, delay, speed]);
+    }, [text, delay, speed, reduceMotion]);
 
     return (
         <span className={className} style={style}>
@@ -179,10 +185,16 @@ function ScrambleText({
 export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps) {
     const [phase, setPhase] = useState<Phase>("booting");
     const [progress, setProgress] = useState(0);
+    const reduceMotion = useReducedMotion();
 
     // Drive the boot progress on a single rAF loop.
     useEffect(() => {
         if (phase !== "booting") return;
+        if (reduceMotion) {
+            setProgress(100);
+            setPhase("ready");
+            return;
+        }
         let raf = 0;
         const start = performance.now();
         const tick = (t: number) => {
@@ -193,19 +205,19 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
         };
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
-    }, [phase]);
+    }, [phase, reduceMotion]);
+
+    const enter = useCallback(() => {
+        setPhase("exiting");
+        window.setTimeout(onComplete, reduceMotion ? 0 : 520);
+    }, [onComplete, reduceMotion]);
 
     const skip = useCallback(() => {
         if (phase === "booting") {
             setProgress(100);
-            setPhase("ready");
+            enter();
         }
-    }, [phase]);
-
-    const enter = useCallback(() => {
-        setPhase("exiting");
-        window.setTimeout(onComplete, 520);
-    }, [onComplete]);
+    }, [enter, phase]);
 
     // Progress ring geometry.
     const R = 70;
@@ -213,20 +225,19 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
     const p = progress / 100;
 
     return (
-        <AnimatePresence>
-            <motion.div
+        <MotionConfig reducedMotion="user">
+            <AnimatePresence>
+                <motion.div
                 key="washa-ai-boot"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: phase === "exiting" ? 0 : 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
-                onClick={skip}
                 dir="rtl"
                 className="fixed inset-0 z-[9999] flex min-h-[100dvh] select-none flex-col items-center justify-center overflow-hidden"
                 style={{
                     background:
                         "radial-gradient(ellipse at 50% 42%, #14110d 0%, #0c0a08 46%, #060504 100%)",
-                    cursor: phase === "booting" ? "pointer" : "default",
                 }}
             >
                 {/* Live neural background */}
@@ -361,6 +372,7 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
                             src="/HEDR_LOGO.png"
                             alt="وشّى"
                             fill
+                            sizes="240px"
                             className="object-contain"
                             style={{ filter: "brightness(0) invert(1) sepia(1) saturate(2) hue-rotate(5deg)", opacity: 0.92 }}
                             priority
@@ -400,6 +412,15 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
                     >
                         نظام التصميم الذكي
                     </motion.span>
+                    <motion.p
+                        className="max-w-[310px] text-center text-[14px] leading-7 sm:max-w-[380px] sm:text-[15px]"
+                        style={{ color: `rgba(${GOLD}, 0.72)`, fontFamily: "var(--font-arabic, system-ui, sans-serif)" }}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: reduceMotion ? 0 : 1.55 }}
+                    >
+                        حوّل فكرتك إلى تصميم جاهز للطباعة على قطعتك خلال دقائق.
+                    </motion.p>
                 </div>
 
                 {/* ══ Boot log + progress / enter ══ */}
@@ -508,25 +529,29 @@ export function WashaAiCinematicIntro({ onComplete }: WashaAiCinematicIntroProps
                 {/* ══ Skip hint ══ */}
                 <AnimatePresence>
                     {phase === "booting" && (
-                        <motion.span
+                        <motion.button
+                            type="button"
+                            onClick={skip}
                             initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.3 }}
+                            animate={{ opacity: 0.72 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.5, delay: 2.6 }}
-                            className="absolute bottom-7 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-white/25"
+                            transition={{ duration: 0.4, delay: 0.7 }}
+                            className="absolute bottom-7 left-1/2 -translate-x-1/2 rounded-full border border-white/15 px-4 py-2 text-[12px] tracking-wide text-white/70 transition-colors hover:border-white/30 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
                             style={{ fontFamily: "var(--font-arabic, system-ui, sans-serif)" }}
                         >
-                            اضغط للتخطي
-                        </motion.span>
+                            تخطي المقدمة
+                        </motion.button>
                     )}
                 </AnimatePresence>
-            </motion.div>
-        </AnimatePresence>
+                </motion.div>
+            </AnimatePresence>
+        </MotionConfig>
     );
 }
 
 // ─── Small parts ──────────────────────────────────────────
 function StatusDot({ done }: { done?: boolean }) {
+    const reduceMotion = useReducedMotion();
     if (done) {
         return (
             <svg width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
@@ -538,8 +563,8 @@ function StatusDot({ done }: { done?: boolean }) {
         <motion.span
             className="block h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ background: `rgba(${GOLD}, 0.9)` }}
-            animate={{ opacity: [1, 0.25, 1], scale: [1, 0.7, 1] }}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+            animate={reduceMotion ? undefined : { opacity: [1, 0.25, 1], scale: [1, 0.7, 1] }}
+            transition={reduceMotion ? undefined : { duration: 1, repeat: Infinity, ease: "easeInOut" }}
         />
     );
 }

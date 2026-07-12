@@ -164,7 +164,10 @@ export default function StepIdea() {
                 </div>
 
                 <Textarea
-                  placeholder="صف فكرتك بدقة... مثال: ذئب هندسي بخطوط حادة، يرمز للقوة"
+                  name="design-idea"
+                  aria-label="وصف فكرة التصميم"
+                  autoComplete="off"
+                  placeholder="مثال: ذئب هندسي بخطوط حادة يرمز للقوة…"
                   className="relative z-10 min-h-[140px] resize-none rounded-2xl border-washa-border/30 bg-washa-bg/40 p-4 text-base leading-relaxed transition-all duration-500 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(64,48,40,0.1)] sm:min-h-[150px]"
                   value={state.prompt}
                   onChange={e => updateState({ prompt: e.target.value })}
@@ -179,7 +182,7 @@ export default function StepIdea() {
                   className="gap-2 rounded-xl border-washa-gold/25 bg-washa-gold/5 text-washa-gold hover:bg-washa-gold/10 hover:text-washa-gold"
                 >
                   {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                  {isEnhancingIdea ? 'جاري التحسين' : 'حسّن الفكرة'}
+                  {isEnhancingIdea ? 'جاري التحسين…' : 'حسّن الفكرة'}
                 </Button>
                 <span className="text-xs text-washa-text-faint">
                   {state.prompt.length ? `${state.prompt.length} حرف` : 'اكتب فكرة قصيرة ثم حسّنها'}

@@ -8,10 +8,13 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
+    "predev": "npm run build:dtf-studio",
     "dev:fix": "bash scripts/dev.sh",
     "build:dtf-studio": "npm --prefix washa-dtf-studio ci --include=dev --no-audit --no-fund && npm --prefix washa-dtf-studio run build",
+    "verify:dtf-studio": "node scripts/verify-dtf-studio-build.mjs",
     "prebuild": "npm run build:dtf-studio",
     "build": "next build --webpack",
+    "postbuild": "npm run verify:dtf-studio",
     "start": "next start",
     "lint": "eslint .",
     "test:unit": "vitest run",
