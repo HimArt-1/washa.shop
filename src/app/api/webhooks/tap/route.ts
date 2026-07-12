@@ -3,6 +3,7 @@ import { confirmOrderPayment } from "@/app/actions/orders";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { assertTapChargeMatchesOrder, getTapOrderId, retrieveTapCharge, type TapCharge, verifyTapWebhookHash } from "@/lib/tap";
 import { emitPaymentCollectionIssueAlert } from "@/lib/operational-event-alerts";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 
 export async function GET() {
     return NextResponse.json({ received: true, provider: "tap" });
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ received: true });
         }
 
-        const result = await confirmOrderPayment(order.id, {
+        const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), order.id, {
             customerEmail: validation.customerEmail || undefined,
             webhookEventId: charge.id,
             paidAmount: validation.amount,

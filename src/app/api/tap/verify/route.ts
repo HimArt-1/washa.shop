@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { confirmOrderPayment } from "@/app/actions/orders";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { assertTapChargeMatchesOrder, retrieveTapCharge } from "@/lib/tap";
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
         const validation = assertTapChargeMatchesOrder(charge, order);
         if (!validation.ok) return NextResponse.json({ success: false, error: validation.error }, { status: validation.status });
 
-        const result = await confirmOrderPayment(order.id, {
+        const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), order.id, {
             customerEmail: validation.customerEmail || undefined,
             webhookEventId: charge.id,
             paidAmount: validation.amount,

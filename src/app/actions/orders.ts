@@ -15,6 +15,10 @@ import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
 import { emitOrderCreatedAlert, emitPaymentReceivedAlert } from "@/lib/operational-event-alerts";
 import type { DiscountCoupon, UserRole } from "@/types/database";
+import {
+    assertInternalPaymentAuthorization,
+    type InternalPaymentAuthorization,
+} from "@/lib/internal-payment-authorization";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -177,6 +181,19 @@ function normalizeSize(value: unknown) {
 
 function normalizeColorCode(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function validateBankTransferConfiguration() {
+    const bankName = process.env.BANK_TRANSFER_BANK_NAME?.trim();
+    const accountName = process.env.BANK_TRANSFER_ACCOUNT_NAME?.trim();
+    const iban = process.env.BANK_TRANSFER_IBAN?.replace(/\s/g, "").toUpperCase();
+    if (!bankName || !accountName || !iban) {
+        return { ok: false as const, error: "الدفع بالتحويل البنكي غير متاح مؤقتًا لعدم اكتمال بيانات الحساب." };
+    }
+    if (!/^SA\d{22}$/.test(iban)) {
+        return { ok: false as const, error: "بيانات IBAN البنكي غير صحيحة. تواصل مع الإدارة قبل إتمام الطلب." };
+    }
+    return { ok: true as const };
 }
 
 function normalizeEmail(value: unknown) {
@@ -623,12 +640,34 @@ async function finalizeOrderPaymentState(orderId: string, metadata: Record<strin
             const supabase = getSupabaseAdminClient();
             const { data: currentOrder, error: currentOrderError } = await supabase
                 .from("orders")
-                .select("payment_status, status, coupon_id")
+                .select("payment_status, status, coupon_id, metadata")
                 .eq("id", orderId)
                 .single();
 
             if (currentOrderError || !currentOrder) {
                 throw new Error("Order not found during payment finalization");
+            }
+
+            const wasPending = currentOrder.status === "pending";
+            const currentMetadata = currentOrder.metadata && typeof currentOrder.metadata === "object"
+                ? currentOrder.metadata as Record<string, unknown>
+                : {};
+            if (wasPending && currentMetadata.inventory_reserved !== true) {
+                const inventoryResult = await decrementStockForOrder(orderId);
+                if (!inventoryResult.success) {
+                    throw new Error(inventoryResult.error || "Failed to decrement inventory");
+                }
+            }
+
+            if (wasPending && currentOrder.coupon_id && currentMetadata.coupon_reserved !== true) {
+                const { data: couponConsumed, error: couponError } = await supabase.rpc(
+                    "consume_order_coupon_use" as never,
+                    { p_order_id: orderId, p_coupon_id: currentOrder.coupon_id } as never
+                );
+
+                if (couponError || couponConsumed !== true) {
+                    throw new Error(couponError.message);
+                }
             }
 
             if (currentOrder.payment_status !== "paid") {
@@ -637,28 +676,18 @@ async function finalizeOrderPaymentState(orderId: string, metadata: Record<strin
                     .update({
                         payment_status: "paid",
                         status: "confirmed",
+                        metadata: {
+                            ...currentMetadata,
+                            ...metadata,
+                            payment_confirmed_at: new Date().toISOString(),
+                        },
                         updated_at: new Date().toISOString(),
                     })
-                    .eq("id", orderId);
+                    .eq("id", orderId)
+                    .eq("payment_status", currentOrder.payment_status);
 
                 if (updateError) {
                     throw new Error(updateError.message);
-                }
-            }
-
-            const wasStripePending = currentOrder.status === "pending";
-            if (wasStripePending) {
-                await decrementStockForOrder(orderId);
-            }
-
-            if (wasStripePending && currentOrder.coupon_id) {
-                const { error: couponError } = await supabase.rpc(
-                    "increment_coupon_uses_by_id" as never,
-                    { p_coupon_id: currentOrder.coupon_id } as never
-                );
-
-                if (couponError) {
-                    throw new Error(couponError.message);
                 }
             }
         }
@@ -817,6 +846,7 @@ export async function createOrder(
         paymentMethod?: OrderPaymentMethod;
         couponId?: string | null;
         discountAmount?: number;
+        checkoutAttemptId?: string;
     }
 ) {
     // 1. Verify authenticated user
@@ -865,6 +895,30 @@ export async function createOrder(
         buyerRole = newProfile.role as UserRole;
     }
 
+    const checkoutAttemptId = options?.checkoutAttemptId?.trim();
+    if (checkoutAttemptId && !/^[0-9a-f-]{36}$/i.test(checkoutAttemptId)) {
+        return { success: false, error: "معرّف محاولة الطلب غير صالح" };
+    }
+
+    if (checkoutAttemptId) {
+        const { data: existingOrder } = await supabase
+            .from("orders")
+            .select("id, order_number, total, metadata")
+            .eq("buyer_id", buyerId)
+            .contains("metadata", { checkout_attempt_id: checkoutAttemptId })
+            .maybeSingle();
+        if (existingOrder && (existingOrder.metadata as Record<string, unknown> | null)?.creation_state === "ready") {
+            return {
+                success: true,
+                order_number: existingOrder.order_number,
+                order_id: existingOrder.id,
+                total: Number(existingOrder.total),
+                reused: true,
+            };
+        }
+        if (existingOrder) return { success: false, error: "يجري تثبيت طلبك الآن؛ أعد المحاولة بعد لحظات." };
+    }
+
     const serverPayload = await buildServerOrderPayload({
         supabase,
         items,
@@ -881,6 +935,11 @@ export async function createOrder(
 
     const verifiedItems = serverPayload.items;
     const paymentMethod = serverPayload.paymentMethod;
+
+    if (paymentMethod === "bank_transfer") {
+        const bankConfiguration = validateBankTransferConfiguration();
+        if (!bankConfiguration.ok) return { success: false, error: bankConfiguration.error };
+    }
 
     // 3. Check stock availability
     const stockCheck = await checkStockAvailability(verifiedItems);
@@ -958,11 +1017,40 @@ export async function createOrder(
             coupon_id: serverPayload.couponId,
             discount_amount: discount,
             notes: orderNotes,
+            metadata: {
+                payment_method: paymentMethod,
+                payment_state: initialPaymentStatus,
+                creation_state: "creating",
+                ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
+                ...(isBankTransfer ? {
+                    bank_transfer_status: "awaiting_receipt",
+                    bank_transfer_created_at: new Date().toISOString(),
+                    bank_transfer_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                } : {}),
+            },
         })
         .select("id, order_number")
         .single();
 
     if (orderError || !order) {
+        if (checkoutAttemptId && orderError?.code === "23505") {
+            const { data: existingOrder } = await supabase
+                .from("orders")
+                .select("id, order_number, total, metadata")
+                .eq("buyer_id", buyerId)
+                .contains("metadata", { checkout_attempt_id: checkoutAttemptId })
+                .maybeSingle();
+            if (existingOrder && (existingOrder.metadata as Record<string, unknown> | null)?.creation_state === "ready") {
+                return {
+                    success: true,
+                    order_number: existingOrder.order_number,
+                    order_id: existingOrder.id,
+                    total: Number(existingOrder.total),
+                    reused: true,
+                };
+            }
+            if (existingOrder) return { success: false, error: "يجري تثبيت طلبك الآن؛ أعد المحاولة بعد لحظات." };
+        }
         console.error("Order creation error:", orderError);
         return { success: false, error: "فشل في إنشاء الطلب" };
     }
@@ -1006,6 +1094,58 @@ export async function createOrder(
         };
     }
 
+    if (isBankTransfer) {
+        const inventoryReservation = await decrementStockForOrder(order.id);
+        if (!inventoryReservation.success) {
+            const { restoreStockForOrder } = await import("@/lib/inventory");
+            await restoreStockForOrder(order.id);
+            await supabase.from("orders").delete().eq("id", order.id);
+            return { success: false, error: inventoryReservation.error || "تعذر حجز مخزون الطلب." };
+        }
+
+        if (serverPayload.couponId) {
+            const { data: couponReserved, error: couponReservationError } = await supabase.rpc(
+                "consume_order_coupon_use" as never,
+                { p_order_id: order.id, p_coupon_id: serverPayload.couponId } as never
+            );
+            if (couponReservationError || couponReserved !== true) {
+                const { restoreStockForOrder } = await import("@/lib/inventory");
+                await restoreStockForOrder(order.id);
+                await supabase.from("orders").delete().eq("id", order.id);
+                return { success: false, error: "تعذر حجز الكوبون لهذا الطلب." };
+            }
+        }
+
+        const { error: reservationMetadataError } = await supabase
+            .from("orders")
+            .update({
+                metadata: {
+                    payment_method: paymentMethod,
+                    payment_state: initialPaymentStatus,
+                    creation_state: "ready",
+                    ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
+                    bank_transfer_status: "awaiting_receipt",
+                    bank_transfer_created_at: new Date().toISOString(),
+                    bank_transfer_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    inventory_reserved: true,
+                    coupon_reserved: Boolean(serverPayload.couponId),
+                },
+            })
+            .eq("id", order.id);
+        if (reservationMetadataError) {
+            if (serverPayload.couponId) {
+                await supabase.rpc(
+                    "release_order_coupon_use" as never,
+                    { p_order_id: order.id } as never
+                );
+            }
+            const { restoreStockForOrder } = await import("@/lib/inventory");
+            await restoreStockForOrder(order.id);
+            await supabase.from("orders").delete().eq("id", order.id);
+            return { success: false, error: "تعذر تثبيت حجز الطلب؛ لم يتم إنشاء الطلب." };
+        }
+    }
+
     // الكوبون: يُحتسب فوراً عند طرق الدفع المؤكدة مباشرة.
     // Stripe/Paylink: يُحتسب في confirmOrderPayment عند اكتمال الدفع.
     if ((isCod || isPos) && serverPayload.couponId) {
@@ -1016,6 +1156,17 @@ export async function createOrder(
     // Stripe: يُنقص في confirmOrderPayment عند اكتمال الدفع
     if (isCod || isPos) {
         await decrementStockForOrder(order.id);
+    }
+
+    if (!isBankTransfer) {
+        await supabase.from("orders").update({
+            metadata: {
+                payment_method: paymentMethod,
+                payment_state: initialPaymentStatus,
+                creation_state: "ready",
+                ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
+            },
+        }).eq("id", order.id);
     }
 
 
@@ -1068,15 +1219,19 @@ export async function createOrder(
 // ─── Confirm Order Payment (Stripe webhook) ──────────────────
 
 export async function confirmOrderPayment(
+    authorization: InternalPaymentAuthorization,
     orderId: string,
     options?: {
         customerEmail?: string;
         webhookEventId?: string;
         paidAmount?: number | null;
         paymentProvider?: string;
+        confirmedBy?: string;
+        paymentReference?: string;
     }
 ) {
     try {
+        assertInternalPaymentAuthorization(authorization);
         const supabase = getSupabaseAdminClient();
 
         const { data: order } = await supabase
@@ -1114,6 +1269,8 @@ export async function confirmOrderPayment(
                 {
                     ...(options?.webhookEventId ? { webhook_event_id: options.webhookEventId } : {}),
                     ...(options?.paymentProvider ? { payment_provider: options.paymentProvider } : {}),
+                    ...(options?.confirmedBy ? { payment_confirmed_by: options.confirmedBy } : {}),
+                    ...(options?.paymentReference ? { payment_reference: options.paymentReference } : {}),
                     ...(typeof options?.paidAmount === "number" ? { paid_amount: options.paidAmount } : {}),
                 }
             )

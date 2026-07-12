@@ -9,6 +9,10 @@
         {
             "path": "/api/cron/dtf-reservations",
             "schedule": "17 */6 * * *"
+        },
+        {
+            "path": "/api/cron/bank-transfer-reservations",
+            "schedule": "7 * * * *"
         }
     ]
 }

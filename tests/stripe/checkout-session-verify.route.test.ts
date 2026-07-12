@@ -166,7 +166,7 @@ describe("POST /api/stripe/checkout-session/verify", () => {
             orderNumber: "WA-1001",
         });
         expect(mockRetrieveSession).toHaveBeenCalledWith("cs_test_1");
-        expect(mockConfirmOrderPayment).toHaveBeenCalledWith("order_1", {
+        expect(mockConfirmOrderPayment).toHaveBeenCalledWith(expect.any(Symbol), "order_1", {
             customerEmail: "buyer@example.com",
             paymentProvider: "stripe",
         });

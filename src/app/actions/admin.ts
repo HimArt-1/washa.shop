@@ -20,6 +20,8 @@ import { moneyMatches } from "@/lib/paylink-security";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
+import { confirmOrderPayment } from "@/app/actions/orders";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
 function generateTempPassword(): string {
@@ -1991,6 +1993,66 @@ export async function cancelTorodShipment(orderId: string) {
 }
 
 
+export async function confirmBankTransferPayment(orderId: string, paymentReference: string) {
+    const { profile, supabase } = await requireAdmin(FINANCE_ROLES);
+    const normalizedReference = paymentReference.trim();
+
+    if (!normalizedReference || normalizedReference.length > 120) {
+        return { success: false, error: "أدخل مرجع تحويل صحيحًا (بحد أقصى 120 حرفًا)." };
+    }
+
+    const { data: order, error } = await supabase
+        .from("orders")
+        .select("id, payment_status, status, metadata")
+        .eq("id", orderId)
+        .single();
+
+    if (error || !order) return { success: false, error: "الطلب غير موجود." };
+    const metadata = order.metadata && typeof order.metadata === "object"
+        ? order.metadata as Record<string, unknown>
+        : {};
+
+    if (metadata.payment_method !== "bank_transfer") {
+        return { success: false, error: "هذا الإجراء مخصص لطلبات التحويل البنكي فقط." };
+    }
+
+    if (order.status !== "pending") {
+        return { success: false, error: "لا يمكن اعتماد تحويل لطلب غير معلق." };
+    }
+
+    const { data: claimed, error: claimError } = await supabase.rpc(
+        "claim_bank_transfer_confirmation" as never,
+        {
+            p_order_id: orderId,
+            p_confirmed_by: profile.id,
+            p_payment_reference: normalizedReference,
+        } as never
+    );
+    if (claimError) return { success: false, error: "تعذر اعتماد التحويل بسبب خطأ في قاعدة البيانات." };
+    if (claimed !== true) {
+        return { success: false, error: "انتهت مهلة التحويل أو جرى التعامل مع الطلب من جلسة أخرى." };
+    }
+
+    const result = await confirmOrderPayment(
+        authorizeInternalPaymentConfirmation(),
+        orderId,
+        {
+            paymentProvider: "bank_transfer",
+            paymentReference: normalizedReference,
+            confirmedBy: profile.id,
+        }
+    );
+
+    if (!result.success) {
+        return { success: false, error: result.error || "تعذر اعتماد التحويل؛ تحقق من المخزون وحاول مجددًا." };
+    }
+
+    revalidatePath("/dashboard/orders");
+    revalidatePath("/dashboard/orders/command-center");
+    revalidatePath("/dashboard/products-inventory");
+    return { success: true };
+}
+
 export async function updateOrderStatus(orderId: string, newStatus: string) {
     const { supabase } = await requireAdmin(ORDER_OPERATIONS_ROLES);
 
@@ -2001,15 +2063,68 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 
     const { data: currentOrder } = await supabase
         .from("orders")
-        .select("status, buyer_id, order_number")
+        .select("status, payment_status, buyer_id, order_number, metadata, coupon_id")
         .eq("id", orderId)
         .single();
 
     const updateData: Record<string, unknown> = { status: newStatus };
 
-    if (newStatus === "confirmed") updateData.payment_status = "paid";
-    if (newStatus === "cancelled") updateData.payment_status = "refunded";
+    if (newStatus === "confirmed" && currentOrder?.status === "pending") {
+        return { success: false, error: "أكد استلام الدفعة أولًا من إجراء تأكيد التحويل البنكي." };
+    }
     if (newStatus === "refunded") updateData.payment_status = "refunded";
+
+    const currentMetadata = currentOrder?.metadata && typeof currentOrder.metadata === "object"
+        ? currentOrder.metadata as Record<string, unknown>
+        : {};
+    const hadStockDeducted = currentMetadata.inventory_reserved === true
+        || ((currentOrder?.payment_status === "paid" || currentMetadata.payment_method === "cod")
+            && ["confirmed", "processing", "shipped"].includes(currentOrder?.status || ""));
+    if ((newStatus === "cancelled" || newStatus === "refunded") && hadStockDeducted) {
+        if (currentMetadata.payment_method === "bank_transfer" && currentOrder?.status === "pending") {
+            const { data: cancellationClaimed, error: cancellationClaimError } = await supabase.rpc(
+                "claim_bank_transfer_cancellation" as never,
+                { p_order_id: orderId } as never
+            );
+            if (cancellationClaimError || cancellationClaimed !== true) {
+                return { success: false, error: "جرى التعامل مع الطلب من جلسة أخرى؛ حدّث الصفحة." };
+            }
+        }
+        if (currentMetadata.coupon_reserved === true && currentOrder?.coupon_id) {
+            const { error: couponReleaseError } = await supabase.rpc(
+                "release_order_coupon_use" as never,
+                { p_order_id: orderId } as never
+            );
+            if (couponReleaseError) {
+                return { success: false, error: "أُعيد المخزون لكن تعذر تحرير حجز الكوبون. راجع الطلب يدويًا." };
+            }
+        }
+        const { restoreStockForOrder } = await import("@/lib/inventory");
+        const restoration = await restoreStockForOrder(orderId);
+        if (!restoration.success) {
+            if (currentMetadata.coupon_reserved === true) {
+                await supabase.from("orders").update({
+                    metadata: { ...currentMetadata, coupon_reserved: false },
+                }).eq("id", orderId);
+            }
+            return { success: false, error: restoration.error || "تعذر إعادة المخزون؛ لم تتغير حالة الطلب." };
+        }
+        const releasedMetadata: Record<string, unknown> = {
+            ...currentMetadata,
+            inventory_reserved: false,
+            coupon_reserved: false,
+            bank_transfer_status: "cancelled",
+            reservation_released_at: new Date().toISOString(),
+        };
+        updateData.metadata = releasedMetadata;
+        const { error: releaseMetadataError } = await supabase
+            .from("orders")
+            .update({ metadata: releasedMetadata })
+            .eq("id", orderId);
+        if (releaseMetadataError) {
+            return { success: false, error: "تحرر المخزون، لكن تعذر تثبيت حالة التحرير. راجع الطلب يدويًا." };
+        }
+    }
 
     const { error } = await supabase
         .from("orders")
@@ -2036,12 +2151,6 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
             },
         });
         return { success: false, error: error.message };
-    }
-
-    const hadStockDeducted = ["confirmed", "processing", "shipped"].includes(currentOrder?.status || "");
-    if ((newStatus === "cancelled" || newStatus === "refunded") && hadStockDeducted) {
-        const { restoreStockForOrder } = await import("@/lib/inventory");
-        await restoreStockForOrder(orderId);
     }
 
     if (currentOrder?.buyer_id && newStatus !== currentOrder.status) {

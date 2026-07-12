@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { getPaylinkInvoice } from "@/lib/paylink";
 import { confirmOrderPayment } from "@/app/actions/orders";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { assertPaylinkInvoiceMatchesOrder, getStoredPaylinkTransactionNo } from "@/lib/paylink-security";
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Confirm order payment in our system
-        const result = await confirmOrderPayment(order.id, {
+        const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), order.id, {
             customerEmail: validation.clientEmail || undefined,
             webhookEventId: validation.transactionNo || effectiveTransactionNo,
             paidAmount: validation.amount,

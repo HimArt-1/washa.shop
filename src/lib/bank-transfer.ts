@@ -1,4 +1,4 @@
-export const WASHA_WHATSAPP_NUMBER = "966532235005";
+export const WASHA_WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_BANK_TRANSFER_WHATSAPP_NUMBER?.replace(/\D/g, "") || "966532235005";
 
 export type BankTransferWhatsAppDetails = {
     orderNumber: string;

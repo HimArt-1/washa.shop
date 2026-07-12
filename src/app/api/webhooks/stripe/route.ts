@@ -5,6 +5,7 @@
 
 import { stripe } from "@/lib/stripe";
 import { confirmOrderPayment } from "@/app/actions/orders";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
 
             if (orderId) {
                 try {
-                    const result = await confirmOrderPayment(orderId, {
+                    const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), orderId, {
                         customerEmail: customerEmail || undefined,
                         webhookEventId: event.id,
                         paymentProvider: "stripe",

@@ -21,7 +21,7 @@ import {
     CheckSquare
 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { updateOrderStatus } from "@/app/actions/admin";
+import { confirmBankTransferPayment, updateOrderStatus } from "@/app/actions/admin";
 import { cn } from "@/lib/utils";
 import { InvoiceBuilder } from "./InvoiceBuilder";
 
@@ -166,6 +166,8 @@ export function OrdersClient({
     const [updatingOrder, setUpdatingOrder] = useState<string | null>(null);
     const [invoiceOrder, setInvoiceOrder] = useState<any | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [bankConfirmationOrderId, setBankConfirmationOrderId] = useState<string | null>(null);
+    const [bankTransferReference, setBankTransferReference] = useState("");
     
     // Bulk Actions & Search
     const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
@@ -234,6 +236,29 @@ export function OrdersClient({
         }
     };
 
+    const handleBankTransferConfirmation = async (orderId: string) => {
+        const reference = bankTransferReference.trim();
+        if (!reference) return;
+
+        setUpdatingOrder(orderId);
+        setErrorMessage(null);
+        try {
+            const result = await confirmBankTransferPayment(orderId, reference);
+            if (!result?.success) {
+                setErrorMessage(result?.error || "تعذر اعتماد التحويل البنكي.");
+                return;
+            }
+            setBankConfirmationOrderId(null);
+            setBankTransferReference("");
+            router.refresh();
+        } catch (error) {
+            console.error("Bank transfer confirmation failed", error);
+            setErrorMessage("تعذر اعتماد التحويل الآن. تحقق من البيانات وحاول مجددًا.");
+        } finally {
+            setUpdatingOrder(null);
+        }
+    };
+
     const handleBulkStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const newStatus = e.target.value;
         if (!newStatus || selectedOrders.length === 0) return;
@@ -270,6 +295,44 @@ export function OrdersClient({
     return (
         <div className="space-y-6">
             <InvoiceBuilder order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />
+            {bankConfirmationOrderId ? (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="bank-confirmation-title">
+                    <div className="w-full max-w-md rounded-[28px] border border-theme-subtle bg-theme-surface p-6 shadow-2xl">
+                        <div className="mb-5">
+                            <h2 id="bank-confirmation-title" className="text-lg font-black text-theme">تأكيد استلام التحويل</h2>
+                            <p className="mt-2 text-sm leading-6 text-theme-subtle">تحقق من الإيصال والمبلغ، ثم أدخل مرجع التحويل. سيُسجل اسم الموظف ووقت الاعتماد.</p>
+                        </div>
+                        <label htmlFor="bank-transfer-reference" className="mb-2 block text-xs font-bold text-theme-soft">مرجع التحويل أو رقم الإيصال</label>
+                        <input
+                            id="bank-transfer-reference"
+                            value={bankTransferReference}
+                            onChange={(event) => setBankTransferReference(event.target.value)}
+                            maxLength={120}
+                            autoFocus
+                            className="w-full rounded-2xl border border-theme-subtle bg-theme-faint px-4 py-3 text-sm text-theme outline-none transition focus:border-gold/50 focus:ring-2 focus:ring-gold/15"
+                            placeholder="مثال: TRX-20260712-001"
+                        />
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => { setBankConfirmationOrderId(null); setBankTransferReference(""); }}
+                                disabled={updatingOrder === bankConfirmationOrderId}
+                                className="flex-1 rounded-2xl border border-theme-subtle px-4 py-3 text-sm font-bold text-theme-soft hover:bg-theme-faint disabled:opacity-50"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleBankTransferConfirmation(bankConfirmationOrderId)}
+                                disabled={!bankTransferReference.trim() || updatingOrder === bankConfirmationOrderId}
+                                className="flex-1 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-600 disabled:opacity-50"
+                            >
+                                {updatingOrder === bankConfirmationOrderId ? "جارٍ الاعتماد…" : "اعتماد التحويل"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
             {errorMessage ? (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                     {errorMessage}
@@ -576,8 +639,20 @@ export function OrdersClient({
                                                                 <FileDown className="h-3.5 w-3.5" />
                                                                 فاتورة
                                                             </button>
+                                                            {order.metadata?.payment_method === "bank_transfer" && order.payment_status === "pending" ? (
+                                                                <button
+                                                                    onClick={() => { setBankConfirmationOrderId(order.id); setBankTransferReference(""); }}
+                                                                    disabled={updatingOrder === order.id}
+                                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-300 transition-all hover:bg-emerald-500/20 disabled:opacity-50"
+                                                                >
+                                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                                    تأكيد استلام التحويل
+                                                                </button>
+                                                            ) : null}
                                                             {available.length > 0 ? (
-                                                                available.map((status) => (
+                                                                available.filter((status) => !(
+                                                                    status === "confirmed" && order.payment_status !== "paid"
+                                                                )).map((status) => (
                                                                     <button
                                                                         key={status}
                                                                         onClick={() => handleStatusChange(order.id, status)}

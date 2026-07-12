@@ -171,7 +171,7 @@ async function safeDecrementInventoryLevel(
 
         if (!updateErr && updated) {
             // Record transaction
-            await supabase.from("inventory_transactions").insert({
+            const { error: transactionError } = await supabase.from("inventory_transactions").insert({
                 sku_id: skuId,
                 warehouse_id: warehouseId,
                 transaction_type: "sale",
@@ -180,7 +180,17 @@ async function safeDecrementInventoryLevel(
                 new_quantity: newQty,
                 reference_id: orderId,
                 notes: `Online Sale Order #${orderId}`,
-            });
+                operation_key: `${orderId}:${skuId}:sale`,
+            } as never);
+            if (transactionError) {
+                await supabase
+                    .from("inventory_levels")
+                    .update({ quantity: prevQty })
+                    .eq("sku_id", skuId)
+                    .eq("warehouse_id", warehouseId)
+                    .eq("quantity", newQty);
+                return { error: "تعذر تسجيل حركة المخزون؛ تم التراجع عن الخصم" };
+            }
             return { newQuantity: newQty, prevQuantity: prevQty };
         }
         // Concurrent write detected — retry
@@ -208,9 +218,17 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
     for (const item of items) {
         // ─── Smart Store (Custom Design) ────────────────────────────────
         if (!item.product_id && item.custom_design_order_id) {
+            const { data: existingSale } = await supabase
+                .from("sales_records")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("sales_method", "custom_design")
+                .eq("status", "completed")
+                .maybeSingle();
+            if (existingSale) continue;
             const result = await consumeSmartStoreReservationForOrder(supabase, item.custom_design_order_id, item.quantity);
             if ("error" in result) return { success: false, error: result.error };
-            await supabase.from("sales_records").insert({
+            const { error: smartSaleError } = await supabase.from("sales_records").insert({
                 sales_method: "custom_design",
                 order_id: orderId,
                 sku_id: null,
@@ -220,6 +238,10 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                 status: "completed",
                 notes: `Smart Store custom design #${item.custom_design_order_id}`,
             });
+            if (smartSaleError) {
+                await restoreSmartStoreStockForOrder(supabase, item.custom_design_order_id, item.quantity);
+                return { success: false, error: "تعذر تسجيل حجز التصميم المخصص" };
+            }
             continue;
         }
 
@@ -239,6 +261,15 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
 
         // ─── Legacy fallback (no SKU) ────────────────────────────────────
         if (!skuId) {
+            const legacySaleNote = `Legacy product #${item.product_id}`;
+            const { data: existingLegacySale } = await supabase
+                .from("sales_records")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("notes", legacySaleNote)
+                .eq("status", "completed")
+                .maybeSingle();
+            if (existingLegacySale) continue;
             const { data: product } = await supabase
                 .from("products")
                 .select("title, stock_quantity")
@@ -250,6 +281,23 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
                     .from("products")
                     .update({ stock_quantity: newQty, in_stock: newQty > 0 })
                     .eq("id", item.product_id);
+                const { error: legacySaleError } = await supabase.from("sales_records").insert({
+                    sales_method: "online_store",
+                    order_id: orderId,
+                    sku_id: null,
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    total_price: item.total_price,
+                    status: "completed",
+                    notes: legacySaleNote,
+                });
+                if (legacySaleError) {
+                    await supabase
+                        .from("products")
+                        .update({ stock_quantity: product.stock_quantity, in_stock: true })
+                        .eq("id", item.product_id);
+                    return { success: false, error: "تعذر تسجيل حجز مخزون المنتج" };
+                }
                 if (newQty <= 5) {
                     const stockTitle = newQty <= 0 ? "نفاد المخزون" : "تنبيه مخزون منخفض";
                     void emitInventoryStockAlert({
@@ -269,6 +317,14 @@ export async function decrementStockForOrder(orderId: string): Promise<{ success
         }
 
         // ─── ERP Decrement (with optimistic lock) ────────────────────────
+        const { data: existingInventorySale } = await supabase
+            .from("inventory_transactions")
+            .select("id")
+            .eq("reference_id", orderId)
+            .eq("sku_id", skuId)
+            .eq("transaction_type", "sale")
+            .maybeSingle();
+        if (existingInventorySale) continue;
         const result = await safeDecrementInventoryLevel(
             supabase,
             skuId,
@@ -353,6 +409,14 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
     for (const item of items) {
         // ─── Smart Store ─────────────────────────────────────────────────
         if (!item.product_id && item.custom_design_order_id) {
+            const { data: completedSale } = await supabase
+                .from("sales_records")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("sales_method", "custom_design")
+                .eq("status", "completed")
+                .maybeSingle();
+            if (!completedSale) continue;
             const result = await restoreSmartStoreStockForOrder(supabase, item.custom_design_order_id, item.quantity);
             if ("error" in result) return { success: false, error: result.error };
             await supabase
@@ -379,6 +443,15 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
 
         // ─── Legacy fallback ─────────────────────────────────────────────
         if (!skuId) {
+            const legacySaleNote = `Legacy product #${item.product_id}`;
+            const { data: completedLegacySale } = await supabase
+                .from("sales_records")
+                .select("id")
+                .eq("order_id", orderId)
+                .eq("notes", legacySaleNote)
+                .eq("status", "completed")
+                .maybeSingle();
+            if (!completedLegacySale) continue;
             const { data: product } = await supabase
                 .from("products")
                 .select("stock_quantity")
@@ -390,11 +463,20 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
                     .from("products")
                     .update({ stock_quantity: newQty, in_stock: true })
                     .eq("id", item.product_id);
+                await supabase
+                    .from("sales_records")
+                    .update({ status: "refunded" })
+                    .eq("id", completedLegacySale.id);
             }
             continue;
         }
 
         // ─── ERP Restore ─────────────────────────────────────────────────
+        const [{ data: saleTransaction }, { data: returnTransaction }] = await Promise.all([
+            supabase.from("inventory_transactions").select("id").eq("reference_id", orderId).eq("sku_id", skuId).eq("transaction_type", "sale").maybeSingle(),
+            supabase.from("inventory_transactions").select("id").eq("reference_id", orderId).eq("sku_id", skuId).eq("transaction_type", "return").maybeSingle(),
+        ]);
+        if (!saleTransaction || returnTransaction) continue;
         const { data: level } = await supabase
             .from("inventory_levels")
             .select("quantity")
@@ -410,7 +492,7 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
             { onConflict: "sku_id,warehouse_id" }
         );
 
-        await supabase.from("inventory_transactions").insert({
+        const { error: returnTransactionError } = await supabase.from("inventory_transactions").insert({
             sku_id: skuId,
             warehouse_id: defaultWh.id,
             transaction_type: "return",
@@ -419,7 +501,15 @@ export async function restoreStockForOrder(orderId: string): Promise<{ success: 
             new_quantity: newQty,
             reference_id: orderId,
             notes: `Online Order Return #${orderId}`,
-        });
+            operation_key: `${orderId}:${skuId}:return`,
+        } as never);
+        if (returnTransactionError) {
+            await supabase.from("inventory_levels").update({ quantity: prevQty })
+                .eq("sku_id", skuId)
+                .eq("warehouse_id", defaultWh.id)
+                .eq("quantity", newQty);
+            return { success: false, error: "تعذر تسجيل إعادة المخزون؛ تم التراجع عن الإعادة" };
+        }
 
         // Restore product.in_stock
         await supabase.from("products").update({ in_stock: true }).eq("id", item.product_id);

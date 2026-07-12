@@ -108,6 +108,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferWhatsAppDetails | null>(null);
+    const [checkoutAttemptId, setCheckoutAttemptId] = useState<string | null>(null);
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
@@ -366,10 +367,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
         if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
 
+        const currentCheckoutAttemptId = checkoutAttemptId || crypto.randomUUID();
+        setCheckoutAttemptId(currentCheckoutAttemptId);
         const result = await createOrder(orderItems, address, {
             paymentMethod: finalPaymentMethod,
             couponId: coupon?.id,
             discountAmount: discount,
+            checkoutAttemptId: currentCheckoutAttemptId,
         });
 
         if (!result.success) {
@@ -421,6 +425,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                 });
             }
             setSuccess(result.order_number || "#ORDER");
+            setCheckoutAttemptId(null);
             clearCart();
             window.scrollTo({ top: 0, behavior: "smooth" });
         }

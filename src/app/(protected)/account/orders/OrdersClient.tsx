@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2, FileText } from "lucide-react";
+import { Package, Truck, CheckCircle2, XCircle, Clock, Search, ExternalLink, Brush, Loader2, FileText, MessageCircle } from "lucide-react";
 import { DesignResultsPopup } from "@/components/design-your-piece/DesignResultsPopup";
 import { openInvoicePrint } from "@/lib/invoice";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { cancelDesignOrderByCustomer } from "@/app/actions/smart-store";
+import { buildBankTransferWhatsAppUrl } from "@/lib/bank-transfer";
 
 // ─── Regular Orders Configuration ───────────────────────────
 const statusConfig: Record<string, { label: string; icon: any; color: string; bgColor: string }> = {
@@ -380,6 +381,27 @@ export function OrdersClient({
                                             <FileText className="w-4 h-4" />
                                             الفاتورة الذكية
                                         </button>
+                                        {order.metadata?.payment_method === "bank_transfer" && order.payment_status === "pending" ? (
+                                            <a
+                                                href={buildBankTransferWhatsAppUrl({
+                                                    orderNumber: order.order_number,
+                                                    total: Number(order.total),
+                                                    customerName: order.shipping_address?.name || "عميل وشّى",
+                                                    customerPhone: order.shipping_address?.phone || null,
+                                                    items: (order.items || []).map((item: any) => ({
+                                                        title: item.product?.title || item.custom_title || "منتج",
+                                                        quantity: Number(item.quantity),
+                                                        size: item.size || null,
+                                                    })),
+                                                })}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex min-h-[42px] items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold text-emerald-400 transition-colors hover:bg-emerald-500/20"
+                                            >
+                                                <MessageCircle className="h-4 w-4" />
+                                                إرسال إيصال التحويل
+                                            </a>
+                                        ) : null}
                                     </div>
                                 </div>
                             </div>

@@ -1,4 +1,5 @@
 import { confirmOrderPayment } from "@/app/actions/orders";
+import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
 import { stripe } from "@/lib/stripe";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { currentUser } from "@clerk/nextjs/server";
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "عملية الدفع لم تكتمل بعد" }, { status: 409 });
         }
 
-        const result = await confirmOrderPayment(order.id, {
+        const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), order.id, {
             customerEmail: session.customer_email || session.customer_details?.email || undefined,
             paymentProvider: "stripe",
         });
