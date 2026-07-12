@@ -21,7 +21,17 @@ interface GenerationPreferences {
   garmentReferenceImageBase64?: string;
   garmentReferenceImageMimeType?: string;
   garmentReferenceSide?: 'front' | 'back';
+  /** The UI verified Clerk immediately before this generation request. */
+  authenticatedSession?: boolean;
 }
+
+type GenerationApiResponse = {
+  imageUrl?: string | null;
+  error?: string;
+  freeRemaining?: unknown;
+  paidBalance?: unknown;
+  guest?: unknown;
+};
 
 // أحداث تحدّث واجهة الرصيد بعد كل توليد أو عند نفاد الحصة.
 export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
@@ -255,16 +265,36 @@ export async function generateMockup(
       };
     }
 
-    const response = await fetch(`${API_BASE_URL}/generate-mockup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (preferences.authenticatedSession) {
+      headers['X-Washa-Auth-State'] = 'authenticated';
+    }
 
-    const data = await parseApiResponse(response, 'generation');
-    if (data?.error) throw createPublicApiError(data.error, 'generation', response, data);
+    let data: GenerationApiResponse | undefined;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/generate-mockup`, {
+          method: 'POST',
+          headers,
+          credentials: 'same-origin',
+          cache: 'no-store',
+          body: JSON.stringify(body),
+        });
+        data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
+        break;
+      } catch (requestError) {
+        const code = (requestError as { data?: { code?: string } })?.data?.code;
+        if (attempt === 0 && code === 'session_unavailable') {
+          continue;
+        }
+        throw requestError;
+      }
+    }
+
+    if (!data) throw createPublicApiError(null, 'generation');
+    if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
-    return data.imageUrl || null;
+    return typeof data?.imageUrl === 'string' ? data.imageUrl : null;
   } catch (error) {
     const info = (error as { data?: Record<string, unknown> })?.data;
     if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {

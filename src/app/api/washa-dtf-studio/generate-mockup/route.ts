@@ -7,6 +7,7 @@ import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import {
     enforceDtfRouteRateLimit,
     parseAndValidateDtfJson,
+    rejectUnexpectedGuestAccess,
     requireDtfRouteAccess,
 } from "../utils/route-runtime";
 import {
@@ -43,6 +44,14 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(accessResult.response, traceId);
     }
     const access = accessResult.access;
+
+    const unexpectedGuestResponse = rejectUnexpectedGuestAccess(request, access);
+    if (unexpectedGuestResponse) {
+        logDtfTrace("dtf.generate-mockup", traceId, "authenticated_session_unavailable", {
+            total_duration_ms: Date.now() - routeStartedAt,
+        });
+        return attachDtfTraceId(unexpectedGuestResponse, traceId);
+    }
 
     const rateLimitStartedAt = Date.now();
     const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
@@ -199,14 +208,16 @@ export async function POST(request: NextRequest) {
             total_duration_ms: Date.now() - routeStartedAt,
         });
 
+        let quotaReleased = !quota.tracked;
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
-            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
+            quotaReleased = await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
                 guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
             });
             logDtfTrace("dtf.generate-mockup", traceId, "quota_released", {
                 duration_ms: Date.now() - releaseStartedAt,
                 source: quota.source,
+                released: quotaReleased,
             });
         }
 
@@ -218,7 +229,7 @@ export async function POST(request: NextRequest) {
             status: handled.status === 504 ? "timeout" : "error",
             errorMessage: handled.message,
             metadata: {
-                quotaReleased: quota.tracked,
+                quotaReleased,
                 quotaDate: quota.quotaDate,
             },
         });
@@ -227,8 +238,15 @@ export async function POST(request: NextRequest) {
             total_duration_ms: Date.now() - routeStartedAt,
         });
 
+        const quotaReleaseFailed = quota.tracked && !quotaReleased;
         return attachDtfTraceId(NextResponse.json(
-            { error: DTF_PUBLIC_GENERATION_ERROR },
+            quotaReleaseFailed
+                ? {
+                    error: "تعذر إنشاء التصميم الآن. لم نتمكن من تأكيد استرجاع الحصة؛ أعد المحاولة يدويًا بعد التحقق من رصيدك.",
+                    code: "quota_release_failed",
+                    retryable: false,
+                }
+                : { error: DTF_PUBLIC_GENERATION_ERROR },
             { status: handled.status }
         ), traceId);
     }

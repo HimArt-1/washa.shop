@@ -40,11 +40,27 @@ export interface CheckoutResponse {
 const DTF_BASE = '/api/washa-dtf-studio';
 const CREDITS_BASE = '/api/washa-ai/credits';
 
-export async function fetchQuotaStatus(signal?: AbortSignal): Promise<QuotaStatus | null> {
+export async function fetchQuotaStatus(
+  signal?: AbortSignal,
+  expectedAuthenticated = false,
+): Promise<QuotaStatus | null> {
   try {
-    const res = await fetch(`${DTF_BASE}/quota-status`, { signal, cache: 'no-store' });
-    if (!res.ok) return null;
-    return (await res.json()) as QuotaStatus;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const res = await fetch(`${DTF_BASE}/quota-status`, {
+        signal,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: expectedAuthenticated ? { 'X-Washa-Auth-State': 'authenticated' } : undefined,
+      });
+      if (res.ok) return (await res.json()) as QuotaStatus;
+
+      if (attempt === 0 && expectedAuthenticated && res.status === 503) {
+        const payload = await res.json().catch(() => null);
+        if (payload?.code === 'session_unavailable' && !signal?.aborted) continue;
+      }
+      return null;
+    }
+    return null;
   } catch {
     return null;
   }

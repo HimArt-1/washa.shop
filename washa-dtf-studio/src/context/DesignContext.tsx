@@ -607,7 +607,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     if (session.authenticated) {
-      const creditAccess = await requestGenerationAccess();
+      const creditAccess = await requestGenerationAccess(true);
       if (creditAccess.allowed === false) {
         if (creditAccess.reason === 'unavailable') {
           const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
@@ -661,6 +661,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         garmentReferenceImageBase64: garmentReference?.base64,
         garmentReferenceImageMimeType: garmentReference?.mimeType,
         garmentReferenceSide: garmentReference?.side,
+        authenticatedSession: session.authenticated,
       }
     );
 
@@ -708,6 +709,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
       const message = getReadableErrorMessage(generationError, PUBLIC_GENERATION_ERROR, 'generation');
       const canRetryWithLighterReference = Boolean(
+        errorCode !== 'quota_release_failed' &&
         isLikelyGenerationTimeoutError(generationError, message) &&
         state.referenceImage &&
         state.referenceImageMimeType

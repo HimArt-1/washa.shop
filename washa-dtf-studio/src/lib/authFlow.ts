@@ -142,27 +142,32 @@ export function buildWashaAiSignUpUrl(returnPath = currentReturnPath()) {
 
 export async function fetchWashaAiSession(): Promise<WashaAiSession> {
   const returnPath = currentReturnPath();
-  const response = await fetch(`${SESSION_ENDPOINT}?returnPath=${encodeURIComponent(returnPath)}`, {
-    method: 'GET',
-    credentials: 'same-origin',
-    cache: 'no-store',
-  });
-  const contentType = response.headers.get('content-type') || '';
-  const payload = contentType.includes('application/json') ? await response.json() : {};
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${SESSION_ENDPOINT}?returnPath=${encodeURIComponent(returnPath)}`, {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+    const contentType = response.headers.get('content-type') || '';
+    const payload = contentType.includes('application/json') ? await response.json() : {};
 
-  if (!response.ok) {
-    const message = typeof payload?.message === 'string'
-      ? payload.message
-      : typeof payload?.error === 'string'
-        ? payload.error
-        : 'تعذر التحقق من الجلسة حالياً.';
-    throw new Error(message);
+    if (!response.ok) {
+      const message = typeof payload?.message === 'string'
+        ? payload.message
+        : typeof payload?.error === 'string'
+          ? payload.error
+          : 'تعذر التحقق من الجلسة حالياً.';
+      throw new Error(message);
+    }
+
+    const session = {
+      authenticated: payload?.authenticated === true,
+      canGenerate: payload?.canGenerate === true,
+      message: typeof payload?.message === 'string' ? payload.message : undefined,
+      signInUrl: typeof payload?.signInUrl === 'string' ? payload.signInUrl : buildWashaAiSignInUrl(returnPath),
+    };
+    if (session.authenticated || attempt === 1) return session;
   }
 
-  return {
-    authenticated: payload?.authenticated === true,
-    canGenerate: payload?.canGenerate === true,
-    message: typeof payload?.message === 'string' ? payload.message : undefined,
-    signInUrl: typeof payload?.signInUrl === 'string' ? payload.signInUrl : buildWashaAiSignInUrl(returnPath),
-  };
+  throw new Error('تعذر التحقق من الجلسة حالياً.');
 }

@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DesignState } from "../../washa-dtf-studio/src/types";
 import {
     buildWashaAiSignInUrl,
     buildWashaAiSignUpUrl,
     consumeWashaAiAuthDraft,
+    fetchWashaAiSession,
     saveWashaAiAuthDraft,
 } from "../../washa-dtf-studio/src/lib/authFlow";
 
@@ -97,5 +98,27 @@ describe("WASHA AI guest authentication gate", () => {
         } as DesignState, "submit", "data:image/png;base64,RESULT")).toMatchObject({
             saved: false,
         });
+    });
+});
+
+describe("WASHA AI session resolution", () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it("rechecks one transient signed-out response before treating the user as a guest", async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify(
+            fetchMock.mock.calls.length === 1
+                ? { authenticated: false, canGenerate: false, reason: "not_signed_in" }
+                : { authenticated: true, canGenerate: true, role: "subscriber" }
+        ), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        await expect(fetchWashaAiSession()).resolves.toMatchObject({
+            authenticated: true,
+            canGenerate: true,
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 });

@@ -24,7 +24,8 @@ const {
     mockGetRequestClientIdentifier: vi.fn(),
 }));
 
-vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
+vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
+    ...await importOriginal<typeof import("@/app/api/washa-dtf-studio/utils/route-runtime")>(),
     requireDtfRouteAccess: mockRequireDtfRouteAccess,
     enforceDtfRouteRateLimit: mockEnforceDtfRouteRateLimit,
     parseAndValidateDtfJson: mockParseAndValidateDtfJson,
@@ -174,6 +175,46 @@ describe("generate-mockup route", () => {
         });
     });
 
+    it("never downgrades a recently authenticated generation request to guest", async () => {
+        mockRequireDtfRouteAccess.mockResolvedValueOnce({
+            access: { allowed: true, profileId: null, clerkId: null, role: "guest" },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate", {
+            method: "POST",
+            headers: { "x-washa-auth-state": "authenticated" },
+        }) as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toEqual({
+            error: "تعذّر تثبيت جلسة الدخول مؤقتاً. سنحاول مجدداً دون احتساب حصة.",
+            code: "session_unavailable",
+            retryable: true,
+            guest: false,
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+    });
+
+    it("recognizes Clerk session-cookie evidence when the first session check also misses", async () => {
+        mockRequireDtfRouteAccess.mockResolvedValueOnce({
+            access: { allowed: true, profileId: null, clerkId: null, role: "guest" },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate", {
+            method: "POST",
+            headers: { cookie: "__session=clerk-session-evidence; __client_uat=1783880000" },
+        }) as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+            code: "session_unavailable",
+            retryable: true,
+            guest: false,
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+    });
+
     it("returns the current quota-exceeded response and logs the failure", async () => {
         mockReserveDailyQuota.mockResolvedValue({
             allowed: false,
@@ -268,6 +309,38 @@ describe("generate-mockup route", () => {
         );
     });
 
+    it("reserves one point once per successful generation request", async () => {
+        mockReserveDailyQuota
+            .mockResolvedValueOnce({
+                allowed: true,
+                remaining: 4,
+                used: 1,
+                quotaDate: "2026-07-12",
+                tracked: true,
+                source: "free",
+                freeRemaining: 4,
+                paidBalance: 0,
+            })
+            .mockResolvedValueOnce({
+                allowed: true,
+                remaining: 3,
+                used: 2,
+                quotaDate: "2026-07-12",
+                tracked: true,
+                source: "free",
+                freeRemaining: 3,
+                paidBalance: 0,
+            });
+
+        const first = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+        const second = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        await expect(first.json()).resolves.toMatchObject({ freeRemaining: 4 });
+        await expect(second.json()).resolves.toMatchObject({ freeRemaining: 3 });
+        expect(mockReserveDailyQuota).toHaveBeenCalledTimes(2);
+        expect(mockGenerateMockup).toHaveBeenCalledTimes(2);
+    });
+
     it("releases tracked quota and returns a public provider failure", async () => {
         mockGenerateMockup.mockRejectedValue(new Error("provider timeout"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
@@ -292,5 +365,26 @@ describe("generate-mockup route", () => {
                 errorMessage: "انتهت مهلة التوليد من المزود الخارجي.",
             })
         );
+    });
+
+    it("blocks an automatic retry when a failed generation quota could not be restored", async () => {
+        mockGenerateMockup.mockRejectedValue(new Error("provider timeout"));
+        mockReleaseDailyQuota.mockResolvedValue(false);
+        mockGetWashaDtfErrorDetails.mockReturnValue({
+            message: "انتهت مهلة التوليد من المزود الخارجي.",
+            status: 504,
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(504);
+        await expect(response.json()).resolves.toEqual({
+            error: "تعذر إنشاء التصميم الآن. لم نتمكن من تأكيد استرجاع الحصة؛ أعد المحاولة يدويًا بعد التحقق من رصيدك.",
+            code: "quota_release_failed",
+            retryable: false,
+        });
+        expect(mockLogActivity).toHaveBeenCalledWith(expect.objectContaining({
+            metadata: expect.objectContaining({ quotaReleased: false }),
+        }));
     });
 });

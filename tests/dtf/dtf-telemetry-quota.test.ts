@@ -187,6 +187,41 @@ describe("DtfTelemetryService quota reservation", () => {
         });
     });
 
+    it("consumes exactly one point for each consecutive successful generation", async () => {
+        mockRpc
+            .mockResolvedValueOnce({
+                data: {
+                    granted: true,
+                    source: "free",
+                    free_used: 1,
+                    free_remaining: 4,
+                    free_limit: 5,
+                    paid_balance: 0,
+                    quota_date: "2026-07-12",
+                },
+                error: null,
+            })
+            .mockResolvedValueOnce({
+                data: {
+                    granted: true,
+                    source: "free",
+                    free_used: 2,
+                    free_remaining: 3,
+                    free_limit: 5,
+                    paid_balance: 0,
+                    quota_date: "2026-07-12",
+                },
+                error: null,
+            });
+
+        const first = await DtfTelemetryService.reserveDailyQuota("profile_1", "subscriber");
+        const second = await DtfTelemetryService.reserveDailyQuota("profile_1", "subscriber");
+
+        expect(mockRpc).toHaveBeenCalledTimes(2);
+        expect(first).toMatchObject({ used: 1, freeRemaining: 4, remaining: 4 });
+        expect(second).toMatchObject({ used: 2, freeRemaining: 3, remaining: 3 });
+    });
+
     it("blocks generation when neither free quota nor paid balance is available", async () => {
         mockRpc.mockResolvedValueOnce({
             data: {

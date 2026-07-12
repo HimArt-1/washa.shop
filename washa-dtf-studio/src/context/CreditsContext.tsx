@@ -33,7 +33,7 @@ interface CreditsContextValue {
   /** غير null عندما تُفتح النافذة بسبب نفاد/منع (لعرض لافتة مناسبة). */
   noticeReason: CreditsNoticeReason;
   refresh: () => void;
-  requestGenerationAccess: () => Promise<GenerationCreditCheckResult>;
+  requestGenerationAccess: (expectedAuthenticated?: boolean) => Promise<GenerationCreditCheckResult>;
   openPurchase: () => void;
   closePurchase: () => void;
 }
@@ -68,14 +68,21 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     setNoticeReason(null);
   }, []);
 
-  const requestGenerationAccess = useCallback(async (): Promise<GenerationCreditCheckResult> => {
+  const requestGenerationAccess = useCallback(async (expectedAuthenticated = false): Promise<GenerationCreditCheckResult> => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
 
-    const next = await fetchQuotaStatus(controller.signal);
+    const next = await fetchQuotaStatus(controller.signal, expectedAuthenticated);
     if (controller.signal.aborted) {
+      return { allowed: false, reason: 'unavailable' };
+    }
+
+    // Never let a transient public resolution replace an authenticated user's
+    // role/balance and trigger a false guest sign-in prompt.
+    if (expectedAuthenticated && next?.audience === 'guest') {
+      setLoading(false);
       return { allowed: false, reason: 'unavailable' };
     }
 

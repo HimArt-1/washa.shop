@@ -28,4 +28,63 @@ describe('WASHA AI generation placement instructions', () => {
     expect(body?.prompt).toContain(`Do not place the logo on the ${forbiddenSide}`);
     expect(body?.prompt).not.toContain('upper sleeve');
   });
+
+  it('preserves authenticated intent and retries one transient session downgrade', async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (fetchMock.mock.calls.length === 1) {
+        return new Response(JSON.stringify({
+          error: 'تعذّر تثبيت جلسة الدخول مؤقتاً.',
+          code: 'session_unavailable',
+          retryable: true,
+        }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify({ imageUrl: 'data:image/png;base64,AAAA' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(generateMockup(
+      'تيشيرت',
+      'أسود',
+      'صقر هندسي',
+      'DTF',
+      'هندسي',
+      'ذهبي',
+      undefined,
+      undefined,
+      undefined,
+      { authenticatedSession: true },
+    )).resolves.toBe('data:image/png;base64,AAAA');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(new Headers(init?.headers).get('x-washa-auth-state')).toBe('authenticated');
+      expect(init?.credentials).toBe('same-origin');
+    }
+  });
+
+  it('retries server-detected Clerk cookie evidence even when the session preflight missed twice', async () => {
+    const fetchMock = vi.fn(async () => fetchMock.mock.calls.length === 1
+      ? new Response(JSON.stringify({ code: 'session_unavailable', retryable: true }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        })
+      : new Response(JSON.stringify({ imageUrl: 'data:image/png;base64,AAAA' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(generateMockup(
+      'تيشيرت', 'أسود', 'صقر هندسي', 'DTF', 'هندسي', 'ذهبي'
+    )).resolves.toBe('data:image/png;base64,AAAA');
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });

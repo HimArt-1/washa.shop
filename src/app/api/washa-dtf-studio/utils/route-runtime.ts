@@ -9,6 +9,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { getRequestClientIdentifier } from "@/lib/request-client";
 
 const DTF_PRIVILEGED_ROLES = new Set(["admin", "wushsha", "dev"]);
+export const WASHA_AUTH_STATE_HEADER = "x-washa-auth-state";
 
 type ErrorResponder = (message: string, status: number, logContext?: unknown) => NextResponse;
 
@@ -22,6 +23,38 @@ type ParsedJsonResolution<TData> =
 
 function jsonError(message: string, status: number) {
     return NextResponse.json({ error: message }, { status });
+}
+
+/**
+ * The studio checks its Clerk session immediately before generation. If a
+ * following API request is momentarily resolved as public, never silently
+ * downgrade it to the guest quota: that can display a false sign-in gate and
+ * charge the wrong bucket. The hint grants no access; it only fails closed.
+ */
+export function rejectUnexpectedGuestAccess(
+    request: NextRequest,
+    access: DesignPieceAccessResult
+) {
+    const cookieHeader = request.headers.get("cookie") || "";
+    const sessionCookie = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/)?.[1]?.trim();
+    const clientUpdatedAt = Number(cookieHeader.match(/(?:^|;\s*)__client_uat=([^;]+)/)?.[1] || 0);
+    const hasClerkSessionEvidence = Boolean(sessionCookie) || clientUpdatedAt > 0;
+    const expectedAuthenticated = request.headers.get(WASHA_AUTH_STATE_HEADER) === "authenticated"
+        || hasClerkSessionEvidence;
+    if (!expectedAuthenticated || access.role !== "guest" || access.profileId) return null;
+
+    return NextResponse.json(
+        {
+            error: "تعذّر تثبيت جلسة الدخول مؤقتاً. سنحاول مجدداً دون احتساب حصة.",
+            code: "session_unavailable",
+            retryable: true,
+            guest: false,
+        },
+        {
+            status: 503,
+            headers: { "Cache-Control": "private, no-store" },
+        }
+    );
 }
 
 export async function requireDtfRouteAccess(options?: {
