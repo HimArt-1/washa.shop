@@ -19,6 +19,16 @@ import {
     assertInternalPaymentAuthorization,
     type InternalPaymentAuthorization,
 } from "@/lib/internal-payment-authorization";
+import {
+    enqueuePostResponseJob,
+    runPostResponseJob,
+    schedulePostResponseTask,
+} from "@/lib/post-response";
+import {
+    assertInternalJobAuthorization,
+    authorizeInternalJobExecution,
+    type InternalJobAuthorization,
+} from "@/lib/internal-job-authorization";
 
 interface OrderItemInput {
     product_id: string | null;
@@ -138,16 +148,6 @@ function getShippingContactName(shippingAddress: unknown) {
 
     const rawName = (shippingAddress as Record<string, unknown>).name;
     return typeof rawName === "string" && rawName.trim() ? rawName.trim() : null;
-}
-
-function buildOrderEmailItems(items: OrderItemInput[]) {
-    return items.map((item) => ({
-        title: item.custom_title || "منتج",
-        quantity: item.quantity,
-        size: item.size,
-        color_code: item.color_code ?? null,
-        unit_price: item.unit_price,
-    }));
 }
 
 function roundMoney(value: number) {
@@ -514,6 +514,13 @@ function logDispatchFailures(scope: string, results: PromiseSettledResult<unknow
     }
 }
 
+function throwDispatchFailures(scope: string, results: PromiseSettledResult<unknown>[]) {
+    const failures = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+    if (failures.length > 0) {
+        throw new AggregateError(failures.map((result) => result.reason), `${scope} failed`);
+    }
+}
+
 async function dispatchOrderCreatedSideEffects(params: {
     orderId: string;
     orderNumber: string;
@@ -624,6 +631,7 @@ async function dispatchOrderCreatedSideEffects(params: {
 
     const results = await Promise.allSettled(sideEffects);
     logDispatchFailures("dispatchOrderCreatedSideEffects", results);
+    throwDispatchFailures("dispatchOrderCreatedSideEffects", results);
 }
 
 async function finalizeOrderPaymentState(orderId: string, metadata: Record<string, unknown>) {
@@ -837,6 +845,94 @@ async function dispatchOrderPaymentSideEffects(params: {
 
     const results = await Promise.allSettled(sideEffects);
     logDispatchFailures("dispatchOrderPaymentSideEffects", results);
+    throwDispatchFailures("dispatchOrderPaymentSideEffects", results);
+}
+
+export async function processCheckoutSideEffectsForOrder(
+    authorization: InternalJobAuthorization,
+    orderId: string
+) {
+    assertInternalJobAuthorization(authorization);
+
+    const supabase = getSupabaseAdminClient();
+    const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .select("id, order_number, total, subtotal, discount_amount, shipping_cost, tax, buyer_id, shipping_address, metadata")
+        .eq("id", orderId)
+        .single();
+    if (orderError || !order) throw new Error(orderError?.message || "Checkout side-effects order not found");
+
+    const metadata = order.metadata && typeof order.metadata === "object"
+        ? order.metadata as Record<string, unknown>
+        : {};
+    if (metadata.checkout_side_effects_state === "completed") return { processed: false as const };
+
+    const paymentMethod = String(metadata.payment_method || "");
+    if (!(["cod", "bank_transfer", "pos_cash", "pos_card"] as string[]).includes(paymentMethod)) {
+        return { processed: false as const };
+    }
+
+    const { data: buyer } = await supabase
+        .from("profiles")
+        .select("email, display_name")
+        .eq("id", order.buyer_id)
+        .maybeSingle();
+    const shippingAddress = order.shipping_address && typeof order.shipping_address === "object"
+        ? order.shipping_address as Record<string, unknown>
+        : {};
+    const customerName = String(shippingAddress.name || buyer?.display_name || "عميل");
+    const customerEmail = buyer?.email || null;
+    const total = Number(order.total);
+    const breakdown = {
+        subtotal: Number(order.subtotal),
+        discount: Number(order.discount_amount || 0),
+        shipping: Number(order.shipping_cost || 0),
+        tax: Number(order.tax || 0),
+    };
+    const paymentLabel = paymentMethod === "cod"
+        ? "عند الاستلام"
+        : paymentMethod === "bank_transfer"
+            ? "تحويل بنكي (بانتظار التحقق)"
+            : paymentMethod === "pos_cash"
+                ? "نقطة بيع (كاش)"
+                : "نقطة بيع (شبكة)";
+
+    await dispatchOrderCreatedSideEffects({
+        orderId: order.id,
+        orderNumber: order.order_number,
+        total,
+        buyerId: order.buyer_id,
+        sendCustomerEmail: paymentMethod === "cod" || paymentMethod === "bank_transfer",
+        paymentLabel,
+        customerEmail,
+        customerName,
+        emailItems: await fetchOrderEmailItems(order.id),
+        breakdown,
+    });
+
+    if (paymentMethod === "pos_cash" || paymentMethod === "pos_card") {
+        await dispatchOrderPaymentSideEffects({
+            orderId: order.id,
+            orderNumber: order.order_number,
+            total,
+            buyerId: order.buyer_id,
+            customerEmail,
+            customerName,
+            paymentProvider: paymentMethod,
+            breakdown,
+        });
+    }
+
+    const { error: updateError } = await supabase.from("orders").update({
+        metadata: {
+            ...metadata,
+            checkout_side_effects_state: "completed",
+            checkout_side_effects_completed_at: new Date().toISOString(),
+        },
+    }).eq("id", order.id);
+    if (updateError) throw new Error(updateError.message);
+
+    return { processed: true as const };
 }
 
 export async function createOrder(
@@ -982,22 +1078,6 @@ export async function createOrder(
         : isBankTransfer
             ? "طريقة الدفع: تحويل بنكي — بانتظار التحقق"
             : null;
-    const paymentLabel = isCod
-        ? "عند الاستلام"
-        : isBankTransfer
-            ? "تحويل بنكي (بانتظار التحقق)"
-        : paymentMethod === "pos_cash"
-            ? "نقطة بيع (كاش)"
-            : paymentMethod === "pos_card"
-                ? "نقطة بيع (شبكة)"
-                : paymentMethod === "tap"
-                    ? "Tap (بانتظار الدفع)"
-                : paymentMethod === "stripe"
-                    ? "Stripe (بانتظار الدفع)"
-                    : paymentMethod === "paylink"
-                        ? "Paylink (بانتظار الدفع)"
-                        : "إلكتروني (بانتظار الدفع)";
-
     // 4. Create order
     // COD: مؤكد — الدفع عند الاستلام
     // POS: مؤكد — الدفع فوري (مدفوع)
@@ -1021,6 +1101,7 @@ export async function createOrder(
                 payment_method: paymentMethod,
                 payment_state: initialPaymentStatus,
                 creation_state: "creating",
+                checkout_side_effects_state: (isCod || isPos || isBankTransfer) ? "pending" : "not_required",
                 ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
                 ...(isBankTransfer ? {
                     bank_transfer_status: "awaiting_receipt",
@@ -1123,6 +1204,7 @@ export async function createOrder(
                     payment_method: paymentMethod,
                     payment_state: initialPaymentStatus,
                     creation_state: "ready",
+                    checkout_side_effects_state: "pending",
                     ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
                     bank_transfer_status: "awaiting_receipt",
                     bank_transfer_created_at: new Date().toISOString(),
@@ -1149,62 +1231,71 @@ export async function createOrder(
     // الكوبون: يُحتسب فوراً عند طرق الدفع المؤكدة مباشرة.
     // Stripe/Paylink: يُحتسب في confirmOrderPayment عند اكتمال الدفع.
     if ((isCod || isPos) && serverPayload.couponId) {
-        await supabase.rpc("increment_coupon_uses_by_id" as never, { p_coupon_id: serverPayload.couponId } as never);
+        const { data: couponConsumed, error: couponError } = await supabase.rpc(
+            "consume_order_coupon_use" as never,
+            { p_order_id: order.id, p_coupon_id: serverPayload.couponId } as never
+        );
+        if (couponError || couponConsumed !== true) {
+            await supabase.from("orders").delete().eq("id", order.id);
+            return { success: false, error: "تعذر تثبيت استخدام الكوبون؛ لم يتم إنشاء الطلب." };
+        }
     }
 
     // المخزون: يُنقص عند COD أو POS
     // Stripe: يُنقص في confirmOrderPayment عند اكتمال الدفع
     if (isCod || isPos) {
-        await decrementStockForOrder(order.id);
+        const inventoryResult = await decrementStockForOrder(order.id);
+        if (!inventoryResult.success) {
+            if (serverPayload.couponId) {
+                await supabase.rpc("release_order_coupon_use" as never, { p_order_id: order.id } as never);
+            }
+            const { restoreStockForOrder } = await import("@/lib/inventory");
+            await restoreStockForOrder(order.id);
+            await supabase.from("orders").delete().eq("id", order.id);
+            return { success: false, error: inventoryResult.error || "تعذر حجز مخزون الطلب." };
+        }
     }
 
     if (!isBankTransfer) {
-        await supabase.from("orders").update({
+        const { error: readyStateError } = await supabase.from("orders").update({
             metadata: {
                 payment_method: paymentMethod,
                 payment_state: initialPaymentStatus,
                 creation_state: "ready",
+                checkout_side_effects_state: (isCod || isPos) ? "pending" : "not_required",
                 ...(checkoutAttemptId ? { checkout_attempt_id: checkoutAttemptId } : {}),
             },
         }).eq("id", order.id);
+        if (readyStateError) {
+            if (isCod || isPos) {
+                const { restoreStockForOrder } = await import("@/lib/inventory");
+                await restoreStockForOrder(order.id);
+            }
+            if (serverPayload.couponId && (isCod || isPos)) {
+                await supabase.rpc("release_order_coupon_use" as never, { p_order_id: order.id } as never);
+            }
+            await supabase.from("orders").delete().eq("id", order.id);
+            return { success: false, error: "تعذر تثبيت حالة الطلب؛ حاول مرة أخرى." };
+        }
     }
 
 
     if (isCod || isPos || isBankTransfer) {
-        await dispatchOrderCreatedSideEffects({
-            orderId: order.id,
-            orderNumber: order.order_number,
-            total,
-            buyerId,
-            sendCustomerEmail: isCod || isBankTransfer,
-            paymentLabel,
-            customerEmail: user.emailAddresses?.[0]?.emailAddress,
-            customerName: shippingAddress.name || user.firstName || "عميل",
-            emailItems: buildOrderEmailItems(verifiedItems),
-            breakdown: {
-                subtotal,
-                shipping: shipping_cost,
-                tax,
-                discount,
-            },
-        });
-    }
+        const jobKey = `order:${order.id}:checkout-side-effects`;
+        try {
+            await enqueuePostResponseJob({
+                jobKey,
+                jobType: "order_checkout_side_effects",
+                payload: { orderId: order.id },
+            });
+        } catch (error) {
+            console.error(`[createOrder] Failed to persist ${jobKey}`, error);
+        }
 
-    if (isPos) {
-        await dispatchOrderPaymentSideEffects({
-            orderId: order.id,
-            orderNumber: order.order_number,
-            total,
-            buyerId,
-            customerEmail: user.emailAddresses?.[0]?.emailAddress,
-            customerName: shippingAddress.name || user.firstName || "عميل",
-            paymentProvider: paymentMethod,
-            breakdown: {
-                subtotal,
-                shipping: shipping_cost,
-                tax,
-                discount,
-            },
+        schedulePostResponseTask(jobKey, async () => {
+            await runPostResponseJob(jobKey, async () => {
+                await processCheckoutSideEffectsForOrder(authorizeInternalJobExecution(), order.id);
+            });
         });
     }
 
