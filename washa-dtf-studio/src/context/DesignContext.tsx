@@ -43,6 +43,7 @@ import {
   saveStudioDraft,
   syncStudioStepInUrl,
 } from '../lib/studioDraft';
+import { createEmptyGuidedIdeaBrief } from '../lib/ideaBuilder';
 
 export interface OrderResult {
   itemTitle: string;
@@ -112,6 +113,9 @@ const EMPTY_STATE: DesignState = {
   garmentSizeId: null,
   garmentSize: '',
   designMethod: 'text',
+  ideaEntryMode: 'guided',
+  ideaBrief: createEmptyGuidedIdeaBrief(),
+  ideaBriefPromptSource: '',
   designPosition: 'front_large',
   printOptionId: null,
   printPosition: 'chest',

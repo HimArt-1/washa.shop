@@ -42,6 +42,17 @@ function compactState(state: DesignState): DesignState {
     prompt: state.prompt.slice(0, 3000),
     calligraphyText: state.calligraphyText.slice(0, 400),
     customPalette: state.customPalette?.slice(0, 280) ?? '',
+    ideaEntryMode: state.ideaEntryMode ?? (state.prompt ? 'free' : 'guided'),
+    ideaBrief: state.ideaBrief
+      ? {
+          subject: state.ideaBrief.subject.slice(0, 180),
+          mood: state.ideaBrief.mood.slice(0, 120),
+          meaning: state.ideaBrief.meaning.slice(0, 240),
+          wording: state.ideaBrief.wording.slice(0, 180),
+          avoid: state.ideaBrief.avoid.slice(0, 240),
+        }
+      : undefined,
+    ideaBriefPromptSource: state.ideaBriefPromptSource?.slice(0, 420),
     referenceImage: null,
     referenceImageMimeType: null,
   };
@@ -79,6 +90,13 @@ function isStoredDesignState(value: unknown): value is DesignState {
     'paletteId',
   ];
 
+  const ideaBrief = state.ideaBrief as Partial<Record<'subject' | 'mood' | 'meaning' | 'wording' | 'avoid', unknown>> | undefined;
+  const validIdeaBrief = ideaBrief === undefined || (
+    ideaBrief !== null &&
+    typeof ideaBrief === 'object' &&
+    ['subject', 'mood', 'meaning', 'wording', 'avoid'].every((field) => typeof ideaBrief[field as keyof typeof ideaBrief] === 'string')
+  );
+
   return stringFields.every((field) => typeof state[field] === 'string') &&
     nullableStringFields.every((field) => isNullableString(state[field])) &&
     ['text', 'image', 'calligraphy'].includes(String(state.designMethod)) &&
@@ -86,7 +104,10 @@ function isStoredDesignState(value: unknown): value is DesignState {
     (state.printSize === null || state.printSize === 'large' || state.printSize === 'small') &&
     typeof state.removeBackground === 'boolean' &&
     typeof state.avoidHardEdges === 'boolean' &&
-    (state.customPalette === undefined || typeof state.customPalette === 'string');
+    (state.customPalette === undefined || typeof state.customPalette === 'string') &&
+    (state.ideaEntryMode === undefined || state.ideaEntryMode === 'guided' || state.ideaEntryMode === 'free') &&
+    (state.ideaBriefPromptSource === undefined || typeof state.ideaBriefPromptSource === 'string') &&
+    validIdeaBrief;
 }
 
 export function createStudioDraft(

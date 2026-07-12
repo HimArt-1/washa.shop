@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence } from 'motion/react';
 import { DesignProvider, useDesign } from './context/DesignContext';
 import { useDesignHistory } from './hooks/useDesignHistory';
 import Header from './components/Header';
@@ -117,14 +116,12 @@ function AppContent() {
           {/* Full-screen wizard, no side panel */}
           <main className="wizard-step-container">
             <div className={`w-full ${step === 3 ? 'max-w-4xl' : 'max-w-[44rem]'} mx-auto px-3 sm:px-5 relative z-10`}>
-              <AnimatePresence mode="wait">
-                {step === 1 && <StepGarment key="step-garment" />}
-                {step === 2 && <StepIdea key="step-idea" />}
-                {step === 3 && <StepPosition key="step-position" />}
-                {step === 4 && <StepArtStyle key="step-artstyle" />}
-                {step === 5 && <StepPalette key="step-palette" />}
-                {step === 6 && <StepResult key="step-result" />}
-              </AnimatePresence>
+              {step === 1 && <StepGarment />}
+              {step === 2 && <StepIdea />}
+              {step === 3 && <StepPosition />}
+              {step === 4 && <StepArtStyle />}
+              {step === 5 && <StepPalette />}
+              {step === 6 && <StepResult />}
             </div>
           </main>
         </div>

@@ -8,28 +8,50 @@ import { Textarea } from '../ui/Textarea';
 import { useDesign } from '../../context/DesignContext';
 import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
 import StepNavigationBar from './StepNavigationBar';
+import GuidedIdeaBuilder from './GuidedIdeaBuilder';
+import { buildGuidedIdeaPrompt, createEmptyGuidedIdeaBrief, isGuidedIdeaStale } from '../../lib/ideaBuilder';
 
 const SUGGESTIONS = [
-  { text: 'ذئب هندسي', emoji: '🐺' },
-  { text: 'وردة يابانية', emoji: '🌸' },
-  { text: 'جمجمة مزخرفة', emoji: '💀' },
-  { text: 'أسد ملكي', emoji: '🦁' },
-  { text: 'تنين ناري', emoji: '🐉' },
-  { text: 'فراشة كونية', emoji: '🦋' },
+  'ذئب هندسي',
+  'وردة يابانية',
+  'جمجمة مزخرفة',
+  'أسد ملكي',
+  'تنين ناري',
+  'فراشة كونية',
 ];
 
 const CALLIGRAPHY_SUGGESTIONS = [
-  { text: 'لا غالب إلا الله', emoji: '✨' },
-  { text: 'والفجر', emoji: '🌅' },
-  { text: 'كن فيكون', emoji: '🌙' },
-  { text: 'أنا من أنا', emoji: '🔥' },
-  { text: 'ولكل وجهة', emoji: '🌿' },
-  { text: 'صبر جميل', emoji: '🕊️' },
+  'لا غالب إلا الله',
+  'والفجر',
+  'كن فيكون',
+  'أنا من أنا',
+  'ولكل وجهة',
+  'صبر جميل',
 ];
 
 export default function StepIdea() {
   const { state, updateState, nextStep, prevStep, handleImageUpload, showToast } = useDesign();
   const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
+  const ideaEntryMode = state.ideaEntryMode ?? (state.prompt && !state.ideaBrief ? 'free' : 'guided');
+  const ideaBrief = state.ideaBrief ?? createEmptyGuidedIdeaBrief();
+  const guidedIdeaStale = isGuidedIdeaStale(ideaBrief, state.ideaBriefPromptSource);
+  const hasUsefulPrompt = state.prompt.trim().length >= 3;
+  const canProceed = state.designMethod === 'calligraphy'
+    ? Boolean(state.calligraphyText.trim())
+    : state.designMethod === 'image'
+      ? Boolean(state.referenceImage)
+      : hasUsefulPrompt && (ideaEntryMode !== 'guided' || !guidedIdeaStale);
+  const nextHint = canProceed
+    ? 'فكرتك محفوظة ويمكن تعديلها لاحقًا'
+    : state.designMethod === 'calligraphy'
+      ? 'اكتب العبارة التي تريد تصميمها'
+      : state.designMethod === 'image'
+        ? 'ارفع صورة مرجعية للمتابعة'
+        : ideaEntryMode === 'guided'
+          ? guidedIdeaStale && state.prompt
+            ? 'حدّث الوصف ليعكس التعديلات الأخيرة'
+            : 'أكمل الفكرة ثم اضغط «صياغة الوصف الاحترافي»'
+          : 'اكتب وصفًا قصيرًا على الأقل للمتابعة';
 
   const handleEnhanceIdea = async () => {
     const idea = state.prompt.trim();
@@ -121,9 +143,11 @@ export default function StepIdea() {
           {tabs.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              type="button"
+              aria-pressed={state.designMethod === id}
               onClick={() => updateState({ designMethod: id })}
               className={cn(
-                'relative flex items-center gap-2 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold transition-all duration-500 group/tab',
+                'group/tab relative flex items-center gap-2 overflow-hidden rounded-xl px-4 py-2 text-sm font-bold transition-[background-color,color,transform] duration-300',
                 state.designMethod === id
                   ? 'text-washa-bg'
                   : 'text-washa-text-sec hover:text-white hover:bg-white/5'
@@ -156,64 +180,98 @@ export default function StepIdea() {
               transition={{ duration: 0.35 }}
               className="space-y-4"
             >
-              <div className="relative group/input">
-                {/* AI Radar Background Effect */}
-                <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-                  <div className="absolute inset-0 bg-washa-gold/[0.02] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
-                  <div className="absolute -inset-[100%] group-focus-within/input:animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(64,48,40,0.1)_360deg)] opacity-0 group-focus-within/input:opacity-100 transition-opacity duration-700" />
-                </div>
-
-                <Textarea
-                  name="design-idea"
-                  aria-label="وصف فكرة التصميم"
-                  autoComplete="off"
-                  placeholder="مثال: ذئب هندسي بخطوط حادة يرمز للقوة…"
-                  className="relative z-10 min-h-[140px] resize-none rounded-2xl border-washa-border/30 bg-washa-bg/40 p-4 text-base leading-relaxed transition-all duration-500 focus:border-washa-gold/50 focus:shadow-[0_0_40px_rgba(64,48,40,0.1)] sm:min-h-[150px]"
-                  value={state.prompt}
-                  onChange={e => updateState({ prompt: e.target.value })}
-                />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
+              <div className="grid grid-cols-2 gap-1 rounded-xl border border-washa-border/35 bg-washa-bg/55 p-1" aria-label="طريقة كتابة الفكرة">
+                <button
                   type="button"
-                  variant="outline"
-                  onClick={handleEnhanceIdea}
-                  disabled={!state.prompt.trim() || isEnhancingIdea}
-                  className="gap-2 rounded-xl border-washa-gold/25 bg-washa-gold/5 text-washa-gold hover:bg-washa-gold/10 hover:text-washa-gold"
+                  aria-pressed={ideaEntryMode === 'guided'}
+                  onClick={() => updateState({ ideaEntryMode: 'guided' })}
+                  className={cn(
+                    'min-h-10 rounded-lg px-3 py-2 text-sm font-bold transition-[background-color,color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-washa-gold/40 active:scale-[0.98]',
+                    ideaEntryMode === 'guided' ? 'bg-washa-gold text-washa-bg shadow-sm' : 'text-washa-text-sec hover:text-washa-gold',
+                  )}
                 >
-                  {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                  {isEnhancingIdea ? 'جاري التحسين…' : 'حسّن الفكرة'}
-                </Button>
-                <span className="text-xs text-washa-text-faint">
-                  {state.prompt.length ? `${state.prompt.length} حرف` : 'اكتب فكرة قصيرة ثم حسّنها'}
-                </span>
+                  مساعد الفكرة
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={ideaEntryMode === 'free'}
+                  onClick={() => updateState({ ideaEntryMode: 'free' })}
+                  className={cn(
+                    'min-h-10 rounded-lg px-3 py-2 text-sm font-bold transition-[background-color,color,box-shadow,transform] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-washa-gold/40 active:scale-[0.98]',
+                    ideaEntryMode === 'free' ? 'bg-washa-gold text-washa-bg shadow-sm' : 'text-washa-text-sec hover:text-washa-gold',
+                  )}
+                >
+                  كتابة حرة
+                </button>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 justify-end text-xs text-washa-text-faint">
-                  <span>أفكار ملهمة</span>
-                  <Sparkles className="w-3 h-3 text-washa-gold/60" />
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {SUGGESTIONS.map((suggestion, i) => (
-                    <motion.button
-                      key={suggestion.text}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 + i * 0.06, duration: 0.3 }}
-                      onClick={() => updateState({ prompt: suggestion.text })}
-                      className={cn(
-                        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all duration-400 card-interactive',
-                        state.prompt === suggestion.text
-                          ? 'border-washa-gold/50 bg-washa-gold/10 text-washa-gold'
-                          : 'border-washa-border/30 text-washa-text-faint hover:text-washa-gold hover:border-washa-gold/30 bg-washa-bg/30'
-                      )}
-                    >
-                      <span>{suggestion.emoji}</span>
-                      <span>{suggestion.text}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
+
+              <AnimatePresence mode="wait">
+                {ideaEntryMode === 'guided' ? (
+                  <motion.div key="guided-entry" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+                    <GuidedIdeaBuilder
+                      brief={ideaBrief}
+                      prompt={state.prompt}
+                      isEnhancing={isEnhancingIdea}
+                      isStale={guidedIdeaStale}
+                      onBriefChange={(ideaBrief) => updateState({ ideaBrief })}
+                      onPromptChange={(prompt) => updateState({ prompt })}
+                      onCompose={(prompt) => updateState({ prompt, ideaBriefPromptSource: buildGuidedIdeaPrompt(ideaBrief) })}
+                      onEnhance={() => void handleEnhanceIdea()}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.div key="free-entry" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="space-y-4">
+                    <Textarea
+                      name="design-idea"
+                      aria-label="وصف فكرة التصميم"
+                      autoComplete="off"
+                      placeholder="مثال: ذئب هندسي بخطوط حادة يرمز للقوة…"
+                      className="min-h-[150px] resize-none rounded-2xl border-washa-border/40 bg-washa-bg/50 p-4 text-base leading-7 transition-[border-color,box-shadow] focus:border-washa-gold/50"
+                      value={state.prompt}
+                      onChange={(event) => updateState({ prompt: event.target.value })}
+                    />
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleEnhanceIdea}
+                        disabled={!state.prompt.trim() || isEnhancingIdea}
+                        className="gap-2 rounded-xl border-washa-gold/25 bg-washa-gold/5 text-washa-gold hover:bg-washa-gold/10"
+                      >
+                        {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                        {isEnhancingIdea ? 'جاري التحسين…' : 'حسّن الفكرة'}
+                      </Button>
+                      <span className="text-xs tabular-nums text-washa-text-faint">{state.prompt.length ? `${state.prompt.length} حرف` : 'اكتب فكرتك بأسلوبك'}</span>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-end gap-2 text-xs text-washa-text-faint">
+                        <span>أفكار للبدء</span>
+                        <Sparkles className="h-3 w-3 text-washa-gold/60" aria-hidden="true" />
+                      </div>
+                      <div className="flex flex-wrap justify-center gap-2">
+                        {SUGGESTIONS.map((suggestion, index) => (
+                          <motion.button
+                            key={suggestion}
+                            type="button"
+                            initial={{ opacity: 0, scale: 0.96 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.04, duration: 0.25 }}
+                            onClick={() => updateState({ prompt: suggestion })}
+                            className={cn(
+                              'rounded-full border px-3 py-1.5 text-sm transition-[border-color,background-color,transform] active:scale-[0.98]',
+                              state.prompt === suggestion
+                                ? 'border-washa-gold/50 bg-washa-gold/10 text-washa-gold'
+                                : 'border-washa-border/40 bg-washa-bg/40 text-washa-text-sec hover:border-washa-gold/30 hover:text-washa-gold',
+                            )}
+                          >
+                            {suggestion}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
@@ -236,7 +294,7 @@ export default function StepIdea() {
               </div>
 
               <Textarea
-                placeholder="مثال: لا غالب إلا الله ، أو والفجر ، أو اسمك ..."
+                placeholder="مثال: لا غالب إلا الله، أو والفجر، أو اسمك…"
                 className="min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(64,48,40,0.08)]"
                 value={state.calligraphyText}
                 onChange={e => updateState({ calligraphyText: e.target.value })}
@@ -260,22 +318,22 @@ export default function StepIdea() {
                   <Sparkles className="w-3 h-3 text-washa-gold/60" />
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {CALLIGRAPHY_SUGGESTIONS.map((s, i) => (
+                  {CALLIGRAPHY_SUGGESTIONS.map((suggestion, i) => (
                     <motion.button
-                      key={s.text}
+                      key={suggestion}
+                      type="button"
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.2 + i * 0.06, duration: 0.3 }}
-                      onClick={() => updateState({ calligraphyText: s.text })}
+                      onClick={() => updateState({ calligraphyText: suggestion })}
                       className={cn(
-                        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all duration-400 card-interactive font-serif',
-                        state.calligraphyText === s.text
+                        'card-interactive flex items-center gap-2 rounded-full border px-3 py-1.5 font-serif text-sm transition-[border-color,background-color,transform]',
+                        state.calligraphyText === suggestion
                           ? 'border-washa-gold/50 bg-washa-gold/10 text-washa-gold'
                           : 'border-washa-border/30 text-washa-text-faint hover:text-washa-gold hover:border-washa-gold/30 bg-washa-bg/30'
                       )}
                     >
-                      <span>{s.emoji}</span>
-                      <span>{s.text}</span>
+                      <span>{suggestion}</span>
                     </motion.button>
                   ))}
                 </div>
@@ -297,7 +355,7 @@ export default function StepIdea() {
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 className={cn(
-                  'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-washa-bg/30 p-6 text-center transition-all duration-500',
+                  'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-washa-bg/30 p-6 text-center transition-[border-color,background-color] duration-300',
                   state.referenceImage
                     ? 'border-washa-gold/30'
                     : 'border-washa-border/40 hover:border-washa-gold/40 animate-pulse-border'
@@ -308,7 +366,7 @@ export default function StepIdea() {
                     <div className="mx-auto h-28 w-28 overflow-hidden rounded-xl border border-washa-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
                       <img
                         src={`data:${state.referenceImageMimeType};base64,${state.referenceImage}`}
-                        alt="Reference"
+                        alt="الصورة المرجعية"
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -339,7 +397,7 @@ export default function StepIdea() {
                       onChange={handleImageUpload}
                     />
                     <label htmlFor="image-upload" className="cursor-pointer">
-                      <div className="rounded-xl border border-washa-gold/20 bg-washa-gold/10 px-5 py-2.5 text-sm font-medium text-washa-gold transition-all duration-300 hover:border-washa-gold/40 hover:bg-washa-gold/20">
+                      <div className="rounded-xl border border-washa-gold/20 bg-washa-gold/10 px-5 py-2.5 text-sm font-medium text-washa-gold transition-[border-color,background-color] duration-300 hover:border-washa-gold/40 hover:bg-washa-gold/20">
                         استعراض الملفات
                       </div>
                     </label>
@@ -349,7 +407,7 @@ export default function StepIdea() {
               <div className="space-y-2">
                 <label className="text-sm text-washa-text-sec text-right block">أضف وصفاً إضافياً (اختياري)</label>
                 <Input
-                  placeholder="مثال: اجعل الألوان أكثر دفئاً..."
+                  placeholder="مثال: اجعل الألوان أكثر دفئًا…"
                   value={state.prompt}
                   onChange={e => updateState({ prompt: e.target.value })}
                   className="rounded-xl bg-washa-bg/50"
@@ -365,6 +423,8 @@ export default function StepIdea() {
         onBack={prevStep}
         backLabel="السابق"
         onNext={nextStep}
+        nextDisabled={!canProceed}
+        hint={nextHint}
       />
     </>
   );

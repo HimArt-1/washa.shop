@@ -8,6 +8,15 @@ export type DesignMethod = 'text' | 'image' | 'calligraphy';
 export type PrintPosition = 'chest' | 'back' | 'shoulder_right' | 'shoulder_left';
 export type PrintSize = 'large' | 'small';
 export type DtfStudioGarmentAiReferenceMode = 'match_reference' | 'prompt_realistic';
+export type IdeaEntryMode = 'guided' | 'free';
+
+export interface GuidedIdeaBrief {
+  subject: string;
+  mood: string;
+  meaning: string;
+  wording: string;
+  avoid: string;
+}
 
 export interface DtfStudioColorToken {
   hex: string;
@@ -104,6 +113,9 @@ export interface DesignState {
   garmentSizeId: string | null;
   garmentSize: GarmentSize;
   designMethod: DesignMethod;
+  ideaEntryMode?: IdeaEntryMode;
+  ideaBrief?: GuidedIdeaBrief;
+  ideaBriefPromptSource?: string;
   designPosition: string;
   printOptionId: string | null;
   printPosition: PrintPosition | null;
