@@ -47,6 +47,7 @@ import {
   syncStudioStepInUrl,
 } from '../lib/studioDraft';
 import { createEmptyGuidedIdeaBrief } from '../lib/ideaBuilder';
+import { isCleanOutputEnabled } from '../lib/outputPreferences';
 
 export interface OrderResult {
   itemTitle: string;
@@ -817,10 +818,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const extracted = await extractDesign(parts.base64, parts.mimeType);
+      const cleanOutputEnabled = isCleanOutputEnabled(state);
+      const extracted = await extractDesign(parts.base64, parts.mimeType, cleanOutputEnabled);
 
       if (extracted) {
-        const printReady = await makeEdgeBackgroundTransparent(extracted).catch(() => null);
+        const printReady = cleanOutputEnabled
+          ? await makeEdgeBackgroundTransparent(extracted).catch(() => null)
+          : null;
         setExtractedImage(printReady?.dataUrl ?? extracted);
         showToast('تم استخراج التصميم بنجاح! 🎨', 'success');
       } else {
@@ -873,8 +877,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         try {
           const parts = parseDataUrlParts(mockupImage);
           if (parts) {
-            submitExtractedBg = await extractDesign(parts.base64, parts.mimeType);
-            if (submitExtractedBg) {
+            const cleanOutputEnabled = isCleanOutputEnabled(state);
+            submitExtractedBg = await extractDesign(parts.base64, parts.mimeType, cleanOutputEnabled);
+            if (submitExtractedBg && cleanOutputEnabled) {
               const printReady = await makeEdgeBackgroundTransparent(submitExtractedBg).catch(() => null);
               submitExtractedBg = printReady?.dataUrl ?? submitExtractedBg;
             }

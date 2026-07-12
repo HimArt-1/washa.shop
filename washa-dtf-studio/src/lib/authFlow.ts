@@ -1,4 +1,5 @@
 import type { DesignState } from '../types';
+import { normalizeOutputPreferences } from './outputPreferences';
 
 const AUTH_DRAFT_KEY = 'washa-ai-auth-draft-v1';
 const AUTH_DRAFT_VERSION = 1;
@@ -36,6 +37,7 @@ function currentReturnPath() {
 function compactDraftState(state: DesignState, includeReferenceImage: boolean): DesignState {
   return {
     ...state,
+    ...normalizeOutputPreferences(state),
     prompt: state.prompt.slice(0, 3000),
     calligraphyText: state.calligraphyText.slice(0, 400),
     customPalette: state.customPalette?.slice(0, 280) || '',

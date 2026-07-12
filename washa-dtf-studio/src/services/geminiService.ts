@@ -1,3 +1,5 @@
+import { isCleanOutputEnabled } from '../lib/outputPreferences';
+
 // Use the integrated Next.js API instead of a separate local proxy server.
 const API_BASE_URL = '/api/washa-dtf-studio';
 
@@ -73,6 +75,7 @@ export async function generateMockup(
     preferences.garmentColorHex ? `selected color hex: ${preferences.garmentColorHex}` : null,
   ]);
   const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
+  const cleanOutputEnabled = isCleanOutputEnabled(preferences);
   const garmentReferenceDirectives = [
     hasGarmentReference
       ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
@@ -88,16 +91,13 @@ export async function generateMockup(
   ];
   const printDirectives = [
     'Premium DTF print integrated directly into the garment.',
-    preferences.removeBackground
-      ? 'The print artwork must have a transparent cutout boundary: no backdrop block, colored panel, boxed field, white rectangle, or square image area behind it.'
-      : null,
-    preferences.avoidHardEdges
-      ? 'No forced frame, border, crop edge, enclosing rectangle, or hard outer edge unless the concept truly needs it.'
-      : null,
-    referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
+    cleanOutputEnabled
+      ? 'MANDATORY CLEAN ARTWORK OUTPUT: the print artwork must have a transparent cutout boundary with no background of any kind; no frame, border, crop edge, enclosing rectangle, boxed field, white square, colored panel, or hard outer edge. The result is invalid if the artwork contains a background panel or hard outer edge.'
+      : 'OUTPUT CLEANUP DISABLED: background panels and defined outer edges are allowed. Preserve an intentional background, frame, crop boundary, or hard edge when it supports the requested concept; do not automatically convert the artwork into a transparent cutout.',
+    referenceImageBase64 && cleanOutputEnabled
       ? 'If a reference image has transparency, use only the visible foreground artwork; treat transparent pixels as absent and never render them as white, black, gray, or any background patch.'
       : null,
-    referenceImageBase64 && (preferences.removeBackground || preferences.avoidHardEdges)
+    referenceImageBase64 && cleanOutputEnabled
       ? 'Do not preserve the reference image background, frame, crop, or edges.'
       : null,
     ...garmentReferenceDirectives,
@@ -212,8 +212,11 @@ export async function generateMockup(
   }
 }
 
-export async function extractDesign(mockupImageBase64: string, mimeType: string): Promise<string | null> {
-  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. Output requirements: transparent background with alpha channel, only the artwork pixels, no simulated transparency, no checkerboard pattern, no white background, no colored canvas, no garment silhouette, no fabric texture, no wrinkles, no shadows, no reflections, absolutely NO duplication or double-drawn layers. Preserve all fine detail, color accuracy, and sharpness of the original artwork. Single clean transparent layer, print-ready DTF quality.`;
+export async function extractDesign(mockupImageBase64: string, mimeType: string, cleanOutputEnabled = true): Promise<string | null> {
+  const outputDirective = cleanOutputEnabled
+    ? 'Return a transparent PNG with alpha: only the artwork pixels, no background, panel, canvas, frame, border, crop edge, or hard outer boundary.'
+    : 'Preserve the complete artwork exactly as designed, including any intentional background panel, canvas, frame, border, crop boundary, or defined outer edge. Do not remove or make those elements transparent.';
+  const prompt = `Extract the single graphic or calligraphy design from this garment mockup onto a perfectly flat 2D view. ${outputDirective} Never include the garment silhouette, fabric texture, wrinkles, shadows, reflections, or duplicated layers. Preserve all artwork detail, color accuracy, and sharpness. Print-ready DTF quality.`;
 
   try {
     const response = await fetch(`${API_BASE_URL}/extract-design`, {

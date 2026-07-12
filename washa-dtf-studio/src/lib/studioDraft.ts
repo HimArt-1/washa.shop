@@ -4,6 +4,7 @@ import {
   type DtfStudioConfig,
 } from '../types';
 import { findSupportedPrintOption, getPrintPlacementCopy, resolvePrintPlacementFromOption } from './placement';
+import { normalizeOutputPreferences } from './outputPreferences';
 
 const STUDIO_DRAFT_KEY = 'washa-ai-studio-draft-v1';
 const STUDIO_DRAFT_VERSION = 1;
@@ -37,8 +38,10 @@ export function studioStepToSlug(step: number) {
 }
 
 function compactState(state: DesignState): DesignState {
+  const outputPreferences = normalizeOutputPreferences(state);
   return {
     ...state,
+    ...outputPreferences,
     prompt: state.prompt.slice(0, 3000),
     calligraphyText: state.calligraphyText.slice(0, 400),
     customPalette: state.customPalette?.slice(0, 280) ?? '',

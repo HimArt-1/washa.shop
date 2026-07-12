@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'motion/react';
-import { Check, Sparkles, Wand2, Loader2, X, LockKeyhole } from 'lucide-react';
+import { Check, ShieldCheck, Wand2, Loader2, X, LockKeyhole } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { CUSTOM_PALETTE_ID, CUSTOM_PALETTE_LABEL } from '../../types';
 import StepNavigationBar from './StepNavigationBar';
+import { isCleanOutputEnabled } from '../../lib/outputPreferences';
 
 /* ── Color Swatch Picker ── */
 const COLOR_SWATCHES = [
@@ -157,6 +158,7 @@ export default function StepPalette() {
   } = useDesign();
 
   const customPaletteSelected = state.paletteId === CUSTOM_PALETTE_ID;
+  const cleanOutputEnabled = isCleanOutputEnabled(state);
   const canGenerate = Boolean(
     state.styleId &&
     state.paletteId &&
@@ -193,7 +195,7 @@ export default function StepPalette() {
           transition={{ delay: 0.1, duration: 0.4 }}
           className="step-title-heading bg-gradient-to-l from-washa-gold via-washa-gold-light to-washa-gold bg-clip-text text-transparent"
         >
-          الألوان وتفضيلات الإخراج
+          الألوان
         </motion.h2>
         <motion.p
           initial={{ opacity: 0 }}
@@ -201,7 +203,7 @@ export default function StepPalette() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="wizard-copy text-washa-text-sec"
         >
-          اختر لوحة الألوان وتفضيلات الإخراج لضمان طباعة أنظف على القطعة
+          اختر لوحة الألوان المناسبة لتصميمك
         </motion.p>
       </div>
 
@@ -302,92 +304,34 @@ export default function StepPalette() {
             ) : null}
           </section>
 
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-washa-gold/60">مهيّأة لنتيجة أنظف</span>
-              <label className="flex items-center gap-3 text-lg text-washa-text font-medium">
-                <Wand2 className="h-5 w-5 text-washa-gold" />
-                تفضيلات الإخراج
-              </label>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.28, duration: 0.35 }}
-                onClick={() => updateState({ removeBackground: !state.removeBackground })}
-                className={cn(
-                  'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
-                  state.removeBackground
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
-                    : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Sparkles className="h-5 w-5" />
-                  </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold',
-                      state.removeBackground
-                        ? 'border border-washa-gold/30 bg-washa-gold/10 text-washa-gold'
-                        : 'border border-white/10 bg-white/[0.03] text-washa-text-faint'
-                    )}
-                  >
-                    {state.removeBackground ? <Check className="h-3 w-3" /> : null}
-                    {state.removeBackground ? 'مفعّل' : 'غير مفعّل'}
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1.5">
-                  <p className="text-base font-bold">بدون خلفية</p>
-                  <p className="text-xs leading-6 text-washa-text-faint">
-                    يمنع أي مربع لوني أو مساحة مصمتة خلف العنصر حتى يظهر التصميم كطباعة مباشرة ونظيفة على القطعة.
-                  </p>
-                </div>
-              </motion.button>
-
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.32, duration: 0.35 }}
-                onClick={() => updateState({ avoidHardEdges: !state.avoidHardEdges })}
-                className={cn(
-                  'rounded-2xl border p-4 text-right transition-all duration-500 card-interactive',
-                  state.avoidHardEdges
-                    ? 'border-washa-gold bg-washa-gold/10 text-washa-gold shadow-[0_0_35px_rgba(64,48,40,0.15)]'
-                    : 'border-white/5 bg-white/[0.02] text-washa-text-sec hover:border-washa-gold/30 hover:bg-white/[0.05]'
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                    <Wand2 className="h-5 w-5" />
-                  </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold',
-                      state.avoidHardEdges
-                        ? 'border border-washa-gold/30 bg-washa-gold/10 text-washa-gold'
-                        : 'border border-white/10 bg-white/[0.03] text-washa-text-faint'
-                    )}
-                  >
-                    {state.avoidHardEdges ? <Check className="h-3 w-3" /> : null}
-                    {state.avoidHardEdges ? 'مفعّل' : 'غير مفعّل'}
-                  </span>
-                </div>
-                <div className="mt-4 space-y-1.5">
-                  <p className="text-base font-bold">بدون حواف إلزامية</p>
-                  <p className="text-xs leading-6 text-washa-text-faint">
-                    يمنع الإطار أو القصّة المربعة أو حدود الصورة القسرية ما لم تكن جزءًا مقصودًا من الفكرة نفسها.
-                  </p>
-                </div>
-              </motion.button>
-            </div>
-
-            <div className="rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 text-xs leading-6 text-washa-text-faint">
-              هذه التفضيلات تُضمَّن تلقائيًا داخل وصف التوليد قبل إرسال الطلب إلى النموذج.
-            </div>
+          <section className="border-t border-washa-border/35 pt-4" aria-labelledby="output-preference-title">
+            <button
+              type="button"
+              aria-pressed={cleanOutputEnabled}
+              onClick={() => updateState({
+                removeBackground: !cleanOutputEnabled,
+                avoidHardEdges: !cleanOutputEnabled,
+              })}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-right transition-[border-color,background-color,transform] duration-200 active:scale-[0.99]',
+                cleanOutputEnabled
+                  ? 'border-washa-gold/35 bg-washa-gold/[0.07]'
+                  : 'border-washa-border/45 bg-washa-bg/35 hover:border-washa-gold/30',
+              )}
+            >
+              <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', cleanOutputEnabled ? 'bg-washa-gold text-washa-bg' : 'bg-washa-elevated text-washa-text-faint')}>
+                <ShieldCheck className="h-4.5 w-4.5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span id="output-preference-title" className="block text-sm font-bold text-washa-text">إخراج نظيف للطباعة</span>
+                <span className="mt-0.5 block text-[11px] leading-5 text-washa-text-sec">
+                  {cleanOutputEnabled ? 'بدون خلفية وبدون حواف خارجية — مضمّن في التوليد' : 'يسمح بخلفية وحدود خارجية عند الحاجة'}
+                </span>
+              </span>
+              <span className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200', cleanOutputEnabled ? 'bg-washa-gold' : 'bg-washa-border')} aria-hidden="true">
+                <span className={cn('absolute left-1 top-1 h-4 w-4 rounded-full bg-washa-ivory shadow-sm transition-transform duration-200', cleanOutputEnabled ? 'translate-x-5' : 'translate-x-0')} />
+              </span>
+            </button>
           </section>
         </div>
       )}
