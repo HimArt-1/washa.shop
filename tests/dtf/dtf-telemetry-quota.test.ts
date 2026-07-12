@@ -3,11 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
     mockGetWashaAiSettings,
     mockCheckRateLimit,
+    mockReleaseRateLimit,
     mockGetSupabaseAdminClient,
     mockRpc,
 } = vi.hoisted(() => ({
     mockGetWashaAiSettings: vi.fn(),
     mockCheckRateLimit: vi.fn(),
+    mockReleaseRateLimit: vi.fn(),
     mockGetSupabaseAdminClient: vi.fn(),
     mockRpc: vi.fn(),
 }));
@@ -18,6 +20,7 @@ vi.mock("@/app/actions/settings", () => ({
 
 vi.mock("@/lib/rate-limit", () => ({
     checkRateLimit: mockCheckRateLimit,
+    releaseRateLimit: mockReleaseRateLimit,
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -30,6 +33,7 @@ describe("DtfTelemetryService quota reservation", () => {
     beforeEach(() => {
         mockGetWashaAiSettings.mockReset();
         mockCheckRateLimit.mockReset();
+        mockReleaseRateLimit.mockReset();
         mockGetSupabaseAdminClient.mockReset();
         mockRpc.mockReset();
         delete process.env.WASHA_AI_QUOTA_FAIL_OPEN;
@@ -51,6 +55,7 @@ describe("DtfTelemetryService quota reservation", () => {
             remaining: 2,
             resetAt: Date.now() + 86_400_000,
         });
+        mockReleaseRateLimit.mockResolvedValue(true);
         mockRpc.mockResolvedValue({
             data: {
                 granted: true,
@@ -96,6 +101,18 @@ describe("DtfTelemetryService quota reservation", () => {
             used: 0,
             tracked: false,
         });
+    });
+
+    it("returns a guest quota reservation when generation fails", async () => {
+        const released = await DtfTelemetryService.releaseDailyQuota(undefined, "guest", "guest", {
+            guestIdentifier: "guest:127.0.0.1",
+        });
+
+        expect(mockReleaseRateLimit).toHaveBeenCalledWith(
+            "dtf-guest-daily-guest:127.0.0.1",
+            86_400_000
+        );
+        expect(released).toBe(true);
     });
 
     it("reserves booth generation quota with the configured booth limit", async () => {

@@ -105,10 +105,23 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
   // تحديث فوري بعد كل توليد ناجح (من حدث خدمة التوليد).
   useEffect(() => {
     function onChanged(event: Event) {
-      const detail = (event as CustomEvent).detail as { freeRemaining?: number | null; paidBalance?: number | null };
+      const detail = (event as CustomEvent).detail as { freeRemaining?: number | null; paidBalance?: number | null; guest?: boolean };
       setStatus((prev) => {
         if (!prev) {
           // لا حالة سابقة — اجلبها كاملة.
+          if (detail?.guest) {
+            const freeRemaining = typeof detail.freeRemaining === 'number' ? detail.freeRemaining : 0;
+            return {
+              guest: true,
+              unlimited: false,
+              blocked: false,
+              freeLimit: freeRemaining + 1,
+              freeUsed: 1,
+              freeRemaining,
+              paidBalance: 0,
+              canPurchase: false,
+            };
+          }
           refresh();
           return prev;
         }
@@ -116,6 +129,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
         const paidBalance = typeof detail?.paidBalance === 'number' ? detail.paidBalance : prev.paidBalance;
         return {
           ...prev,
+          guest: detail?.guest === true || prev.guest,
           freeRemaining,
           freeUsed: Math.max(prev.freeLimit - freeRemaining, 0),
           paidBalance,
@@ -128,6 +142,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
         reason?: 'exhausted' | 'blocked';
         canPurchase?: boolean;
         paidBalance?: number;
+        guest?: boolean;
       };
       const reason: CreditsNoticeReason = detail?.reason === 'blocked' ? 'blocked' : 'exhausted';
       const canPurchase = detail?.canPurchase === true;
@@ -143,6 +158,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           freeRemaining: 0,
           paidBalance: 0,
           canPurchase: false,
+          guest: detail?.guest === true,
         };
         return {
           ...base,
@@ -150,8 +166,13 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           freeRemaining: 0,
           paidBalance,
           canPurchase,
+          guest: detail?.guest === true || base.guest,
         };
       });
+
+      if (detail?.guest === true) {
+        return;
+      }
 
       // نفتح النافذة اللطيفة دائماً — سواء لعرض الشراء أو رسالة «تتجدد غداً».
       setNoticeReason(reason);

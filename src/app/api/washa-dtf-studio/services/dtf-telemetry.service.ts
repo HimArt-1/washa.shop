@@ -2,7 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import type { WashaAiControls } from "@/types/database";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
 import { StorageService } from "./storage.service";
 
@@ -357,8 +357,16 @@ export class DtfTelemetryService {
     static async releaseDailyQuota(
         profileId: string | null | undefined,
         userRole: string | null | undefined,
-        source: QuotaSource = "free"
+        source: QuotaSource = "free",
+        options: DailyQuotaOptions = {}
     ): Promise<boolean> {
+        if (userRole === "guest" && source === "guest" && options.guestIdentifier?.trim()) {
+            return releaseRateLimit(
+                `dtf-guest-daily-${options.guestIdentifier.trim()}`,
+                DtfTelemetryService.GUEST_DAILY_WINDOW_MS
+            );
+        }
+
         if (!profileId || DtfTelemetryService.isQuotaBypassedRole(userRole)) {
             return false;
         }

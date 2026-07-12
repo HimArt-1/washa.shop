@@ -168,8 +168,8 @@ export default function StepPalette() {
 
   const generateHint = (
     <span className="inline-flex items-center justify-center gap-1.5 sm:justify-end">
-      <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" />
-      يتطلب التوليد تسجيل الدخول لحفظ التصميم وربطه بطلبك
+      <LockKeyhole className="h-3.5 w-3.5 text-washa-gold/70" aria-hidden="true" />
+      جرّب التوليد الآن — تسجيل الدخول مطلوب فقط عند اعتماد الطلب
     </span>
   );
 

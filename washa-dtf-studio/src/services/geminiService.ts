@@ -27,13 +27,14 @@ interface GenerationPreferences {
 export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
 export const QUOTA_EXCEEDED_EVENT = 'washa:quota-exceeded';
 
-function dispatchQuotaChanged(data: { freeRemaining?: unknown; paidBalance?: unknown }) {
+function dispatchQuotaChanged(data: { freeRemaining?: unknown; paidBalance?: unknown; guest?: unknown }) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
     new CustomEvent(QUOTA_CHANGED_EVENT, {
       detail: {
         freeRemaining: typeof data?.freeRemaining === 'number' ? data.freeRemaining : null,
         paidBalance: typeof data?.paidBalance === 'number' ? data.paidBalance : null,
+        guest: data?.guest === true,
       },
     })
   );
@@ -44,6 +45,7 @@ function dispatchQuotaExceeded(info: {
   canPurchase?: unknown;
   freeRemaining?: unknown;
   paidBalance?: unknown;
+  guest?: unknown;
 }) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(
@@ -53,6 +55,7 @@ function dispatchQuotaExceeded(info: {
         canPurchase: info?.canPurchase === true,
         freeRemaining: typeof info?.freeRemaining === 'number' ? info.freeRemaining : 0,
         paidBalance: typeof info?.paidBalance === 'number' ? info.paidBalance : 0,
+        guest: info?.guest === true,
       },
     })
   );

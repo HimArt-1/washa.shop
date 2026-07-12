@@ -20,6 +20,7 @@ import WashaDevStudio from './components/dev/WashaDevStudio';
 import WashaDevStudioV2 from './components/dev-v2/WashaDevStudioV2';
 import NeuralOrnament from './components/NeuralOrnament';
 import EntryBridge from './components/EntryBridge';
+import AuthGateModal from './components/AuthGateModal';
 
 type StudioMode = 'production' | 'dev' | 'dev-v2';
 
@@ -130,6 +131,7 @@ function AppContent() {
       )}
 
       <Toast />
+      <AuthGateModal />
       <DesignGallery
         isOpen={galleryOpen}
         onClose={() => setGalleryOpen(false)}

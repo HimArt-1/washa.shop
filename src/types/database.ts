@@ -1213,6 +1213,10 @@ export type Database = {
                 Args: { p_identifier: string; p_limit: number; p_window_seconds: number };
                 Returns: Record<string, unknown>;
             };
+            refund_rate_limit: {
+                Args: { p_identifier: string; p_window_seconds: number };
+                Returns: Record<string, unknown>;
+            };
         };
         Enums: {
             [_ in never]: never;

@@ -2,7 +2,7 @@ import type { DesignState } from '../types';
 import { normalizeOutputPreferences } from './outputPreferences';
 
 const AUTH_DRAFT_KEY = 'washa-ai-auth-draft-v1';
-const AUTH_DRAFT_VERSION = 1;
+const AUTH_DRAFT_VERSION = 2;
 const AUTH_DRAFT_MAX_AGE_MS = 45 * 60 * 1000;
 const SESSION_ENDPOINT = '/api/washa-dtf-studio/session';
 
@@ -15,11 +15,14 @@ export type WashaAiAuthDraft = {
   returnPath: string;
   state: DesignState;
   referenceImageOmitted: boolean;
+  mockupImage: string | null;
+  resultOmitted: boolean;
 };
 
 export type WashaAiDraftSaveResult = {
   saved: boolean;
   referenceImageOmitted: boolean;
+  resultOmitted: boolean;
 };
 
 export type WashaAiSession = {
@@ -50,7 +53,11 @@ function writeDraft(draft: WashaAiAuthDraft) {
   localStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(draft));
 }
 
-export function saveWashaAiAuthDraft(state: DesignState, intent: WashaAiAuthIntent): WashaAiDraftSaveResult {
+export function saveWashaAiAuthDraft(
+  state: DesignState,
+  intent: WashaAiAuthIntent,
+  mockupImage: string | null = null,
+): WashaAiDraftSaveResult {
   const baseDraft = {
     version: AUTH_DRAFT_VERSION,
     savedAt: Date.now(),
@@ -58,11 +65,13 @@ export function saveWashaAiAuthDraft(state: DesignState, intent: WashaAiAuthInte
     returnPath: currentReturnPath(),
     state: compactDraftState(state, true),
     referenceImageOmitted: false,
+    mockupImage,
+    resultOmitted: false,
   } satisfies WashaAiAuthDraft;
 
   try {
     writeDraft(baseDraft);
-    return { saved: true, referenceImageOmitted: false };
+    return { saved: true, referenceImageOmitted: false, resultOmitted: false };
   } catch {
     try {
       writeDraft({
@@ -70,9 +79,20 @@ export function saveWashaAiAuthDraft(state: DesignState, intent: WashaAiAuthInte
         state: compactDraftState(state, false),
         referenceImageOmitted: Boolean(state.referenceImage),
       });
-      return { saved: true, referenceImageOmitted: Boolean(state.referenceImage) };
+      return { saved: true, referenceImageOmitted: Boolean(state.referenceImage), resultOmitted: false };
     } catch {
-      return { saved: false, referenceImageOmitted: Boolean(state.referenceImage) };
+      try {
+        writeDraft({
+          ...baseDraft,
+          state: compactDraftState(state, false),
+          referenceImageOmitted: Boolean(state.referenceImage),
+          mockupImage: null,
+          resultOmitted: Boolean(mockupImage),
+        });
+        return { saved: true, referenceImageOmitted: Boolean(state.referenceImage), resultOmitted: Boolean(mockupImage) };
+      } catch {
+        return { saved: false, referenceImageOmitted: Boolean(state.referenceImage), resultOmitted: Boolean(mockupImage) };
+      }
     }
   }
 }
@@ -103,6 +123,8 @@ export function consumeWashaAiAuthDraft(): WashaAiAuthDraft | null {
         referenceImageMimeType: parsed.state.referenceImageMimeType ?? null,
       } as DesignState,
       referenceImageOmitted: parsed.referenceImageOmitted === true,
+      mockupImage: typeof parsed.mockupImage === 'string' ? parsed.mockupImage : null,
+      resultOmitted: parsed.resultOmitted === true,
     };
   } catch {
     localStorage.removeItem(AUTH_DRAFT_KEY);
@@ -112,6 +134,10 @@ export function consumeWashaAiAuthDraft(): WashaAiAuthDraft | null {
 
 export function buildWashaAiSignInUrl(returnPath = currentReturnPath()) {
   return `/sign-in?redirect_url=${encodeURIComponent(returnPath.startsWith('/') ? returnPath : '/design/washa-ai/app')}`;
+}
+
+export function buildWashaAiSignUpUrl(returnPath = currentReturnPath()) {
+  return `/sign-up?redirect_url=${encodeURIComponent(returnPath.startsWith('/') ? returnPath : '/design/washa-ai/app')}`;
 }
 
 export async function fetchWashaAiSession(): Promise<WashaAiSession> {

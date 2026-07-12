@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 export interface QuotaStatus {
+  guest?: boolean;
   unlimited: boolean;
   blocked?: boolean;
   freeLimit: number;

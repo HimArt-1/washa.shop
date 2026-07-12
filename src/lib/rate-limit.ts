@@ -42,6 +42,13 @@ function consumeLocalRateLimit(
     return { success: true, remaining: limit - record.count, resetAt: record.resetAt };
 }
 
+function releaseLocalRateLimit(identifier: string) {
+    const record = globalRateLimitCache.get(identifier);
+    if (!record || Date.now() > record.resetAt || record.count <= 0) return false;
+    record.count -= 1;
+    return true;
+}
+
 function normalizeRateLimitPayload(data: RateLimitRpcPayload | null) {
     if (!data || typeof data !== "object" || Array.isArray(data)) {
         return null;
@@ -90,5 +97,25 @@ export async function checkRateLimit(
     } catch (error) {
         console.warn("[rate-limit] unexpected distributed limiter failure, using local fallback:", error);
         return consumeLocalRateLimit(identifier, limit, windowMs);
+    }
+}
+
+export async function releaseRateLimit(identifier: string, windowMs: number): Promise<boolean> {
+    try {
+        const sb = getSupabaseAdminClient();
+        const { data, error } = await sb.rpc("refund_rate_limit", {
+            p_identifier: identifier,
+            p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+        });
+
+        if (error) {
+            console.warn("[rate-limit] distributed refund failed, using local fallback:", error);
+            return releaseLocalRateLimit(identifier);
+        }
+
+        return Boolean((data as { released?: unknown } | null)?.released);
+    } catch (error) {
+        console.warn("[rate-limit] unexpected distributed refund failure, using local fallback:", error);
+        return releaseLocalRateLimit(identifier);
     }
 }

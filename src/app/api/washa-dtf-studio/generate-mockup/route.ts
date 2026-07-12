@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     });
 
     const accessStartedAt = Date.now();
-    const accessResult = await requireDtfRouteAccess();
+    const accessResult = await requireDtfRouteAccess({ allowPublicGeneration: true });
     logDtfTrace("dtf.generate-mockup", traceId, "access_resolved", {
         duration_ms: Date.now() - accessStartedAt,
         allowed: Boolean(accessResult.access?.allowed),
@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
                     error: "توليد وشّى AI غير متاح لحسابك حالياً.",
                     code: "audience_disabled",
                     canPurchase: false,
+                    guest: access.role === "guest",
                 },
                 { status: 403 }
             ), traceId);
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
                     error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
                     code: "quota_unavailable",
                     canPurchase: false,
+                    guest: access.role === "guest",
                 },
                 { status: 503 }
             ), traceId);
@@ -142,6 +144,7 @@ export async function POST(request: NextRequest) {
                 freeRemaining: quota.freeRemaining,
                 paidBalance: quota.paidBalance,
                 canPurchase: quota.canPurchase === true,
+                guest: access.role === "guest",
             },
             { status: 403 }
         ), traceId);
@@ -185,6 +188,7 @@ export async function POST(request: NextRequest) {
             freeRemaining: quota.tracked ? quota.freeRemaining : null,
             paidBalance: quota.tracked ? quota.paidBalance : null,
             consumedSource: quota.tracked ? quota.source : null,
+            guest: access.role === "guest",
         }), traceId);
     } catch (error) {
         console.error("[washa-dtf-studio.generate-mockup]", { traceId, error });
@@ -197,7 +201,9 @@ export async function POST(request: NextRequest) {
 
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
-            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source);
+            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
+                guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
+            });
             logDtfTrace("dtf.generate-mockup", traceId, "quota_released", {
                 duration_ms: Date.now() - releaseStartedAt,
                 source: quota.source,

@@ -29,6 +29,7 @@ import {
 } from '../lib/publicErrors';
 import {
   buildWashaAiSignInUrl,
+  buildWashaAiSignUpUrl,
   consumeWashaAiAuthDraft,
   fetchWashaAiSession,
   saveWashaAiAuthDraft,
@@ -104,6 +105,10 @@ interface DesignContextType {
   selectedStyle: DtfStudioCreativeOption | null;
   selectedTechnique: DtfStudioCreativeOption | null;
   selectedPalette: DtfStudioPaletteOption | null;
+  authGateIntent: WashaAiAuthIntent | null;
+  authGateNotice: string | null;
+  closeAuthGate: () => void;
+  continueAuthentication: (mode: 'sign-in' | 'sign-up') => void;
 }
 
 export interface ToastState {
@@ -301,6 +306,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
   const [pendingGenerateAfterAuth, setPendingGenerateAfterAuth] = useState(false);
+  const [authGateIntent, setAuthGateIntent] = useState<WashaAiAuthIntent | null>(null);
+  const [authGateNotice, setAuthGateNotice] = useState<string | null>(null);
   const [studioDraftReady, setStudioDraftReady] = useState(false);
   const restoredAuthDraftRef = useRef(false);
   const studioDraftReferenceOmittedRef = useRef(false);
@@ -508,18 +515,22 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
 
-      const draft = saveWashaAiAuthDraft(state, intent);
-      const authMessage = intent === 'generate'
-        ? 'سجّل الدخول أولاً حتى نحفظ تصميمك ونبدأ التوليد بحسابك.'
-        : 'سجّل الدخول أولاً حتى نربط التصميم بسلتك وطلبك.';
+      const draft = saveWashaAiAuthDraft(state, intent, intent === 'submit' ? mockupImage : null);
+      if (!draft.saved) {
+        const message = 'تعذر حفظ التصميم في هذا المتصفح. أبقِ الصفحة مفتوحة وجرّب مرة أخرى بعد تفريغ مساحة التخزين.';
+        setError(message);
+        showToast(message, 'error');
+        return false;
+      }
       const referenceNote = draft.referenceImageOmitted
         ? ' لم نستطع حفظ الصورة المرجعية محلياً؛ ستحتاج رفعها مجدداً بعد الرجوع.'
         : '';
+      const resultNote = draft.resultOmitted
+        ? ' سنعيد توليد النتيجة بعد الدخول لأن حجمها أكبر من مساحة الحفظ المحلية.'
+        : ' تصميمك الحالي محفوظ وسيعود معك بعد الدخول.';
 
-      showToast(`${authMessage}${referenceNote}`, 'info');
-      window.setTimeout(() => {
-        window.location.assign(session.signInUrl || buildWashaAiSignInUrl());
-      }, 650);
+      setAuthGateNotice(`${resultNote}${referenceNote}`.trim());
+      setAuthGateIntent(intent);
       return false;
     } catch (authError) {
       const message = getReadableErrorMessage(authError, 'تعذر التحقق من جلسة الدخول حالياً. حاول مرة أخرى.');
@@ -527,7 +538,26 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       showToast(message, 'error');
       return false;
     }
-  }, [showToast, state]);
+  }, [mockupImage, showToast, state]);
+
+  const closeAuthGate = useCallback(() => {
+    setAuthGateIntent(null);
+    setAuthGateNotice(null);
+  }, []);
+
+  const continueAuthentication = useCallback((mode: 'sign-in' | 'sign-up') => {
+    const intent = authGateIntent ?? 'submit';
+    const draft = saveWashaAiAuthDraft(state, intent, intent === 'submit' ? mockupImage : null);
+    if (!draft.saved) {
+      const message = 'تعذر حفظ التصميم قبل الانتقال. أبقِ الصفحة مفتوحة وحاول بعد تفريغ مساحة التخزين.';
+      setAuthGateNotice(message);
+      setError(message);
+      showToast(message, 'error');
+      return;
+    }
+    const url = mode === 'sign-up' ? buildWashaAiSignUpUrl() : buildWashaAiSignInUrl();
+    window.location.assign(url);
+  }, [authGateIntent, mockupImage, showToast, state]);
 
   const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
     if (generationInFlightRef.current || isGenerating) return;
@@ -562,8 +592,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
 
     generationInFlightRef.current = true;
-    const canGenerateWithAccount = await requireAuthenticatedAction('generate');
-    if (!canGenerateWithAccount) {
+    let session;
+    try {
+      session = await fetchWashaAiSession();
+    } catch (sessionError) {
+      const message = getReadableErrorMessage(sessionError, 'تعذر التحقق من إمكانية التوليد حالياً. حاول مرة أخرى.');
+      setError(message);
+      showToast(message, 'error');
       generationInFlightRef.current = false;
       return;
     }
@@ -571,18 +606,20 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setIsGenerating(true);
     setError(null);
 
-    const creditAccess = await requestGenerationAccess();
-    if (creditAccess.allowed === false) {
-      if (creditAccess.reason === 'unavailable') {
-        const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
-        setError(message);
-        showToast(message, 'error');
-      } else {
-        setError(null);
+    if (session.authenticated) {
+      const creditAccess = await requestGenerationAccess();
+      if (creditAccess.allowed === false) {
+        if (creditAccess.reason === 'unavailable') {
+          const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
+          setError(message);
+          showToast(message, 'error');
+        } else {
+          setError(null);
+        }
+        setIsGenerating(false);
+        generationInFlightRef.current = false;
+        return;
       }
-      setIsGenerating(false);
-      generationInFlightRef.current = false;
-      return;
     }
 
     setExtractedImage(null);
@@ -646,11 +683,26 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       // نفاد الحصة ليس خطأً — نافذة الرصيد اللطيفة تتكفّل به (حدث washa:quota-exceeded).
       // نُخفي الرسالة الخام (بما فيها trace id) ولا نضع حالة خطأ في الواجهة.
       const errorCode = (generationError as { data?: { code?: string } })?.data?.code;
+      const guestFailure = (generationError as { data?: { guest?: boolean } })?.data?.guest === true;
       if (errorCode === 'quota_exceeded' || errorCode === 'audience_disabled') {
         setStep(5);
-        setMockupImage(null);
         setExtractedImage(null);
         setError(null);
+        if (guestFailure) {
+          const draft = saveWashaAiAuthDraft(state, 'generate');
+          if (!draft.saved) {
+            const message = 'وصلت إلى حد تجربة الزائر، وتعذر حفظ اختياراتك في المتصفح. أبقِ الصفحة مفتوحة ثم سجّل الدخول من صفحة أخرى.';
+            setError(message);
+            showToast(message, 'error');
+            return;
+          }
+          setAuthGateNotice(
+            draft.referenceImageOmitted
+              ? 'حفظنا اختياراتك، وستحتاج إعادة رفع الصورة المرجعية بعد الدخول.'
+              : 'حفظنا اختياراتك. سجّل الدخول أو أنشئ حسابًا لمتابعة التوليد.'
+          );
+          setAuthGateIntent('generate');
+        }
         return;
       }
 
@@ -697,7 +749,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       generationInFlightRef.current = false;
     }
   }, [
-    requireAuthenticatedAction,
     isGenerating,
     requestGenerationAccess,
     selectedGarment,
@@ -754,9 +805,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       draft.referenceImageOmitted,
     );
 
+    const restoredMockup = draft.intent === 'submit' ? draft.mockupImage : null;
     setState(restoredAuthState);
-    setMockupImage(null);
-    setMockupState(null);
+    setMockupImage(restoredMockup);
+    setMockupState(restoredMockup ? restoredAuthState : null);
     setExtractedImage(null);
     setOrderResult(null);
     setError(null);
@@ -772,14 +824,18 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       }
 
       setStep(5);
+    } else if (restoredMockup) {
+      setStep(6);
     } else {
       setStep(5);
     }
     setStudioDraftReady(true);
 
     const restoredMessage = draft.intent === 'generate'
-      ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول فقط عند التوليد.'
-      : 'استرجعنا اختياراتك. يمكنك متابعة التصميم، وسنطلب تسجيل الدخول عند إرسال الطلب.';
+      ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم كزائر.'
+      : restoredMockup
+        ? 'استرجعنا تصميمك ونتيجته. يمكنك الآن اعتماده وإضافته إلى السلة.'
+        : 'استرجعنا اختياراتك. أعد التوليد ثم اعتمد التصميم.';
     const authenticatedMessage = draft.intent === 'generate'
       ? 'تم استرجاع اختياراتك بعد تسجيل الدخول. يبدأ التوليد الآن.'
       : 'تم استرجاع اختياراتك بعد تسجيل الدخول. سنعيد توليد التصميم بحسابك قبل إضافته للسلة.';
@@ -789,7 +845,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         const session = await fetchWashaAiSession();
         if (cancelled) return;
 
-        if (session.authenticated && session.canGenerate) {
+        if (session.authenticated && session.canGenerate && (draft.intent === 'generate' || !restoredMockup)) {
           setPendingGenerateAfterAuth(true);
           showToast(authenticatedMessage, 'info');
           return;
@@ -1105,6 +1161,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         selectedStyle,
         selectedTechnique,
         selectedPalette,
+        authGateIntent,
+        authGateNotice,
+        closeAuthGate,
+        continueAuthentication,
       }}
     >
       {children}

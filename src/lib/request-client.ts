@@ -10,24 +10,22 @@ function legacyRequestIp(request: NextRequest) {
 }
 
 export function getRequestClientIdentifier(request: NextRequest) {
+    // Prefer headers written by the hosting edge over the user-controllable
+    // x-forwarded-for header. The latter remains a local/self-hosted fallback.
     const ip =
-        firstHeaderIp(request.headers.get("x-forwarded-for")) ||
         firstHeaderIp(request.headers.get("x-vercel-forwarded-for")) ||
         request.headers.get("cf-connecting-ip") ||
-        request.headers.get("x-real-ip") ||
         legacyRequestIp(request) ||
+        request.headers.get("x-real-ip") ||
+        firstHeaderIp(request.headers.get("x-forwarded-for")) ||
         null;
-
-    if (ip) {
-        return ip;
-    }
 
     const userAgent = request.headers.get("user-agent") || "unknown-agent";
     const language = request.headers.get("accept-language") || "unknown-language";
     const fingerprint = createHash("sha256")
-        .update(`${userAgent}|${language}`)
+        .update(ip ? `ip:${ip}` : `fallback:${userAgent}|${language}`)
         .digest("hex")
-        .slice(0, 16);
+        .slice(0, 24);
 
-    return `anon-${fingerprint}`;
+    return `client-${fingerprint}`;
 }

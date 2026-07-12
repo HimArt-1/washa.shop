@@ -156,21 +156,22 @@ describe("generate-mockup route", () => {
         expect(mockReserveDailyQuota).not.toHaveBeenCalled();
     });
 
-    it("requires authenticated DTF route access before generation", async () => {
-        mockRequireDtfRouteAccess.mockResolvedValue({
-            response: NextResponse.json(
-                { error: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك." },
-                { status: 401 }
-            ),
+    it("allows the access resolver to admit public guest generation", async () => {
+        await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(mockRequireDtfRouteAccess).toHaveBeenCalledWith({ allowPublicGeneration: true });
+    });
+
+    it("tracks guest generation against the request identifier", async () => {
+        mockRequireDtfRouteAccess.mockResolvedValueOnce({
+            access: { allowed: true, profileId: null, clerkId: null, role: "guest" },
         });
 
-        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+        await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
-        expect(response.status).toBe(401);
-        await expect(response.json()).resolves.toEqual({
-            error: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك.",
+        expect(mockReserveDailyQuota).toHaveBeenCalledWith(null, "guest", {
+            guestIdentifier: "guest:127.0.0.1",
         });
-        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
     });
 
     it("returns the current quota-exceeded response and logs the failure", async () => {
@@ -184,6 +185,7 @@ describe("generate-mockup route", () => {
             freeRemaining: 0,
             paidBalance: 0,
             canPurchase: false,
+            guest: false,
             reason: "quota_exceeded",
         });
 
@@ -196,6 +198,7 @@ describe("generate-mockup route", () => {
             freeRemaining: 0,
             paidBalance: 0,
             canPurchase: false,
+            guest: false,
         });
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -224,6 +227,7 @@ describe("generate-mockup route", () => {
             error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
             code: "quota_unavailable",
             canPurchase: false,
+            guest: false,
         });
         expect(mockGenerateMockup).not.toHaveBeenCalled();
         expect(mockLogActivity).toHaveBeenCalledWith(
@@ -246,6 +250,7 @@ describe("generate-mockup route", () => {
             freeRemaining: 4,
             paidBalance: 0,
             consumedSource: "free",
+            guest: false,
         });
         expect(mockGenerateMockup).toHaveBeenCalledWith(
             "تصميم عربي حديث",
@@ -277,7 +282,9 @@ describe("generate-mockup route", () => {
         await expect(response.json()).resolves.toEqual({
             error: "تعذر إنشاء التصميم الآن. عدّل الوصف قليلًا أو جرّب مرة أخرى بعد لحظات.",
         });
-        expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free");
+        expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free", {
+            guestIdentifier: null,
+        });
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",
