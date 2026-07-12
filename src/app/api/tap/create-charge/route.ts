@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { createTapCharge, TAP_ENABLED } from "@/lib/tap";
+import { createTapCharge, retrieveTapCharge, TAP_ENABLED } from "@/lib/tap";
 import { emitPaymentInvoiceCreatedAlert } from "@/lib/operational-event-alerts";
 
 function appUrl(path: string) {
@@ -37,7 +37,29 @@ export async function POST(req: NextRequest) {
         const amount = Math.round(Number(order.total) * 100) / 100;
         if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "إجمالي الطلب غير صالح" }, { status: 409 });
 
-        const redirect = new URL("/checkout", appUrl("/"));
+        const metadata = asRecord(order.metadata);
+        const previousTap = asRecord(metadata.tap);
+        const attempts = Array.isArray(previousTap.attempts) ? previousTap.attempts : [];
+        const currentChargeId = typeof previousTap.charge_id === "string" ? previousTap.charge_id : null;
+
+        if (currentChargeId) {
+            const currentCharge = await retrieveTapCharge(currentChargeId).catch(() => null);
+            if (
+                currentCharge?.transaction?.url &&
+                ["INITIATED", "PENDING", "IN_PROGRESS"].includes(currentCharge.status)
+            ) {
+                return NextResponse.json({
+                    success: true,
+                    url: currentCharge.transaction.url,
+                    chargeId: currentCharge.id,
+                    reused: true,
+                });
+            }
+        }
+
+        // Return to the same origin that initiated checkout. This keeps local
+        // Sandbox testing on localhost while production returns to production.
+        const redirect = new URL("/checkout", req.nextUrl.origin);
         redirect.searchParams.set("tap_return", "1");
         redirect.searchParams.set("order", order.order_number);
         redirect.searchParams.set("order_id", order.id);
@@ -53,15 +75,13 @@ export async function POST(req: NextRequest) {
             },
             redirectUrl: redirect.toString(),
             postUrl: appUrl("/api/webhooks/tap"),
+            attempt: attempts.length + 1,
         });
 
         if (!charge.id || !charge.transaction?.url) {
             return NextResponse.json({ error: charge.response?.message || "لم تُرجع Tap رابط دفع صالحًا" }, { status: 502 });
         }
 
-        const metadata = asRecord(order.metadata);
-        const previousTap = asRecord(metadata.tap);
-        const attempts = Array.isArray(previousTap.attempts) ? previousTap.attempts : [];
         const tapAttempt = { charge_id: charge.id, status: charge.status, amount, currency: "SAR", created_at: new Date().toISOString() };
         const { error: updateError } = await supabase.from("orders").update({
             metadata: {

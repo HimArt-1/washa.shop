@@ -37,6 +37,7 @@ export type CreateTapChargeInput = {
     };
     redirectUrl: string;
     postUrl: string;
+    attempt: number;
 };
 
 function tapHeaders() {
@@ -102,7 +103,7 @@ export async function createTapCharge(input: CreateTapChargeInput) {
                 order: input.orderNumber,
                 // Tap reuses the same response for this value for 24 hours,
                 // preventing double-clicks and network retries from charging twice.
-                idempotent: `store-${input.orderId}`,
+                idempotent: `store-${input.orderId}-${input.attempt}`,
             },
             customer: {
                 ...splitName(input.customer.name),
@@ -110,7 +111,9 @@ export async function createTapCharge(input: CreateTapChargeInput) {
                 phone,
             },
             merchant: { id: merchantId },
-            source: { id: "src_all" },
+            // src_card uses Tap's hosted card page (mada/Visa/Mastercard) and
+            // avoids the broader checkout-profile SDK used by src_all.
+            source: { id: "src_card" },
             redirect: { url: input.redirectUrl },
             post: { url: input.postUrl },
         }),
