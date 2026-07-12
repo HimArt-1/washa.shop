@@ -6,7 +6,9 @@ import { cn } from '../../lib/utils';
 import { studioAsset } from '../../lib/assets';
 import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import type { PrintPosition, PrintSize } from '../../types';
+import { DEFAULT_PRINT_ADJUSTMENT } from '../../lib/printPreview';
 import StepNavigationBar from './StepNavigationBar';
+import InteractivePlacementPreview from './InteractivePlacementPreview';
 
 type PositionCard = {
   id: string;
@@ -22,7 +24,15 @@ type PositionCard = {
 };
 
 export default function StepPosition() {
-  const { state, updateState, nextStep, prevStep, positionOptions } = useDesign();
+  const { state, updateState, nextStep, prevStep, positionOptions, selectedGarment, selectedColor, selectedSize } = useDesign();
+  const adjustment = {
+    scale: state.printScale ?? DEFAULT_PRINT_ADJUSTMENT.scale,
+    offsetX: state.printOffsetX ?? DEFAULT_PRINT_ADJUSTMENT.offsetX,
+    offsetY: state.printOffsetY ?? DEFAULT_PRINT_ADJUSTMENT.offsetY,
+  };
+  const garmentImageUrl = state.printPosition === 'back'
+    ? selectedSize?.imageBackUrl || selectedGarment?.aiReferenceBackUrl || selectedGarment?.imageUrl
+    : selectedSize?.imageFrontUrl || selectedColor?.imageUrl || selectedGarment?.aiReferenceFrontUrl || selectedGarment?.imageUrl;
 
   /* ── Reusable SVG T-Shirt with configurable highlight zone ── */
   const TShirtDiagram = ({ highlightRect, isSelected }: { highlightRect: { x: number; y: number; w: number; h: number }; isSelected: boolean }) => (
@@ -109,8 +119,8 @@ export default function StepPosition() {
     },
     {
       id: 'logo_right',
-      title: 'تصميم شعار بسيط (يمين)',
-      description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليمنى.',
+      title: 'طباعة الكتف الأيمن',
+      description: 'طباعة صغيرة على أعلى الكم والكتف من الجهة اليمنى.',
       designPosition: 'logo_right',
       printPosition: 'shoulder_right',
       printSize: 'small',
@@ -119,8 +129,8 @@ export default function StepPosition() {
     },
     {
       id: 'logo_left',
-      title: 'تصميم شعار بسيط (يسار)',
-      description: 'يظهر مثل اللوقو في منطقة الصدر من الجهة اليسرى (جهة القلب).',
+      title: 'طباعة الكتف الأيسر',
+      description: 'طباعة صغيرة على أعلى الكم والكتف من الجهة اليسرى.',
       designPosition: 'logo_left',
       printPosition: 'shoulder_left',
       printSize: 'small',
@@ -184,17 +194,40 @@ export default function StepPosition() {
           transition={{ delay: 0.2, duration: 0.4 }}
           className="wizard-copy text-washa-text-sec"
         >
-          أين تفضل أن يظهر تصميمك على القطعة؟
+          اختر المنطقة، ثم اضبط الحجم والمحاذاة قبل التوليد
         </motion.p>
       </div>
 
-      <div className="max-h-[calc(100dvh-20rem)] min-h-72 overflow-y-auto overscroll-contain pb-28 touch-pan-y sm:max-h-none sm:pb-0">
-        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4">
+      <div className="max-h-[calc(100dvh-20rem)] min-h-72 space-y-7 overflow-y-auto overscroll-contain pb-28 touch-pan-y sm:max-h-none sm:pb-0">
+        <InteractivePlacementPreview
+          adjustment={adjustment}
+          garmentImage={garmentImageUrl ? studioAsset(garmentImageUrl) : null}
+          garmentColor={state.garmentColorHex}
+          position={state.printPosition}
+          designMethod={state.designMethod}
+          prompt={state.prompt}
+          calligraphyText={state.calligraphyText}
+          referenceImage={state.referenceImage}
+          referenceImageMimeType={state.referenceImageMimeType}
+          onChange={(next) => updateState({
+            printScale: next.scale,
+            printOffsetX: next.offsetX,
+            printOffsetY: next.offsetY,
+          })}
+        />
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3 border-t border-washa-border/35 pt-5">
+            <span className="text-xs text-washa-text-faint">يمكن تعديلها لاحقًا</span>
+            <h3 className="text-sm font-bold text-washa-text">اختر منطقة الطباعة</h3>
+          </div>
+        <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-4 lg:grid-cols-4" role="group" aria-label="مناطق الطباعة المتاحة">
         {displayPositions.map((pos, index) => {
           const isSelected = state.printOptionId ? state.printOptionId === pos.id : state.designPosition === pos.designPosition;
           return (
             <motion.button
               key={pos.id}
+              aria-pressed={isSelected}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 + index * 0.05, duration: 0.35 }}
@@ -204,16 +237,19 @@ export default function StepPosition() {
                 printPosition: pos.printPosition,
                 printSize: pos.printSize,
                 printPositionLabel: pos.title,
+                printScale: DEFAULT_PRINT_ADJUSTMENT.scale,
+                printOffsetX: DEFAULT_PRINT_ADJUSTMENT.offsetX,
+                printOffsetY: DEFAULT_PRINT_ADJUSTMENT.offsetY,
               })}
               className={cn(
-                'group relative flex min-h-[15rem] flex-col overflow-hidden rounded-2xl border bg-washa-ivory text-washa-text transition-all duration-500 shadow-depth-sm sm:min-h-[16rem]',
+                'group relative flex min-h-[12rem] flex-col overflow-hidden rounded-2xl border bg-washa-ivory text-washa-text transition-[border-color,box-shadow,transform] duration-300 shadow-depth-sm active:scale-[0.985]',
                 isSelected
                   ? 'border-washa-gold shadow-[0_20px_55px_rgba(64,48,40,0.16)] ring-1 ring-washa-gold'
                   : 'border-washa-border/80 hover:border-washa-gold/45'
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative flex min-h-[8.75rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.94),rgba(232,221,203,0.82)_48%,rgba(64,48,40,0.42)_100%)] p-3 sm:min-h-[9.5rem]">
+              <div className="relative flex min-h-[7.25rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.94),rgba(232,221,203,0.82)_48%,rgba(64,48,40,0.42)_100%)] p-3">
                 {/* Background glow when selected */}
                 {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
 
@@ -272,6 +308,7 @@ export default function StepPosition() {
             </motion.button>
           );
         })}
+        </div>
         </div>
       </div>
 

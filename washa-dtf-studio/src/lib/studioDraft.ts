@@ -107,6 +107,9 @@ function isStoredDesignState(value: unknown): value is DesignState {
     (state.customPalette === undefined || typeof state.customPalette === 'string') &&
     (state.ideaEntryMode === undefined || state.ideaEntryMode === 'guided' || state.ideaEntryMode === 'free') &&
     (state.ideaBriefPromptSource === undefined || typeof state.ideaBriefPromptSource === 'string') &&
+    (state.printScale === undefined || (typeof state.printScale === 'number' && state.printScale >= 55 && state.printScale <= 120)) &&
+    (state.printOffsetX === undefined || (typeof state.printOffsetX === 'number' && state.printOffsetX >= -30 && state.printOffsetX <= 30)) &&
+    (state.printOffsetY === undefined || (typeof state.printOffsetY === 'number' && state.printOffsetY >= -25 && state.printOffsetY <= 25)) &&
     validIdeaBrief;
 }
 

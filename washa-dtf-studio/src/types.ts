@@ -121,6 +121,9 @@ export interface DesignState {
   printPosition: PrintPosition | null;
   printSize: PrintSize | null;
   printPositionLabel: string | null;
+  printScale?: number;
+  printOffsetX?: number;
+  printOffsetY?: number;
   prompt: string;
   calligraphyText: string;
   referenceImage: string | null;

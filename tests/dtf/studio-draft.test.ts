@@ -75,11 +75,19 @@ describe("WASHA AI studio draft", () => {
   });
 
   it("omits the reference image and bounds long text", () => {
-    const draft = createStudioDraft(designState({ prompt: "x".repeat(4000), referenceImage: "large-image", referenceImageMimeType: "image/png" }), 3, 1000);
+    const draft = createStudioDraft(designState({
+      prompt: "x".repeat(4000),
+      referenceImage: "large-image",
+      referenceImageMimeType: "image/png",
+      printScale: 85,
+      printOffsetX: 12,
+      printOffsetY: -8,
+    }), 3, 1000);
 
     expect(draft.state.prompt).toHaveLength(3000);
     expect(draft.state.referenceImage).toBeNull();
     expect(draft.referenceImageOmitted).toBe(true);
+    expect(draft.state).toMatchObject({ printScale: 85, printOffsetX: 12, printOffsetY: -8 });
   });
 
   it("rejects expired and malformed drafts", () => {
@@ -89,6 +97,7 @@ describe("WASHA AI studio draft", () => {
     expect(parseStudioDraft("not-json", 1000)).toBeNull();
     expect(parseStudioDraft(JSON.stringify({ ...draft, state: { ...draft.state, designMethod: "unknown" } }), 1000)).toBeNull();
     expect(parseStudioDraft(JSON.stringify({ ...draft, state: { ...draft.state, ideaBrief: { subject: "صقر", mood: 4 } } }), 1000)).toBeNull();
+    expect(parseStudioDraft(JSON.stringify({ ...draft, state: { ...draft.state, printScale: 240 } }), 1000)).toBeNull();
   });
 
   it("removes stale catalog ids while preserving valid selections", () => {
