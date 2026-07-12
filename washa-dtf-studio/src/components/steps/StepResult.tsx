@@ -1,13 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Wand2, Download, ChevronRight, Loader2, RotateCcw,
-  ZoomIn, Sparkles, ShoppingBag, CheckCircle2, X, FileCheck,
+  ZoomIn, Sparkles, ShoppingBag, CheckCircle2, X, FileCheck, CircleAlert, Clock3,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { LIGHT_GARMENT_COLORS } from '../../types';
+import { getGenerationStage } from '../../lib/generationExperience';
+import { isCleanOutputEnabled } from '../../lib/outputPreferences';
+
+function useGenerationProgress(active: boolean) {
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setElapsedMs(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    setElapsedMs(0);
+    const timer = window.setInterval(() => setElapsedMs(Date.now() - startedAt), 500);
+    return () => window.clearInterval(timer);
+  }, [active]);
+
+  return { elapsedMs, stage: getGenerationStage(elapsedMs) };
+}
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -213,6 +233,8 @@ function OrderSuccessCard({
 export default function StepResult() {
   const {
     mockupImage,
+    mockupState,
+    isMockupCurrent,
     isGenerating,
     error,
     handleDownload,
@@ -221,16 +243,20 @@ export default function StepResult() {
     isSubmittingOrder,
     orderResult,
     submitOrder,
+    handleGenerate,
     state,
   } = useDesign();
 
   const [showTerms, setShowTerms] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const generation = useGenerationProgress(isGenerating);
+  const resultState = mockupState ?? state;
+  const cleanOutputEnabled = isCleanOutputEnabled(resultState);
 
   // Derived garment color for ambient preview
-  const garmentHex   = state.garmentColorHex || '#111111';
+  const garmentHex   = resultState.garmentColorHex || '#111111';
   const garmentRgb   = hexToRgb(garmentHex);
-  const isLightColor = LIGHT_GARMENT_COLORS.includes(state.garmentColor);
+  const isLightColor = LIGHT_GARMENT_COLORS.includes(resultState.garmentColor);
 
   const handleConfirmOrder = () => setShowTerms(true);
   const handleEditOptions = () => setStep(5);
@@ -300,71 +326,49 @@ export default function StepResult() {
       >
         {/* ===== GENERATING STATE ===== */}
         {isGenerating && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="glass-card-strong relative flex min-h-[420px] flex-col items-center justify-center space-y-7 overflow-hidden p-8 text-center sm:p-12"
-          >
-            {/* AI Radar Background Effect - Center Focused */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square animate-slow-spin bg-[conic-gradient(from_0deg,transparent_0deg,transparent_340deg,rgba(64,48,40,0.15)_360deg)] opacity-60" />
-              <div className="absolute inset-0 bg-gradient-to-t from-washa-bg via-transparent to-transparent" />
-            </div>
-
-            <div className="relative">
-              <div className="relative flex h-32 w-32 items-center justify-center">
-                {/* Core Icon */}
-                <div className="relative z-20 flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-washa-gold shadow-[0_0_50px_rgba(64,48,40,0.4)]">
-                  <Wand2 className="h-8 w-8 animate-pulse text-washa-bg" />
+          <div className="glass-card-strong overflow-hidden p-5 sm:p-7">
+            <div className="grid gap-5 sm:grid-cols-[11rem_1fr] sm:items-center">
+              <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-washa-border/40 bg-washa-bg/55">
+                {mockupImage ? (
+                  <img src={mockupImage} alt="النتيجة السابقة محفوظة أثناء التوليد" className="h-full w-full object-cover opacity-45 blur-[1px]" />
+                ) : (
+                  <div className="absolute inset-0 animate-pulse bg-[linear-gradient(110deg,rgba(64,48,40,0.04),rgba(64,48,40,0.13),rgba(64,48,40,0.04))] motion-reduce:animate-none" />
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-washa-bg/20">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-washa-gold/20 bg-washa-ivory/90 text-washa-gold shadow-[0_12px_30px_rgba(44,36,24,0.14)]">
+                    <Wand2 className="h-5 w-5" aria-hidden="true" />
+                  </span>
                 </div>
-                
-                {/* Orbital Rings */}
-                <div className="absolute inset-0 rounded-full border border-washa-gold/20 animate-slow-spin" style={{ animationDuration: '8s' }} />
-                <div className="absolute inset-4 rounded-full border border-dashed border-washa-gold/10 animate-slow-spin" style={{ animationDuration: '12s', animationDirection: 'reverse' }} />
-                
-                {/* Floating Particles */}
-                {[...Array(6)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    animate={{
-                      rotate: 360,
-                      scale: [1, 1.2, 1],
-                    }}
-                    transition={{
-                      rotate: { duration: 3 + i, repeat: Infinity, ease: "linear" },
-                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
-                    }}
-                    className="absolute w-2 h-2 rounded-full bg-washa-gold/40 shadow-[0_0_10px_rgba(64,48,40,0.5)]"
-                    style={{
-                      top: '50%',
-                      left: '50%',
-                      marginTop: '-4px',
-                      marginLeft: '-4px',
-                      transform: `rotate(${i * 60}deg) translateX(${60 + i * 5}px)`
-                    }}
-                  />
-                ))}
+              </div>
+
+              <div className="space-y-4 text-right">
+                <div className="flex items-start justify-between gap-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-washa-border/40 bg-washa-bg/45 px-2.5 py-1 text-[11px] text-washa-text-sec" aria-hidden="true">
+                    <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                    {Math.floor(generation.elapsedMs / 1000)} ث
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold text-washa-gold">جاري التوليد</p>
+                    <h3 className="mt-1 text-lg font-bold text-washa-text" role="status" aria-live="polite">{generation.stage.label}</h3>
+                  </div>
+                </div>
+                <p className="text-sm leading-6 text-washa-text-sec">{generation.stage.description}</p>
+                <div
+                  role="progressbar"
+                  aria-label="تقدم توليد التصميم"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={generation.stage.progress}
+                  className="h-2 overflow-hidden rounded-full bg-washa-border/35"
+                >
+                  <div className="h-full rounded-full bg-washa-gold transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${generation.stage.progress}%` }} />
+                </div>
+                <p className="text-[11px] text-washa-text-faint">
+                  {mockupImage ? 'النتيجة السابقة محفوظة حتى تكتمل النسخة الجديدة.' : 'عادةً يستغرق التوليد من 30 إلى 60 ثانية.'}
+                </p>
               </div>
             </div>
-
-            <div className="space-y-4 relative z-10">
-              <h3 className="animate-pulse font-serif text-2xl tracking-wide text-washa-gold">
-                يتم الآن نسج إبداعك...
-              </h3>
-              <p className="mx-auto max-w-sm text-base leading-relaxed text-washa-text-sec">
-                ذكاء وشّى الاصطناعي يعمل على تحويل فكرتك إلى تصميم فريد يليق بك
-              </p>
-            </div>
-
-            <div className="relative z-10 h-1.5 w-56 overflow-hidden rounded-full border border-white/5 bg-white/5">
-              <motion.div
-                initial={{ x: '-100%' }}
-                animate={{ x: '100%' }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="h-full w-full bg-gradient-to-r from-transparent via-washa-gold to-transparent shadow-[0_0_15px_rgba(64,48,40,0.5)]"
-              />
-            </div>
-          </motion.div>
+          </div>
         )}
 
         {/* ===== ERROR STATE ===== */}
@@ -375,7 +379,7 @@ export default function StepResult() {
             className="glass-card-strong flex min-h-[320px] flex-col items-center justify-center space-y-5 p-8 text-center sm:p-10"
           >
             <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/20 bg-red-500/10">
-              <span className="text-3xl">⚠️</span>
+              <CircleAlert className="h-7 w-7 text-red-500" aria-hidden="true" />
             </div>
             <div className="space-y-3">
               <h3 className="text-xl font-serif text-red-400">حدث خطأ</h3>
@@ -385,8 +389,8 @@ export default function StepResult() {
               <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
-              <Button variant="gold" onClick={resetDesign} className="gap-2 rounded-xl">
-                <RotateCcw className="w-4 h-4" /> البدء من جديد
+              <Button variant="gold" onClick={() => void handleGenerate()} className="gap-2 rounded-xl">
+                <RotateCcw className="w-4 h-4" /> إعادة المحاولة
               </Button>
             </div>
           </motion.div>
@@ -414,17 +418,35 @@ export default function StepResult() {
                   className="w-3.5 h-3.5 rounded-full border border-white/20 shrink-0 shadow-sm"
                   style={{ backgroundColor: garmentHex }}
                 />
-                <span className="font-medium text-washa-text">{state.garmentType}</span>
+                <span className="font-medium text-washa-text">{resultState.garmentType}</span>
                 <span className="text-washa-text-faint/40">·</span>
-                <span>{state.garmentColor}</span>
-                {state.garmentSize ? (
+                <span>{resultState.garmentColor}</span>
+                {resultState.garmentSize ? (
                   <>
                     <span className="text-washa-text-faint/40">·</span>
-                    <span>{state.garmentSize}</span>
+                    <span>{resultState.garmentSize}</span>
                   </>
                 ) : null}
               </div>
             </div>
+
+            {error ? (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-700/20 bg-amber-700/5 px-4 py-3 text-right" role="alert">
+                <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-washa-text">تعذر إنشاء نسخة جديدة</p>
+                  <p className="mt-0.5 text-xs leading-5 text-washa-text-sec">{error}</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => void handleGenerate()} className="shrink-0 rounded-lg">إعادة المحاولة</Button>
+              </div>
+            ) : null}
+
+            {!isMockupCurrent && !error ? (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-700/20 bg-amber-700/5 px-4 py-3 text-right" role="status">
+                <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+                <p className="text-xs leading-5 text-washa-text-sec">هذه النتيجة تخص إعدادات سابقة. أعد التوليد قبل اعتمادها أو إضافتها إلى السلة.</p>
+              </div>
+            ) : null}
 
             {/* ── Mockup Card ── */}
             <motion.div
@@ -441,7 +463,7 @@ export default function StepResult() {
               <div className="relative aspect-[4/3] w-full">
                 <img
                   src={mockupImage}
-                  alt="Generated Mockup"
+                  alt="نتيجة تصميم وشّى على القطعة المختارة"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                 />
                 {/* Hover zoom hint */}
@@ -457,8 +479,9 @@ export default function StepResult() {
 
               {/* Persistent action bar — always visible, essential for mobile */}
               <div className="flex items-center justify-between gap-3 border-t border-washa-border/20 px-4 py-3">
-                <div className="text-xs text-washa-text-faint line-clamp-2">
-                  {state.style} · {state.technique} · {state.palette}
+                <div className="min-w-0 text-right text-xs leading-5 text-washa-text-faint">
+                  <p className="truncate text-washa-text-sec">{resultState.printPositionLabel || resultState.designPosition}</p>
+                  <p className="truncate">{resultState.style} · {resultState.technique} · {resultState.palette} · {cleanOutputEnabled ? 'إخراج نظيف' : 'خلفية وحدود مسموحة'}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -471,6 +494,21 @@ export default function StepResult() {
               </div>
             </motion.div>
 
+            <section className="grid gap-px overflow-hidden rounded-xl border border-washa-border/30 bg-washa-border/30 sm:grid-cols-2" aria-label="ملخص التصميم">
+              <div className="bg-washa-ivory px-4 py-3 text-right">
+                <p className="text-[10px] font-bold text-washa-gold">الفكرة</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-washa-text-sec">
+                  {resultState.designMethod === 'calligraphy' ? resultState.calligraphyText : resultState.prompt}
+                </p>
+              </div>
+              <div className="bg-washa-ivory px-4 py-3 text-right">
+                <p className="text-[10px] font-bold text-washa-gold">الطباعة</p>
+                <p className="mt-1 text-xs leading-5 text-washa-text-sec">
+                  {resultState.printPositionLabel || resultState.designPosition} · {cleanOutputEnabled ? 'خلفية شفافة وحواف نظيفة' : 'الخلفية والحواف مسموحة'}
+                </p>
+              </div>
+            </section>
+
             {/* ── Order CTA ── */}
             <motion.div
               initial={{ opacity: 0, y: 16 }}
@@ -482,7 +520,7 @@ export default function StepResult() {
                 <div className="flex-1 text-center sm:text-right space-y-1.5">
                   <h3 className="text-lg font-bold text-washa-text flex items-center justify-center sm:justify-end gap-2">
                     <ShoppingBag className="w-5 h-5 text-washa-gold" />
-                    هل أعجبك التصميم؟
+                    اعتماد التصميم
                   </h3>
                   <p className="text-sm text-washa-text-sec leading-relaxed">
                     أضف التصميم إلى السلة الآن ليُحتسب بسعر القطعة والطباعة المعتمدين ثم أكمل الطلب من صفحة الدفع
@@ -492,21 +530,29 @@ export default function StepResult() {
                   variant="gold"
                   size="lg"
                   onClick={handleConfirmOrder}
+                  disabled={!isMockupCurrent}
                   className="h-12 w-full shrink-0 gap-2 rounded-xl px-8 text-base font-bold shadow-[0_0_30px_rgba(64,48,40,0.25)] btn-shimmer-effect sm:w-auto"
                 >
-                  <ShoppingBag className="w-5 h-5" /> إضافة إلى السلة
+                  <ShoppingBag className="w-5 h-5" /> اعتماد وإضافة إلى السلة
                 </Button>
               </div>
             </motion.div>
 
             {/* ── Footer navigation ── */}
-            <div className="flex justify-between pt-2">
-              <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl hover:bg-washa-gold/5">
-                <ChevronRight className="w-4 h-4" /> تعديل الخيارات
-              </Button>
-              <Button variant="outline" onClick={resetDesign} className="gap-2 rounded-xl">
-                <RotateCcw className="w-4 h-4" /> تصميم جديد
-              </Button>
+            <div className="flex flex-wrap justify-between gap-2 pt-2">
+              <div className="flex flex-wrap gap-2">
+                <Button variant="ghost" onClick={() => setStep(2)} className="gap-2 rounded-xl hover:bg-washa-gold/5">تعديل الفكرة</Button>
+                <Button variant="ghost" onClick={() => setStep(3)} className="gap-2 rounded-xl hover:bg-washa-gold/5">تغيير الموضع</Button>
+                <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl hover:bg-washa-gold/5">الألوان</Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => void handleGenerate()} className="gap-2 rounded-xl">
+                  <Wand2 className="w-4 h-4" /> إعادة التوليد
+                </Button>
+                <Button variant="ghost" onClick={resetDesign} className="gap-2 rounded-xl">
+                  <RotateCcw className="w-4 h-4" /> تصميم جديد
+                </Button>
+              </div>
             </div>
           </>
         )}

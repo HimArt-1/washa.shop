@@ -48,6 +48,7 @@ import {
 } from '../lib/studioDraft';
 import { createEmptyGuidedIdeaBrief } from '../lib/ideaBuilder';
 import { isCleanOutputEnabled } from '../lib/outputPreferences';
+import { createGenerationFingerprint, validateGeneratedImage } from '../lib/generationExperience';
 
 export interface OrderResult {
   itemTitle: string;
@@ -64,6 +65,8 @@ interface DesignContextType {
   isGenerating: boolean;
   isExtracting: boolean;
   mockupImage: string | null;
+  mockupState: DesignState | null;
+  isMockupCurrent: boolean;
   extractedImage: string | null;
   error: string | null;
   isSubmittingOrder: boolean;
@@ -279,6 +282,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [mockupImage, setMockupImage] = useState<string | null>(null);
+  const [mockupState, setMockupState] = useState<DesignState | null>(null);
   const [extractedImage, setExtractedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -288,6 +292,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [studioDraftReady, setStudioDraftReady] = useState(false);
   const restoredAuthDraftRef = useRef(false);
   const studioDraftReferenceOmittedRef = useRef(false);
+  const generationInFlightRef = useRef(false);
+  const isMockupCurrent = Boolean(
+    mockupImage && mockupState && createGenerationFingerprint(mockupState) === createGenerationFingerprint(state)
+  );
 
   const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type, id: Date.now() });
@@ -510,6 +518,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [showToast, state]);
 
   const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
+    if (generationInFlightRef.current || isGenerating) return;
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
@@ -540,14 +549,15 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    generationInFlightRef.current = true;
     const canGenerateWithAccount = await requireAuthenticatedAction('generate');
     if (!canGenerateWithAccount) {
+      generationInFlightRef.current = false;
       return;
     }
 
     setIsGenerating(true);
     setError(null);
-    setMockupImage(null);
     setExtractedImage(null);
     setStep(6);
 
@@ -596,12 +606,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         state.referenceImageMimeType || undefined
       );
 
-      if (mockup) {
+      const validation = await validateGeneratedImage(mockup);
+      if (validation.valid) {
         setMockupImage(mockup);
-        showToast('تم توليد التصميم بنجاح! ✨', 'success');
+        setMockupState({ ...state });
+        showToast('تم توليد التصميم بنجاح', 'success');
       } else {
-        setError('فشل في توليد الصورة. يرجى المحاولة مرة أخرى.');
-        showToast('فشل في توليد الصورة', 'error');
+        setError('لم تصل صورة صالحة من خدمة التوليد. نتيجتك السابقة محفوظة ويمكنك إعادة المحاولة.');
+        showToast('لم تصل صورة صالحة؛ أعد المحاولة', 'error');
       }
     } catch (generationError) {
       const message = getReadableErrorMessage(generationError, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
@@ -624,9 +636,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           );
           const lighterRef = stripDataUrlPrefix(compressedReference.dataUrl);
           const retryMockup = await runGenerate(lighterRef, compressedReference.mimeType);
-          if (retryMockup) {
+          const retryValidation = await validateGeneratedImage(retryMockup);
+          if (retryValidation.valid) {
             setMockupImage(retryMockup);
-            showToast('تم التوليد بعد ضغط الصورة المرجعية ✅', 'success');
+            setMockupState({ ...state });
+            showToast('تم التوليد بعد تحسين الصورة المرجعية', 'success');
             return;
           }
         } catch {
@@ -642,9 +656,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       showToast(finalMessage, 'error');
     } finally {
       setIsGenerating(false);
+      generationInFlightRef.current = false;
     }
   }, [
     requireAuthenticatedAction,
+    isGenerating,
     selectedGarment,
     selectedPalette,
     selectedSize?.stockStatus,
@@ -701,6 +717,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     setState(restoredAuthState);
     setMockupImage(null);
+    setMockupState(null);
     setExtractedImage(null);
     setOrderResult(null);
     setError(null);
@@ -853,6 +870,13 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const submitOrder = async (): Promise<boolean> => {
     if (!mockupImage) return false;
 
+    if (!isMockupCurrent) {
+      const message = 'هذه النتيجة تخص إعدادات سابقة. أعد التوليد بالإعدادات الحالية قبل إضافتها إلى السلة.';
+      setError(message);
+      showToast(message, 'error');
+      return false;
+    }
+
     if (configError && config === FALLBACK_DTF_CONFIG) {
       const msg = 'لا يمكن إضافة التصميم للسلة حالياً لأن إعدادات القطع والأسعار لم تُحمّل من الخادم. حاول تحديث الصفحة بعد قليل.';
       setError(msg);
@@ -993,6 +1017,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setStep(1);
     setState(config ? buildInitialState(config) : EMPTY_STATE);
     setMockupImage(null);
+    setMockupState(null);
     setExtractedImage(null);
     setError(null);
     setOrderResult(null);
@@ -1010,6 +1035,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         isGenerating,
         isExtracting,
         mockupImage,
+        mockupState,
+        isMockupCurrent,
         extractedImage,
         error,
         isSubmittingOrder,
