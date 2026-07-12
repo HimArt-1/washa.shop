@@ -21,12 +21,12 @@ export async function POST(req: NextRequest) {
         if (!user) return NextResponse.json({ error: "يجب تسجيل الدخول" }, { status: 401 });
 
         const body = await req.json() as { orderId?: string; clientName?: string; clientMobile?: string; clientEmail?: string };
-        if (!body.orderId || !body.clientMobile) return NextResponse.json({ error: "بيانات الدفع ناقصة" }, { status: 400 });
+        if (!body.orderId) return NextResponse.json({ error: "بيانات الدفع ناقصة" }, { status: 400 });
 
         const supabase = getSupabaseAdminClient();
         const [{ data: profile }, { data: order }] = await Promise.all([
             supabase.from("profiles").select("id").eq("clerk_id", user.id).single(),
-            supabase.from("orders").select("id, buyer_id, order_number, total, status, payment_status, metadata").eq("id", body.orderId).single(),
+            supabase.from("orders").select("id, buyer_id, order_number, total, status, payment_status, metadata, shipping_address").eq("id", body.orderId).single(),
         ]);
 
         if (!profile || !order) return NextResponse.json({ error: "تعذر العثور على الطلب" }, { status: 404 });
@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
 
         const amount = Math.round(Number(order.total) * 100) / 100;
         if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "إجمالي الطلب غير صالح" }, { status: 409 });
+
+        const shippingAddress = asRecord(order.shipping_address);
+        const storedPhone = typeof shippingAddress.phone === "string" ? shippingAddress.phone.trim() : "";
+        const clientMobile = body.clientMobile?.trim() || storedPhone;
+        if (!clientMobile) return NextResponse.json({ error: "رقم جوال العميل غير متاح لإتمام الدفع" }, { status: 409 });
 
         const metadata = asRecord(order.metadata);
         const previousTap = asRecord(metadata.tap);
@@ -69,9 +74,9 @@ export async function POST(req: NextRequest) {
             orderId: order.id,
             orderNumber: order.order_number,
             customer: {
-                name: body.clientName || user.firstName || "عميل وشّى",
+                name: body.clientName || (typeof shippingAddress.name === "string" ? shippingAddress.name : null) || user.firstName || "عميل وشّى",
                 email: body.clientEmail || user.emailAddresses?.[0]?.emailAddress || null,
-                phone: body.clientMobile,
+                phone: clientMobile,
             },
             redirectUrl: redirect.toString(),
             postUrl: appUrl("/api/webhooks/tap"),

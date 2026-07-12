@@ -168,6 +168,28 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
         useCartStore.setState({ items });
     }, [cartWasCleaned, isClient, items]);
 
+    async function retryTapPayment(orderId: string) {
+        setIsSubmitting(true);
+        setError(null);
+        try {
+            const response = await fetch("/api/tap/create-charge", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orderId }),
+            });
+            const json = await response.json();
+            if (!response.ok || !json.url) {
+                setError(json.error || "تعذر إنشاء محاولة دفع جديدة عبر Tap");
+                return;
+            }
+            window.location.href = json.url;
+        } catch {
+            setError("تعذر الاتصال بخادم الدفع. تحقق من الإنترنت ثم أعد المحاولة.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
     if (!isClient) return null;
 
     // ─── AUTH GATE ───────────────────────────────
@@ -235,17 +257,26 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
     }
 
     if (isReturningFromTap && error && !success) {
+        const failedOrderId = searchParams.get("order_id");
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
                 <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
                     <h1 className="mb-4 text-2xl font-bold">تعذر تأكيد الدفع تلقائياً</h1>
                     <p className="mb-8 text-theme-subtle">{error}</p>
                     <div className="flex flex-wrap justify-center gap-3">
+                        {failedOrderId ? (
+                            <button
+                                type="button"
+                                disabled={isSubmitting}
+                                onClick={() => void retryTapPayment(failedOrderId)}
+                                className="btn-gold inline-flex items-center gap-2 rounded-xl px-8 py-3 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                                إعادة المحاولة عبر Tap
+                            </button>
+                        ) : null}
                         <Link href="/account/orders" className="btn-gold px-8 py-3 rounded-xl">
                             متابعة الطلبات
-                        </Link>
-                        <Link href="/checkout" className="px-8 py-3 rounded-xl border border-gold/40 text-gold hover:bg-gold/10 transition-colors">
-                            العودة للدفع
                         </Link>
                     </div>
                 </div>
