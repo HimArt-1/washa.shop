@@ -84,6 +84,16 @@ const optionalSafeUrl = (label: string) =>
             .optional()
     );
 
+const optionalStoragePath = (label: string) =>
+    z.preprocess(
+        trimToUndefined,
+        z
+            .string()
+            .max(1024, `${label} طويل جداً`)
+            .refine((value) => !CONTROL_CHARS.test(value) && !value.startsWith("/") && !value.includes(".."), `${label} غير صالح`)
+            .optional()
+    );
+
 const optionalEmail = z.preprocess(
     trimToUndefined,
     z.string().email("البريد الإلكتروني غير صالح").optional()
@@ -343,6 +353,8 @@ export const smartStoreUpsertGarmentSchema = z.object({
     name: requiredText("اسم القطعة", 120),
     slug: slugText("الرابط المختصر", 120),
     image_url: optionalSafeUrl("صورة القطعة"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للقطعة"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للقطعة"),
     ai_reference_front_url: optionalSafeUrl("مرجع AI الواقعي الأمامي"),
     ai_reference_back_url: optionalSafeUrl("مرجع AI الواقعي الخلفي"),
     ai_reference_mode: garmentAiReferenceModeSchema,
@@ -366,6 +378,8 @@ export const smartStoreUpsertColorSchema = z.object({
         z.string().regex(HEX_COLOR_REGEX, "لون القطعة غير صالح")
     ),
     image_url: optionalSafeUrl("صورة اللون"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للون"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للون"),
     sort_order: numberFromUnknown("ترتيب اللون", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
 });
@@ -388,6 +402,8 @@ export const smartStoreUpsertStyleSchema = z.object({
     name: requiredText("اسم النمط", 120),
     description: optionalText("وصف النمط", 2000),
     image_url: optionalSafeUrl("صورة النمط"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للنمط"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للنمط"),
     catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق النمط غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب النمط", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
@@ -398,6 +414,8 @@ export const smartStoreUpsertArtStyleSchema = z.object({
     name: requiredText("اسم الأسلوب", 120),
     description: optionalText("وصف الأسلوب", 2000),
     image_url: optionalSafeUrl("صورة الأسلوب"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للأسلوب"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للأسلوب"),
     catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق الأسلوب غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب الأسلوب", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
@@ -408,6 +426,8 @@ export const smartStoreUpsertPositionSchema = z.object({
     name: requiredText("اسم المكان", 120),
     description: optionalText("وصف المكان", 2000),
     image_url: optionalSafeUrl("صورة المكان"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للمكان"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للمكان"),
     print_position: z.preprocess(trimToUndefined, z.enum(PRINT_POSITIONS, { error: "موضع الطباعة غير صالح" }).nullable().optional()),
     print_size: z.preprocess(trimToUndefined, z.enum(PRINT_SIZES, { error: "حجم الطباعة غير صالح" }).nullable().optional()),
     price: numberFromUnknown("سعر خيار الطباعة", { min: 0, defaultValue: 0 }),
@@ -422,6 +442,8 @@ export const smartStoreUpsertColorPackageSchema = z.object({
     name: requiredText("اسم باقة الألوان", 120),
     colors: colorPackageTokensSchema,
     image_url: optionalSafeUrl("صورة باقة الألوان"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة لباقة الألوان"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة لباقة الألوان"),
     catalog_scope: z.preprocess(trimToUndefined, z.enum(CATALOG_SCOPES, { error: "نطاق الباقة غير صالح" }).default("design_piece")),
     sort_order: numberFromUnknown("ترتيب الباقة", { integer: true, min: 0, defaultValue: 0 }),
     is_active: booleanFromUnknown(false),
@@ -433,6 +455,8 @@ export const smartStoreUpsertStudioItemSchema = z.object({
     description: optionalText("وصف عنصر الاستوديو", 2000),
     price: numberFromUnknown("سعر عنصر الستيديو", { min: 0, defaultValue: 0 }),
     main_image_url: optionalSafeUrl("الصورة الرئيسية"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة لعنصر الستيديو"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة لعنصر الستيديو"),
     mockup_image_url: optionalSafeUrl("صورة الموكب"),
     model_image_url: optionalSafeUrl("صورة المودل"),
     sort_order: numberFromUnknown("ترتيب عنصر الستيديو", { integer: true, min: 0, defaultValue: 0 }),
@@ -447,6 +471,8 @@ export const smartStoreUpsertDesignPresetSchema = z.object({
     story: optionalText("قصة الـ preset", 4000),
     badge: optionalText("شارة الـ preset", 120),
     image_url: optionalSafeUrl("صورة الـ preset"),
+    thumbnail_url: optionalSafeUrl("الصورة المصغرة للـ preset"),
+    thumbnail_path: optionalStoragePath("مسار الصورة المصغرة للـ preset"),
     garment_id: optionalUuid("معرّف القطعة"),
     design_method: z.preprocess(trimToUndefined, z.enum(DESIGN_METHODS).optional()),
     style_id: optionalUuid("معرّف النمط"),

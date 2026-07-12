@@ -95,6 +95,8 @@ CREATE TABLE IF NOT EXISTS products (
   original_price NUMERIC(12, 2),
   currency TEXT DEFAULT 'SAR',
   image_url TEXT NOT NULL,
+  thumbnail_url TEXT,
+  thumbnail_path TEXT,
   images TEXT[] DEFAULT '{}',
   sizes TEXT[],
   in_stock BOOLEAN DEFAULT TRUE,

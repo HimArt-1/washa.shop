@@ -14,6 +14,7 @@ import {
     logDtfTrace,
     resolveDtfTraceId,
 } from "../utils/trace";
+import { DTF_PUBLIC_GENERATION_ERROR } from "../utils/public-error";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -93,15 +94,18 @@ export async function POST(request: NextRequest) {
     });
     if (!quota.allowed) {
         const telemetryStartedAt = Date.now();
+        const quotaUnavailable = quota.reason === "quota_unavailable";
         await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
             action: "generate-mockup",
-            status: "quota_exceeded",
+            status: quotaUnavailable ? "error" : "quota_exceeded",
+            errorMessage: quotaUnavailable ? "تعذّر التحقق من رصيد WASHA AI قبل التوليد." : undefined,
             metadata: {
                 remainingPoints: quota.remaining,
                 usedPoints: quota.used,
                 quotaDate: quota.quotaDate,
+                quotaReason: quota.reason ?? null,
             },
         });
         logDtfTrace("dtf.generate-mockup", traceId, "quota_exceeded_logged", {
@@ -109,8 +113,36 @@ export async function POST(request: NextRequest) {
             total_duration_ms: Date.now() - routeStartedAt,
         });
 
+        if (quota.reason === "audience_disabled") {
+            return attachDtfTraceId(NextResponse.json(
+                {
+                    error: "توليد وشّى AI غير متاح لحسابك حالياً.",
+                    code: "audience_disabled",
+                    canPurchase: false,
+                },
+                { status: 403 }
+            ), traceId);
+        }
+
+        if (quota.reason === "quota_unavailable") {
+            return attachDtfTraceId(NextResponse.json(
+                {
+                    error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
+                    code: "quota_unavailable",
+                    canPurchase: false,
+                },
+                { status: 503 }
+            ), traceId);
+        }
+
         return attachDtfTraceId(NextResponse.json(
-            { error: "بلغت حصتك اليومية في Washa AI لهذا اليوم. ننتظرك مجددًا غدًا." },
+            {
+                error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
+                code: "quota_exceeded",
+                freeRemaining: quota.freeRemaining,
+                paidBalance: quota.paidBalance,
+                canPurchase: quota.canPurchase === true,
+            },
             { status: 403 }
         ), traceId);
     }
@@ -150,6 +182,9 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(NextResponse.json({
             imageUrl,
             remainingPoints: quota.tracked ? quota.remaining : null,
+            freeRemaining: quota.tracked ? quota.freeRemaining : null,
+            paidBalance: quota.tracked ? quota.paidBalance : null,
+            consumedSource: quota.tracked ? quota.source : null,
         }), traceId);
     } catch (error) {
         console.error("[washa-dtf-studio.generate-mockup]", { traceId, error });
@@ -162,9 +197,10 @@ export async function POST(request: NextRequest) {
 
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
-            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role);
+            await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source);
             logDtfTrace("dtf.generate-mockup", traceId, "quota_released", {
                 duration_ms: Date.now() - releaseStartedAt,
+                source: quota.source,
             });
         }
 
@@ -186,7 +222,7 @@ export async function POST(request: NextRequest) {
         });
 
         return attachDtfTraceId(NextResponse.json(
-            { error: handled.message },
+            { error: DTF_PUBLIC_GENERATION_ERROR },
             { status: handled.status }
         ), traceId);
     }

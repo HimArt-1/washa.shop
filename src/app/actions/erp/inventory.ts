@@ -57,7 +57,7 @@ export async function getSKUs() {
     const supabase = getAdminSb();
     const { data, error } = await supabase
         .from("product_skus")
-        .select("*, product:products(title, image_url)")
+        .select("*, product:products(title, image_url, thumbnail_url)")
         .order("created_at", { ascending: false });
 
     if (error) return { error: error.message };
@@ -71,7 +71,7 @@ export async function getSKUsForSales() {
     const supabase = getAdminSb();
     const { data, error } = await supabase
         .from("product_skus")
-        .select("id, product_id, sku, size, color_code, color_image_url, is_active, product:products(id, title, image_url, price)")
+        .select("id, product_id, sku, size, color_code, color_image_url, is_active, product:products(id, title, image_url, thumbnail_url, price)")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
@@ -248,7 +248,7 @@ export async function getInventoryLevels(warehouseId?: string) {
     const supabase = getAdminSb();
     let query = supabase
         .from("inventory_levels")
-        .select("*, sku:product_skus(sku, size, color_code, product:products(title, image_url)), warehouse:warehouses(name)");
+        .select("*, sku:product_skus(sku, size, color_code, product:products(title, image_url, thumbnail_url)), warehouse:warehouses(name)");
 
     if (warehouseId) query = query.eq("warehouse_id", warehouseId);
 
@@ -468,7 +468,7 @@ export async function getInventoryWithSales(warehouseId?: string) {
     // Fetch inventory levels with product & warehouse info
     let query = supabase
         .from("inventory_levels")
-        .select("*, sku:product_skus(id, sku, size, color_code, product_id, product:products(id, title, image_url, price, type, stock_quantity)), warehouse:warehouses(name)");
+        .select("*, sku:product_skus(id, sku, size, color_code, product_id, product:products(id, title, image_url, thumbnail_url, price, type, stock_quantity)), warehouse:warehouses(name)");
 
     if (warehouseId) query = query.eq("warehouse_id", warehouseId);
 

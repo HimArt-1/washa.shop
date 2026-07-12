@@ -1,9 +1,9 @@
 import { getSalesRecords } from "@/app/actions/erp/sales";
 import { getSKUsForSales, getWarehousesForSales } from "@/app/actions/erp/inventory";
-import SalesClient from "@/components/admin/erp/SalesClient";
+import BoothPageShell from "@/components/admin/erp/booth/BoothPageShell";
 
 export const metadata = {
-    title: "المبيعات ونقاط البيع - وشّى | WASHA",
+    title: "نظام البوث ونقاط البيع - وشّى | WASHA",
 };
 
 export default async function SalesPage() {
@@ -24,15 +24,8 @@ export default async function SalesPage() {
     }
 
     return (
-        <main className="p-8 max-w-7xl mx-auto space-y-8">
-            <header className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-theme">إدارة المبيعات ونقاط البيع (POS)</h1>
-                <p className="text-theme-soft">
-                    تسجيل المبيعات اليدوية (مثل البوثات) ومتابعة سجل المبيعات الشامل.
-                </p>
-            </header>
-
-            <SalesClient
+        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+            <BoothPageShell
                 initialSales={salesRes.records || []}
                 warehouses={whRes.warehouses || []}
                 skus={skusRes.skus || []}

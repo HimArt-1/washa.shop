@@ -37,7 +37,7 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
     const fetchProducts = async () => {
         setLoadingProducts(true);
         const supabase = getSupabaseBrowserClient();
-        const { data, error } = await supabase.from("products").select("id, title, type, image_url").order("created_at", { ascending: false });
+        const { data, error } = await supabase.from("products").select("id, title, type, image_url, thumbnail_url").order("created_at", { ascending: false });
         if (data) setProducts(data);
         if (error) {
             setActionError(error.message);
@@ -183,7 +183,9 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-theme-faint">
-                        {filteredSkus.map((sku) => (
+                        {filteredSkus.map((sku) => {
+                            const productImage = sku.product?.thumbnail_url || sku.product?.image_url;
+                            return (
                             <tr key={sku.id} className="hover:bg-theme-faint transition-colors">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
@@ -195,9 +197,9 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                        {sku.product?.image_url && (
+                                        {productImage && (
                                             <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
-                                                <Image src={sku.product.image_url} alt="" fill className="object-cover" />
+                                                <Image src={productImage} alt="" fill className="object-cover" />
                                             </div>
                                         )}
                                         <span className="font-medium truncate max-w-[200px] block">
@@ -225,7 +227,8 @@ export default function BarcodesClient({ initialSKUs }: { initialSKUs: any[] }) 
                                     </button>
                                 </td>
                             </tr>
-                        ))}
+                            );
+                        })}
                         {filteredSkus.length === 0 && (
                             <tr>
                                 <td colSpan={5} className="px-6 py-12 text-center text-theme-subtle">

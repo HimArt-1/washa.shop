@@ -18,6 +18,8 @@ import {
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database } from "@/types/database";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
+import { splitStoragePath, uploadFile } from "@/lib/storage/upload-file";
 
 const ANNOUNCEMENTS_CACHE_TAG = "announcements";
 const ANNOUNCEMENTS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("ANNOUNCEMENTS_QUERY_TIMEOUT_MS", 800, 500, 10000);
@@ -323,35 +325,76 @@ export async function toggleAnnouncementActive(id: string) {
     return updateAnnouncement(id, { isActive: !announcement.isActive });
 }
 
-export async function createAnnouncementMediaUploadUrl(input: {
-    fileName: string;
-    fileType: string;
-    fileSize: number;
-    purpose?: AnnouncementMediaUploadPurpose;
-}) {
+export async function uploadAnnouncementMediaFile(
+    formData: FormData,
+    purpose: AnnouncementMediaUploadPurpose = "media"
+) {
     await requireAdmin();
-    const supabase = getAdminSupabase();
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+        return { success: false, error: "لم يتم اختيار ملف" } as const;
+    }
 
-    const prepared = prepareAnnouncementMediaUpload(input);
+    const prepared = prepareAnnouncementMediaUpload({
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size,
+        purpose,
+    });
     if ("error" in prepared) {
         return { success: false, error: prepared.error } as const;
     }
 
-    const { data, error } = await supabase.storage.from("smart-store").createSignedUploadUrl(prepared.path);
+    try {
+        const supabase = getAdminSupabase();
+        const { folder, fileName } = splitStoragePath(prepared.path);
 
-    if (error || !data?.token) {
-        console.error("[createAnnouncementMediaUploadUrl]", error);
-        return { success: false, error: error?.message || "فشل تجهيز رفع الوسيط" } as const;
+        if (prepared.mediaType === "image") {
+            const uploaded = await uploadOptimizedImage({
+                supabase,
+                bucket: "smart-store",
+                folder,
+                file,
+                originalFileName: fileName,
+                contentType: file.type,
+                profile: purpose === "poster" ? "thumbnail" : "display",
+                createThumbnail: purpose !== "poster",
+                returnPublicUrl: true,
+            });
+
+            return {
+                success: true,
+                url: uploaded.publicUrl ?? "",
+                mediaType: prepared.mediaType,
+                thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+            } as const;
+        }
+
+        const uploaded = await uploadFile({
+            supabase,
+            bucket: "smart-store",
+            folder,
+            file,
+            originalFileName: fileName,
+            contentType: file.type,
+            returnPublicUrl: true,
+        });
+
+        return {
+            success: true,
+            url: uploaded.publicUrl ?? "",
+            mediaType: prepared.mediaType,
+            thumbnailUrl: null,
+        } as const;
+    } catch (error) {
+        console.error("[uploadAnnouncementMediaFile]", error);
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الملف";
+        return { success: false, error: message } as const;
     }
-
-    const { data: publicUrlData } = supabase.storage.from("smart-store").getPublicUrl(prepared.path);
-    return {
-        success: true,
-        path: prepared.path,
-        token: data.token,
-        url: publicUrlData.publicUrl,
-        mediaType: prepared.mediaType,
-    } as const;
 }
 
 export async function getAnnouncementEngagementSnapshot(): Promise<AnnouncementEngagementSnapshot> {

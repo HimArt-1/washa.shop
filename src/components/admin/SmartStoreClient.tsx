@@ -756,17 +756,38 @@ type SmartStoreImageFieldName =
     | "mockup_image_url"
     | "model_image_url";
 
-function ImageUploader({ value, onChange, folder, label, fieldName = "image_url" }: {
+type SmartStoreUploadResult = {
+    url: string;
+    path?: string | null;
+    thumbnailUrl?: string | null;
+    thumbnailPath?: string | null;
+};
+
+type ThumbnailBackedSmartStoreItem = {
+    image_url?: string | null;
+    thumbnail_url?: string | null;
+};
+
+function getSmartStoreCardImage(item: ThumbnailBackedSmartStoreItem) {
+    return item.thumbnail_url || item.image_url || "";
+}
+
+function ImageUploader({ value, onChange, folder, label, fieldName = "image_url", thumbnailUrl, thumbnailPath }: {
     value: string;
     onChange: (url: string) => void;
     folder: string;
     label?: string;
     fieldName?: SmartStoreImageFieldName;
+    thumbnailUrl?: string | null;
+    thumbnailPath?: string | null;
 }) {
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState(value);
+    const [currentThumbnailUrl, setCurrentThumbnailUrl] = useState(thumbnailUrl ?? "");
+    const [currentThumbnailPath, setCurrentThumbnailPath] = useState(thumbnailPath ?? "");
     const [error, setError] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const inFlightFingerprintRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!uploading) {
@@ -778,9 +799,17 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
         setError(null);
     }, [value]);
 
+    useEffect(() => {
+        setCurrentThumbnailUrl(thumbnailUrl ?? "");
+        setCurrentThumbnailPath(thumbnailPath ?? "");
+    }, [thumbnailPath, thumbnailUrl]);
+
     const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        const fingerprint = `${file.name}:${file.size}:${file.lastModified}`;
+        if (uploading || inFlightFingerprintRef.current === fingerprint) return;
+        inFlightFingerprintRef.current = fingerprint;
 
         const localUrl = URL.createObjectURL(file);
         setPreview(localUrl);
@@ -802,8 +831,11 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
             const result = await uploadSmartStoreImage(folder, formData);
 
             if (result && result.success) {
+                const upload = result as SmartStoreUploadResult;
                 setPreview(result.url);
                 onChange(result.url);
+                setCurrentThumbnailUrl(upload.thumbnailUrl ?? "");
+                setCurrentThumbnailPath(upload.thumbnailPath ?? "");
             } else {
                 setPreview(value);
                 setError(result?.error || "فشل رفع الصورة");
@@ -814,6 +846,7 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
             setError("تعذر رفع الصورة الآن. حاول مرة أخرى.");
         } finally {
             URL.revokeObjectURL(localUrl);
+            inFlightFingerprintRef.current = null;
             setUploading(false);
             if (inputRef.current) inputRef.current.value = "";
         }
@@ -837,7 +870,12 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
                     {!uploading && (preview || value) && (
                         <button
                             type="button"
-                            onClick={() => { setPreview(""); onChange(""); }}
+                            onClick={() => {
+                                setPreview("");
+                                onChange("");
+                                setCurrentThumbnailUrl("");
+                                setCurrentThumbnailPath("");
+                            }}
                             className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shadow-lg"
                         >
                             <X className="w-3.5 h-3.5 text-theme" />
@@ -858,6 +896,12 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
             ) : null}
             {/* Hidden input for form (explicit fieldName; do not derive from Arabic labels) */}
             <input type="hidden" name={fieldName} value={preview || value || ""} />
+            {fieldName === "image_url" || fieldName === "main_image_url" ? (
+                <>
+                    <input type="hidden" name="thumbnail_url" value={currentThumbnailUrl} />
+                    <input type="hidden" name="thumbnail_path" value={currentThumbnailPath} />
+                </>
+            ) : null}
         </div>
     );
 }
@@ -980,7 +1024,14 @@ function GarmentsTab({
                 <input name="slug" defaultValue={editing?.slug ?? ""} required className={inputCls} placeholder="مثال: tshirt" />
             </FormField>
             <FormField label="صورة القطعة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="garments" fieldName="image_url" />
+                <ImageUploader
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    folder="garments"
+                    fieldName="image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="طريقة توجيه الذكاء الاصطناعي">
                 <select
@@ -1051,8 +1102,8 @@ function GarmentsTab({
                 <div className="grid gap-3">
                     {items.map((g) => (
                         <div key={g.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
-                            {g.image_url ? (
-                                <img src={g.image_url} alt={g.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />
+                            {getSmartStoreCardImage(g) ? (
+                                <img src={getSmartStoreCardImage(g)} alt={g.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />
                             ) : (
                                 <div className="w-14 h-14 rounded-lg bg-theme-subtle flex items-center justify-center"><ImageIcon className="w-6 h-6 text-theme-faint" /></div>
                             )}
@@ -1187,7 +1238,14 @@ function ColorsTab({
                 <input name="hex_code" type="color" defaultValue={editing?.hex_code ?? "#000000"} required className="w-16 h-10 rounded-lg cursor-pointer bg-transparent border border-theme-soft" />
             </FormField>
             <FormField label="صورة Mockup">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="colors" fieldName="image_url" />
+                <ImageUploader
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    folder="colors"
+                    fieldName="image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={editing?.sort_order ?? 0} className={inputCls} />
@@ -1221,7 +1279,7 @@ function ColorsTab({
                         return (
                             <div key={c.id} className="flex items-center gap-4 p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
                                 <div className="w-10 h-10 rounded-lg border border-theme-soft shadow-inner" style={{ backgroundColor: c.hex_code }} />
-                                {c.image_url && <img src={c.image_url} alt={c.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />}
+                                {getSmartStoreCardImage(c) && <img src={getSmartStoreCardImage(c)} alt={c.name} className="w-14 h-14 rounded-lg object-cover bg-theme-subtle" />}
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-theme truncate">{c.name}</p>
                                     <p className="text-xs text-theme-subtle">{garmentName} · {c.hex_code}</p>
@@ -1256,7 +1314,7 @@ function ColorsTab({
 //  Generic Items Tab (Styles, Art Styles)
 // ═══════════════════════════════════════════════════════════
 
-function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; sort_order?: number; is_active: boolean; metadata?: unknown; catalog_scope: CreativeCatalogScope }>({
+function GenericItemsTab<T extends { id: string; name: string; description?: string | null; image_url?: string | null; thumbnail_url?: string | null; thumbnail_path?: string | null; sort_order?: number; is_active: boolean; metadata?: unknown; catalog_scope: CreativeCatalogScope }>({
     items, title, onUpsert, onDelete, onRefresh, folder, catalogScope,
 }: {
     items: T[]; title: string; onUpsert: (fd: FormData) => Promise<any>; onDelete: (id: string) => Promise<any>; onRefresh: () => void; folder: string; catalogScope: CreativeCatalogScope;
@@ -1333,7 +1391,14 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                 <textarea name="description" defaultValue={editing?.description ?? ""} className={inputCls} rows={3} />
             </FormField>
             <FormField label="الصورة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder={folder} fieldName="image_url" />
+                <ImageUploader
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    folder={folder}
+                    fieldName="image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="الترتيب">
                 <input name="sort_order" type="number" defaultValue={(editing as any)?.sort_order ?? 0} className={inputCls} />
@@ -1359,8 +1424,8 @@ function GenericItemsTab<T extends { id: string; name: string; description?: str
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((item) => (
                         <div key={item.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group relative overflow-hidden">
-                            {item.image_url ? (
-                                <img src={item.image_url} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3 bg-theme-subtle" />
+                            {getSmartStoreCardImage(item) ? (
+                                <img src={getSmartStoreCardImage(item)} alt={item.name} className="w-full h-32 object-cover rounded-lg mb-3 bg-theme-subtle" />
                             ) : (
                                 <div className="w-full h-32 rounded-lg bg-theme-subtle flex items-center justify-center mb-3"><ImageIcon className="w-8 h-8 text-theme-faint" /></div>
                             )}
@@ -1675,7 +1740,14 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
                 <textarea name="description" defaultValue={editing?.description ?? ""} className={inputCls} rows={2} />
             </FormField>
             <FormField label="صورة المكان (Mockup)">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="positions" fieldName="image_url" />
+                <ImageUploader
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    folder="positions"
+                    fieldName="image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="موضع الطباعة المرتبط">
                 <select name="print_position" defaultValue={editing?.print_position ?? ""} className={inputCls}>
@@ -1721,7 +1793,7 @@ function PositionsTab({ items, onRefresh }: { items: CustomDesignPosition[]; onR
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((p) => (
                         <div key={p.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group flex flex-col h-full">
-                            {p.image_url && <img src={p.image_url} alt={p.name} className="w-full aspect-[4/3] object-cover rounded-lg mb-4 border border-theme-subtle" />}
+                            {getSmartStoreCardImage(p) && <img src={getSmartStoreCardImage(p)} alt={p.name} className="w-full aspect-[4/3] object-cover rounded-lg mb-4 border border-theme-subtle" />}
                             <div className="flex-1">
                                 <p className="font-medium text-theme mb-1">{p.name}</p>
                                 <p className="text-xs text-gold mb-2">
@@ -1847,7 +1919,14 @@ function ColorPackagesTab({ items, onRefresh, catalogScope }: { items: CustomDes
                 <input name="name" defaultValue={editing?.name ?? ""} required className={inputCls} placeholder="مثال: باقة ذهبية" />
             </FormField>
             <FormField label="صورة الباقة">
-                <ImageUploader value={imageUrl} onChange={setImageUrl} folder="color-packages" fieldName="image_url" />
+                <ImageUploader
+                    value={imageUrl}
+                    onChange={setImageUrl}
+                    folder="color-packages"
+                    fieldName="image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="الألوان">
                 <div className="space-y-2">
@@ -1885,7 +1964,7 @@ function ColorPackagesTab({ items, onRefresh, catalogScope }: { items: CustomDes
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((pkg) => (
                         <div key={pkg.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group">
-                            {pkg.image_url && <img src={pkg.image_url} alt={pkg.name} className="w-full h-24 object-cover rounded-lg mb-2 bg-theme-subtle" />}
+                            {getSmartStoreCardImage(pkg) && <img src={getSmartStoreCardImage(pkg)} alt={pkg.name} className="w-full h-24 object-cover rounded-lg mb-2 bg-theme-subtle" />}
                             <p className="font-medium text-theme mb-2">{pkg.name}</p>
                             {normalizeDesignMetadata(pkg.metadata).palette_family && (
                                 <p className="mb-2 text-[10px] font-bold text-gold/90">{normalizeDesignMetadata(pkg.metadata).palette_family}</p>
@@ -2012,7 +2091,15 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                 <input name="price" type="number" step="0.01" min="0" defaultValue={editing?.price ?? 0} className={inputCls} />
             </FormField>
             <FormField label="صورة التصميم الرئيسية">
-                <ImageUploader value={mainImage} onChange={setMainImage} folder="studio-items" label="الصورة الرئيسية" fieldName="main_image_url" />
+                <ImageUploader
+                    value={mainImage}
+                    onChange={setMainImage}
+                    folder="studio-items"
+                    label="الصورة الرئيسية"
+                    fieldName="main_image_url"
+                    thumbnailUrl={editing?.thumbnail_url}
+                    thumbnailPath={editing?.thumbnail_path}
+                />
             </FormField>
             <FormField label="صورة الـ Mockup (التفاصيل)">
                 <ImageUploader value={mockupImage} onChange={setMockupImage} folder="studio-items" label="صورة الموكب" fieldName="mockup_image_url" />
@@ -2044,9 +2131,9 @@ function StudioItemsTab({ items, onRefresh }: { items: CustomDesignStudioItem[];
                     {items.map((item) => (
                         <div key={item.id} className="p-4 rounded-xl bg-theme-faint border border-theme-subtle group overflow-hidden relative">
                             <div className="relative mb-3 aspect-[3/4] rounded-lg overflow-hidden bg-theme-subtle">
-                                {(item.model_image_url || item.mockup_image_url || item.main_image_url) ? (
+                                {(item.thumbnail_url || item.model_image_url || item.mockup_image_url || item.main_image_url) ? (
                                     <img
-                                        src={item.model_image_url || item.mockup_image_url || item.main_image_url!}
+                                        src={item.thumbnail_url || item.model_image_url || item.mockup_image_url || item.main_image_url!}
                                         alt={item.name}
                                         className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700"
                                     />
@@ -2172,8 +2259,14 @@ function MockupsTab({ items, garments, studioItems, onRefresh }: {
 
     const getGarmentName = (id: string) => garments.find(g => g.id === id)?.name ?? "—";
     const getStudioName = (id: string) => studioItems.find(s => s.id === id)?.name ?? "—";
-    const getStudioThumb = (id: string) => studioItems.find(s => s.id === id)?.main_image_url;
-    const getGarmentThumb = (id: string) => garments.find(g => g.id === id)?.image_url;
+    const getStudioThumb = (id: string) => {
+        const item = studioItems.find(s => s.id === id);
+        return item?.thumbnail_url || item?.main_image_url;
+    };
+    const getGarmentThumb = (id: string) => {
+        const garment = garments.find(g => g.id === id);
+        return garment ? getSmartStoreCardImage(garment) : undefined;
+    };
 
     const form = (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -2439,7 +2532,14 @@ function PresetsTab({
                     <input name="badge" defaultValue={editing?.badge ?? ""} className={inputCls} />
                 </FormField>
                 <FormField label="صورة الـ Preset">
-                    <ImageUploader value={imageUrl} onChange={setImageUrl} folder="presets" fieldName="image_url" />
+                    <ImageUploader
+                        value={imageUrl}
+                        onChange={setImageUrl}
+                        folder="presets"
+                        fieldName="image_url"
+                        thumbnailUrl={editing?.thumbnail_url}
+                        thumbnailPath={editing?.thumbnail_path}
+                    />
                 </FormField>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
+import type { WashaAiControls } from "@/types/database";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
@@ -26,31 +27,72 @@ type DailyQuotaRpcPayload = {
     remaining?: unknown;
     used?: unknown;
     quota_date?: unknown;
+    source?: unknown;
+    free_used?: unknown;
+    free_remaining?: unknown;
+    free_limit?: unknown;
+    paid_balance?: unknown;
 };
+
+/**
+ * أي مصدر استُهلكت منه الحصة — يحدد كيفية الاسترجاع عند الفشل.
+ * `blocked` = الفئة معطّلة (يُمنع التوليد)؛ `unlimited` = الحصص معطّلة عالمياً.
+ */
+export type QuotaSource = "free" | "paid" | "none" | "bypass" | "guest" | "blocked" | "unlimited";
 
 export interface DailyQuotaReservation {
     allowed: boolean;
+    /** إجمالي المتبقي بعد هذا الحجز = المجاني المتبقي + الرصيد المدفوع. */
     remaining: number;
     used: number;
     quotaDate?: string;
     tracked: boolean;
+    /** المصدر الذي حُجز منه؛ يُمرَّر إلى releaseDailyQuota للاسترجاع الصحيح. */
+    source: QuotaSource;
+    /** المتبقي من المنحة اليومية المجانية. */
+    freeRemaining: number;
+    /** رصيد المحفظة المدفوع الحالي. */
+    paidBalance: number;
+    /** سبب الرفض عند allowed=false. */
+    reason?: "audience_disabled" | "quota_exceeded" | "quota_unavailable";
+    /** هل يحقّ لهذا المستخدم شراء رصيد إضافي (حسب مفاتيح التحكّم)؟ */
+    canPurchase?: boolean;
 }
 
 type DailyQuotaOptions = {
     guestIdentifier?: string | null;
 };
 
+export interface QuotaStatus {
+    /** المشرفون/المطورون أو عند تعطيل الحصص عالمياً — رصيد غير محدود. */
+    unlimited: boolean;
+    /** الفئة معطّلة — يُمنع التوليد. */
+    blocked: boolean;
+    freeLimit: number;
+    freeUsed: number;
+    freeRemaining: number;
+    paidBalance: number;
+    canPurchase: boolean;
+}
+
 export class DtfTelemetryService {
     public static readonly DEFAULT_DAILY_LIMIT = 5;
     public static readonly DEFAULT_GUEST_DAILY_LIMIT = 3;
     public static readonly DEFAULT_BOOTH_DAILY_LIMIT = 25;
+    public static readonly DEFAULT_WUSHSHA_DAILY_LIMIT = 15;
     private static readonly INSERT_RETRY_COUNT = 2;
     private static readonly INSERT_RETRY_DELAY_MS = 150;
     private static readonly TELEMETRY_RESULT_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
     private static readonly GUEST_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+    // ملاحظة: wushsha لم يعد ضمن التجاوز — الوشّايون يخضعون للحصة الهجينة
+    // (منحة يومية أعلى + رصيد مدفوع). التجاوز حصراً للمشرفين والمطورين.
     private static isQuotaBypassedRole(userRole: string | null | undefined) {
-        return userRole === "admin" || userRole === "wushsha" || userRole === "dev";
+        return userRole === "admin" || userRole === "dev";
+    }
+
+    private static shouldFailOpenOnQuotaBackendFailure() {
+        return process.env.WASHA_AI_QUOTA_FAIL_OPEN === "true";
     }
 
     private static normalizeQuotaPayload(data: DailyQuotaRpcPayload | null) {
@@ -70,6 +112,12 @@ export class DtfTelemetryService {
         return Math.max(1, Math.round(configuredLimit));
     }
 
+    private static fallbackDailyLimit(userRole?: string | null) {
+        if (userRole === "booth") return DtfTelemetryService.DEFAULT_BOOTH_DAILY_LIMIT;
+        if (userRole === "wushsha") return DtfTelemetryService.DEFAULT_WUSHSHA_DAILY_LIMIT;
+        return DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+    }
+
     private static async resolveDailyLimit(userRole?: string | null) {
         try {
             const settings = await getWashaAiSettings();
@@ -80,14 +128,19 @@ export class DtfTelemetryService {
                 );
             }
 
+            if (userRole === "wushsha") {
+                return DtfTelemetryService.normalizePositiveLimit(
+                    settings.dtf_wushsha_daily_quota_limit,
+                    DtfTelemetryService.DEFAULT_WUSHSHA_DAILY_LIMIT
+                );
+            }
+
             return DtfTelemetryService.normalizePositiveLimit(
                 settings.dtf_daily_quota_limit,
                 DtfTelemetryService.DEFAULT_DAILY_LIMIT
             );
         } catch {
-            return userRole === "booth"
-                ? DtfTelemetryService.DEFAULT_BOOTH_DAILY_LIMIT
-                : DtfTelemetryService.DEFAULT_DAILY_LIMIT;
+            return DtfTelemetryService.fallbackDailyLimit(userRole);
         }
     }
 
@@ -105,17 +158,72 @@ export class DtfTelemetryService {
         }
     }
 
+    // مفاتيح متساهلة عند فشل قراءة الإعدادات — لا نمنع التوليد بسبب خطأ عابر.
+    private static readonly DEFAULT_CONTROLS: WashaAiControls = {
+        quota_enabled: true,
+        credits_enabled: true,
+        audience: { guest: true, subscriber: true, wushsha: true, booth: true },
+        purchase: { subscriber: true, wushsha: true },
+    };
+
+    private static async resolveControls(): Promise<WashaAiControls> {
+        try {
+            const settings = await getWashaAiSettings();
+            return settings.controls ?? DtfTelemetryService.DEFAULT_CONTROLS;
+        } catch {
+            return DtfTelemetryService.DEFAULT_CONTROLS;
+        }
+    }
+
+    private static audienceKey(userRole?: string | null): keyof WashaAiControls["audience"] {
+        if (userRole === "guest") return "guest";
+        if (userRole === "wushsha") return "wushsha";
+        if (userRole === "booth") return "booth";
+        return "subscriber";
+    }
+
+    /** هل يحقّ لهذا الدور شراء الرصيد؟ (يتطلب حساباً + تفعيل النظام). */
+    private static canRolePurchase(controls: WashaAiControls, userRole?: string | null) {
+        if (!controls.credits_enabled) return false;
+        if (userRole === "subscriber") return controls.purchase.subscriber;
+        if (userRole === "wushsha") return controls.purchase.wushsha;
+        return false;
+    }
+
     static async reserveDailyQuota(
         profileId: string | null | undefined,
         userRole: string | null | undefined,
         options: DailyQuotaOptions = {}
     ): Promise<DailyQuotaReservation> {
+        // المشرفون/المطورون — تجاوز كامل بلا حصص.
+        if (DtfTelemetryService.isQuotaBypassedRole(userRole)) {
+            return { allowed: true, remaining: 9999, used: 0, tracked: false, source: "bypass", freeRemaining: 9999, paidBalance: 0 };
+        }
+
+        const controls = await DtfTelemetryService.resolveControls();
+
+        // الفئة معطّلة → يُمنع التوليد نهائياً.
+        if (!controls.audience[DtfTelemetryService.audienceKey(userRole)]) {
+            return {
+                allowed: false, remaining: 0, used: 0, tracked: false,
+                source: "blocked", freeRemaining: 0, paidBalance: 0, reason: "audience_disabled",
+            };
+        }
+
+        // الحصص معطّلة عالمياً → توليد بلا حدود للفئات المتاحة.
+        if (!controls.quota_enabled) {
+            return { allowed: true, remaining: 9999, used: 0, tracked: false, source: "unlimited", freeRemaining: 9999, paidBalance: 0 };
+        }
+
         if (!profileId) {
             if (userRole === "guest") {
                 const guestDailyLimit = await DtfTelemetryService.resolveGuestDailyLimit();
                 const guestIdentifier = options.guestIdentifier?.trim();
                 if (!guestIdentifier) {
-                    return { allowed: true, remaining: guestDailyLimit, used: 0, tracked: false };
+                    return {
+                        allowed: true, remaining: guestDailyLimit, used: 0, tracked: false,
+                        source: "guest", freeRemaining: guestDailyLimit, paidBalance: 0,
+                    };
                 }
 
                 try {
@@ -131,24 +239,86 @@ export class DtfTelemetryService {
                         used: Math.max(0, guestDailyLimit - result.remaining),
                         quotaDate: new Date().toISOString().slice(0, 10),
                         tracked: true,
+                        source: "guest",
+                        freeRemaining: result.remaining,
+                        paidBalance: 0,
                     };
                 } catch (error) {
                     logDiagnosticWarning("dtf-telemetry-guest-quota-reserve", error);
-                    return { allowed: true, remaining: guestDailyLimit, used: 0, tracked: false };
+                    if (DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()) {
+                        return {
+                            allowed: true, remaining: guestDailyLimit, used: 0, tracked: false,
+                            source: "guest", freeRemaining: guestDailyLimit, paidBalance: 0,
+                        };
+                    }
+
+                    return {
+                        allowed: false, remaining: 0, used: 0, tracked: false,
+                        source: "none", freeRemaining: 0, paidBalance: 0, reason: "quota_unavailable",
+                    };
                 }
             }
-            return { allowed: false, remaining: 0, used: 0, tracked: false };
-        }
-
-        if (DtfTelemetryService.isQuotaBypassedRole(userRole)) {
-            return { allowed: true, remaining: 9999, used: 0, tracked: false };
+            return { allowed: false, remaining: 0, used: 0, tracked: false, source: "none", freeRemaining: 0, paidBalance: 0, reason: "quota_exceeded" };
         }
 
         const dailyLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
+        const canPurchase = DtfTelemetryService.canRolePurchase(controls, userRole);
+        const backendFailureReservation = (): DailyQuotaReservation => {
+            if (DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()) {
+                return {
+                    allowed: true, remaining: dailyLimit, used: 0, tracked: false,
+                    source: "free", freeRemaining: dailyLimit, paidBalance: 0, canPurchase,
+                };
+            }
+
+            return {
+                allowed: false, remaining: 0, used: 0, tracked: false,
+                source: "none", freeRemaining: 0, paidBalance: 0,
+                reason: "quota_unavailable", canPurchase,
+            };
+        };
 
         try {
             const sb = getSupabaseAdminClient();
 
+            if (controls.credits_enabled) {
+                // الدالة الهجينة: المجاني اليومي أولاً ثم الرصيد المدفوع، ذرّياً.
+                const { data, error } = await sb.rpc("consume_washa_ai_generation", {
+                    p_profile_id: profileId,
+                    p_daily_limit: dailyLimit,
+                });
+
+                if (error) {
+                    logDiagnosticWarning("dtf-telemetry-quota-reserve", error);
+                    return backendFailureReservation();
+                }
+
+                const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
+                if (!payload || typeof payload.granted !== "boolean") {
+                    logDiagnosticWarning("dtf-telemetry-quota-reserve-invalid", data);
+                    return backendFailureReservation();
+                }
+
+                const freeRemaining = typeof payload.free_remaining === "number" ? payload.free_remaining : 0;
+                const paidBalance = typeof payload.paid_balance === "number" ? payload.paid_balance : 0;
+                const source: QuotaSource =
+                    payload.source === "paid" ? "paid" : payload.source === "none" ? "none" : "free";
+
+                return {
+                    allowed: payload.granted,
+                    remaining: freeRemaining + paidBalance,
+                    used: typeof payload.free_used === "number" ? payload.free_used : 0,
+                    quotaDate: typeof payload.quota_date === "string" ? payload.quota_date : undefined,
+                    tracked: payload.granted,
+                    source,
+                    freeRemaining,
+                    paidBalance,
+                    reason: payload.granted ? undefined : "quota_exceeded",
+                    canPurchase,
+                };
+            }
+
+            // نظام الرصيد معطّل → المنحة اليومية المجانية فقط (سقف صارم بلا محفظة).
             const { data, error } = await sb.rpc("reserve_dtf_daily_quota", {
                 p_profile_id: profileId,
                 p_daily_limit: dailyLimit,
@@ -156,33 +326,45 @@ export class DtfTelemetryService {
 
             if (error) {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve", error);
-                return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
+                return backendFailureReservation();
             }
 
             const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
             if (!payload || typeof payload.granted !== "boolean") {
                 logDiagnosticWarning("dtf-telemetry-quota-reserve-invalid", data);
-                return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
+                return backendFailureReservation();
             }
 
+            const freeRemaining = typeof payload.remaining === "number" ? payload.remaining : 0;
             return {
                 allowed: payload.granted,
-                remaining: typeof payload.remaining === "number" ? payload.remaining : 0,
+                remaining: freeRemaining,
                 used: typeof payload.used === "number" ? payload.used : 0,
                 quotaDate: typeof payload.quota_date === "string" ? payload.quota_date : undefined,
                 tracked: payload.granted,
+                source: payload.granted ? "free" : "none",
+                freeRemaining,
+                paidBalance: 0,
+                reason: payload.granted ? undefined : "quota_exceeded",
+                canPurchase,
             };
         } catch (err) {
             logDiagnosticWarning("dtf-telemetry-quota-reserve-fatal", err);
-            return { allowed: true, remaining: dailyLimit, used: 0, tracked: false };
+            return backendFailureReservation();
         }
     }
 
     static async releaseDailyQuota(
         profileId: string | null | undefined,
-        userRole: string | null | undefined
+        userRole: string | null | undefined,
+        source: QuotaSource = "free"
     ): Promise<boolean> {
         if (!profileId || DtfTelemetryService.isQuotaBypassedRole(userRole)) {
+            return false;
+        }
+
+        // لا استرجاع للمصادر غير المستهلكة من الحساب.
+        if (source !== "free" && source !== "paid") {
             return false;
         }
 
@@ -191,8 +373,9 @@ export class DtfTelemetryService {
         try {
             const sb = getSupabaseAdminClient();
 
-            const { data, error } = await sb.rpc("release_dtf_daily_quota", {
+            const { data, error } = await sb.rpc("refund_washa_ai_generation", {
                 p_profile_id: profileId,
+                p_source: source,
                 p_daily_limit: dailyLimit,
             });
 
@@ -206,6 +389,86 @@ export class DtfTelemetryService {
         } catch (err) {
             logDiagnosticWarning("dtf-telemetry-quota-release-fatal", err);
             return false;
+        }
+    }
+
+    /**
+     * قراءة حالة الحصة دون استهلاك — للعرض في الواجهة (widget الرصيد).
+     * لا يزيد أي عدّاد؛ يقرأ المستخدم اليومي المجاني + رصيد المحفظة.
+     */
+    static async getQuotaStatus(
+        profileId: string | null | undefined,
+        userRole: string | null | undefined
+    ): Promise<QuotaStatus> {
+        if (!profileId) {
+            return { unlimited: false, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+        }
+
+        if (DtfTelemetryService.isQuotaBypassedRole(userRole)) {
+            return { unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+        }
+
+        const controls = await DtfTelemetryService.resolveControls();
+
+        // الفئة معطّلة → يُمنع التوليد.
+        if (!controls.audience[DtfTelemetryService.audienceKey(userRole)]) {
+            return { unlimited: false, blocked: true, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+        }
+
+        // الحصص معطّلة عالمياً → غير محدود.
+        if (!controls.quota_enabled) {
+            return { unlimited: true, blocked: false, freeLimit: 0, freeUsed: 0, freeRemaining: 0, paidBalance: 0, canPurchase: false };
+        }
+
+        const freeLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
+        const canPurchase = DtfTelemetryService.canRolePurchase(controls, userRole);
+        const quotaDate = new Date().toISOString().slice(0, 10);
+
+        try {
+            const sb = getSupabaseAdminClient();
+            const [usageResult, walletResult] = await Promise.all([
+                sb
+                    .from("dtf_daily_quota_usage")
+                    .select("used_count")
+                    .eq("profile_id", profileId)
+                    .eq("quota_date", quotaDate)
+                    .maybeSingle(),
+                sb
+                    .from("washa_ai_credit_wallet")
+                    .select("balance")
+                    .eq("profile_id", profileId)
+                    .maybeSingle(),
+            ]);
+
+            const freeUsed = Math.min(
+                Math.max(Number(usageResult.data?.used_count) || 0, 0),
+                freeLimit
+            );
+            // عند تعطيل نظام الرصيد، المحفظة غير قابلة للاستخدام — نعرضها صفراً.
+            const paidBalance = controls.credits_enabled
+                ? Math.max(Number(walletResult.data?.balance) || 0, 0)
+                : 0;
+
+            return {
+                unlimited: false,
+                blocked: false,
+                freeLimit,
+                freeUsed,
+                freeRemaining: Math.max(freeLimit - freeUsed, 0),
+                paidBalance,
+                canPurchase,
+            };
+        } catch (err) {
+            logDiagnosticWarning("dtf-telemetry-quota-status-fatal", err);
+            return {
+                unlimited: false,
+                blocked: false,
+                freeLimit,
+                freeUsed: 0,
+                freeRemaining: freeLimit,
+                paidBalance: 0,
+                canPurchase,
+            };
         }
     }
 

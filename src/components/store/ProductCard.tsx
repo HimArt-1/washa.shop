@@ -49,6 +49,7 @@ interface ProductCardProps {
         price: number;
         original_price?: number | null;
         image_url: string;
+        thumbnail_url?: string | null;
         type: string;
         store_name?: string;
         artist?: { display_name: string };
@@ -71,7 +72,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
     const productTitle = typeof product.title === "string" && product.title.trim() ? product.title.trim() : "منتج وشّى";
     const productType = typeof product.type === "string" && product.type.trim() ? product.type.trim() : "product";
     const productPrice = Number.isFinite(Number(product.price)) && Number(product.price) >= 0 ? Number(product.price) : 0;
-    const productImage = sanitizeCommerceImageUrl(product.image_url);
+    const productImage = sanitizeCommerceImageUrl(product.thumbnail_url || product.image_url);
 
     // ── Stock calculation ────────────────────────────────────────────────
     const allSkus = product.product_skus ?? [];

@@ -32,11 +32,19 @@ describe("DtfTelemetryService quota reservation", () => {
         mockCheckRateLimit.mockReset();
         mockGetSupabaseAdminClient.mockReset();
         mockRpc.mockReset();
+        delete process.env.WASHA_AI_QUOTA_FAIL_OPEN;
 
         mockGetWashaAiSettings.mockResolvedValue({
             dtf_daily_quota_limit: 5,
             dtf_guest_daily_quota_limit: 3,
             dtf_booth_daily_quota_limit: 12,
+            dtf_wushsha_daily_quota_limit: 15,
+            controls: {
+                quota_enabled: true,
+                credits_enabled: true,
+                audience: { guest: true, subscriber: true, wushsha: true, booth: true },
+                purchase: { subscriber: true, wushsha: true },
+            },
         });
         mockCheckRateLimit.mockResolvedValue({
             success: true,
@@ -46,8 +54,11 @@ describe("DtfTelemetryService quota reservation", () => {
         mockRpc.mockResolvedValue({
             data: {
                 granted: true,
-                remaining: 11,
-                used: 1,
+                source: "free",
+                free_used: 1,
+                free_remaining: 11,
+                free_limit: 12,
+                paid_balance: 4,
                 quota_date: "2026-07-07",
             },
             error: null,
@@ -90,16 +101,108 @@ describe("DtfTelemetryService quota reservation", () => {
     it("reserves booth generation quota with the configured booth limit", async () => {
         const result = await DtfTelemetryService.reserveDailyQuota("profile_1", "booth");
 
-        expect(mockRpc).toHaveBeenCalledWith("reserve_dtf_daily_quota", {
+        expect(mockRpc).toHaveBeenCalledWith("consume_washa_ai_generation", {
             p_profile_id: "profile_1",
             p_daily_limit: 12,
         });
         expect(result).toMatchObject({
             allowed: true,
-            remaining: 11,
+            remaining: 15,
             used: 1,
             quotaDate: "2026-07-07",
             tracked: true,
+            source: "free",
+            freeRemaining: 11,
+            paidBalance: 4,
+        });
+    });
+
+    it("uses paid balance after the free quota is exhausted", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: {
+                granted: true,
+                source: "paid",
+                free_used: 12,
+                free_remaining: 0,
+                free_limit: 12,
+                paid_balance: 8,
+                quota_date: "2026-07-07",
+            },
+            error: null,
+        });
+
+        const result = await DtfTelemetryService.reserveDailyQuota("profile_1", "booth");
+
+        expect(result).toMatchObject({
+            allowed: true,
+            remaining: 8,
+            used: 12,
+            tracked: true,
+            source: "paid",
+            freeRemaining: 0,
+            paidBalance: 8,
+        });
+    });
+
+    it("blocks generation when neither free quota nor paid balance is available", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: {
+                granted: false,
+                source: "none",
+                free_used: 5,
+                free_remaining: 0,
+                free_limit: 5,
+                paid_balance: 0,
+                quota_date: "2026-07-07",
+            },
+            error: null,
+        });
+
+        const result = await DtfTelemetryService.reserveDailyQuota("profile_1", "subscriber");
+
+        expect(result).toMatchObject({
+            allowed: false,
+            tracked: false,
+            reason: "quota_exceeded",
+            canPurchase: true,
+            freeRemaining: 0,
+            paidBalance: 0,
+        });
+    });
+
+    it("fails closed when quota reservation RPC fails", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: null,
+            error: { message: "database unavailable" },
+        });
+
+        const result = await DtfTelemetryService.reserveDailyQuota("profile_1", "subscriber");
+
+        expect(result).toMatchObject({
+            allowed: false,
+            tracked: false,
+            reason: "quota_unavailable",
+            remaining: 0,
+            freeRemaining: 0,
+            paidBalance: 0,
+        });
+    });
+
+    it("supports explicit fail-open emergency mode for quota backend failures", async () => {
+        process.env.WASHA_AI_QUOTA_FAIL_OPEN = "true";
+        mockRpc.mockResolvedValueOnce({
+            data: null,
+            error: { message: "database unavailable" },
+        });
+
+        const result = await DtfTelemetryService.reserveDailyQuota("profile_1", "subscriber");
+
+        expect(result).toMatchObject({
+            allowed: true,
+            tracked: false,
+            remaining: 5,
+            freeRemaining: 5,
+            paidBalance: 0,
         });
     });
 
@@ -111,8 +214,25 @@ describe("DtfTelemetryService quota reservation", () => {
 
         const released = await DtfTelemetryService.releaseDailyQuota("profile_1", "booth");
 
-        expect(mockRpc).toHaveBeenCalledWith("release_dtf_daily_quota", {
+        expect(mockRpc).toHaveBeenCalledWith("refund_washa_ai_generation", {
             p_profile_id: "profile_1",
+            p_source: "free",
+            p_daily_limit: 12,
+        });
+        expect(released).toBe(true);
+    });
+
+    it("releases paid generation credits with the consumed source", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: { released: true, source: "paid", paid_balance: 9 },
+            error: null,
+        });
+
+        const released = await DtfTelemetryService.releaseDailyQuota("profile_1", "booth", "paid");
+
+        expect(mockRpc).toHaveBeenCalledWith("refund_washa_ai_generation", {
+            p_profile_id: "profile_1",
+            p_source: "paid",
             p_daily_limit: 12,
         });
         expect(released).toBe(true);

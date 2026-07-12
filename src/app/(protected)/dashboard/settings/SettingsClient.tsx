@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Eye, EyeOff, Globe, Truck, Save, Loader2, Tag, QrCode,
     Instagram, Twitter, Mail, Phone, Sparkles, Image as ImageIcon, ShieldAlert, History, Activity, RotateCcw, type LucideIcon,
-    Trash2, AlertTriangle, CheckCircle, XCircle,
+    Trash2, AlertTriangle, CheckCircle, XCircle, Plus, Wallet,
 } from "lucide-react";
 import { purgeTestData, type PurgeScope } from "@/app/actions/data-management";
+import WashaCreditsAdminCard from "@/components/admin/WashaCreditsAdminCard";
 import {
     updateSiteSetting,
     uploadExclusiveDesignImage,
@@ -361,6 +362,14 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
         dtf_guest_daily_quota_limit: settings.washa_ai?.dtf_guest_daily_quota_limit ?? 3,
         dtf_booth_daily_quota_limit: settings.washa_ai?.dtf_booth_daily_quota_limit ?? 25,
+        dtf_wushsha_daily_quota_limit: settings.washa_ai?.dtf_wushsha_daily_quota_limit ?? 15,
+        credit_packages: settings.washa_ai?.credit_packages ?? [],
+        controls: settings.washa_ai?.controls ?? {
+            quota_enabled: true,
+            credits_enabled: true,
+            audience: { guest: true, subscriber: true, wushsha: true, booth: true },
+            purchase: { subscriber: true, wushsha: true },
+        },
     });
     const [siteInfo, setSiteInfo] = useState(settings.site_info);
     const [shipping, setShipping] = useState(settings.shipping);
@@ -622,20 +631,58 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
 
             <SettingsCard title="Washa AI — حدود التوليد" icon={Sparkles}>
                 <p className="text-theme-subtle text-sm mb-4">
-                    يتحكم في عدد توليدات WASHA AI اليومية. الزائر يدخل الاستوديو بدون حساب، ثم يُطلب منه التسجيل عند إكمال الشراء.
-                    لا تنطبق هذه الحدود على فرق الإدارة والصيانة.
+                    يتحكم في عدد توليدات WASHA AI اليومية لكل فئة. التوليد يتطلب تسجيل الدخول، ولا تنطبق هذه الحدود على فرق الإدارة والصيانة.
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <Field
-                        label="حد الزائر اليومي"
-                        value={String(washaAi.dtf_guest_daily_quota_limit)}
-                        onChange={(v) => setWashaAi({
-                            ...washaAi,
-                            dtf_guest_daily_quota_limit: Math.max(1, Number(v) || 1),
-                        })}
-                        type="number"
-                        dir="ltr"
+
+                {/* ── مفاتيح التحكّم الرئيسية ── */}
+                <div className="mb-6 space-y-2 rounded-xl border border-theme-subtle/40 p-4">
+                    <h4 className="text-sm font-bold text-theme mb-2">مفاتيح التحكّم</h4>
+                    <Toggle
+                        label="فرض حصص التوليد (تعطيله = توليد بلا حدود)"
+                        checked={washaAi.controls.quota_enabled}
+                        onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, quota_enabled: v } })}
                     />
+                    <Toggle
+                        label="نظام الرصيد المدفوع (الشراء + المحفظة)"
+                        checked={washaAi.controls.credits_enabled}
+                        onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, credits_enabled: v } })}
+                    />
+
+                    <div className="pt-2 mt-2 border-t border-theme-subtle/30">
+                        <div className="text-xs font-bold text-theme-subtle mb-1.5">إتاحة التوليد للفئات (تعطيلها = منع نهائي)</div>
+                        <Toggle
+                            label="المشتركون"
+                            checked={washaAi.controls.audience.subscriber}
+                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, subscriber: v } } })}
+                        />
+                        <Toggle
+                            label="الوشّايون"
+                            checked={washaAi.controls.audience.wushsha}
+                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, wushsha: v } } })}
+                        />
+                        <Toggle
+                            label="البوث"
+                            checked={washaAi.controls.audience.booth}
+                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, audience: { ...washaAi.controls.audience, booth: v } } })}
+                        />
+                    </div>
+
+                    <div className="pt-2 mt-2 border-t border-theme-subtle/30">
+                        <div className="text-xs font-bold text-theme-subtle mb-1.5">من يحقّ له شراء الرصيد</div>
+                        <Toggle
+                            label="المشتركون"
+                            checked={washaAi.controls.purchase.subscriber}
+                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, subscriber: v } } })}
+                        />
+                        <Toggle
+                            label="الوشّايون"
+                            checked={washaAi.controls.purchase.wushsha}
+                            onChange={(v) => setWashaAi({ ...washaAi, controls: { ...washaAi.controls, purchase: { ...washaAi.controls.purchase, wushsha: v } } })}
+                        />
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <Field
                         label="حد المشترك اليومي"
                         value={String(washaAi.dtf_daily_quota_limit)}
@@ -656,7 +703,120 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         type="number"
                         dir="ltr"
                     />
+                    <Field
+                        label="حد الوشّاي اليومي"
+                        value={String(washaAi.dtf_wushsha_daily_quota_limit)}
+                        onChange={(v) => setWashaAi({
+                            ...washaAi,
+                            dtf_wushsha_daily_quota_limit: Math.max(1, Number(v) || 1),
+                        })}
+                        type="number"
+                        dir="ltr"
+                    />
                 </div>
+
+                {/* ── حزم الرصيد القابلة للشراء ── */}
+                <div className="mt-6 border-t border-theme-subtle/40 pt-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-theme">حزم الرصيد المدفوع</h4>
+                        <button
+                            type="button"
+                            onClick={() => setWashaAi({
+                                ...washaAi,
+                                credit_packages: [
+                                    ...washaAi.credit_packages,
+                                    { id: `pkg-${Date.now().toString(36)}`, label: "باقة جديدة", credits: 20, price: 25, active: true },
+                                ],
+                            })}
+                            className="text-xs font-semibold text-amber-500 hover:text-amber-400 flex items-center gap-1"
+                        >
+                            <Plus className="w-3.5 h-3.5" /> إضافة باقة
+                        </button>
+                    </div>
+                    <p className="text-theme-subtle text-xs mb-4">
+                        رصيد دائم لا ينتهي، يُستهلك بعد نفاد الحصة اليومية المجانية. متاح للمشتركين والوشّايين.
+                    </p>
+                    <div className="space-y-3">
+                        {washaAi.credit_packages.length === 0 && (
+                            <p className="text-theme-subtle text-xs text-center py-3">لا توجد باقات — أضف واحدة.</p>
+                        )}
+                        {washaAi.credit_packages.map((pkg, index) => (
+                            <div key={pkg.id} className="grid grid-cols-12 gap-2 items-center bg-theme-subtle/20 rounded-xl p-3">
+                                <input
+                                    className="col-span-12 sm:col-span-4 bg-theme-input border border-theme-subtle/40 rounded-lg px-2 py-1.5 text-sm text-theme"
+                                    value={pkg.label}
+                                    placeholder="اسم الباقة"
+                                    onChange={(e) => {
+                                        const next = [...washaAi.credit_packages];
+                                        next[index] = { ...pkg, label: e.target.value };
+                                        setWashaAi({ ...washaAi, credit_packages: next });
+                                    }}
+                                />
+                                <input
+                                    className="col-span-4 sm:col-span-2 bg-theme-input border border-theme-subtle/40 rounded-lg px-2 py-1.5 text-sm text-theme"
+                                    dir="ltr"
+                                    type="number"
+                                    value={String(pkg.credits)}
+                                    placeholder="حصص"
+                                    onChange={(e) => {
+                                        const next = [...washaAi.credit_packages];
+                                        next[index] = { ...pkg, credits: Math.max(1, Number(e.target.value) || 1) };
+                                        setWashaAi({ ...washaAi, credit_packages: next });
+                                    }}
+                                />
+                                <input
+                                    className="col-span-4 sm:col-span-2 bg-theme-input border border-theme-subtle/40 rounded-lg px-2 py-1.5 text-sm text-theme"
+                                    dir="ltr"
+                                    type="number"
+                                    min="1"
+                                    value={String(pkg.price)}
+                                    placeholder="ريال"
+                                    onChange={(e) => {
+                                        const next = [...washaAi.credit_packages];
+                                        next[index] = { ...pkg, price: Math.max(1, Number(e.target.value) || 1) };
+                                        setWashaAi({ ...washaAi, credit_packages: next });
+                                    }}
+                                />
+                                <label className="col-span-3 sm:col-span-2 flex items-center gap-1.5 text-xs text-theme-subtle cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={pkg.popular === true}
+                                        onChange={(e) => {
+                                            const next = [...washaAi.credit_packages];
+                                            next[index] = { ...pkg, popular: e.target.checked };
+                                            setWashaAi({ ...washaAi, credit_packages: next });
+                                        }}
+                                    />
+                                    رائجة
+                                </label>
+                                <label className="col-span-3 sm:col-span-1 flex items-center gap-1.5 text-xs text-theme-subtle cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={pkg.active !== false}
+                                        onChange={(e) => {
+                                            const next = [...washaAi.credit_packages];
+                                            next[index] = { ...pkg, active: e.target.checked };
+                                            setWashaAi({ ...washaAi, credit_packages: next });
+                                        }}
+                                    />
+                                    مفعّلة
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setWashaAi({
+                                        ...washaAi,
+                                        credit_packages: washaAi.credit_packages.filter((_, i) => i !== index),
+                                    })}
+                                    className="col-span-2 sm:col-span-1 flex justify-center text-red-400 hover:text-red-300"
+                                    title="حذف"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
                 <button
                     onClick={() => handleSave("washa_ai", washaAi)}
                     disabled={saving === "washa_ai"}
@@ -665,6 +825,10 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     {saving === "washa_ai" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     حفظ إعدادات Washa AI
                 </button>
+            </SettingsCard>
+
+            <SettingsCard title="Washa AI — إدارة الرصيد" icon={Wallet}>
+                <WashaCreditsAdminCard />
             </SettingsCard>
 
             {/* ─── 2. Site Info ─── */}

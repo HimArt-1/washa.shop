@@ -2,6 +2,7 @@ import { Droplets, History, Home, Lightbulb, MapPin, Palette, Shirt, Sparkles } 
 import { cn } from '../lib/utils';
 import { useDesign } from '../context/DesignContext';
 import { siteAsset } from '../lib/assets';
+import CreditBalanceChip from './CreditBalanceChip';
 
 interface HeaderProps {
   onOpenGallery: () => void;
@@ -101,6 +102,8 @@ export default function Header({ onOpenGallery }: HeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-1.5 sm:gap-2">
+          <CreditBalanceChip />
+
           <a
             href="/"
             aria-label="العودة إلى الرئيسية"

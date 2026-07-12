@@ -12,6 +12,8 @@ import {
 } from "@/lib/operational-rules";
 import { getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
+import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
+import type { WashaAiControls, WashaAiCreditPackage } from "@/types/database";
 
 const SITE_SETTINGS_CACHE_TAG = "site-settings";
 const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
@@ -86,6 +88,9 @@ export type SiteSettingsType = {
         dtf_daily_quota_limit?: number;
         dtf_guest_daily_quota_limit?: number;
         dtf_booth_daily_quota_limit?: number;
+        dtf_wushsha_daily_quota_limit?: number;
+        credit_packages?: WashaAiCreditPackage[];
+        controls?: WashaAiControls;
     };
     site_info: Record<string, string>;
     shipping: {
@@ -153,6 +158,18 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         dtf_daily_quota_limit: 5,
         dtf_guest_daily_quota_limit: 3,
         dtf_booth_daily_quota_limit: 25,
+        dtf_wushsha_daily_quota_limit: 15,
+        credit_packages: [
+            { id: "starter", label: "باقة البداية", credits: 20, price: 25, active: true },
+            { id: "popular", label: "الباقة الرائجة", credits: 60, price: 60, popular: true, active: true },
+            { id: "pro", label: "باقة المحترف", credits: 150, price: 120, active: true },
+        ],
+        controls: {
+            quota_enabled: true,
+            credits_enabled: true,
+            audience: { guest: true, subscriber: true, wushsha: true, booth: true },
+            purchase: { subscriber: true, wushsha: true },
+        },
     },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
@@ -259,6 +276,61 @@ function coerceDtfDailyQuotaLimit(value: unknown, fallback = 5) {
     return Math.max(1, Math.round(parsed));
 }
 
+function normalizeCreditPackages(value: unknown, fallback: WashaAiCreditPackage[]): WashaAiCreditPackage[] {
+    if (!Array.isArray(value)) return fallback;
+
+    const seenIds = new Set<string>();
+    const packages: WashaAiCreditPackage[] = [];
+
+    for (const raw of value) {
+        if (!raw || typeof raw !== "object") continue;
+        const item = raw as Record<string, unknown>;
+
+        const id = typeof item.id === "string" ? item.id.trim() : "";
+        const credits = Math.round(Number(item.credits));
+        const price = Math.round(Number(item.price) * 100) / 100;
+        if (!id || seenIds.has(id) || !Number.isFinite(credits) || credits <= 0) continue;
+        if (!Number.isFinite(price) || price <= 0) continue;
+
+        seenIds.add(id);
+        packages.push({
+            id,
+            label: typeof item.label === "string" && item.label.trim() ? item.label.trim() : id,
+            credits,
+            price,
+            popular: item.popular === true,
+            active: item.active !== false,
+        });
+    }
+
+    return packages.length > 0 ? packages : fallback;
+}
+
+function coerceBool(value: unknown, fallback: boolean) {
+    return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeWashaAiControls(value: unknown, fallback: WashaAiControls): WashaAiControls {
+    const raw = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+    const audience = (raw.audience && typeof raw.audience === "object" ? raw.audience : {}) as Record<string, unknown>;
+    const purchase = (raw.purchase && typeof raw.purchase === "object" ? raw.purchase : {}) as Record<string, unknown>;
+
+    return {
+        quota_enabled: coerceBool(raw.quota_enabled, fallback.quota_enabled),
+        credits_enabled: coerceBool(raw.credits_enabled, fallback.credits_enabled),
+        audience: {
+            guest: coerceBool(audience.guest, fallback.audience.guest),
+            subscriber: coerceBool(audience.subscriber, fallback.audience.subscriber),
+            wushsha: coerceBool(audience.wushsha, fallback.audience.wushsha),
+            booth: coerceBool(audience.booth, fallback.audience.booth),
+        },
+        purchase: {
+            subscriber: coerceBool(purchase.subscriber, fallback.purchase.subscriber),
+            wushsha: coerceBool(purchase.wushsha, fallback.purchase.wushsha),
+        },
+    };
+}
+
 function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSettingsType["washa_ai"]>> {
     const washaAi = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
     const fallback = DEFAULT_SITE_SETTINGS.washa_ai;
@@ -275,6 +347,18 @@ function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSett
         dtf_booth_daily_quota_limit: coerceDtfDailyQuotaLimit(
             washaAi.dtf_booth_daily_quota_limit,
             fallback?.dtf_booth_daily_quota_limit ?? 25
+        ),
+        dtf_wushsha_daily_quota_limit: coerceDtfDailyQuotaLimit(
+            washaAi.dtf_wushsha_daily_quota_limit,
+            fallback?.dtf_wushsha_daily_quota_limit ?? 15
+        ),
+        credit_packages: normalizeCreditPackages(
+            washaAi.credit_packages,
+            fallback?.credit_packages ?? []
+        ),
+        controls: normalizeWashaAiControls(
+            washaAi.controls,
+            fallback?.controls ?? DEFAULT_SITE_SETTINGS.washa_ai!.controls!
         ),
     };
 }
@@ -797,6 +881,13 @@ export async function getWashaAiSettings() {
     return normalizeWashaAiSettings(settings.washa_ai);
 }
 
+/** الحزم النشطة فقط — لعرضها للمستخدم في نافذة الشراء. فارغة إن كان نظام الرصيد معطّلاً. */
+export async function getActiveWashaAiCreditPackages(): Promise<WashaAiCreditPackage[]> {
+    const settings = await getWashaAiSettings();
+    if (settings.controls?.credits_enabled === false) return [];
+    return (settings.credit_packages ?? []).filter((pkg) => pkg.active !== false);
+}
+
 // ─── Public visibility (للصفحات العامة — بدون صلاحية أدمن) ───
 
 export async function getPublicVisibility() {
@@ -1004,6 +1095,8 @@ export async function updateProduct(id: string, updates: Partial<{
     type: string;
     price: number;
     image_url: string;
+    thumbnail_url: string | null;
+    thumbnail_path: string | null;
     images: string[];
     artist_id: string;
     in_stock: boolean;
@@ -1317,6 +1410,8 @@ export async function createProductAdmin(data: {
     type: string;
     price: number;
     image_url: string;
+    thumbnail_url?: string | null;
+    thumbnail_path?: string | null;
     images?: string[];
     sizes?: string[];
     colors?: string[];
@@ -1354,6 +1449,8 @@ export async function createProductAdmin(data: {
             type: data.type,
             price: Number(data.price),
             image_url: data.image_url.trim(),
+            thumbnail_url: data.thumbnail_url?.trim() || null,
+            thumbnail_path: data.thumbnail_path?.trim() || null,
             images: data.images && data.images.length > 0 ? data.images : [],
             sizes: data.sizes && data.sizes.length > 0 ? data.sizes : null,
             in_stock: (data.in_stock ?? true) && productStockQuantity > 0,
@@ -1449,7 +1546,13 @@ export async function getAdminArtistsForSelect() {
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-export async function uploadProductImage(formData: FormData): Promise<{ success: true; url: string } | { success: false; error: string }> {
+export async function uploadProductImage(formData: FormData): Promise<{
+    success: true;
+    url: string;
+    path: string;
+    thumbnailUrl: string | null;
+    thumbnailPath: string | null;
+} | { success: false; error: string }> {
     await requireAdmin();
     const file = formData.get("file") as File | null;
     if (!file || !(file instanceof File)) {
@@ -1462,28 +1565,35 @@ export async function uploadProductImage(formData: FormData): Promise<{ success:
         return { success: false, error: "نوع الملف غير مدعوم (PNG, JPG, WebP, GIF فقط)" };
     }
 
-    const supabase = getAdminSupabase();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await supabase.storage
-        .from("products")
-        .upload(fileName, buffer, {
-            cacheControl: "3600",
-            upsert: false,
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getAdminSupabase(),
+            bucket: "products",
+            folder: "products",
+            file,
+            originalFileName: file.name,
             contentType: file.type,
+            profile: "product",
+            createThumbnail: true,
+            returnPublicUrl: true,
         });
 
-    if (error) {
+        return {
+            success: true,
+            url: uploaded.publicUrl ?? "",
+            path: uploaded.path,
+            thumbnailUrl: uploaded.thumbnailPublicUrl ?? null,
+            thumbnailPath: uploaded.thumbnailPath ?? null,
+        };
+    } catch (error) {
         console.error("[uploadProductImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1614,24 +1724,29 @@ export async function uploadExclusiveDesignImage(formData: FormData): Promise<{ 
         return { success: false, error: "نوع الملف غير مدعوم" };
     }
 
-    const supabase = getAdminSupabase();
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `exclusive-designs/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try {
+        const uploaded = await uploadOptimizedImage({
+            supabase: getAdminSupabase(),
+            bucket: "products",
+            folder: "exclusive-designs",
+            file,
+            originalFileName: file.name,
+            contentType: file.type,
+            profile: "display",
+            createThumbnail: true,
+            returnPublicUrl: true,
+        });
 
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { data, error } = await supabase.storage
-        .from("products")
-        .upload(fileName, buffer, { cacheControl: "3600", upsert: false, contentType: file.type });
-
-    if (error) {
+        return { success: true, url: uploaded.publicUrl ?? "" };
+    } catch (error) {
         console.error("[uploadExclusiveDesignImage]", error);
-        return { success: false, error: error.message };
+        const message = error instanceof StorageUploadError
+            ? error.causeMessage || error.message
+            : error instanceof Error
+                ? error.message
+                : "فشل رفع الصورة";
+        return { success: false, error: message };
     }
-
-    const { data: { publicUrl } } = supabase.storage.from("products").getPublicUrl(data.path);
-    return { success: true, url: publicUrl };
 }
 
 export async function deleteSubscriber(id: string) {

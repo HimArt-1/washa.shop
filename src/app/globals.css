@@ -184,9 +184,21 @@
   --hero-smoke-blend: multiply;
   --hero-tagline-text: rgba(75, 52, 52, 0.88);
   --home-flow-bg:
-    radial-gradient(ellipse at 78% 4%, rgba(75, 52, 52, 0.08) 0%, transparent 34%),
-    radial-gradient(ellipse at 18% 48%, rgba(202, 164, 95, 0.1) 0%, transparent 38%),
-    linear-gradient(180deg, #f3e8db 0%, #efe1d2 48%, #f6efe6 100%);
+    radial-gradient(ellipse at 50% -10%, rgba(255, 253, 248, 0.98) 0%, rgba(255, 249, 238, 0.62) 24%, transparent 54%),
+    radial-gradient(ellipse at 82% 4%, rgba(75, 52, 52, 0.12) 0%, transparent 34%),
+    radial-gradient(ellipse at 16% 42%, rgba(202, 164, 95, 0.14) 0%, transparent 40%),
+    radial-gradient(ellipse at 56% 104%, rgba(107, 91, 122, 0.08) 0%, transparent 45%),
+    linear-gradient(180deg, #fbf7ef 0%, #efe1d2 45%, #faf4ea 100%);
+  --home-flow-grid-line: rgba(75, 52, 52, 0.018);
+  --home-flow-grid-line-strong: rgba(154, 123, 61, 0.032);
+  --home-flow-center-vignette: radial-gradient(circle at 50% 9%, rgba(255, 253, 248, 0.68) 0%, rgba(255, 248, 236, 0.28) 28%, transparent 58%);
+  --home-flow-transition-veil: linear-gradient(180deg, var(--wusha-bg) 0%, color-mix(in srgb, var(--wusha-bg) 76%, transparent) 28%, rgba(251, 247, 239, 0.72) 62%, transparent 100%);
+  --home-neural-link-rgb: 154, 123, 61;
+  --home-neural-node-rgb: 75, 52, 52;
+  --home-neural-link-opacity: 0.32;
+  --home-neural-node-opacity: 0.76;
+  --home-neural-canvas-opacity: 0.68;
+  --home-neural-blend: multiply;
   --home-flow-surface: rgba(255, 249, 241, 0.72);
   --home-flow-surface-strong: rgba(255, 248, 238, 0.9);
   --home-flow-border: rgba(75, 52, 52, 0.14);
@@ -350,9 +362,21 @@
   --hero-smoke-opacity: 0.34;
   --hero-smoke-blend: screen;
   --home-flow-bg:
-    radial-gradient(ellipse at 50% 4%, rgba(224, 201, 154, 0.08) 0%, transparent 30%),
-    radial-gradient(ellipse at 20% 52%, rgba(108, 75, 75, 0.14) 0%, transparent 38%),
+    radial-gradient(ellipse at 50% -10%, rgba(206, 174, 127, 0.12) 0%, rgba(108, 75, 75, 0.07) 28%, transparent 54%),
+    radial-gradient(ellipse at 84% 4%, rgba(224, 201, 154, 0.08) 0%, transparent 34%),
+    radial-gradient(ellipse at 18% 42%, rgba(108, 75, 75, 0.18) 0%, transparent 42%),
+    radial-gradient(ellipse at 56% 104%, rgba(157, 139, 177, 0.1) 0%, transparent 45%),
     linear-gradient(180deg, #050303 0%, #0b0607 48%, #050303 100%);
+  --home-flow-grid-line: rgba(224, 201, 154, 0.024);
+  --home-flow-grid-line-strong: rgba(206, 174, 127, 0.036);
+  --home-flow-center-vignette: radial-gradient(circle at 50% 10%, rgba(20, 17, 13, 0.72) 0%, rgba(10, 8, 7, 0.34) 30%, transparent 58%);
+  --home-flow-transition-veil: linear-gradient(180deg, var(--wusha-bg) 0%, color-mix(in srgb, var(--wusha-bg) 76%, transparent) 28%, rgba(11, 6, 7, 0.76) 62%, transparent 100%);
+  --home-neural-link-rgb: 206, 174, 127;
+  --home-neural-node-rgb: 224, 201, 154;
+  --home-neural-link-opacity: 0.28;
+  --home-neural-node-opacity: 0.72;
+  --home-neural-canvas-opacity: 0.74;
+  --home-neural-blend: screen;
   --home-flow-surface: rgba(42, 27, 27, 0.6);
   --home-flow-surface-strong: rgba(26, 15, 16, 0.86);
   --home-flow-border: rgba(224, 201, 154, 0.16);
@@ -1944,6 +1968,274 @@ body.reamaze-active [data-reamaze-widget] {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   Clerk Auth Pages — WASHA AI inspired login surface
+═══════════════════════════════════════════════════════════ */
+
+.auth-clerk-shell {
+  --auth-gold: #ceae7f;
+  --auth-gold-strong: #f1d3a4;
+  --auth-ink: #060504;
+  --auth-card: rgba(9, 7, 5, 0.9);
+  --auth-card-soft: rgba(255, 241, 220, 0.07);
+  --auth-text: #fff1dc;
+  --auth-muted: rgba(231, 206, 176, 0.62);
+  width: 100%;
+  min-width: 0;
+}
+
+.auth-clerk-shell .auth-clerk-root,
+.auth-clerk-shell .auth-clerk-card-box,
+.auth-clerk-shell .cl-rootBox,
+.auth-clerk-shell .cl-cardBox {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.auth-clerk-shell .auth-clerk-card,
+.auth-clerk-shell .cl-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  color: var(--auth-text) !important;
+  background:
+    radial-gradient(circle at 18% 6%, rgba(255, 229, 190, 0.1), transparent 36%),
+    linear-gradient(145deg, rgba(42, 27, 27, 0.96) 0%, rgba(19, 12, 11, 0.95) 48%, var(--auth-card) 100%) !important;
+  border: 1px solid rgba(206, 174, 127, 0.24) !important;
+  border-radius: 1.25rem !important;
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.42),
+    0 12px 34px rgba(206, 174, 127, 0.12),
+    inset 0 1px 0 rgba(255, 246, 232, 0.1) !important;
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+}
+
+.auth-clerk-shell .cl-headerTitle,
+.auth-clerk-shell .cl-headerSubtitle,
+.auth-clerk-shell .cl-formFieldLabel,
+.auth-clerk-shell .cl-footerActionText,
+.auth-clerk-shell .cl-identityPreviewText,
+.auth-clerk-shell .cl-dividerText,
+.auth-clerk-shell .auth-clerk-label,
+.auth-clerk-shell .auth-clerk-muted {
+  color: var(--auth-muted) !important;
+}
+
+.auth-clerk-shell .cl-headerTitle {
+  color: var(--auth-text) !important;
+  font-weight: 800 !important;
+}
+
+.auth-clerk-shell .cl-logoImage,
+.auth-clerk-shell [class*="logoImage"] {
+  filter:
+    brightness(0)
+    saturate(100%)
+    invert(79%)
+    sepia(22%)
+    saturate(557%)
+    hue-rotate(356deg)
+    brightness(88%)
+    contrast(88%)
+    drop-shadow(0 0 8px rgba(206, 174, 127, 0.28)) !important;
+  opacity: 0.95 !important;
+}
+
+.auth-clerk-shell .auth-clerk-input,
+.auth-clerk-shell .cl-formFieldInput {
+  min-height: 2.75rem !important;
+  color: var(--auth-text) !important;
+  background-color: var(--auth-card-soft) !important;
+  border-color: rgba(206, 174, 127, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 246, 232, 0.06) !important;
+  caret-color: var(--auth-gold) !important;
+}
+
+.auth-clerk-shell .auth-clerk-input:focus,
+.auth-clerk-shell .cl-formFieldInput:focus {
+  border-color: rgba(206, 174, 127, 0.62) !important;
+  box-shadow:
+    0 0 0 1px rgba(206, 174, 127, 0.28),
+    0 0 22px rgba(206, 174, 127, 0.12),
+    inset 0 1px 0 rgba(255, 246, 232, 0.08) !important;
+}
+
+.auth-clerk-shell .cl-formFieldInput::placeholder {
+  color: rgba(231, 206, 176, 0.38) !important;
+}
+
+.auth-clerk-shell .auth-clerk-primary,
+.auth-clerk-shell .cl-formButtonPrimary {
+  min-height: 2.875rem !important;
+  color: var(--auth-ink) !important;
+  background: linear-gradient(180deg, var(--auth-gold-strong), var(--auth-gold)) !important;
+  box-shadow:
+    0 12px 34px rgba(206, 174, 127, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32) !important;
+}
+
+.auth-clerk-shell .auth-clerk-primary:hover,
+.auth-clerk-shell .cl-formButtonPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 42px rgba(206, 174, 127, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.36) !important;
+}
+
+.auth-clerk-shell .auth-clerk-social,
+.auth-clerk-shell .cl-socialButtonsBlockButton,
+.auth-clerk-shell .auth-clerk-identity,
+.auth-clerk-shell .cl-identityPreview {
+  color: var(--auth-text) !important;
+  background-color: rgba(255, 241, 220, 0.055) !important;
+  border-color: rgba(206, 174, 127, 0.18) !important;
+}
+
+.auth-clerk-shell .auth-clerk-field-action,
+.auth-clerk-shell .cl-formFieldAction,
+.auth-clerk-shell .cl-footerActionLink {
+  color: var(--auth-gold) !important;
+}
+
+.auth-clerk-shell .cl-footer,
+.auth-clerk-shell .cl-footerAction,
+.auth-clerk-shell .cl-footerPages,
+.auth-clerk-shell .cl-footerPagesLink,
+.auth-clerk-shell [class*="footerAction"],
+.auth-clerk-shell [class*="footerPages"] {
+  display: none !important;
+}
+
+.auth-clerk-shell .auth-clerk-divider,
+.auth-clerk-shell .cl-dividerLine {
+  background-color: rgba(206, 174, 127, 0.16) !important;
+}
+
+.auth-clerk-shell .auth-clerk-error,
+.auth-clerk-shell .cl-formFieldErrorText,
+.auth-clerk-shell .cl-alertText {
+  color: #ffb2a8 !important;
+}
+
+.auth-clerk-shell .auth-clerk-success,
+.auth-clerk-shell .cl-formFieldSuccessText {
+  color: #8fd8b4 !important;
+}
+
+.auth-clerk-shell .auth-clerk-input-action,
+.auth-clerk-shell .cl-formFieldInputShowPasswordButton {
+  color: var(--auth-gold) !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-grid,
+.auth-clerk-shell .cl-otpCodeField,
+.auth-clerk-shell [class*="otpCodeField"] {
+  position: relative !important;
+  display: flex !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  gap: 0.6rem !important;
+  justify-content: center !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-grid input,
+.auth-clerk-shell .cl-otpCodeField input,
+.auth-clerk-shell [class*="otpCodeField"] input,
+.auth-clerk-shell input[autocomplete="one-time-code"] {
+  caret-color: transparent !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-grid [class*="cursor"],
+.auth-clerk-shell .auth-clerk-otp-grid [class*="Cursor"],
+.auth-clerk-shell .auth-clerk-otp-grid [class*="caret"],
+.auth-clerk-shell .auth-clerk-otp-grid [class*="Caret"],
+.auth-clerk-shell .cl-otpCodeField [class*="cursor"],
+.auth-clerk-shell .cl-otpCodeField [class*="Cursor"],
+.auth-clerk-shell .cl-otpCodeField [class*="caret"],
+.auth-clerk-shell .cl-otpCodeField [class*="Caret"],
+.auth-clerk-shell [class*="otpCodeField"] [class*="cursor"],
+.auth-clerk-shell [class*="otpCodeField"] [class*="Cursor"],
+.auth-clerk-shell [class*="otpCodeField"] [class*="caret"],
+.auth-clerk-shell [class*="otpCodeField"] [class*="Caret"] {
+  display: none !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-grid [class*="input"]::before,
+.auth-clerk-shell .auth-clerk-otp-grid [class*="input"]::after,
+.auth-clerk-shell .auth-clerk-otp-grid [class*="Input"]::before,
+.auth-clerk-shell .auth-clerk-otp-grid [class*="Input"]::after,
+.auth-clerk-shell .cl-otpCodeField [class*="input"]::before,
+.auth-clerk-shell .cl-otpCodeField [class*="input"]::after,
+.auth-clerk-shell .cl-otpCodeField [class*="Input"]::before,
+.auth-clerk-shell .cl-otpCodeField [class*="Input"]::after,
+.auth-clerk-shell [class*="otpCodeField"] [class*="input"]::before,
+.auth-clerk-shell [class*="otpCodeField"] [class*="input"]::after,
+.auth-clerk-shell [class*="otpCodeField"] [class*="Input"]::before,
+.auth-clerk-shell [class*="otpCodeField"] [class*="Input"]::after {
+  content: none !important;
+  display: none !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-box,
+.auth-clerk-shell .cl-otpCodeFieldInput,
+.auth-clerk-shell input[inputmode="numeric"][maxlength="1"] {
+  width: clamp(2.5rem, 11vw, 3rem) !important;
+  height: 3.25rem !important;
+  padding: 0 !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  text-align: center !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  color: var(--auth-text) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 241, 220, 0.13), rgba(255, 241, 220, 0.065)) !important;
+  border-color: rgba(206, 174, 127, 0.38) !important;
+  border-radius: 0.95rem !important;
+  caret-color: transparent !important;
+  outline: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 246, 232, 0.08),
+    0 0 0 1px rgba(206, 174, 127, 0.08) !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-box:focus,
+.auth-clerk-shell .auth-clerk-otp-box:focus-visible,
+.auth-clerk-shell .cl-otpCodeFieldInput:focus,
+.auth-clerk-shell .cl-otpCodeFieldInput:focus-visible,
+.auth-clerk-shell input[inputmode="numeric"][maxlength="1"]:focus {
+  color: #fff8eb !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(241, 211, 164, 0.28), rgba(255, 241, 220, 0.1) 54%, rgba(255, 241, 220, 0.07)) !important;
+  border-color: rgba(241, 211, 164, 0.78) !important;
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px rgba(241, 211, 164, 0.34),
+    0 0 0 4px rgba(206, 174, 127, 0.1),
+    0 0 26px rgba(206, 174, 127, 0.18),
+    inset 0 1px 0 rgba(255, 246, 232, 0.1) !important;
+}
+
+.auth-clerk-shell .auth-clerk-otp-box::selection,
+.auth-clerk-shell .cl-otpCodeFieldInput::selection,
+.auth-clerk-shell input[inputmode="numeric"][maxlength="1"]::selection {
+  background: transparent !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
    Premium Card — وشّى | أعلى مستوى فاخرية
 ═══════════════════════════════════════════════════════════ */
 
@@ -2054,25 +2346,48 @@ body.reamaze-active [data-reamaze-widget] {
 .home-flow-stack::before {
   top: 0;
   height: clamp(8rem, 16vh, 14rem);
-  background:
-    linear-gradient(
-      180deg,
-      var(--wusha-bg) 0%,
-      color-mix(in srgb, var(--wusha-bg) 78%, transparent) 28%,
-      color-mix(in srgb, var(--home-flow-strong) 7%, transparent) 64%,
-      transparent 100%
-    );
+  background: var(--home-flow-transition-veil);
 }
 
 .home-flow-stack::after {
   inset-block: 0;
-  opacity: 0.035;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+  background-image:
+    var(--home-flow-center-vignette),
+    linear-gradient(var(--home-flow-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--home-flow-grid-line) 1px, transparent 1px),
+    linear-gradient(var(--home-flow-grid-line-strong) 1px, transparent 1px),
+    linear-gradient(90deg, var(--home-flow-grid-line-strong) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  background-position: center top, center top, center top, center top, center top, center;
+  background-size: auto, 56px 56px, 56px 56px, 224px 224px, 224px 224px, 180px 180px;
+  opacity: 1;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.home-flow-neural-field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: var(--home-neural-canvas-opacity);
+  mix-blend-mode: var(--home-neural-blend);
+  filter: saturate(0.92);
+  -webkit-mask-image:
+    radial-gradient(ellipse at 50% 14%, black 0%, black 42%, transparent 78%),
+    linear-gradient(180deg, transparent 0%, black 3%, black 90%, transparent 100%);
+  mask-image:
+    radial-gradient(ellipse at 50% 14%, black 0%, black 42%, transparent 78%),
+    linear-gradient(180deg, transparent 0%, black 3%, black 90%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
 }
 
 .home-flow-stack > .home-flow-section {
   background: transparent;
+  z-index: 2;
 }
 
 .home-flow-stack > .home-flow-section::before,

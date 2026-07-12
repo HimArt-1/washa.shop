@@ -937,7 +937,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn }: { ship
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "paylink" ? "متابعة للدفع عبر Paylink" : "تأكيد الطلب"}
+                                            {paymentMethod === "paylink" ? "ادفع" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

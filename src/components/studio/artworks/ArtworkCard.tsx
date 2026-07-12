@@ -12,6 +12,7 @@ interface Artwork {
     id: string;
     title: string;
     image_url: string;
+    thumbnail_url?: string | null;
     status: string;
     created_at: string;
 }
@@ -32,6 +33,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
     const [error, setError] = useState<string | null>(null);
     const statusMeta = artworkStatusMap[artwork.status] ?? artworkStatusMap.draft;
     const canDesignProduct = artwork.status === "published";
+    const cardImageUrl = artwork.thumbnail_url || artwork.image_url;
 
     const handleDelete = async () => {
         setIsDeleting(true);
@@ -69,7 +71,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
             {/* Image */}
             <div className="relative aspect-[3/4] bg-[color:color-mix(in_srgb,var(--wusha-text)_4%,transparent)]">
                 <Image
-                    src={artwork.image_url}
+                    src={cardImageUrl}
                     alt={artwork.title}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"

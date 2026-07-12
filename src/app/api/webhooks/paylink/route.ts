@@ -16,6 +16,7 @@ import {
     isPaylinkInvoicePaid,
 } from "@/lib/paylink-security";
 import { emitPaymentCollectionIssueAlert } from "@/lib/operational-event-alerts";
+import { verifyCreditPurchaseWebhook } from "@/app/api/washa-ai/credits/service";
 
 /** Paylink يرسل GET لاختبار الرابط — نرد بـ JSON صالح */
 export async function GET() {
@@ -82,6 +83,37 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ received: true });
             }
             await confirmWarehousePayment(resolvedOrderNumber, amount);
+            return NextResponse.json({ received: true });
+        }
+
+        if (resolvedOrderNumber.startsWith("WAI-")) {
+            console.log(`[Paylink Webhook] WASHA AI credit payment detected: ${resolvedOrderNumber}`);
+            const result = await verifyCreditPurchaseWebhook({
+                orderNumber: resolvedOrderNumber,
+                transactionNo,
+                invoice,
+            });
+
+            if (!result.ok) {
+                console.error(`[Paylink Webhook] WASHA AI credit confirmation failed for ${resolvedOrderNumber}: ${result.error}`);
+                await emitPaymentCollectionIssueAlert({
+                    dispatchKey: `paylink:washa_ai_credit_failed:${transactionNo}:${resolvedOrderNumber}`,
+                    title: "فشل شحن رصيد WASHA AI من Paylink",
+                    orderNumber: resolvedOrderNumber,
+                    amount: getPaylinkInvoiceAmount(invoice),
+                    provider: "paylink",
+                    reason: result.error,
+                    severity: result.status >= 500 ? "critical" : "warning",
+                    metadata: {
+                        transaction_no: transactionNo,
+                        invoice_order_number: invoiceOrderNumber ?? null,
+                        status: result.status,
+                    },
+                }).catch(console.error);
+            } else {
+                console.log(`[Paylink Webhook] ✓ WASHA AI credits confirmed: ${resolvedOrderNumber}`);
+            }
+
             return NextResponse.json({ received: true });
         }
 

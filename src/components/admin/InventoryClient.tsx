@@ -131,13 +131,14 @@ export function InventoryClient({ initialProducts, lowStockCount, outOfStockCoun
                                     const isLow = p.stock_quantity != null && p.stock_quantity <= 5 && p.stock_quantity > 0;
                                     const isOut = !p.in_stock || p.stock_quantity === 0;
                                     const isEditing = editingId === p.id;
+                                    const productImage = p.thumbnail_url || p.image_url;
                                     return (
                                         <tr key={p.id} className="border-b border-theme-faint hover:bg-theme-faint">
                                             <td className="px-5 py-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-theme-faint">
-                                                        {p.image_url && (
-                                                            <Image src={p.image_url} alt="" fill className="object-cover" sizes="40px" />
+                                                        {productImage && (
+                                                            <Image src={productImage} alt="" fill className="object-cover" sizes="40px" />
                                                         )}
                                                     </div>
                                                     <span className="font-medium text-theme-strong">{p.title}</span>

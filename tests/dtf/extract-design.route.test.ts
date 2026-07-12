@@ -135,7 +135,7 @@ describe("extract-design route", () => {
         );
     });
 
-    it("preserves normalized provider failures", async () => {
+    it("returns a public provider failure", async () => {
         mockExtractDesign.mockRejectedValue(new Error("provider timeout"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
             message: "انتهت مهلة الاستخراج من المزود الخارجي.",
@@ -147,7 +147,7 @@ describe("extract-design route", () => {
         expect(response.status).toBe(504);
         expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
-            error: "انتهت مهلة الاستخراج من المزود الخارجي.",
+            error: "تعذر تجهيز التصميم للطباعة الآن. جرّب مرة أخرى بعد لحظات.",
         });
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({

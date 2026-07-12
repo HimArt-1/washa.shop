@@ -1,6 +1,13 @@
 import { isCleanOutputEnabled } from '../lib/outputPreferences';
 
 // Use the integrated Next.js API instead of a separate local proxy server.
+import {
+  getPublicStudioErrorMessage,
+  PUBLIC_EXTRACTION_ERROR,
+  PUBLIC_GENERATION_ERROR,
+  type PublicStudioErrorScope,
+} from '../lib/publicErrors';
+
 const API_BASE_URL = '/api/washa-dtf-studio';
 
 interface GenerationPreferences {
@@ -16,6 +23,41 @@ interface GenerationPreferences {
   garmentReferenceSide?: 'front' | 'back';
 }
 
+// أحداث تحدّث واجهة الرصيد بعد كل توليد أو عند نفاد الحصة.
+export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
+export const QUOTA_EXCEEDED_EVENT = 'washa:quota-exceeded';
+
+function dispatchQuotaChanged(data: { freeRemaining?: unknown; paidBalance?: unknown }) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(QUOTA_CHANGED_EVENT, {
+      detail: {
+        freeRemaining: typeof data?.freeRemaining === 'number' ? data.freeRemaining : null,
+        paidBalance: typeof data?.paidBalance === 'number' ? data.paidBalance : null,
+      },
+    })
+  );
+}
+
+function dispatchQuotaExceeded(info: {
+  code?: unknown;
+  canPurchase?: unknown;
+  freeRemaining?: unknown;
+  paidBalance?: unknown;
+}) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent(QUOTA_EXCEEDED_EVENT, {
+      detail: {
+        reason: info?.code === 'audience_disabled' ? 'blocked' : 'exhausted',
+        canPurchase: info?.canPurchase === true,
+        freeRemaining: typeof info?.freeRemaining === 'number' ? info.freeRemaining : 0,
+        paidBalance: typeof info?.paidBalance === 'number' ? info.paidBalance : 0,
+      },
+    })
+  );
+}
+
 function compactPrompt(parts: Array<string | null | undefined>) {
   return parts
     .map((part) => (typeof part === 'string' ? part.trim() : ''))
@@ -25,10 +67,23 @@ function compactPrompt(parts: Array<string | null | undefined>) {
     .trim();
 }
 
-async function parseApiResponse(response: Response) {
+function createPublicApiError(
+  message: string | null | undefined,
+  scope: PublicStudioErrorScope,
+  response?: Response,
+  data?: unknown
+) {
+  const publicMessage = getPublicStudioErrorMessage(message, scope);
+  const error = new Error(publicMessage);
+  (error as Error & { data?: unknown; status?: number }).data = data;
+  if (response) {
+    (error as Error & { data?: unknown; status?: number }).status = response.status;
+  }
+  return error;
+}
+
+async function parseApiResponse(response: Response, scope: PublicStudioErrorScope) {
   const contentType = response.headers.get('content-type') || '';
-  const traceId = response.headers.get('x-trace-id') || response.headers.get('X-Trace-Id');
-  const withTrace = (message: string) => (traceId ? `${message} (trace: ${traceId})` : message);
 
   if (contentType.includes('application/json')) {
     const data = await response.json();
@@ -39,7 +94,7 @@ async function parseApiResponse(response: Response) {
           : (typeof data?.message === 'string' && data.message.trim())
             ? data.message
             : `HTTP ${response.status}`;
-      throw new Error(withTrace(msg));
+      throw createPublicApiError(msg, scope, response, data);
     }
     return data;
   }
@@ -47,13 +102,13 @@ async function parseApiResponse(response: Response) {
   const text = await response.text();
   if (!response.ok) {
     if (response.status === 413) {
-      throw new Error(withTrace('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.'));
+      throw createPublicApiError('الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.', scope, response);
     }
 
-    throw new Error(withTrace(text || 'فشل الاتصال بالخادم'));
+    throw createPublicApiError(text || null, scope, response);
   }
 
-  throw new Error(withTrace(text || 'استجابة غير متوقعة من الخادم'));
+  throw createPublicApiError(text || null, scope, response);
 }
 
 export async function generateMockup(
@@ -203,12 +258,18 @@ export async function generateMockup(
       body: JSON.stringify(body),
     });
 
-    const data = await parseApiResponse(response);
-    if (data?.error) throw new Error(data.error);
+    const data = await parseApiResponse(response, 'generation');
+    if (data?.error) throw createPublicApiError(data.error, 'generation', response, data);
+    dispatchQuotaChanged(data);
     return data.imageUrl || null;
   } catch (error) {
+    const info = (error as { data?: Record<string, unknown> })?.data;
+    if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {
+      dispatchQuotaExceeded(info);
+    }
     console.error("Error generating mockup via proxy:", error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(PUBLIC_GENERATION_ERROR);
   }
 }
 
@@ -229,11 +290,12 @@ export async function extractDesign(mockupImageBase64: string, mimeType: string,
       }),
     });
 
-    const data = await parseApiResponse(response);
-    if (data?.error) throw new Error(data.error);
+    const data = await parseApiResponse(response, 'extraction');
+    if (data?.error) throw createPublicApiError(data.error, 'extraction', response, data);
     return data.imageUrl || null;
   } catch (error) {
     console.error("Error extracting design via proxy:", error);
-    throw error;
+    if (error instanceof Error) throw error;
+    throw new Error(PUBLIC_EXTRACTION_ERROR);
   }
 }

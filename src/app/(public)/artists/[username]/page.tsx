@@ -217,7 +217,7 @@ export default async function ArtistProfilePage({ params }: { params: Promise<{ 
                             >
                                 <div className="aspect-square relative overflow-hidden">
                                     <Image
-                                        src={artwork.image_url}
+                                        src={artwork.thumbnail_url || artwork.image_url}
                                         alt={artwork.title}
                                         fill
                                         className="object-cover group-hover:scale-105 transition-transform duration-700"

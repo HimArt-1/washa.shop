@@ -73,6 +73,7 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isUploading) return;
         if (!file) { setError("الرجاء اختيار صورة للعمل الفني"); return; }
         if (!formData.title.trim()) { setError("العنوان مطلوب"); return; }
         if (!formData.category_id) { setError("الرجاء اختيار الفئة"); return; }
@@ -90,6 +91,7 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
             const result = await createArtwork({
                 ...formData,
                 image_url: uploadResult.url,
+                thumbnail_url: uploadResult.thumbnailUrl,
                 tags: formData.tags.split(",").map(t => t.trim()).filter(Boolean),
                 price: formData.price ? parseFloat(formData.price) : null,
                 year: formData.year ? parseInt(formData.year, 10) : null,
@@ -98,8 +100,8 @@ export function UploadArtworkForm({ categories }: { categories: Category[] }) {
             if (!result.success) throw new Error(result.error);
 
             router.push("/studio/artworks");
-        } catch (err: any) {
-            setError(err.message || "حدث خطأ أثناء الرفع");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "حدث خطأ أثناء الرفع");
         } finally {
             setIsUploading(false);
         }

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DesignProvider, useDesign } from './context/DesignContext';
+import { CreditsProvider } from './context/CreditsContext';
+import CreditPurchaseModal from './components/CreditPurchaseModal';
 import { useDesignHistory } from './hooks/useDesignHistory';
 import Header from './components/Header';
 import StepGarment from './components/steps/StepGarment';
@@ -143,9 +145,12 @@ export default function App() {
   return (
     <ErrorBoundary>
       <EntryBridge />
-      <DesignProvider>
-        <AppContent />
-      </DesignProvider>
+      <CreditsProvider>
+        <DesignProvider>
+          <AppContent />
+        </DesignProvider>
+        <CreditPurchaseModal />
+      </CreditsProvider>
     </ErrorBoundary>
   );
 }

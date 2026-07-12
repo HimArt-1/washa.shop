@@ -87,6 +87,9 @@ describe("generate-mockup route", () => {
             used: 1,
             quotaDate: "2026-03-30",
             tracked: true,
+            source: "free",
+            freeRemaining: 4,
+            paidBalance: 0,
         });
         mockGenerateMockup.mockResolvedValue("data:image/png;base64,MOCKUP");
         mockLogActivity.mockResolvedValue(true);
@@ -177,18 +180,57 @@ describe("generate-mockup route", () => {
             used: 5,
             quotaDate: "2026-03-30",
             tracked: false,
+            source: "none",
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: false,
+            reason: "quota_exceeded",
         });
 
         const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
         expect(response.status).toBe(403);
         await expect(response.json()).resolves.toEqual({
-            error: "بلغت حصتك اليومية في Washa AI لهذا اليوم. ننتظرك مجددًا غدًا.",
+            error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
+            code: "quota_exceeded",
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: false,
         });
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",
                 status: "quota_exceeded",
+            })
+        );
+    });
+
+    it("returns a service-unavailable response when quota verification is unavailable", async () => {
+        mockReserveDailyQuota.mockResolvedValue({
+            allowed: false,
+            remaining: 0,
+            used: 0,
+            tracked: false,
+            source: "none",
+            freeRemaining: 0,
+            paidBalance: 0,
+            reason: "quota_unavailable",
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toEqual({
+            error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
+            code: "quota_unavailable",
+            canPurchase: false,
+        });
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+        expect(mockLogActivity).toHaveBeenCalledWith(
+            expect.objectContaining({
+                action: "generate-mockup",
+                status: "error",
+                errorMessage: "تعذّر التحقق من رصيد WASHA AI قبل التوليد.",
             })
         );
     });
@@ -201,6 +243,9 @@ describe("generate-mockup route", () => {
         await expect(response.json()).resolves.toEqual({
             imageUrl: "data:image/png;base64,MOCKUP",
             remainingPoints: 4,
+            freeRemaining: 4,
+            paidBalance: 0,
+            consumedSource: "free",
         });
         expect(mockGenerateMockup).toHaveBeenCalledWith(
             "تصميم عربي حديث",
@@ -218,7 +263,7 @@ describe("generate-mockup route", () => {
         );
     });
 
-    it("releases tracked quota and preserves normalized provider failures", async () => {
+    it("releases tracked quota and returns a public provider failure", async () => {
         mockGenerateMockup.mockRejectedValue(new Error("provider timeout"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
             message: "انتهت مهلة التوليد من المزود الخارجي.",
@@ -230,9 +275,9 @@ describe("generate-mockup route", () => {
         expect(response.status).toBe(504);
         expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toEqual({
-            error: "انتهت مهلة التوليد من المزود الخارجي.",
+            error: "تعذر إنشاء التصميم الآن. عدّل الوصف قليلًا أو جرّب مرة أخرى بعد لحظات.",
         });
-        expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber");
+        expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free");
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",

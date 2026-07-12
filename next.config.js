@@ -98,6 +98,7 @@ module.exports = (phase) => {
     generateBuildId: async () => deploymentId,
     images: {
       formats: ['image/avif', 'image/webp'],
+      minimumCacheTTL: 2678400,
       remotePatterns: remoteHosts.map((hostname) => ({
         protocol: 'https',
         hostname,

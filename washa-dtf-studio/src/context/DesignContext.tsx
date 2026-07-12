@@ -17,8 +17,16 @@ import {
   type DtfStudioSizeOption,
 } from '../types';
 import { generateMockup, extractDesign } from '../services/geminiService';
+import { useCredits } from './CreditsContext';
 import { fetchDtfStudioConfig } from '../services/configService';
 import { makeEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import {
+  getPublicStudioErrorMessage,
+  PUBLIC_EXTRACTION_ERROR,
+  PUBLIC_GENERATION_ERROR,
+  PUBLIC_SUBMIT_ERROR,
+  type PublicStudioErrorScope,
+} from '../lib/publicErrors';
 import {
   buildWashaAiSignInUrl,
   consumeWashaAiAuthDraft,
@@ -146,12 +154,10 @@ const EMPTY_STATE: DesignState = {
   avoidHardEdges: true,
 };
 
-function getReadableErrorMessage(error: unknown, fallback: string) {
+function getReadableErrorMessage(error: unknown, fallback: string, scope: PublicStudioErrorScope = 'general') {
   if (error instanceof Error) {
     const message = error.message.trim();
-    if (message) {
-      return message;
-    }
+    return getPublicStudioErrorMessage(message, scope, fallback);
   }
 
   return fallback;
@@ -172,6 +178,11 @@ function isLikelyGenerationTimeout(message: string) {
   );
 }
 
+function isLikelyGenerationTimeoutError(error: unknown, message: string) {
+  const status = (error as { status?: unknown })?.status;
+  return status === 504 || isLikelyGenerationTimeout(message);
+}
+
 async function parseApiPayload(response: Response) {
   const contentType = response.headers.get('content-type') || '';
 
@@ -180,7 +191,7 @@ async function parseApiPayload(response: Response) {
   }
 
   const text = await response.text();
-  return { error: text || `HTTP ${response.status}` };
+  return { error: getPublicStudioErrorMessage(text, 'submit', PUBLIC_SUBMIT_ERROR) };
 }
 
 function resolveOperationalGarmentReference(
@@ -273,6 +284,7 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 }
 
 export function DesignProvider({ children }: { children: React.ReactNode }) {
+  const { requestGenerationAccess } = useCredits();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(EMPTY_STATE);
   const [config, setConfig] = useState<DtfStudioConfig | null>(null);
@@ -558,6 +570,21 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     setIsGenerating(true);
     setError(null);
+
+    const creditAccess = await requestGenerationAccess();
+    if (creditAccess.allowed === false) {
+      if (creditAccess.reason === 'unavailable') {
+        const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
+        setError(message);
+        showToast(message, 'error');
+      } else {
+        setError(null);
+      }
+      setIsGenerating(false);
+      generationInFlightRef.current = false;
+      return;
+    }
+
     setExtractedImage(null);
     setStep(6);
 
@@ -616,16 +643,27 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         showToast('لم تصل صورة صالحة؛ أعد المحاولة', 'error');
       }
     } catch (generationError) {
-      const message = getReadableErrorMessage(generationError, 'حدث خطأ أثناء التوليد. تأكد من إعدادات Gemini على الخادم.');
+      // نفاد الحصة ليس خطأً — نافذة الرصيد اللطيفة تتكفّل به (حدث washa:quota-exceeded).
+      // نُخفي الرسالة الخام (بما فيها trace id) ولا نضع حالة خطأ في الواجهة.
+      const errorCode = (generationError as { data?: { code?: string } })?.data?.code;
+      if (errorCode === 'quota_exceeded' || errorCode === 'audience_disabled') {
+        setStep(5);
+        setMockupImage(null);
+        setExtractedImage(null);
+        setError(null);
+        return;
+      }
+
+      const message = getReadableErrorMessage(generationError, PUBLIC_GENERATION_ERROR, 'generation');
       const canRetryWithLighterReference = Boolean(
-        isLikelyGenerationTimeout(message) &&
+        isLikelyGenerationTimeoutError(generationError, message) &&
         state.referenceImage &&
         state.referenceImageMimeType
       );
 
       if (canRetryWithLighterReference) {
         try {
-          showToast('الخادم بطيء الآن؛ نجرب نسخة أخف من الصورة المرجعية...', 'info');
+          showToast('نجرب نسخة أخف من الصورة المرجعية...', 'info');
           const compressedReference = await resizeDataUrl(
             `data:${state.referenceImageMimeType};base64,${state.referenceImage}`,
             {
@@ -648,7 +686,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      const timeoutHint = isLikelyGenerationTimeout(message)
+      const timeoutHint = isLikelyGenerationTimeoutError(generationError, message)
         ? ' جرّب وصفًا أقصر أو صورة مرجعية أصغر ثم أعد المحاولة.'
         : '';
       const finalMessage = `${message}${timeoutHint}`;
@@ -661,6 +699,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [
     requireAuthenticatedAction,
     isGenerating,
+    requestGenerationAccess,
     selectedGarment,
     selectedPalette,
     selectedSize?.stockStatus,
@@ -849,7 +888,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         showToast('فشل في استخراج التصميم', 'error');
       }
     } catch (extractError) {
-      const message = getReadableErrorMessage(extractError, 'حدث خطأ أثناء الاستخراج.');
+      const message = getReadableErrorMessage(extractError, PUBLIC_EXTRACTION_ERROR, 'extraction');
       setError(message);
       showToast(message, 'error');
     } finally {
@@ -878,7 +917,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (configError && config === FALLBACK_DTF_CONFIG) {
-      const msg = 'لا يمكن إضافة التصميم للسلة حالياً لأن إعدادات القطع والأسعار لم تُحمّل من الخادم. حاول تحديث الصفحة بعد قليل.';
+      const msg = 'لا يمكن إضافة التصميم للسلة حالياً. حاول تحديث الصفحة بعد قليل.';
       setError(msg);
       showToast(msg, 'error');
       return false;
@@ -1003,7 +1042,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       showToast('تمت إضافة التصميم إلى السلة بنجاح', 'success');
       return true;
     } catch (submitError) {
-      const msg = getReadableErrorMessage(submitError, 'حدث خطأ أثناء إرسال الطلب. حاول مرة أخرى.');
+      const msg = getReadableErrorMessage(submitError, PUBLIC_SUBMIT_ERROR, 'submit');
       setError(msg);
       showToast(msg, 'error');
       return false;
