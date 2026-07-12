@@ -87,7 +87,13 @@ type ServerOrderPayload =
         error: string;
     };
 
-const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = ["cod", "tap", "stripe", "paylink", "pos_cash", "pos_card"];
+const VALID_PAYMENT_METHODS: OrderPaymentMethod[] = [
+    "cod",
+    "tap",
+    "pos_cash",
+    "pos_card",
+    ...(process.env.LEGACY_PAYMENT_CREATION_ENABLED === "true" ? ["stripe", "paylink"] as OrderPaymentMethod[] : []),
+];
 const POS_PAYMENT_METHODS: OrderPaymentMethod[] = ["pos_cash", "pos_card"];
 const POS_ALLOWED_ROLES: UserRole[] = ["admin", "dev", "booth"];
 

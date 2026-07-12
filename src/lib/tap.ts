@@ -100,6 +100,9 @@ export async function createTapCharge(input: CreateTapChargeInput) {
             reference: {
                 transaction: input.orderId,
                 order: input.orderNumber,
+                // Tap reuses the same response for this value for 24 hours,
+                // preventing double-clicks and network retries from charging twice.
+                idempotent: `store-${input.orderId}`,
             },
             customer: {
                 ...splitName(input.customer.name),

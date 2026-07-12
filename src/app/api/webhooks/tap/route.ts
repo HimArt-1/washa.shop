@@ -12,11 +12,20 @@ export async function POST(req: NextRequest) {
     let posted: TapCharge | null = null;
     try {
         posted = JSON.parse(await req.text()) as TapCharge;
+    } catch {
+        return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+
+    try {
         const hash = req.headers.get("hashstring");
         if (!verifyTapWebhookHash(posted, hash)) {
             return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
         }
+    } catch {
+        return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
+    }
 
+    try {
         const charge = await retrieveTapCharge(posted.id);
         const orderId = getTapOrderId(charge);
         if (!orderId) return NextResponse.json({ error: "Missing order reference" }, { status: 400 });
