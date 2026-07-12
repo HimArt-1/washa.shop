@@ -12,6 +12,7 @@ const PAYLINK_BASE_URL =
 export const PAYLINK_API_ID = process.env.PAYLINK_API_ID;
 export const PAYLINK_SECRET_KEY = process.env.PAYLINK_SECRET_KEY;
 export const PAYLINK_ENABLED = !!(PAYLINK_API_ID && PAYLINK_SECRET_KEY);
+export const PAYLINK_CREATION_ENABLED = PAYLINK_ENABLED && process.env.LEGACY_PAYMENT_CREATION_ENABLED === "true";
 
 /** Fetch a short-lived Bearer token from Paylink */
 export async function getPaylinkToken(): Promise<string> {
@@ -79,6 +80,9 @@ export interface PaylinkInvoiceResponse {
 export async function createPaylinkInvoice(
     opts: CreateInvoiceOptions
 ): Promise<PaylinkInvoiceResponse> {
+    if (!PAYLINK_CREATION_ENABLED) {
+        throw new Error("[Paylink] إنشاء مدفوعات جديدة متوقف. استخدم Tap.");
+    }
     const token = await getPaylinkToken();
 
     const res = await fetch(`${PAYLINK_BASE_URL}/api/addInvoice`, {
