@@ -85,8 +85,13 @@ const deploymentId =
 
 module.exports = (phase) => {
   const isDevelopmentServer = phase === PHASE_DEVELOPMENT_SERVER;
+  const hasProductionClerkPublishableKey =
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim().startsWith('pk_live_');
   const shouldUseLocalClerkClientMock =
-    process.env.DEV_AUTH_BYPASS?.trim().toLowerCase() === 'true';
+    isDevelopmentServer && (
+      process.env.DEV_AUTH_BYPASS?.trim().toLowerCase() === 'true' ||
+      hasProductionClerkPublishableKey
+    );
 
   /** @type {import('next').NextConfig} */
   return {
