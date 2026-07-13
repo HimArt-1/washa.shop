@@ -1,4 +1,4 @@
-import type { GuidedIdeaBrief } from '../types';
+import type { GuidedIdeaBrief, GuidedIdeaDirection } from '../types';
 
 export type GuidedIdeaQualityTier = 'needs-details' | 'ready' | 'strong';
 
@@ -8,6 +8,14 @@ export type GuidedIdeaQuality = {
   label: string;
   message: string;
   suggestions: string[];
+};
+
+export type CreativeDirection = {
+  id: GuidedIdeaDirection;
+  label: string;
+  eyebrow: string;
+  description: string;
+  promptFragment: string;
 };
 
 function clean(value: string) {
@@ -27,7 +35,37 @@ export function createEmptyGuidedIdeaBrief(): GuidedIdeaBrief {
     meaning: '',
     wording: '',
     avoid: '',
+    direction: '',
   };
+}
+
+export function buildCreativeDirections(brief: GuidedIdeaBrief): CreativeDirection[] {
+  const subject = cleanWithin(brief.subject, 60) || 'الفكرة الرئيسية';
+  const meaning = cleanWithin(brief.meaning, 46);
+
+  return [
+    {
+      id: 'cinematic',
+      label: 'سينمائي',
+      eyebrow: 'مشهد وحركة',
+      description: `${subject} داخل مشهد واسع بإضاءة درامية وحركة تقود العين${meaning ? ` نحو ${meaning}` : ' نحو لحظة مؤثرة'}.`,
+      promptFragment: 'برؤية سينمائية عميقة، وإضاءة درامية، وحركة واضحة تقود العين',
+    },
+    {
+      id: 'symbolic',
+      label: 'رمزي',
+      eyebrow: 'معنى واختزال',
+      description: `${subject} كرمز مركزي مكثف، تختزل تفاصيله ${meaning || 'جوهر الفكرة'} بوضوح وأناقة.`,
+      promptFragment: 'برؤية رمزية تختزل المعنى في علامة مركزية قوية وتفاصيل قليلة ذات دلالة',
+    },
+    {
+      id: 'abstract',
+      label: 'تجريدي',
+      eyebrow: 'إيقاع وتكوين',
+      description: `${subject} عبر إيقاع من الخطوط والكتل والمساحات، ليعبّر عن ${meaning || 'الفكرة'} بحرية بصرية.`,
+      promptFragment: 'برؤية تجريدية تحول الفكرة إلى إيقاع من الخطوط والكتل والمساحات المتوازنة',
+    },
+  ];
 }
 
 export function buildGuidedIdeaPrompt(brief: GuidedIdeaBrief) {
@@ -36,11 +74,13 @@ export function buildGuidedIdeaPrompt(brief: GuidedIdeaBrief) {
 
   const mood = cleanWithin(brief.mood, 35);
   const meaning = cleanWithin(brief.meaning, 55);
-  const wording = cleanWithin(brief.wording, 40);
-  const avoid = cleanWithin(brief.avoid, 55);
+  const wording = cleanWithin(brief.wording, 38);
+  const avoid = cleanWithin(brief.avoid, 24);
+  const direction = buildCreativeDirections(brief).find((option) => option.id === brief.direction);
   const parts = [`تصميم يركز على ${subject}`];
 
   if (mood) parts.push(`بطابع ${mood}`);
+  if (direction) parts.push(direction.promptFragment);
   if (meaning) parts.push(`ويعبّر عن ${meaning}`);
   if (wording) parts.push(`ويتضمن العبارة «${wording}» كعنصر بصري واضح ومقروء`);
   if (avoid) parts.push(`مع تجنب ${avoid}`);
@@ -59,6 +99,7 @@ export function assessGuidedIdea(brief: GuidedIdeaBrief): GuidedIdeaQuality {
   const meaning = clean(brief.meaning);
   const wording = clean(brief.wording);
   const avoid = clean(brief.avoid);
+  const direction = brief.direction || '';
   const suggestions: string[] = [];
   let score = 0;
 
@@ -70,6 +111,9 @@ export function assessGuidedIdea(brief: GuidedIdeaBrief): GuidedIdeaQuality {
 
   if (meaning) score += 1;
   else suggestions.push('أضف المعنى أو الرسالة التي يحملها التصميم');
+
+  if (direction) score += 1;
+  else suggestions.push('اختر اتجاهًا إبداعيًا للفكرة');
 
   if (wording || avoid) score += 1;
   else suggestions.push('أضف نصًا اختياريًا أو شيئًا تريد تجنبه');
@@ -84,12 +128,12 @@ export function assessGuidedIdea(brief: GuidedIdeaBrief): GuidedIdeaQuality {
     };
   }
 
-  if (score < 4) {
+  if (score < 5) {
     return {
       tier: 'ready',
       score,
       label: 'جيدة للتوليد',
-      message: 'الفكرة واضحة، ويمكن إضافة معنى أو قيد للحصول على نتيجة أدق.',
+      message: 'الفكرة واضحة، واختر اتجاهها الإبداعي أو أضف معنى للحصول على نتيجة أدق.',
       suggestions: suggestions.slice(0, 1),
     };
   }
@@ -98,7 +142,7 @@ export function assessGuidedIdea(brief: GuidedIdeaBrief): GuidedIdeaQuality {
     tier: 'strong',
     score,
     label: 'واضحة ومتكاملة',
-    message: 'العنصر والطابع والرسالة محددة بوضوح.',
+    message: 'العنصر والطابع والاتجاه الإبداعي والرسالة محددة بوضوح.',
     suggestions: [],
   };
 }

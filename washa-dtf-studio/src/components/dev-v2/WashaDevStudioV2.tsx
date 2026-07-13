@@ -584,7 +584,7 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
                 value={state.calligraphyText}
                 onChange={(event) => updateState({ calligraphyText: event.target.value })}
                 placeholder="اكتب العبارة هنا"
-                className="min-h-[250px] resize-none rounded-[28px] border-washa-border bg-washa-bg p-7 text-center font-alnaseeb text-3xl leading-[1.7] text-washa-text"
+                className="min-h-[250px] resize-none rounded-[28px] border-washa-border bg-washa-bg p-7 text-center font-arsenica text-3xl leading-[1.7] text-washa-text"
                 maxLength={90}
                 dir="auto"
               />

@@ -1,4 +1,6 @@
 import { isCleanOutputEnabled } from '../lib/outputPreferences';
+import { getReferenceFallbackConcept, getReferenceGenerationDirectives, normalizeReferenceImageMode } from '../lib/referenceImage';
+import type { ReferenceImageMode } from '../types';
 
 // Use the integrated Next.js API instead of a separate local proxy server.
 import {
@@ -21,6 +23,7 @@ interface GenerationPreferences {
   garmentReferenceImageBase64?: string;
   garmentReferenceImageMimeType?: string;
   garmentReferenceSide?: 'front' | 'back';
+  referenceImageMode?: ReferenceImageMode;
   /** The UI verified Clerk immediately before this generation request. */
   authenticatedSession?: boolean;
 }
@@ -144,6 +147,11 @@ export async function generateMockup(
   ]);
   const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
   const cleanOutputEnabled = isCleanOutputEnabled(preferences);
+  const referenceImageMode = normalizeReferenceImageMode(preferences.referenceImageMode);
+  const customerConcept = userDescription.trim() || getReferenceFallbackConcept(referenceImageMode);
+  const referenceDirectives = referenceImageBase64
+    ? getReferenceGenerationDirectives(referenceImageMode)
+    : [];
   const garmentReferenceDirectives = [
     hasGarmentReference
       ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
@@ -238,14 +246,15 @@ export async function generateMockup(
       ])
     : compactPrompt([
         sceneDirectives,
-        `Mandatory customer artwork concept: ${userDescription}.`,
+        `Mandatory customer artwork concept: ${customerConcept}.`,
+        ...referenceDirectives,
         'Create a new visible print artwork from the customer concept first, then place that artwork on the selected garment as a DTF print.',
         'The result is invalid if the garment is blank, if only the garment color changes, or if the customer concept is missing from the print.',
         'The print artwork may be graphic or illustrative, while the garment mockup must remain photorealistic. No text, letters, words, or typography unless the customer explicitly requested them.',
         `Style: ${style}.`,
         `Technique: ${technique}.`,
         `Palette: ${palette}.`,
-        `The printed artwork must be instantly recognizable as: ${userDescription}.`,
+        `The printed artwork must be instantly recognizable as: ${customerConcept}.`,
         'Single clean design with sharp details on fabric and no duplicated layers.',
         ...printDirectives,
       ]);

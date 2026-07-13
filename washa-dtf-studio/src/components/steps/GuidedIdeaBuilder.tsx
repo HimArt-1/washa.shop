@@ -1,13 +1,13 @@
 import { AlertCircle, Ban, CheckCircle2, Heart, MessageSquareText, Sparkles, Target, Wand2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { GuidedIdeaBrief } from '../../types';
-import { assessGuidedIdea, buildGuidedIdeaPrompt } from '../../lib/ideaBuilder';
+import { assessGuidedIdea, buildCreativeDirections, buildGuidedIdeaPrompt } from '../../lib/ideaBuilder';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 
-const MOOD_OPTIONS = ['جريء وواثق', 'هادئ وفاخر', 'مرح وحيوي', 'غامض وعميق', 'حماسي وسريع'];
+const MOOD_OPTIONS = ['جريء وواثق', 'هادئ وفاخر', 'مرح وحيوي', 'غامض وعميق', 'حماسي وسريع', 'شاعري وحالم'];
 const SUBJECT_STARTERS = ['صقر عربي', 'نخلة هندسية', 'موجة تجريدية', 'زخرفة نجدية'];
 
 type GuidedIdeaBuilderProps = {
@@ -32,7 +32,9 @@ export default function GuidedIdeaBuilder({
   onEnhance,
 }: GuidedIdeaBuilderProps) {
   const quality = assessGuidedIdea(brief);
-  const canCompose = brief.subject.trim().length >= 3;
+  const creativeDirections = buildCreativeDirections(brief);
+  const hasSubject = brief.subject.trim().length >= 3;
+  const canCompose = hasSubject && Boolean(brief.direction);
 
   const updateField = (field: keyof GuidedIdeaBrief, value: string) => {
     onBriefChange({ ...brief, [field]: value });
@@ -158,6 +160,51 @@ export default function GuidedIdeaBuilder({
               className="h-11 rounded-xl bg-washa-bg/55"
             />
           </div>
+
+          {hasSubject ? (
+            <motion.fieldset
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 150, damping: 22 }}
+              className="space-y-3 border-t border-washa-border/35 pt-5"
+            >
+              <legend className="w-full text-right">
+                <span className="block text-sm font-bold text-washa-text">اختر الاتجاه الإبداعي</span>
+                <span className="mt-1 block text-xs leading-5 text-washa-text-sec">ثلاث رؤى مختلفة لفكرتك؛ اختر الطريقة التي تريد أن تُروى بها بصريًا.</span>
+              </legend>
+              <div className="grid gap-2.5 sm:grid-cols-[1.12fr_0.94fr_0.94fr]">
+                {creativeDirections.map((direction, index) => {
+                  const selected = brief.direction === direction.id;
+                  return (
+                    <motion.button
+                      key={direction.id}
+                      type="button"
+                      aria-pressed={selected}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.06, duration: 0.28 }}
+                      onClick={() => updateField('direction', direction.id)}
+                      className={cn(
+                        'group min-h-[9.5rem] rounded-2xl border p-4 text-right transition-[border-color,background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-washa-gold/40 active:scale-[0.985]',
+                        selected
+                          ? 'border-washa-gold bg-washa-gold text-washa-bg shadow-[0_14px_30px_rgba(44,36,24,0.14)]'
+                          : 'border-washa-border/50 bg-washa-bg/45 text-washa-text hover:-translate-y-0.5 hover:border-washa-gold/35 hover:bg-washa-gold/5',
+                      )}
+                    >
+                      <span className={cn('flex items-center justify-between text-[0.68rem] font-bold', selected ? 'text-washa-bg/70' : 'text-washa-text-faint')}>
+                        <span>{direction.eyebrow}</span>
+                        <span dir="ltr">0{index + 1}</span>
+                      </span>
+                      <span className="mt-5 block font-arsenica text-xl font-bold">{direction.label}</span>
+                      <span className={cn('mt-2 block text-xs leading-5', selected ? 'text-washa-bg/80' : 'text-washa-text-sec')}>
+                        {direction.description}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.fieldset>
+          ) : null}
         </div>
       </div>
 

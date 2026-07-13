@@ -47,8 +47,8 @@ function sanitizeEnhancedIdea(value: string, fallback: string) {
     .trim();
 
   const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
-  const minimumUsefulLength = Math.min(90, Math.max(65, Math.round(cleanIdea(fallback).length * 0.45)));
-  const isIncomplete = cleaned.length < minimumUsefulLength || wordCount < 12;
+  const minimumUsefulLength = Math.min(150, Math.max(110, Math.round(cleanIdea(fallback).length * 0.72)));
+  const isIncomplete = cleaned.length < minimumUsefulLength || wordCount < 24;
 
   if (!cleaned || INTERNAL_OUTPUT_PATTERN.test(cleaned) || isIncomplete) {
     return buildLocalEnhancedIdea({ idea: fallback }).enhancedIdea;
@@ -270,7 +270,7 @@ export async function enhanceDesignIdea(input: EnhanceIdeaInput): Promise<Enhanc
   }
 
   const abortController = new AbortController();
-  const timeoutHandle = window.setTimeout(() => abortController.abort(), 14_000);
+  const timeoutHandle = window.setTimeout(() => abortController.abort(), 24_000);
 
   try {
     const response = await fetch(`${API_BASE_URL}/enhance-idea`, {

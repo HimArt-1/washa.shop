@@ -307,7 +307,7 @@ export function Hero({
             <AnimatePresence>
               {backgroundReady && (
                 <motion.span
-                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-alnaseeb"
+                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-arsenica"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: introExiting ? 0 : 1, y: introExiting ? -8 : 0 }}
                   exit={{ opacity: 0 }}
@@ -608,7 +608,7 @@ export function Hero({
                           />
                         </motion.div>
                         <span
-                          className="text-3xl sm:text-4xl font-alnaseeb italic tracking-widest"
+                          className="text-3xl sm:text-4xl font-arsenica italic tracking-widest"
                           style={{
                             background: "var(--hero-ai-card-title)",
                             WebkitBackgroundClip: "text",

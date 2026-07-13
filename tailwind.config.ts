@@ -42,7 +42,7 @@ const config: Config = {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
         body: ["var(--font-body)", "system-ui", "sans-serif"],
         arabic: ["var(--font-arabic)", "system-ui", "sans-serif"],
-        alnaseeb: ["var(--font-alnaseeb)", "system-ui", "sans-serif"],
+        arsenica: ["var(--font-arsenica)", "system-ui", "sans-serif"],
         poetry: ["var(--font-poetry)", "var(--font-display)", "serif"],
       },
       animation: {

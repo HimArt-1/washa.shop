@@ -58,16 +58,20 @@ export function sanitizeEnhancedIdea(value: string, fallbackIdea: string) {
         .trim();
 
     const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
-    const minimumUsefulLength = Math.min(90, Math.max(65, Math.round(fallbackIdea.length * 0.45)));
-    const isTooSmallForShortIdea = fallbackIdea.length <= 60 && cleaned.length < Math.max(55, fallbackIdea.length + 24);
-    const isIncompleteEnhancement = cleaned.length < minimumUsefulLength || wordCount < 12;
+    const minimumUsefulLength = Math.min(150, Math.max(110, Math.round(fallbackIdea.length * 0.72)));
+    const isTooSmallForShortIdea = fallbackIdea.length <= 60 && cleaned.length < Math.max(110, fallbackIdea.length + 58);
+    const isIncompleteEnhancement = cleaned.length < minimumUsefulLength || wordCount < 24;
     const isGeneric = /خلفية مناسبة|تفاصيل جميلة|مشهد غني وواضح|تصميم جذاب/i.test(cleaned) && cleaned.length < 95;
 
     if (!cleaned || forbiddenPattern.test(cleaned) || isTooSmallForShortIdea || isIncompleteEnhancement || isGeneric) {
         throw new Error(`Idea enhancer returned incomplete or invalid output for: ${fallbackIdea}`);
     }
 
-    return cleaned.slice(0, 420).trim();
+    if (cleaned.length <= 420) return cleaned;
+
+    const clipped = cleaned.slice(0, 421);
+    const lastWordBoundary = clipped.lastIndexOf(" ");
+    return clipped.slice(0, lastWordBoundary > 0 ? lastWordBoundary : 420).trim();
 }
 
 function buildIdeaEnhancementPrompt(input: EnhanceIdeaInput) {
@@ -79,16 +83,16 @@ function buildIdeaEnhancementPrompt(input: EnhanceIdeaInput) {
     ]);
 
     return compactPrompt([
-        "أنت كاتب إبداعي عربي ممتاز داخل تجربة تصميم. مهمتك تحويل فكرة العميل الخام إلى وصف بصري ذكي يقرأه العميل مباشرة.",
-        "فكّر داخلياً أولاً: ما العنصر الرئيسي؟ ما الحركة؟ ما البيئة الأنسب؟ ما الشعور؟ ما التفاصيل الصغيرة التي تجعل الصورة غير عادية؟ ثم اكتب الناتج فقط.",
-        "اكتب جملة عربية واحدة أو فقرة قصيرة واحدة، غنية ومحددة وراقية، لا تبدو كقالب عام.",
-        "اجعل التحسين يضيف: مشهداً واضحاً، حركة أو وضعية، عمقاً في الخلفية، إضاءة أو جوّاً، وتفصيلاً مميزاً واحداً على الأقل.",
+        "أنت محرر فني عربي رفيع داخل تجربة تصميم. حوّل فكرة العميل الخام إلى رؤية بصرية مكتملة يقرأها العميل مباشرة ويشعر أنها امتداد ذكي لفكرته.",
+        "حلّل الفكرة داخلياً ثم ابنِ لها: بطلاً بصرياً واضحاً، حركة مقصودة، بيئة ذات عمق، إضاءة تصنع المزاج، وتفصيلاً مفاجئاً لكنه منسجم. لا تعرض التحليل.",
+        "اكتب فقرة عربية واحدة من جملتين مترابطتين، حسية ومحددة وراقية، بإيقاع طبيعي بعيد عن القوالب والعبارات التسويقية.",
+        "وسّع الفكرة إبداعياً دون تغيير معناها: وضّح التكوين، العلاقة بين العناصر، ملمساً أو أثراً ضوئياً، ونقطة تركيز فنية تجعل المشهد قابلاً للتخيل فوراً.",
         "إذا كانت الفكرة قصيرة جداً فوسّعها بذكاء. مثال: «ديناصور يرقص» تصبح مشهداً مرحاً في غابة كثيفة وخلفه شلال ورذاذ ضوء وحركة سعيدة.",
         "إذا كانت الفكرة شخصية أو حيواناً فامنحه تعبيراً وحضوراً. إذا كانت شيئاً بسيطاً فحوّله إلى مشهد له قصة. إذا كانت عبارة نصية فحافظ على النص كما هو وأضف شعوراً بصرياً حوله فقط.",
         "لا تضف كلمات أو شعارات أو نصوصاً جديدة إلا إذا طلبها العميل صراحة.",
         "ممنوع تماماً ذكر: DTF، تيشيرت، قماش، مقاس، لون قطعة، موضع طباعة، خلفية شفافة، قيود، برومبت، نموذج، WASHA AI، كتالوج، أو أي مواصفات تشغيلية.",
         "ممنوع استخدام عناوين أو نقاط أو اقتباسات أو مقدمات مثل: الفكرة المحسنة. أخرج النص المحسن فقط.",
-        "الطول المثالي بين 24 و58 كلمة، ويفضل أن يكون النص موسيقياً وسهل القراءة بالعربية.",
+        "اكتب بين 32 و58 كلمة كاملة. لا تتوقف بعد الجملة الأولى، واختم الفقرة بصورة بصرية مكتملة لا بعبارة مبتورة.",
         context ? `سياق اختياري لا تذكره حرفياً:\n${context}` : null,
         `فكرة العميل: ${input.idea}`,
     ]);
@@ -101,10 +105,13 @@ async function runGeminiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
         model,
         contents: { role: "user", parts: [{ text: buildIdeaEnhancementPrompt(input) }] },
         config: {
-            temperature: 0.92,
-            topP: 0.92,
-            // Gemini thinking tokens share this budget with the visible answer.
-            // A small cap can leave only the first few Arabic words for the user.
+            temperature: 0.84,
+            topP: 0.9,
+            candidateCount: 1,
+            responseMimeType: "text/plain",
+            // This is a short editorial task. Reserving the budget for visible
+            // text prevents Gemini thinking tokens from truncating the answer.
+            thinkingConfig: { thinkingBudget: 0, includeThoughts: false },
             maxOutputTokens: 768,
             httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
         } as any,
@@ -139,7 +146,7 @@ async function runOpenAiIdeaEnhancement(input: EnhanceIdeaInput, timeoutMs: numb
                 ],
                 temperature: 0.92,
                 top_p: 0.92,
-                max_tokens: 420,
+                max_tokens: 520,
             }),
             signal: abortController.signal,
         });

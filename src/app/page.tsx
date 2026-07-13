@@ -18,7 +18,7 @@ export default async function Home() {
     const storeProducts = showStore ? (await getProducts(1, "all")).data || [] : [];
 
     return (
-        <PublicPageWrapper visibility={v}>
+        <PublicPageWrapper visibility={v} footer="home">
             <div className="relative">
                 <Hero
                     backgroundMode={heroBackgroundMode}

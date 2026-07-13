@@ -325,7 +325,7 @@ function SceneWord({ t }: { t: ThemeTokens }) {
           {chars.map((char, i) => (
             <motion.span
               key={i}
-              className="font-alnaseeb font-bold inline-block"
+              className="font-arsenica font-bold inline-block"
               style={{
                 fontSize: "clamp(3.2rem, 9vw, 5.5rem)",
                 color: t.text,
@@ -374,7 +374,7 @@ function SceneWord({ t }: { t: ThemeTokens }) {
 
       {/* Floating Arabic verse — watermark */}
       <motion.p
-        className="absolute font-alnaseeb pointer-events-none select-none text-center"
+        className="absolute font-arsenica pointer-events-none select-none text-center"
         style={{
           color: t.goldFaint,
           fontSize: "clamp(0.65rem, 1.5vw, 0.8rem)",
@@ -701,7 +701,7 @@ function SceneSeal({ t }: { t: ThemeTokens }) {
 
         {/* Arabic tagline */}
         <motion.p
-          className="font-alnaseeb font-bold mt-5"
+          className="font-arsenica font-bold mt-5"
           style={{ fontSize: "clamp(1.8rem, 4.5vw, 2.6rem)", color: t.text }}
           initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
           animate={{ opacity: 1, y: 0,  filter: "blur(0px)" }}
@@ -894,7 +894,7 @@ export function WashaFilmExperience() {
         style={{ padding: "clamp(1.25rem,3vh,2rem) clamp(1.25rem,3vw,2.5rem)", zIndex: 50 }}
       >
         <motion.span
-          className="font-alnaseeb font-bold tracking-[0.3em]"
+          className="font-arsenica font-bold tracking-[0.3em]"
           style={{ fontSize: "clamp(0.85rem, 1.8vw, 1rem)", color: t.textMuted, opacity: 0 }}
           animate={{ opacity: 0.6 }}
           transition={{ delay: 0.4, duration: 1.0 }}

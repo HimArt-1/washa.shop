@@ -8,6 +8,13 @@ describe("WASHA AI idea enhancement quality", () => {
         expect(() => sanitizeEnhancedIdea("نخلة عربية شاهقة، تتجلى", originalIdea)).toThrow();
     });
 
+    it("rejects the short twelve-word Gemini response reproduced from the live enhancer", () => {
+        const originalIdea = "نخلة عربية هندسية تميل مع النسيم وتعبر عن الأصالة والنمو بروح فنية معاصرة";
+        const truncatedResponse = "نخلة عربية هندسية شامخة، تتمايل أغصانها الذهبية الرشيقة مع نسيم صحراوي عليل";
+
+        expect(() => sanitizeEnhancedIdea(truncatedResponse, originalIdea)).toThrow();
+    });
+
     it("keeps a complete, specific Arabic enhancement", () => {
         const enhanced = "نخلة عربية شاهقة بتكوين هندسي متوازن، تمتد سعفاتها بانسيابية تحت ضوء ذهبي هادئ، وتحيط بها زخارف نجدية رقيقة تعبّر عن الأصالة والنمو بروح فاخرة وواضحة.";
 

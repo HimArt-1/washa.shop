@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assessGuidedIdea,
+  buildCreativeDirections,
   buildGuidedIdeaPrompt,
   createEmptyGuidedIdeaBrief,
   isGuidedIdeaStale,
@@ -14,6 +15,7 @@ describe("WASHA AI guided idea builder", () => {
       meaning: "الطموح والحرية",
       wording: "حلّق عاليًا",
       avoid: "الخلفيات المزدحمة",
+      direction: "cinematic",
     });
 
     expect(prompt).toContain("صقر هندسي");
@@ -21,7 +23,19 @@ describe("WASHA AI guided idea builder", () => {
     expect(prompt).toContain("الطموح والحرية");
     expect(prompt).toContain("حلّق عاليًا");
     expect(prompt).toContain("الخلفيات المزدحمة");
+    expect(prompt).toContain("برؤية سينمائية");
     expect(prompt.length).toBeLessThan(420);
+  });
+
+  it("offers cinematic, symbolic, and abstract directions tailored to the idea", () => {
+    const directions = buildCreativeDirections({
+      ...createEmptyGuidedIdeaBrief(),
+      subject: "نخلة عربية هندسية",
+      meaning: "الأصالة والنمو",
+    });
+
+    expect(directions.map((direction) => direction.id)).toEqual(["cinematic", "symbolic", "abstract"]);
+    expect(directions.every((direction) => direction.description.includes("نخلة عربية هندسية"))).toBe(true);
   });
 
   it("does not produce a prompt without a subject", () => {
@@ -42,6 +56,7 @@ describe("WASHA AI guided idea builder", () => {
       meaning: "الأصالة والنمو",
       wording: "",
       avoid: "التفاصيل الصغيرة جدًا",
+      direction: "symbolic",
     });
 
     expect(quality.tier).toBe("strong");
@@ -56,6 +71,7 @@ describe("WASHA AI guided idea builder", () => {
       meaning: longAnswer,
       wording: longAnswer,
       avoid: longAnswer,
+      direction: "abstract",
     });
 
     expect(prompt.length).toBeLessThanOrEqual(420);
@@ -69,5 +85,6 @@ describe("WASHA AI guided idea builder", () => {
 
     expect(isGuidedIdeaStale(brief, source)).toBe(false);
     expect(isGuidedIdeaStale({ ...brief, mood: "هادئ وفاخر" }, source)).toBe(true);
+    expect(isGuidedIdeaStale({ ...brief, direction: "cinematic" }, source)).toBe(true);
   });
 });

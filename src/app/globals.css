@@ -21,10 +21,9 @@
 }
 
 @font-face {
-  font-family: 'Alnaseeb';
-  src: url('/fonts/Alnaseeb-Regular.woff2') format('woff2'),
-       url('/fonts/Alnaseeb-Regular.otf') format('opentype');
-  font-weight: 400 700;
+  font-family: 'ArsenicaArabic';
+  src: url('/fonts/Arsenica-Arabic-Antiqua-Medium-TRIAL.ttf') format('truetype');
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
@@ -105,7 +104,7 @@
   --font-sans: var(--font-primary);
   --font-serif: var(--font-display);
   --font-body: var(--font-primary);
-  --font-alnaseeb: 'Alnaseeb', var(--font-display);
+  --font-arsenica: 'ArsenicaArabic', var(--font-display);
   --font-ghadim: 'Ghadim', var(--font-display);
   --wusha-heading-main-weight: 800;
   --wusha-heading-section-weight: 700;
@@ -722,7 +721,7 @@ h2 {
   font-weight: var(--wusha-heading-section-weight);
   line-height: 1.2;
   color: var(--wusha-text);
-  font-family: var(--font-alnaseeb);
+  font-family: var(--font-arsenica);
 }
 
 h3,
@@ -730,7 +729,7 @@ h4 {
   font-weight: var(--wusha-heading-card-weight);
   line-height: 1.2;
   color: var(--wusha-text);
-  font-family: var(--font-alnaseeb);
+  font-family: var(--font-arsenica);
 }
 
 h5,
@@ -738,7 +737,7 @@ h6 {
   font-weight: 500;
   line-height: 1.2;
   color: var(--wusha-text);
-  font-family: var(--font-alnaseeb);
+  font-family: var(--font-arsenica);
 }
 
 h1.font-bold,
@@ -3634,6 +3633,220 @@ body.reamaze-active [data-reamaze-widget] {
 
   .home-footer-newsletter {
     grid-column: 1 / -1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Subpage Footer — تذييل هادئ للواجهات الداخلية
+═══════════════════════════════════════════════════════════ */
+
+.subpage-footer {
+  position: relative;
+  border-top: 1px solid color-mix(in srgb, var(--wusha-text) 9%, transparent);
+  background:
+    linear-gradient(90deg, transparent, color-mix(in srgb, var(--wusha-gold) 5%, transparent) 48%, transparent),
+    color-mix(in srgb, var(--wusha-bg) 94%, var(--wusha-surface));
+  padding: 1.15rem 0 max(1.15rem, env(safe-area-inset-bottom));
+}
+
+.subpage-footer::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: clamp(1rem, 8vw, 8rem);
+  width: clamp(3.5rem, 8vw, 7rem);
+  height: 1px;
+  background: var(--wusha-gold);
+  opacity: 0.72;
+}
+
+.subpage-footer-shell {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1fr) auto minmax(13rem, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 3.5rem;
+}
+
+.subpage-footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.subpage-footer-mark {
+  display: inline-flex;
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--wusha-text) 10%, transparent);
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--wusha-surface) 76%, transparent);
+  transition:
+    transform var(--duration-fast) var(--ease-smooth),
+    border-color var(--duration-fast) var(--ease-smooth),
+    background-color var(--duration-fast) var(--ease-smooth);
+}
+
+.subpage-footer-mark:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--wusha-gold) 34%, transparent);
+  background: color-mix(in srgb, var(--wusha-gold) 7%, var(--wusha-surface));
+}
+
+.subpage-footer-mark:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.subpage-footer-logo {
+  width: 1.9rem;
+  height: 1.7rem;
+  object-fit: contain;
+  filter: sepia(0.3) saturate(1.5) drop-shadow(0 3px 8px color-mix(in srgb, var(--wusha-gold) 18%, transparent));
+}
+
+.subpage-footer-rule {
+  width: 1px;
+  height: 1.8rem;
+  background: color-mix(in srgb, var(--wusha-text) 11%, transparent);
+}
+
+.subpage-footer-name {
+  color: var(--wusha-text);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.subpage-footer-note {
+  margin-top: 0.16rem;
+  color: color-mix(in srgb, var(--wusha-text) 52%, transparent);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.subpage-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.9rem, 2vw, 1.55rem);
+}
+
+.subpage-footer-links a {
+  position: relative;
+  color: color-mix(in srgb, var(--wusha-text) 62%, transparent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-smooth);
+}
+
+.subpage-footer-links a::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -0.35rem;
+  width: 100%;
+  height: 1px;
+  background: var(--wusha-gold);
+  opacity: 0;
+  transform: scaleX(0.35);
+  transform-origin: right;
+  transition:
+    opacity var(--duration-fast) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth);
+}
+
+.subpage-footer-links a:hover {
+  color: var(--wusha-text);
+}
+
+.subpage-footer-links a:hover::after {
+  opacity: 0.72;
+  transform: scaleX(1);
+}
+
+.subpage-footer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.9rem;
+  color: color-mix(in srgb, var(--wusha-text) 43%, transparent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.subpage-footer-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.subpage-footer-location > span {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 9999px;
+  background: var(--wusha-forest);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wusha-forest) 10%, transparent);
+}
+
+@media (max-width: 900px) {
+  .subpage-footer-shell {
+    grid-template-columns: 1fr auto;
+  }
+
+  .subpage-footer-links {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-content: flex-start;
+    border-bottom: 1px solid color-mix(in srgb, var(--wusha-text) 7%, transparent);
+    padding-bottom: 1rem;
+  }
+
+  .subpage-footer-brand,
+  .subpage-footer-meta {
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .subpage-footer {
+    padding-top: 1rem;
+  }
+
+  .subpage-footer-shell {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .subpage-footer-links {
+    grid-column: 1;
+    justify-content: space-between;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .subpage-footer-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .subpage-footer-brand,
+  .subpage-footer-meta {
+    grid-row: auto;
+  }
+
+  .subpage-footer-meta {
+    justify-content: space-between;
+    border-top: 1px solid color-mix(in srgb, var(--wusha-text) 7%, transparent);
+    padding-top: 0.9rem;
   }
 }
 

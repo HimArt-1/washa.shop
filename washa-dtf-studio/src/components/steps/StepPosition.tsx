@@ -22,7 +22,27 @@ type PositionCard = {
   printSize: PrintSize;
   price?: number;
   icon: ReactNode;
-  visual?: (isSelected: boolean) => ReactNode;
+  imageUrl: string;
+  imageAlt: string;
+};
+
+const PLACEMENT_VISUALS: Record<string, Pick<PositionCard, 'imageUrl' | 'imageAlt'>> = {
+  front_large: {
+    imageUrl: '/placements/placement-front-large.webp',
+    imageAlt: 'قميص يوضح مساحة التصميم الأمامي الكبير',
+  },
+  back_large: {
+    imageUrl: '/placements/placement-back-large.webp',
+    imageAlt: 'قميص يوضح مساحة التصميم الخلفي الكبير',
+  },
+  logo_right: {
+    imageUrl: '/placements/placement-logo-right.webp',
+    imageAlt: 'قميص يوضح مساحة اللوقو الصغير في يمين الصدر',
+  },
+  logo_left: {
+    imageUrl: '/placements/placement-logo-left-heart.webp',
+    imageAlt: 'قميص يوضح مساحة اللوقو الصغير في يسار الصدر جهة القلب',
+  },
 };
 
 export default function StepPosition() {
@@ -36,67 +56,6 @@ export default function StepPosition() {
     ? selectedSize?.imageBackUrl || selectedGarment?.aiReferenceBackUrl || selectedGarment?.imageUrl
     : selectedSize?.imageFrontUrl || selectedColor?.imageUrl || selectedGarment?.aiReferenceFrontUrl || selectedGarment?.imageUrl;
 
-  /* ── Reusable SVG T-Shirt with configurable highlight zone ── */
-  const TShirtDiagram = ({ highlightRect, isSelected }: { highlightRect: { x: number; y: number; w: number; h: number }; isSelected: boolean }) => (
-    <div className="relative flex h-full min-h-32 w-full items-center justify-center p-3">
-      <svg viewBox="0 0 120 140" className="h-[86%] w-[74%] max-w-36 drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
-        {/* T-shirt body */}
-        <path
-          d="M30 25 L10 45 L25 55 L25 130 L95 130 L95 55 L110 45 L90 25 L75 35 C70 40 50 40 45 35 L30 25Z"
-          fill="rgba(18,18,18,0.86)"
-          stroke="rgba(64,48,40,0.45)"
-          strokeWidth="1.8"
-        />
-        {/* Collar */}
-        <path
-          d="M45 35 C50 42 70 42 75 35"
-          fill="none"
-          stroke="rgba(255,255,255,0.34)"
-          strokeWidth="1.4"
-        />
-        <path
-          d="M25 55 L33 60 M95 55 L87 60 M33 126 H87"
-          fill="none"
-          stroke="rgba(255,255,255,0.18)"
-          strokeWidth="1"
-        />
-        {/* Design zone highlight */}
-        <rect
-          x={highlightRect.x}
-          y={highlightRect.y}
-          width={highlightRect.w}
-          height={highlightRect.h}
-          rx="4"
-          fill={isSelected ? 'rgba(64,48,40,0.35)' : 'rgba(64,48,40,0.15)'}
-          stroke="rgba(64,48,40,0.7)"
-          strokeWidth="1.5"
-          strokeDasharray={isSelected ? 'none' : '4 2'}
-        />
-        {/* Design zone icon - sparkle */}
-        <text
-          x={highlightRect.x + highlightRect.w / 2}
-          y={highlightRect.y + highlightRect.h / 2 + 4}
-          textAnchor="middle"
-          fontSize="10"
-          fill="rgba(64,48,40,0.8)"
-        >✦</text>
-      </svg>
-    </div>
-  );
-
-  const getHighlightRect = (printPosition: PrintPosition, printSize: PrintSize) => {
-    if (printPosition === 'shoulder_right') return { x: 35, y: 48, w: 18, h: 18 };
-    if (printPosition === 'shoulder_left') return { x: 67, y: 48, w: 18, h: 18 };
-    if (printPosition === 'back') {
-      return printSize === 'small'
-        ? { x: 50, y: 52, w: 20, h: 20 }
-        : { x: 33, y: 48, w: 54, h: 60 };
-    }
-    return printSize === 'small'
-      ? { x: 50, y: 48, w: 20, h: 20 }
-      : { x: 35, y: 42, w: 50, h: 55 };
-  };
-
   const defaultPositions: PositionCard[] = [
     {
       id: 'front_large',
@@ -106,7 +65,7 @@ export default function StepPosition() {
       printPosition: 'chest',
       printSize: 'large',
       icon: <LayoutDashboard className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 42, w: 50, h: 55 }} isSelected={isSelected} />
+      ...PLACEMENT_VISUALS.front_large,
     },
     {
       id: 'back_large',
@@ -116,7 +75,7 @@ export default function StepPosition() {
       printPosition: 'back',
       printSize: 'large',
       icon: <FileImage className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 33, y: 48, w: 54, h: 60 }} isSelected={isSelected} />
+      ...PLACEMENT_VISUALS.back_large,
     },
     {
       id: 'logo_right',
@@ -126,7 +85,7 @@ export default function StepPosition() {
       printPosition: 'shoulder_right',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 35, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      ...PLACEMENT_VISUALS.logo_right,
     },
     {
       id: 'logo_left',
@@ -136,7 +95,7 @@ export default function StepPosition() {
       printPosition: 'shoulder_left',
       printSize: 'small',
       icon: <Search className="h-6 w-6" />,
-      visual: (isSelected: boolean) => <TShirtDiagram highlightRect={{ x: 67, y: 48, w: 18, h: 18 }} isSelected={isSelected} />
+      ...PLACEMENT_VISUALS.logo_left,
     },
   ];
 
@@ -153,12 +112,7 @@ export default function StepPosition() {
           printSize: placement.printSize,
           price: p.price,
           icon: <LayoutDashboard className="h-5 w-5" />,
-          visual: (isSelected: boolean) => (
-            <TShirtDiagram
-              highlightRect={getHighlightRect(placement.printPosition, placement.printSize)}
-              isSelected={isSelected}
-            />
-          ),
+          ...(PLACEMENT_VISUALS[placement.designPosition] ?? PLACEMENT_VISUALS.front_large),
         };
       });
   const displayPositions = SUPPORTED_PRINT_DESIGN_POSITIONS.map((designPosition) =>
@@ -249,15 +203,18 @@ export default function StepPosition() {
               )}
             >
               {/* Visual Indicator Area */}
-              <div className="relative flex min-h-[7.25rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.94),rgba(232,221,203,0.82)_48%,rgba(64,48,40,0.42)_100%)] p-3">
+              <div className="relative flex aspect-[1.15/1] min-h-[8rem] w-full items-center justify-center overflow-hidden border-b border-washa-border/35 bg-[#f5efe4] p-2">
                 {/* Background glow when selected */}
-                {isSelected && <div className="absolute inset-0 bg-washa-gold/10 blur-xl" />}
+                {isSelected && <div className="absolute inset-0 bg-washa-gold/[0.08]" />}
 
-                {'visual' in pos && typeof pos.visual === 'function' ? (
-                  <div className="absolute inset-0">
-                    {pos.visual(isSelected)}
-                  </div>
-                ) : null}
+                <img
+                  src={studioAsset(pos.imageUrl)}
+                  alt={pos.imageAlt}
+                  loading="eager"
+                  decoding="async"
+                  draggable={false}
+                  className="relative h-full w-full select-none object-contain brightness-[0.72] contrast-[1.28] drop-shadow-[0_14px_22px_rgba(64,48,40,0.16)] transition-transform duration-300 group-hover:scale-[1.02]"
+                />
                 
                 {isSelected && (
                   <div className="absolute left-3 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-washa-gold text-washa-bg shadow-lg">

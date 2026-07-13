@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Type, PenLine, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { CheckCircle2, Focus, Image as ImageIcon, Loader2, Palette, PenLine, RefreshCw, Sparkles, Type, Wand2, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -10,6 +10,8 @@ import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
 import StepNavigationBar from './StepNavigationBar';
 import GuidedIdeaBuilder from './GuidedIdeaBuilder';
 import { buildGuidedIdeaPrompt, createEmptyGuidedIdeaBrief, isGuidedIdeaStale } from '../../lib/ideaBuilder';
+import { REFERENCE_IMAGE_MODES } from '../../lib/referenceImage';
+import type { ReferenceImageMode } from '../../types';
 
 const SUGGESTIONS = [
   'ذئب هندسي',
@@ -29,6 +31,12 @@ const CALLIGRAPHY_SUGGESTIONS = [
   'صبر جميل',
 ];
 
+const REFERENCE_MODE_ICONS = {
+  reinterpret: RefreshCw,
+  preserve_subject: Focus,
+  style_inspiration: Palette,
+} satisfies Record<ReferenceImageMode, typeof RefreshCw>;
+
 export default function StepIdea() {
   const { state, updateState, nextStep, prevStep, handleImageUpload, showToast } = useDesign();
   const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
@@ -46,7 +54,7 @@ export default function StepIdea() {
     : state.designMethod === 'calligraphy'
       ? 'اكتب العبارة التي تريد تصميمها'
       : state.designMethod === 'image'
-        ? 'ارفع صورة مرجعية للمتابعة'
+        ? 'ارفع صورة مرجعية، ثم اختر طريقة الاستفادة منها'
         : ideaEntryMode === 'guided'
           ? guidedIdeaStale && state.prompt
             ? 'حدّث الوصف ليعكس التعديلات الأخيرة'
@@ -350,35 +358,86 @@ export default function StepIdea() {
               transition={{ duration: 0.35 }}
               className="space-y-4"
             >
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                id="image-upload"
+                onChange={handleImageUpload}
+              />
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 className={cn(
-                  'flex flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-washa-bg/30 p-6 text-center transition-[border-color,background-color] duration-300',
+                  'rounded-2xl border bg-washa-bg/30 text-center transition-[border-color,background-color] duration-300',
                   state.referenceImage
-                    ? 'border-washa-gold/30'
-                    : 'border-washa-border/40 hover:border-washa-gold/40 animate-pulse-border'
+                    ? 'border-washa-gold/25 p-3 sm:p-4'
+                    : 'flex min-h-64 flex-col items-center justify-center border-dashed border-washa-border/45 p-6 hover:border-washa-gold/45 animate-pulse-border'
                 )}
               >
                 {state.referenceImage ? (
-                  <div className="space-y-4">
-                    <div className="mx-auto h-28 w-28 overflow-hidden rounded-xl border border-washa-gold/20 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+                  <div className="grid gap-4 text-right lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+                    <div className="relative min-h-64 overflow-hidden rounded-xl border border-washa-border/35 bg-[#f5efe4] shadow-[0_16px_34px_rgba(64,48,40,0.10)]">
+                      <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/60 bg-white/85 px-2.5 py-1 text-[11px] font-bold text-washa-text-sec backdrop-blur-md">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-washa-gold" aria-hidden="true" />
+                        جاهزة للتحليل
+                      </div>
                       <img
                         src={`data:${state.referenceImageMimeType};base64,${state.referenceImage}`}
-                        alt="الصورة المرجعية"
-                        className="w-full h-full object-cover"
+                        alt="معاينة الصورة المرجعية المرفوعة"
+                        className="h-full min-h-64 w-full object-contain p-3"
                       />
+                      <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
+                        <label htmlFor="image-upload" className="cursor-pointer rounded-lg border border-white/60 bg-white/90 px-3 py-2 text-xs font-bold text-washa-text shadow-sm backdrop-blur-md transition-colors hover:text-washa-gold">
+                          استبدال الصورة
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => updateState({ referenceImage: null, referenceImageMimeType: null })}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/60 bg-white/90 text-washa-text-sec shadow-sm backdrop-blur-md transition-colors hover:text-red-700 active:scale-[0.98]"
+                          aria-label="حذف الصورة المرجعية"
+                        >
+                          <X className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        updateState({ referenceImage: null, referenceImageMimeType: null })
-                      }
-                      className="rounded-lg"
-                    >
-                      تغيير الصورة
-                    </Button>
+
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-black text-washa-text">كيف تريد الاستفادة من المرجع؟</h3>
+                        <p className="mt-1 text-xs leading-5 text-washa-text-faint">اختيارك يغيّر طريقة تحليل الصورة وبناء العمل الفني.</p>
+                      </div>
+                      <div className="divide-y divide-washa-border/30 overflow-hidden rounded-xl border border-washa-border/40 bg-white/55" role="radiogroup" aria-label="طريقة استخدام الصورة المرجعية">
+                        {REFERENCE_IMAGE_MODES.map((mode) => {
+                          const isSelected = (state.referenceImageMode ?? 'reinterpret') === mode.id;
+                          const ModeIcon = REFERENCE_MODE_ICONS[mode.id];
+                          return (
+                            <button
+                              key={mode.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              onClick={() => updateState({ referenceImageMode: mode.id })}
+                              className={cn(
+                                'grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 px-3 py-3 text-right transition-[background-color,color,transform] active:scale-[0.99]',
+                                isSelected ? 'bg-washa-gold/[0.10]' : 'hover:bg-washa-gold/[0.05]',
+                              )}
+                            >
+                              <span className={cn('flex h-9 w-9 items-center justify-center rounded-lg border', isSelected ? 'border-washa-gold/35 bg-washa-gold/15 text-washa-gold-deep' : 'border-washa-border/40 bg-washa-ivory text-washa-text-faint')}>
+                                <ModeIcon className="h-4 w-4" aria-hidden="true" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block text-sm font-bold text-washa-text">{mode.title}</span>
+                                <span className="mt-0.5 block text-[11px] leading-5 text-washa-text-sec">{mode.description}</span>
+                              </span>
+                              <span className={cn('rounded-full px-2 py-1 text-[10px] font-bold', isSelected ? 'bg-washa-gold text-washa-bg' : 'bg-washa-bg/70 text-washa-text-faint')}>
+                                {mode.badge}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -388,30 +447,53 @@ export default function StepIdea() {
                     <p className="text-sm text-washa-text-sec mb-4">
                       اسحب وأفلت الصورة هنا أو انقر للرفع
                     </p>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      id="image-upload"
-                      onChange={handleImageUpload}
-                    />
                     <label htmlFor="image-upload" className="cursor-pointer">
                       <div className="rounded-xl border border-washa-gold/20 bg-washa-gold/10 px-5 py-2.5 text-sm font-medium text-washa-gold transition-[border-color,background-color] duration-300 hover:border-washa-gold/40 hover:bg-washa-gold/20">
                         استعراض الملفات
                       </div>
                     </label>
+                    <p className="mt-3 text-[11px] text-washa-text-faint">PNG أو JPG أو WebP · حتى 15 ميجابايت</p>
                   </>
                 )}
               </div>
-              <div className="space-y-2">
-                <label className="text-sm text-washa-text-sec text-right block">أضف وصفاً إضافياً (اختياري)</label>
-                <Input
-                  placeholder="مثال: اجعل الألوان أكثر دفئًا…"
-                  value={state.prompt}
-                  onChange={e => updateState({ prompt: e.target.value })}
-                  className="rounded-xl bg-washa-bg/50"
-                />
-              </div>
+              {state.referenceImage && (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                  <div className="space-y-2">
+                    <div className="flex items-end justify-between gap-3">
+                      <span className="text-xs tabular-nums text-washa-text-faint">{state.prompt.length ? `${state.prompt.length} حرف` : 'اختياري'}</span>
+                      <label htmlFor="reference-transformation" className="block text-sm font-bold text-washa-text">صف التحويل الذي تريده</label>
+                    </div>
+                    <Textarea
+                      id="reference-transformation"
+                      aria-label="وصف تحويل الصورة المرجعية"
+                      placeholder="مثال: حوّل العنصر الرئيسي إلى رسم هندسي نظيف، واحتفظ بحركته، واستخدم لونين فقط دون خلفية…"
+                      value={state.prompt}
+                      onChange={(event) => updateState({ prompt: event.target.value })}
+                      className="min-h-28 resize-none rounded-xl border-washa-border/40 bg-washa-bg/45 p-4 leading-7 focus:border-washa-gold/50"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-washa-text-faint">
+                      {['تحليل العنصر', 'تنظيف الخلفية', 'تهيئة للطباعة'].map((item) => (
+                        <span key={item} className="flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-washa-gold" aria-hidden="true" />
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleEnhanceIdea}
+                      disabled={!state.prompt.trim() || isEnhancingIdea}
+                      className="gap-2 rounded-xl border-washa-gold/25 bg-washa-gold/5 text-washa-gold hover:bg-washa-gold/10"
+                    >
+                      {isEnhancingIdea ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                      {isEnhancingIdea ? 'جاري التحسين…' : 'حسّن توجيه التحويل'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

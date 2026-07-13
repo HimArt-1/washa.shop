@@ -120,6 +120,7 @@ export interface ToastState {
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
 const REFERENCE_IMAGE_QUALITY = 0.76;
+const REFERENCE_IMAGE_MAX_FILE_SIZE = 15 * 1024 * 1024;
 const GARMENT_REFERENCE_MAX_DIMENSION = 1280;
 const GARMENT_REFERENCE_QUALITY = 0.82;
 const TRANSPARENT_REFERENCE_TYPES = new Set(['image/png', 'image/webp']);
@@ -148,6 +149,7 @@ const EMPTY_STATE: DesignState = {
   calligraphyText: '',
   referenceImage: null,
   referenceImageMimeType: null,
+  referenceImageMode: 'reinterpret',
   styleId: null,
   style: '',
   techniqueId: null,
@@ -483,6 +485,16 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('الملف المختار ليس صورة صالحة.');
+        showToast('اختر صورة بصيغة PNG أو JPG أو WebP', 'error');
+        return;
+      }
+      if (file.size > REFERENCE_IMAGE_MAX_FILE_SIZE) {
+        setError('حجم الصورة أكبر من الحد المسموح.');
+        showToast('اختر صورة أصغر من 15 ميجابايت', 'error');
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -661,6 +673,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         garmentReferenceImageBase64: garmentReference?.base64,
         garmentReferenceImageMimeType: garmentReference?.mimeType,
         garmentReferenceSide: garmentReference?.side,
+        referenceImageMode: state.referenceImageMode,
         authenticatedSession: session.authenticated,
       }
     );
