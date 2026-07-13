@@ -67,7 +67,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
 
     return (
         <div className="space-y-6">
-            <div className="theme-surface-panel rounded-[2rem] p-6 sm:p-7">
+            <div className="theme-surface-panel rounded-[1.375rem] p-6 sm:p-7">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <p className="text-[11px] font-bold tracking-[0.22em] text-theme-faint">SUPPORT DESK</p>
@@ -93,7 +93,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
             </div>
 
             {initialTickets.length === 0 ? (
-                <div className="theme-surface-panel flex flex-col items-center justify-center rounded-[2rem] px-4 py-16 text-center">
+                <div className="theme-surface-panel flex flex-col items-center justify-center rounded-[1.375rem] px-4 py-16 text-center">
                     <div className="w-20 h-20 rounded-full bg-theme-subtle flex items-center justify-center mb-6 border border-theme-subtle">
                         <MessageSquare className="w-8 h-8 text-theme-faint" />
                     </div>
@@ -119,7 +119,7 @@ export function SupportDashboardClient({ initialTickets }: { initialTickets: any
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.05 }}
-                                    className="group cursor-pointer rounded-[1.75rem] border border-theme-subtle bg-theme-faint p-5 transition-all duration-300 hover:border-gold/30 hover:bg-theme-subtle sm:p-6"
+                                    className="group cursor-pointer rounded-[1.375rem] border border-theme-subtle bg-theme-faint p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-gold/30 hover:bg-theme-subtle sm:p-6"
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="min-w-0 flex-1">

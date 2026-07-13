@@ -179,14 +179,14 @@ export function AdminTopBar({ role }: { role: UserRole }) {
 
     return (
         <>
-            <header className="sticky top-0 z-40 bg-[color-mix(in_srgb,var(--wusha-surface)_95%,transparent)] backdrop-blur-xl border-b border-theme-subtle">
+            <header className="sticky top-0 z-40 border-b border-theme-subtle bg-[color-mix(in_srgb,var(--wusha-surface)_92%,transparent)] backdrop-blur-xl">
                 <div className="flex flex-col gap-3 px-4 py-3 pr-16 sm:px-6 sm:pr-6 lg:px-8 lg:pr-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                         <div className="min-w-0">
                             <p className="text-[11px] font-bold text-theme-faint">تنقل الإدارة</p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                                 <h1 className="text-lg font-bold text-theme sm:text-xl">{pageMeta.title}</h1>
-                                <span className="inline-flex items-center rounded-full border border-gold/15 bg-gold/10 px-2.5 py-1 text-[10px] font-bold text-gold">
+                                <span className="inline-flex items-center rounded-md border border-gold/15 bg-gold/10 px-2.5 py-1 text-[10px] font-bold text-gold">
                                     Cmd/Ctrl + K
                                 </span>
                             </div>

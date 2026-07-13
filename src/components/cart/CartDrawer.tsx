@@ -100,6 +100,9 @@ export function CartDrawer() {
           {/* Drawer */}
           <motion.div
             ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-drawer-title"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -111,17 +114,18 @@ export function CartDrawer() {
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-theme-subtle bg-theme-faint/40">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-theme-subtle flex items-center justify-center border border-theme-subtle">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-theme-subtle bg-theme-subtle">
                   <ShoppingBag className="w-5 h-5 text-theme" />
                 </div>
-                <h2 className="text-xl font-bold text-theme">سلة التسوق</h2>
-                <span className="bg-gold/10 text-gold text-xs font-bold px-2.5 py-1 rounded-full border border-gold/20">
+                <h2 id="cart-drawer-title" className="text-xl font-bold text-theme">سلة التسوق</h2>
+                <span className="rounded-md border border-gold/20 bg-gold/10 px-2.5 py-1 text-xs font-bold text-gold">
                   {items.length} قطع
                 </span>
               </div>
               <button
                 onClick={() => toggleCart(false)}
-                className="p-2.5 rounded-full hover:bg-theme-subtle text-theme-subtle hover:text-theme transition-colors"
+                className="rounded-xl p-2.5 text-theme-subtle transition-colors hover:bg-theme-subtle hover:text-theme"
+                aria-label="إغلاق سلة التسوق"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -131,19 +135,19 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto p-6 scrollbar-wusha">
               {items.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="w-24 h-24 rounded-full bg-theme-subtle flex items-center justify-center mb-2 border border-theme-subtle">
+                  <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-[1.375rem] border border-theme-subtle bg-theme-subtle">
                     <ShoppingBag className="w-10 h-10 text-theme-faint" />
                   </div>
-                  <h3 className="text-xl font-bold text-theme">سلتك فارغة الألوان!</h3>
+                  <h3 className="text-xl font-bold text-theme">سلة التسوق فارغة</h3>
                   <p className="text-theme-subtle max-w-[250px]">
-                    يبدو أنك لم تختر أي تحفة فنية بعد. استكشف تصاميم وشّى واضف لمستك.
+                    لم تضف أي منتج بعد. يمكنك استكشاف القطع المتوفرة والعودة إلى السلة في أي وقت.
                   </p>
                   <button
                     onClick={() => {
                         toggleCart(false);
-                        router.push("/gallery");
+                        router.push("/store");
                     }}
-                    className="mt-4 btn-gold px-8 py-3 rounded-full flex items-center gap-2 font-bold"
+                    className="btn-gold mt-4 flex items-center gap-2 rounded-xl px-8 py-3 font-bold"
                   >
                     استكشاف المعرض
                     <ArrowRight className="w-4 h-4 ml-1" />
@@ -158,7 +162,7 @@ export function CartDrawer() {
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`}
-                      className="flex gap-4 p-4 rounded-2xl theme-surface-panel group"
+                      className="theme-surface-panel group flex gap-4 rounded-[1.375rem] p-4"
                     >
                       {/* Image */}
                       <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-theme-surface flex-shrink-0 border border-theme-subtle">
@@ -211,12 +215,12 @@ export function CartDrawer() {
                         </div>
 
                         <div className="flex items-end justify-between mt-3">
-                          <span className="font-bold text-lg text-theme">
+                          <span data-numeric className="text-lg font-bold text-theme">
                             {item.price} <span className="text-xs font-normal text-theme-subtle">ر.س</span>
                           </span>
 
                           {/* Quantity Controls */}
-                          <div className="flex items-center bg-theme-faint border border-theme-subtle rounded-full overflow-hidden">
+                          <div className="flex items-center overflow-hidden rounded-xl border border-theme-subtle bg-theme-faint">
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity - 1, item.size, item.colorCode)}
                               className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
@@ -250,9 +254,9 @@ export function CartDrawer() {
                 {/* Promo Code Input */}
                 <div className="mb-6">
                     {coupon ? (
-                        <div className="theme-surface-panel flex items-center justify-between p-3 rounded-xl border-gold/20 bg-gold/5">
+                        <div className="theme-surface-panel flex items-center justify-between rounded-xl border-gold/20 bg-gold/5 p-3">
                             <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-gold/20 flex items-center justify-center">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/20">
                                     <ShoppingBag className="w-4 h-4 text-gold" />
                                 </div>
                                 <div>

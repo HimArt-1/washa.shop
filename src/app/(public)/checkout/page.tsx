@@ -1,6 +1,5 @@
 // Server Component — يجلب إعدادات الشحن ويمررها للـ Client Component
 import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
 import { getSiteSettings } from "@/app/actions/settings";
 import { getProfile } from "@/app/actions/profile";
 import { CheckoutContent } from "./CheckoutContent";
@@ -25,8 +24,12 @@ export default async function CheckoutPage() {
 
     return (
         <Suspense fallback={
-            <div className="min-h-screen pt-32 pb-20 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-gold animate-spin" />
+            <div className="container-wusha min-h-screen pb-20 pt-28" aria-label="جاري تحميل صفحة الدفع">
+                <div className="mb-6 h-32 animate-pulse rounded-[1.5rem] bg-theme-subtle" />
+                <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                    <div className="h-[34rem] animate-pulse rounded-[1.5rem] bg-theme-subtle" />
+                    <div className="h-[28rem] animate-pulse rounded-[1.5rem] bg-theme-subtle" />
+                </div>
             </div>
         }>
             <CheckoutContent 

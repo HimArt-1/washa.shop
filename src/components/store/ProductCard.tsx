@@ -254,7 +254,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             <Link
                 href={`/products/${product.id}`}
                 className={cn(
-                    "group theme-surface-panel wusha-product-card block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30",
+                    "group theme-surface-panel wusha-product-card block overflow-hidden rounded-[1.375rem] transition-all duration-300 hover:border-gold/30",
                     featured && "ring-1 ring-gold/20 shadow-[0_12px_40px_-12px_rgba(90,62,43,0.22)]"
                 )}
             >
@@ -343,7 +343,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
         <Link
             href={`/products/${product.id}`}
             className={cn(
-                "group theme-surface-panel wusha-product-card relative block overflow-hidden rounded-[1.65rem] transition-all duration-500 hover:border-gold/30",
+                "group theme-surface-panel wusha-product-card relative block overflow-hidden rounded-[1.375rem] transition-all duration-300 hover:border-gold/30",
                 featured && "ring-1 ring-gold/20 shadow-[0_12px_40px_-12px_rgba(90,62,43,0.22)]"
             )}
         >
@@ -358,11 +358,11 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
 
                 {/* Status Badges */}
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                    <span className="text-[9px] backdrop-blur-md px-2 py-0.5 rounded-full border" style={typeBadgeStyle}>
+                    <span className="rounded-md border px-2 py-1 text-[9px] font-semibold backdrop-blur-md" style={typeBadgeStyle}>
                         {typeLabel(productType)}
                     </span>
                     {hasDiscount && (
-                        <span className="text-[9px] bg-gold/90 backdrop-blur-sm text-[var(--wusha-bg)] px-2 py-0.5 rounded-full font-bold">
+                        <span className="rounded-md bg-gold/90 px-2 py-1 text-[9px] font-bold text-[var(--wusha-bg)] backdrop-blur-sm">
                             خصم {discountPct}%
                         </span>
                     )}
@@ -370,7 +370,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                         <span className="text-[9px] bg-red-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold">نفدت الكمية</span>
                     ) : isLowStock ? (
                         <span className="text-[9px] bg-amber-500/80 backdrop-blur-sm text-white px-2 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                            {erpTotalStock} قطع فقط!
+                            متبقي {erpTotalStock}
                         </span>
                     ) : null}
                 </div>
@@ -451,7 +451,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
                                 </button>
                                 <button
                                     onClick={handleLike}
-                                    className={`flex min-h-[40px] min-w-[40px] flex-1 items-center justify-center gap-1 rounded-2xl border px-2.5 backdrop-blur-md transition-colors ${liked ? "border-red-400/20 bg-red-500/20 text-red-400" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-red-400/20 hover:bg-red-500/20 hover:text-red-400"}`}
+                                    className={`hidden min-h-[40px] min-w-[40px] flex-1 items-center justify-center gap-1 rounded-xl border px-2.5 backdrop-blur-md transition-colors sm:flex ${liked ? "border-red-400/20 bg-red-500/20 text-red-400" : "border-white/10 bg-[color:rgba(15,15,15,0.46)] text-on-dark hover:border-red-400/20 hover:bg-red-500/20 hover:text-red-400"}`}
                                     title={liked ? "إلغاء الإعجاب" : "إعجاب"}
                                 >
                                     <Heart className={`w-4 h-4 ${liked ? "fill-current" : ""}`} />

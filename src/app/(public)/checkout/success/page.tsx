@@ -28,13 +28,14 @@ function CheckoutSuccessContent() {
       return;
     }
 
-    // Fire confetti
-    CanvasConfetti({
-      particleCount: 150,
-      spread: 90,
-      origin: { y: 0.6 },
-      colors: ['#CAA052', '#866B36', '#ffffff']
-    });
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      CanvasConfetti({
+        particleCount: 70,
+        spread: 72,
+        origin: { y: 0.62 },
+        colors: ["#a78343", "#68483b", "#f4efe7"],
+      });
+    }
 
     if (!trackedRef.current) {
       trackedRef.current = true;
@@ -55,20 +56,19 @@ function CheckoutSuccessContent() {
   }
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center space-y-8 select-none">
+    <div className="flex min-h-[70vh] flex-col items-center justify-center space-y-8 p-6 text-center">
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="w-32 h-32 bg-gold/10 rounded-full flex items-center justify-center border-4 border-gold/20 relative"
+        className="relative flex h-24 w-24 items-center justify-center rounded-[1.5rem] border border-gold/20 bg-gold/10"
       >
-        <div className="absolute inset-0 bg-gold/5 rounded-full animate-ping" />
-        <CheckCircle2 className="w-16 h-16 text-gold relative z-10" />
+        <CheckCircle2 className="relative z-10 h-12 w-12 text-gold" />
       </motion.div>
 
       <div className="space-y-4 max-w-lg">
-        <h1 className="text-4xl md:text-5xl font-black text-theme-strong tracking-wide drop-shadow-md pb-2 bg-gradient-to-r from-gold via-yellow-200 to-gold bg-clip-text text-transparent">
-          تم استلام طلبك بنجاح!
+        <h1 className="pb-2 text-4xl font-black text-theme-strong md:text-5xl">
+          تم استلام طلبك
         </h1>
         <p className="text-theme-subtle text-lg leading-relaxed">
           شكرًا لثقتك بوشّى. تم تأكيد الدفع وجاري تجهيز تحفتك الفنية.
@@ -77,7 +77,7 @@ function CheckoutSuccessContent() {
         </p>
         
         {orderId && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-theme-faint border border-white/5 py-2 px-6 rounded-full">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-md border border-theme-subtle bg-theme-faint px-6 py-2">
                 <span className="text-theme-subtle text-sm">رقم المعاملة:</span>
                 <span className="font-mono text-gold font-bold">{orderId.slice(0, 8).toUpperCase()}</span>
             </div>
@@ -86,14 +86,14 @@ function CheckoutSuccessContent() {
 
       <div className="flex flex-col sm:flex-row gap-4 pt-8 w-full max-w-md">
         <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Link href="/account/orders" className="w-full btn-gold py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-gold/20">
+          <Link href="/account/orders" className="btn-gold flex w-full items-center justify-center gap-2 rounded-xl px-6 py-4 font-bold">
             متابعة الطلب
             <ArrowRight className="w-5 h-5" />
           </Link>
         </motion.div>
         
         <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <Link href="/gallery" className="w-full bg-theme-surface border border-white/10 hover:border-gold/50 hover:bg-theme-faint text-theme-strong py-4 px-6 rounded-2xl font-bold transition-colors flex items-center justify-center">
+          <Link href="/store" className="flex w-full items-center justify-center rounded-xl border border-theme-soft bg-theme-surface px-6 py-4 font-bold text-theme-strong transition-colors hover:border-gold/50 hover:bg-theme-faint">
             مواصلة التسوق
           </Link>
         </motion.div>
@@ -105,9 +105,6 @@ function CheckoutSuccessContent() {
 export default function CheckoutSuccessPage() {
   return (
     <main className="w-full overflow-hidden bg-theme-bg relative pt-24 pb-12" dir="rtl">
-        {/* Ambient Glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gold/5 rounded-full blur-[120px] pointer-events-none" />
-
         <Suspense fallback={
             <div className="min-h-[70vh] flex items-center justify-center">
                 <Loader2 className="w-10 h-10 animate-spin text-gold" />

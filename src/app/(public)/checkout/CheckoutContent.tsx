@@ -215,8 +215,8 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         return (
             <div className="relative min-h-[calc(100dvh-5rem)] overflow-hidden px-4 pb-16 pt-28 sm:px-6">
                 <div aria-hidden="true" className="container-wusha grid gap-6 opacity-30 blur-[2px] lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="theme-surface-panel min-h-[30rem] rounded-[2rem] border border-theme-subtle" />
-                    <div className="theme-surface-panel min-h-[24rem] rounded-[2rem] border border-theme-subtle" />
+                    <div className="theme-surface-panel min-h-[30rem] rounded-[1.5rem] border border-theme-subtle" />
+                    <div className="theme-surface-panel min-h-[24rem] rounded-[1.5rem] border border-theme-subtle" />
                 </div>
 
                 <div
@@ -278,7 +278,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         const failedOrderId = searchParams.get("order_id");
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
-                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                <div className="theme-surface-panel max-w-2xl rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12">
                     <h1 className="mb-4 text-2xl font-bold">تعذر تأكيد الدفع تلقائياً</h1>
                     <p className="mb-8 text-theme-subtle">{error}</p>
                     <div className="flex flex-wrap justify-center gap-3">
@@ -305,7 +305,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     if (items.length === 0 && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
-                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                <div className="theme-surface-panel max-w-2xl rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12">
                     <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6 mx-auto">
                         <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
                     </div>
@@ -516,7 +516,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12 relative overflow-hidden"
+                    className="theme-surface-panel relative max-w-2xl overflow-hidden rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12"
                 >
                     {/* Background Glow */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-green-500/10 blur-3xl rounded-full" />
@@ -547,7 +547,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ delay: 0.3 }}
                         className="text-3xl font-bold mb-2 relative z-10"
                     >
-                        تم استلام طلبك بنجاح!
+                        تم استلام طلبك
                     </motion.h1>
                     
                     <motion.p 
@@ -622,7 +622,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="mb-6 theme-surface-panel rounded-[2rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7"
+                    className="theme-surface-panel mb-6 rounded-[1.5rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7"
                 >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
@@ -643,7 +643,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
                         className="space-y-6 lg:col-span-7 sm:space-y-8"
                     >
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <MapPin className="text-gold w-5 h-5" />
                                 عنوان الشحن
@@ -760,7 +760,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         </div>
 
                         {/* Payment Method */}
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <CreditCard className="text-gold w-5 h-5" />
                                 طريقة الدفع
@@ -916,13 +916,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
                         className="lg:col-span-5"
                     >
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
                             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                     <h2 className="text-xl font-bold">ملخص الطلب</h2>
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
-                                <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
+                                <span className="inline-flex w-fit rounded-md border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
                                     {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
                                 </span>
                             </div>
@@ -935,7 +935,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
 
                             <div className="mb-6 space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar sm:max-h-[320px]">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
+                                    <div key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`} className="flex gap-3 rounded-xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -971,7 +971,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                             <div className="space-y-3 border-t border-theme-soft pt-6">
                                 <div className="flex justify-between text-theme-soft text-sm">
                                     <span>المجموع الفرعي</span>
-                                    <span>{subtotal.toLocaleString()} ر.س</span>
+                                    <span data-numeric>{subtotal.toLocaleString()} ر.س</span>
                                 </div>
                                 {discount > 0 && (
                                     <div className="flex justify-between items-center text-green-400 text-sm">
@@ -1022,9 +1022,9 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     <span>الشحن</span>
                                     <span>
                                         {!shippingConfig.shipping_enabled
-                                            ? <span className="text-green-400 text-xs">مجاني 🎁</span>
+                                            ? <span className="text-green-400 text-xs">مجاني</span>
                                             : taxableAmount >= shippingConfig.free_above
-                                                ? <span className="text-green-400 text-xs">شحن مجاني 🎉</span>
+                                                ? <span className="text-green-400 text-xs">شحن مجاني</span>
                                                 : `${shippingCost.toLocaleString()} ر.س`}
                                     </span>
                                 </div>
@@ -1038,7 +1038,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 </div>
                                 <div className="flex justify-between font-bold text-lg pt-4 border-t border-theme-soft mt-4">
                                     <span>الإجمالي</span>
-                                    <span className="text-gold">{total.toLocaleString()} ر.س</span>
+                                    <span data-numeric className="text-gold">{total.toLocaleString()} ر.س</span>
                                 </div>
                             </div>
 

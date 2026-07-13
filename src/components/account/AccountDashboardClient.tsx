@@ -255,9 +255,9 @@ export function AccountDashboardClient({
                             <motion.div key={link.href} variants={itemVariants}>
                                 <Link
                                     href={link.href}
-                                    className="group relative block h-full overflow-hidden rounded-2xl border border-theme-subtle bg-surface/30 p-5 transition-all duration-500 hover:border-gold/20 hover:bg-surface/50"
+                                    className="group relative block h-full overflow-hidden rounded-[1.375rem] border border-theme-subtle bg-surface/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-gold/25 hover:shadow-[var(--wusha-shadow-panel)]"
                                 >
-                                    <div className={`absolute inset-0 bg-gradient-to-br ${link.color} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                                    <div className="absolute inset-y-0 right-0 w-1 bg-gold/0 transition-colors duration-300 group-hover:bg-gold/70" />
 
                                     <div className="relative flex items-center justify-between gap-4">
                                         <div className="flex min-w-0 items-center gap-4">
@@ -268,7 +268,7 @@ export function AccountDashboardClient({
                                                 <h3 className="flex items-center gap-2 text-sm font-bold text-theme">
                                                     {link.title}
                                                     {link.badge !== undefined && link.badge > 0 && (
-                                                        <span className="text-[10px] bg-gold/10 text-gold px-2 py-0.5 rounded-full">{link.badge}</span>
+                                                        <span className="rounded-md bg-gold/10 px-2 py-0.5 text-[10px] text-gold">{link.badge}</span>
                                                     )}
                                                 </h3>
                                                 <p className="mt-0.5 text-xs leading-6 text-theme-faint">{link.description}</p>
