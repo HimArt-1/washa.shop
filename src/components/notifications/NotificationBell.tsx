@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Check, ExternalLink, Package, MessageCircle } from "lucide-react";
+import { Bell, Check, ExternalLink, Package, MessageCircle, Palette, Store, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ar } from "date-fns/locale";
 import {
     getUserNotifications,
+    getUnreadUserNotificationsCount,
     markUserNotificationRead,
     markAllUserNotificationsRead,
 } from "@/app/actions/user-notifications";
@@ -19,6 +20,9 @@ const POLL_INTERVAL_MS = 12_000; // تحديث كل 12 ثانية لمزامنة
 function getNotificationIcon(n: UserNotification) {
     if (n.type === "order_update") return Package;
     if (n.type === "support_reply") return MessageCircle;
+    if (n.type === "design_order_update" || n.type === "artwork_update") return Palette;
+    if (n.type === "artist_sale") return Store;
+    if (n.type === "artist_social") return UserPlus;
     return Bell;
 }
 
@@ -26,14 +30,17 @@ export function NotificationBell() {
     const [notifications, setNotifications] = useState<UserNotification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
     const router = useRouter();
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const unreadCount = notifications.filter((n) => !n.is_read).length;
-
     const fetchNotifications = useCallback(async () => {
-        const data = await getUserNotifications(20);
+        const [data, count] = await Promise.all([
+            getUserNotifications(20),
+            getUnreadUserNotificationsCount(),
+        ]);
         setNotifications(data);
+        setUnreadCount(count);
         setIsLoading(false);
     }, []);
 
@@ -64,8 +71,14 @@ export function NotificationBell() {
 
     const handleNotificationClick = async (n: UserNotification) => {
         if (!n.is_read) {
+            const previous = notifications;
             setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, is_read: true } : notif));
-            await markUserNotificationRead(n.id);
+            setUnreadCount((count) => Math.max(0, count - 1));
+            const result = await markUserNotificationRead(n.id);
+            if (!result.success) {
+                setNotifications(previous);
+                setUnreadCount((count) => count + 1);
+            }
         }
         setIsOpen(false);
         if (n.link) {
@@ -74,8 +87,15 @@ export function NotificationBell() {
     };
 
     const handleMarkAllRead = async () => {
+        const previous = notifications;
+        const previousCount = unreadCount;
         setNotifications(prev => prev.map(notif => ({ ...notif, is_read: true })));
-        await markAllUserNotificationsRead();
+        setUnreadCount(0);
+        const result = await markAllUserNotificationsRead();
+        if (!result.success) {
+            setNotifications(previous);
+            setUnreadCount(previousCount);
+        }
     };
 
     return (

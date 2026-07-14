@@ -30,6 +30,7 @@ import type {
 
 interface NotificationsAdminClientProps {
     notifications: AdminNotification[];
+    totalUnreadCount: number;
     alerts: {
         lowStock: number;
         pendingOrders: number;
@@ -143,8 +144,9 @@ function FilterChip(props: {
     );
 }
 
-export function NotificationsAdminClient({ notifications, alerts }: NotificationsAdminClientProps) {
+export function NotificationsAdminClient({ notifications, totalUnreadCount, alerts }: NotificationsAdminClientProps) {
     const [items, setItems] = useState(notifications);
+    const [unreadTotal, setUnreadTotal] = useState(totalUnreadCount);
     const [categoryFilter, setCategoryFilter] = useState<AdminNotificationCategory | "all">("all");
     const [severityFilter, setSeverityFilter] = useState<AdminNotificationSeverity | "all">("all");
     const [readFilter, setReadFilter] = useState<"all" | "unread">("all");
@@ -155,7 +157,8 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
 
     useEffect(() => {
         setItems(notifications);
-    }, [notifications]);
+        setUnreadTotal(totalUnreadCount);
+    }, [notifications, totalUnreadCount]);
 
     const categoryCounts = {
         orders: 0,
@@ -173,12 +176,12 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
         info: 0,
     } satisfies Record<AdminNotificationSeverity, number>;
 
-    let unreadCount = 0;
+    let visibleUnreadCount = 0;
 
     for (const notification of items) {
         categoryCounts[notification.category] += 1;
         severityCounts[notification.severity] += 1;
-        if (!notification.is_read) unreadCount += 1;
+        if (!notification.is_read) visibleUnreadCount += 1;
     }
 
     const filteredNotifications = items.filter((notification) => {
@@ -204,6 +207,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                         notification.id === id ? { ...notification, is_read: true } : notification
                     )
                 );
+                setUnreadTotal((count) => Math.max(0, count - 1));
             } catch (error) {
                 setError(error instanceof Error ? error.message : "فشل تحديث الإشعار");
             } finally {
@@ -213,7 +217,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
     };
 
     const handleMarkAllRead = () => {
-        if (unreadCount === 0 || isMarkingAll) return;
+        if (unreadTotal === 0 || isMarkingAll) return;
 
         startMarkAllTransition(async () => {
             setError(null);
@@ -223,6 +227,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                     throw new Error(result?.error || "فشل تحديث الإشعارات");
                 }
                 setItems((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+                setUnreadTotal(0);
             } catch (error) {
                 setError(error instanceof Error ? error.message : "فشل تحديث الإشعارات");
             }
@@ -327,12 +332,12 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             {filteredNotifications.length} من {items.length} إشعار
                         </span>
                         <span className="inline-flex items-center rounded-full border border-theme-subtle bg-theme-faint px-2.5 py-1 text-[11px] text-theme-subtle">
-                            غير المقروء: {unreadCount}
+                            غير المقروء: {unreadTotal}
                         </span>
                         <button
                             type="button"
                             onClick={handleMarkAllRead}
-                            disabled={unreadCount === 0 || isMarkingAll}
+                            disabled={unreadTotal === 0 || isMarkingAll}
                             className="inline-flex items-center gap-2 rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-[11px] font-bold text-theme-soft transition-colors hover:border-gold/20 hover:text-theme disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {isMarkingAll ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
@@ -384,7 +389,7 @@ export function NotificationsAdminClient({ notifications, alerts }: Notification
                             <FilterChip
                                 active={readFilter === "unread"}
                                 label="غير المقروء"
-                                count={unreadCount}
+                                count={visibleUnreadCount}
                                 onClick={() => setReadFilter("unread")}
                             />
                         </div>

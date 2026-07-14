@@ -9,7 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { createAdminNotification } from "./notifications";
-import { createUserNotification } from "./user-notifications";
+import { createUserNotification } from "@/lib/user-notifications";
 import type {
     CreativeCatalogScope,
     CustomDesignArtStyle,
@@ -1459,6 +1459,62 @@ export async function getDesignOrder(id: string): Promise<CustomDesignOrder | nu
 
 // ─── Admin: Update Status ───────────────────────────────
 
+async function notifyDesignReadyForReview(id: string, userId: string | null | undefined, orderNumber: string | number) {
+    if (!userId) return;
+    try {
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `design_order:${id}:user_notification:awaiting_review`,
+                eventType: "design_order_awaiting_review",
+                channel: "user_notification",
+                resourceType: "custom_design_order",
+                resourceId: id,
+                metadata: { order_id: id, user_id: userId, order_number: orderNumber },
+            },
+            async () => {
+                const result = await createUserNotification({
+                    userId,
+                    title: "تصميم مخصص 🎨",
+                    message: `تصميمك (الطلب #${orderNumber}) جاهز الآن للمراجعة والتأكيد! يمكنك الاعتماد والتحويل للسلة أو طلب الإلغاء.`,
+                    type: "design_order_update",
+                    link: `/account/orders?design=${id}`,
+                });
+                if (!result.success) throw new Error(result.error || "Failed to notify customer that design is ready");
+            }
+        );
+    } catch (notificationError) {
+        console.error("[notifyDesignReadyForReview] Notification dispatch failed", notificationError);
+    }
+}
+
+async function notifyDesignPriced(id: string, userId: string | null | undefined, orderNumber: string | number) {
+    if (!userId) return;
+    try {
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `design_order:${id}:user_notification:priced`,
+                eventType: "design_order_priced",
+                channel: "user_notification",
+                resourceType: "custom_design_order",
+                resourceId: id,
+                metadata: { order_id: id, user_id: userId, order_number: orderNumber },
+            },
+            async () => {
+                const result = await createUserNotification({
+                    userId,
+                    title: "تصميم مخصص جاهز للدفع 🛍️",
+                    message: `تم تسعير طلبك #${orderNumber} ليصبح جاهزاً للإضافة للسلة والدفع. يرجى مراجعته واعتماده.`,
+                    type: "design_order_update",
+                    link: `/account/orders?design=${id}`,
+                });
+                if (!result.success) throw new Error(result.error || "Failed to notify customer that design is priced");
+            }
+        );
+    } catch (notificationError) {
+        console.error("[notifyDesignPriced] Notification dispatch failed", notificationError);
+    }
+}
+
 export async function updateDesignOrderStatus(id: string, status: CustomDesignOrderStatus) {
     const { sb } = await requireSmartStoreAdmin();
     const { data: currentOrder } = await sb
@@ -1471,6 +1527,11 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
         "id" | "status" | "user_id" | "order_number" | "size_id" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
+
+    if (order.status === status && status === "awaiting_review") {
+        await notifyDesignReadyForReview(id, order.user_id, order.order_number);
+        return { success: true };
+    }
 
     const transitionError = getDesignStatusTransitionError(order.status, status);
     if (transitionError) {
@@ -1495,13 +1556,7 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
 
     // If awaiting_review and there's a user, notify them
     if (status === "awaiting_review" && updatedOrder.user_id) {
-        await createUserNotification({
-            userId: updatedOrder.user_id,
-            title: "تصميم مخصص 🎨",
-            message: `تصميمك (الطلب #${updatedOrder.order_number}) جاهز الآن للمراجعة والتأكيد! يمكنك الاعتماد والتحويل للسلة أو طلب الإلغاء.`,
-            type: "order_update",
-            link: `/account/orders?design=${id}`,
-        });
+        await notifyDesignReadyForReview(id, updatedOrder.user_id, updatedOrder.order_number);
     }
 
     return { success: true };
@@ -1699,7 +1754,8 @@ export async function sendDesignOrderToCustomer(id: string, finalPrice: number) 
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
     if (order.is_sent_to_customer) {
-        return { error: "تم إرسال هذا الطلب للعميل بالفعل." };
+        await notifyDesignPriced(id, order.user_id, order.order_number);
+        return { success: true };
     }
     if (order.status === "completed" || order.status === "cancelled") {
         return { error: "لا يمكن إرسال هذا الطلب للعميل في حالته الحالية." };
@@ -1725,13 +1781,7 @@ export async function sendDesignOrderToCustomer(id: string, finalPrice: number) 
 
     // Notify the user that their order is priced and ready for checkout
     if (updatedOrder.user_id) {
-        await createUserNotification({
-            userId: updatedOrder.user_id,
-            title: "تصميم مخصص جاهز للدفع 🛍️",
-            message: `تم تسعير طلبك #${updatedOrder.order_number} ليصبح جاهزاً للإضافة للسلة والدفع. يرجى مراجعته واعتماده.`,
-            type: "order_update",
-            link: `/account/orders?design=${id}`,
-        });
+        await notifyDesignPriced(id, updatedOrder.user_id, updatedOrder.order_number);
     }
 
     return { success: true };

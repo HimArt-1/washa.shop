@@ -308,11 +308,12 @@ async function handleTest(ctx: TelegramCommandContext): Promise<TelegramCommandR
 async function handleStatus(ctx: TelegramCommandContext): Promise<TelegramCommandResponse> {
     const todayStart = getRiyadhTodayStartIso();
     const yesterdayStart = getRiyadhYesterdayStartIso();
-    const [ordersActive, paymentsPending, supportActive, criticalUnread, errorsToday, designNew, ordersToday] = await Promise.all([
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [ordersActive, paymentsPending, supportActive, criticalRecent, errorsToday, designNew, ordersToday] = await Promise.all([
         count(ctx.supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["pending", "confirmed", "processing"])),
         count(ctx.supabase.from("orders").select("id", { count: "exact", head: true }).eq("payment_status", "pending").neq("status", "cancelled").neq("status", "refunded")),
         count(ctx.supabase.from("support_tickets").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"])),
-        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false).eq("severity", "critical")),
+        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("severity", "critical").gte("created_at", last24Hours)),
         count(ctx.supabase.from("system_logs").select("id", { count: "exact", head: true }).eq("type", "error").gte("created_at", yesterdayStart)),
         count(ctx.supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).in("status", ["new", "awaiting_review", "modification_requested"])),
         count(ctx.supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", todayStart)),
@@ -326,7 +327,7 @@ async function handleStatus(ctx: TelegramCommandContext): Promise<TelegramComman
             `مدفوعات معلّقة: <b>${paymentsPending.count}</b>`,
             `تذاكر دعم مفتوحة: <b>${supportActive.count}</b>`,
             `طلبات تصميم تحتاج متابعة: <b>${designNew.count}</b>`,
-            `تنبيهات حرجة غير مقروءة: <b>${criticalUnread.count}</b>`,
+            `تنبيهات حرجة آخر 24 ساعة: <b>${criticalRecent.count}</b>`,
             `أخطاء آخر 24 ساعة: <b>${errorsToday.count}</b>`,
         ].join("\n"),
         replyMarkup: keyboard(ctx.appUrl, [
@@ -636,13 +637,13 @@ async function handleStock(ctx: TelegramCommandContext): Promise<TelegramCommand
 }
 
 async function handleNotifications(ctx: TelegramCommandContext): Promise<TelegramCommandResponse> {
-    const [unread, critical, latest] = await Promise.all([
-        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false)),
-        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false).eq("severity", "critical")),
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const [recent, critical, latest] = await Promise.all([
+        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).gte("created_at", last24Hours)),
+        count(ctx.supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("severity", "critical").gte("created_at", last24Hours)),
         rows<Record<string, unknown>>(ctx.supabase
             .from("admin_notifications")
             .select("id, title, category, severity, created_at, link")
-            .eq("is_read", false)
             .order("created_at", { ascending: false })
             .limit(5)),
     ]);
@@ -650,8 +651,8 @@ async function handleNotifications(ctx: TelegramCommandContext): Promise<Telegra
     return {
         text: [
             "<b>تنبيهات الأدمن</b>",
-            `غير مقروءة: <b>${unread.count}</b>`,
-            `حرجة: <b>${critical.count}</b>`,
+            `آخر 24 ساعة: <b>${recent.count}</b>`,
+            `حرجة آخر 24 ساعة: <b>${critical.count}</b>`,
             "",
             topLines(latest.data, (item, index) => `${index + 1}. ${h(item.title)} · ${h(label(item.category))} · ${h(label(item.severity))}`),
         ].join("\n"),

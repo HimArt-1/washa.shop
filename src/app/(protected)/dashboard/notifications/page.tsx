@@ -1,6 +1,7 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { createClient } from "@supabase/supabase-js";
 import { NotificationsAdminClient } from "./NotificationsAdminClient";
+import { getAdminNotifications, getUnreadNotificationsCount } from "@/app/actions/notifications";
 
 function getAdminSb() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,12 +21,10 @@ function getAdminSb() {
 export default async function NotificationsAdminPage() {
     const supabase = getAdminSb();
 
-    // Fetch admin notifications
-    const { data: notifications } = await supabase
-        .from("admin_notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
+    const [notifications, unreadCount] = await Promise.all([
+        getAdminNotifications(100),
+        getUnreadNotificationsCount(),
+    ]);
 
     // Build dashboard alerts
     const { count: lowStockCount } = await supabase
@@ -53,6 +52,7 @@ export default async function NotificationsAdminPage() {
             />
             <NotificationsAdminClient
                 notifications={notifications || []}
+                totalUnreadCount={unreadCount}
                 alerts={{
                     lowStock: lowStockCount || 0,
                     pendingOrders: pendingOrdersCount || 0,

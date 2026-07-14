@@ -9,7 +9,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, type OrderEmailItem } from "@/lib/email";
 import { sendPushToAdmins } from "@/lib/push";
 import { checkStockAvailability, decrementStockForOrder } from "@/lib/inventory";
-import { createUserNotification } from "@/app/actions/user-notifications";
+import { createUserNotification } from "@/lib/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
@@ -722,6 +722,53 @@ async function fetchOrderEmailItems(orderId: string) {
     })) as OrderEmailItem[];
 }
 
+async function dispatchArtistSaleNotifications(orderId: string, orderNumber: string) {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+        .from("order_items")
+        .select("quantity, total_price, product:products(artist_id, title)")
+        .eq("order_id", orderId);
+
+    if (error) throw new Error(error.message);
+
+    const salesByArtist = new Map<string, { total: number; quantity: number; titles: string[] }>();
+    for (const item of (data || []) as any[]) {
+        const artistId = item.product?.artist_id;
+        if (!artistId) continue;
+        const current = salesByArtist.get(artistId) || { total: 0, quantity: 0, titles: [] };
+        current.total += Number(item.total_price || 0);
+        current.quantity += Number(item.quantity || 0);
+        if (item.product?.title && !current.titles.includes(item.product.title)) {
+            current.titles.push(item.product.title);
+        }
+        salesByArtist.set(artistId, current);
+    }
+
+    await Promise.all(Array.from(salesByArtist.entries()).map(([artistId, sale]) =>
+        runIdempotentDispatch(
+            {
+                dispatchKey: `order:${orderId}:artist_notification:${artistId}:paid`,
+                eventType: "artist_sale_paid",
+                channel: "user_notification",
+                resourceType: "order",
+                resourceId: orderId,
+                metadata: { order_id: orderId, artist_id: artistId, total: sale.total, quantity: sale.quantity },
+            },
+            async () => {
+                const result = await createUserNotification({
+                    userId: artistId,
+                    type: "artist_sale",
+                    title: "مبيعة جديدة لأحد أعمالك",
+                    message: `تم تأكيد طلب #${orderNumber} ويضم ${sale.quantity} من ${sale.titles.slice(0, 2).join("، ") || "أعمالك"}.`,
+                    link: "/studio",
+                    metadata: { order_id: orderId, order_number: orderNumber, total: sale.total, quantity: sale.quantity },
+                });
+                assertSuccessfulDispatch(result, "Failed to create artist sale notification");
+            }
+        )
+    ));
+}
+
 async function dispatchOrderPaymentSideEffects(params: {
     orderId: string;
     orderNumber: string;
@@ -757,6 +804,7 @@ async function dispatchOrderPaymentSideEffects(params: {
             provider: paymentProvider,
             webhookEventId,
         }),
+        dispatchArtistSaleNotifications(orderId, orderNumber),
         runIdempotentDispatch(
             {
                 dispatchKey: `order:${orderId}:admin_email:payment_received`,

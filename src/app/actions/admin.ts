@@ -22,6 +22,9 @@ import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-o
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 import { confirmOrderPayment } from "@/app/actions/orders";
 import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
+import { getAdminNotifications, getUnreadNotificationsCount } from "@/app/actions/notifications";
+import { createUserNotification } from "@/lib/user-notifications";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
 function generateTempPassword(): string {
@@ -232,12 +235,9 @@ export async function getAdminCommandCenterData() {
             supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("priority", "high").in("status", ["open", "in_progress"]),
             supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "new"),
             supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "awaiting_review"),
-            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
-            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false).eq("severity", "critical"),
-            supabase.from("admin_notifications")
-                .select("id, title, message, category, severity, created_at, link, is_read")
-                .order("created_at", { ascending: false })
-                .limit(6),
+            getUnreadNotificationsCount().then((count) => ({ count })),
+            getUnreadNotificationsCount("critical").then((count) => ({ count })),
+            getAdminNotifications(6).then((data) => ({ data })),
             supabase.from("support_tickets")
                 .select("id, subject, status, priority, name, email, created_at")
                 .in("status", ["open", "in_progress"])
@@ -265,7 +265,7 @@ export async function getAdminCommandCenterData() {
                 return;
             }
 
-            if (res.value?.error) {
+            if (res.value && typeof res.value === "object" && "error" in res.value && res.value.error) {
                 console.error(`Command center query ${idx} returned DB error:`, res.value.error);
                 if (!issues.includes("بعض بيانات مركز القيادة غير مكتملة الآن.")) {
                     issues.push("بعض بيانات مركز القيادة غير مكتملة الآن.");
@@ -2061,13 +2061,24 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         return { success: false, error: "Invalid status" };
     }
 
-    const { data: currentOrder } = await supabase
+    const { data: currentOrder, error: currentOrderError } = await supabase
         .from("orders")
-        .select("status, payment_status, buyer_id, order_number, metadata, coupon_id")
+        .select("status, payment_status, buyer_id, order_number, metadata, coupon_id, updated_at")
         .eq("id", orderId)
         .single();
 
-    const updateData: Record<string, unknown> = { status: newStatus };
+    if (currentOrderError || !currentOrder) {
+        return { success: false, error: currentOrderError?.message || "الطلب غير موجود" };
+    }
+
+    const statusChanged = Boolean(currentOrder && newStatus !== currentOrder.status);
+    const statusTransitionVersion = statusChanged
+        ? new Date().toISOString()
+        : currentOrder?.updated_at || new Date().toISOString();
+    const updateData: Record<string, unknown> = {
+        status: newStatus,
+        ...(statusChanged ? { updated_at: statusTransitionVersion } : {}),
+    };
 
     if (newStatus === "confirmed" && currentOrder?.status === "pending") {
         return { success: false, error: "أكد استلام الدفعة أولًا من إجراء تأكيد التحويل البنكي." };
@@ -2153,7 +2164,19 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         return { success: false, error: error.message };
     }
 
-    if (currentOrder?.buyer_id && newStatus !== currentOrder.status) {
+    const orderNotificationDispatchKey = `order:${orderId}:user_notification:status:${statusTransitionVersion}`;
+    let shouldNotifyBuyer = statusChanged;
+    if (currentOrder?.buyer_id && !statusChanged) {
+        const { data: failedDispatch } = await supabase
+            .from("event_dispatches")
+            .select("id")
+            .eq("dispatch_key", orderNotificationDispatchKey)
+            .eq("status", "failed")
+            .maybeSingle();
+        shouldNotifyBuyer = Boolean(failedDispatch);
+    }
+
+    if (currentOrder?.buyer_id && shouldNotifyBuyer) {
         let statusAr = "";
         switch (newStatus) {
             case "confirmed": statusAr = "تم تأكيد"; break;
@@ -2165,14 +2188,43 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         }
 
         if (statusAr) {
-            await supabase.from("user_notifications").insert({
-                user_id: currentOrder.buyer_id,
-                type: "order_update",
-                title: "تحديث حالة الطلب",
-                message: `${statusAr} طلبك #${currentOrder.order_number}`,
-                link: `/account/orders?order=${orderId}`,
-                metadata: { order_id: orderId, new_status: newStatus }
-            });
+            try {
+                await runIdempotentDispatch(
+                    {
+                        dispatchKey: orderNotificationDispatchKey,
+                        eventType: "order_status_changed",
+                        channel: "user_notification",
+                        resourceType: "order",
+                        resourceId: orderId,
+                        metadata: { order_id: orderId, new_status: newStatus },
+                    },
+                    async () => {
+                        const result = await createUserNotification({
+                            userId: currentOrder.buyer_id!,
+                            type: "order_update",
+                            title: "تحديث حالة الطلب",
+                            message: `${statusAr} طلبك #${currentOrder.order_number}`,
+                            link: `/account/orders?order=${orderId}`,
+                            metadata: { order_id: orderId, new_status: newStatus },
+                        });
+                        if (!result.success) throw new Error(result.error || "Failed to notify buyer of order status");
+                    }
+                );
+            } catch (notificationError) {
+                console.error("[updateOrderStatus:notification]", notificationError);
+                await reportAdminActionAlert({
+                    dispatchKey: `admin:order_status_notification_failed:${orderId}:${statusTransitionVersion}`,
+                    title: "تعذر إرسال تحديث حالة الطلب للعميل",
+                    message: `تغيرت حالة الطلب #${currentOrder.order_number} إلى ${newStatus} لكن تعذر إنشاء إشعار العميل.`,
+                    source: "admin.orders.status_notification",
+                    category: "orders",
+                    severity: "warning",
+                    link: `/dashboard/orders/${orderId}`,
+                    resourceType: "order",
+                    resourceId: orderId,
+                    metadata: { order_id: orderId, new_status: newStatus },
+                });
+            }
         }
     }
 
@@ -3865,10 +3917,33 @@ export async function updateArtworkStatus(
 ) {
     const { supabase } = await requireAdmin();
 
-    const { error } = await supabase
+    const { data: artwork, error: artworkError } = await supabase
         .from("artworks")
-        .update({ status: newStatus })
-        .eq("id", id);
+        .select("artist_id, title, status, updated_at")
+        .eq("id", id)
+        .single();
+
+    if (artworkError || !artwork) {
+        return { success: false, error: artworkError?.message || "العمل الفني غير موجود" };
+    }
+
+    const artworkStatusChanged = artwork.status !== newStatus;
+    let transitionVersion = artwork.updated_at;
+    let error: { message: string } | null = null;
+    if (artworkStatusChanged) {
+        transitionVersion = new Date().toISOString();
+        const updateResult = await supabase
+            .from("artworks")
+            .update({ status: newStatus, updated_at: transitionVersion })
+            .eq("id", id)
+            .eq("status", artwork.status)
+            .select("id")
+            .maybeSingle();
+        error = updateResult.error;
+        if (!error && !updateResult.data) {
+            return { success: false, error: "تغيرت حالة العمل من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+        }
+    }
 
     if (error) {
         console.error("Update artwork status error:", error);
@@ -3890,6 +3965,73 @@ export async function updateArtworkStatus(
             },
         });
         return { success: false, error: error.message };
+    }
+
+    const artworkNotificationDispatchKey = `artwork:${id}:user_notification:status:${transitionVersion}`;
+    let shouldNotifyArtist = artworkStatusChanged;
+    if (artwork.artist_id && !artworkStatusChanged) {
+        const { data: failedDispatch } = await supabase
+            .from("event_dispatches")
+            .select("id")
+            .eq("dispatch_key", artworkNotificationDispatchKey)
+            .eq("status", "failed")
+            .maybeSingle();
+        shouldNotifyArtist = Boolean(failedDispatch);
+    }
+
+    if (artwork.artist_id && shouldNotifyArtist) {
+        const statusDetails = {
+            published: {
+                title: "تم نشر عملك الفني",
+                message: `أصبح عملك «${artwork.title}» ظاهرًا في معرض وشّى.`,
+            },
+            rejected: {
+                title: "يحتاج عملك إلى مراجعة",
+                message: `لم يتم اعتماد «${artwork.title}» للنشر حاليًا. راجع العمل أو تواصل مع الدعم.`,
+            },
+            archived: {
+                title: "تمت أرشفة عملك الفني",
+                message: `تم نقل «${artwork.title}» إلى الأرشيف.`,
+            },
+        }[newStatus];
+
+        try {
+            await runIdempotentDispatch(
+                {
+                    dispatchKey: artworkNotificationDispatchKey,
+                    eventType: "artwork_status_changed",
+                    channel: "user_notification",
+                    resourceType: "artwork",
+                    resourceId: id,
+                    metadata: { artwork_id: id, artist_id: artwork.artist_id, new_status: newStatus, transition_version: transitionVersion },
+                },
+                async () => {
+                    const result = await createUserNotification({
+                        userId: artwork.artist_id,
+                        type: "artwork_update",
+                        title: statusDetails.title,
+                        message: statusDetails.message,
+                        link: "/studio/artworks",
+                        metadata: { artwork_id: id, new_status: newStatus },
+                    });
+                    if (!result.success) throw new Error(result.error || "Failed to notify artist of artwork status");
+                }
+            );
+        } catch (notificationError) {
+            console.error("[updateArtworkStatus:notification]", notificationError);
+            await reportAdminActionAlert({
+                dispatchKey: `admin:artwork_status_notification_failed:${id}:${transitionVersion}`,
+                title: "تعذر إرسال تحديث العمل الفني للوشّاي",
+                message: `تغيرت حالة العمل «${artwork.title}» إلى ${newStatus} لكن تعذر إنشاء إشعار الوشّاي.`,
+                source: "admin.artworks.status_notification",
+                category: "design",
+                severity: "warning",
+                link: "/dashboard/artworks",
+                resourceType: "artwork",
+                resourceId: id,
+                metadata: { artwork_id: id, new_status: newStatus, transition_version: transitionVersion },
+            });
+        }
     }
 
     revalidatePath("/dashboard/artworks");

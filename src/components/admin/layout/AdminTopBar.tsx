@@ -23,6 +23,7 @@ import {
     getAdminNotificationSeverityLabel,
 } from "@/lib/admin-notification-meta";
 import type { AdminNotification } from "@/types/database";
+import { ADMIN_NOTIFICATION_ROLES } from "@/lib/notification-roles";
 import { PushSubscribeButton } from "@/components/notifications/PushSubscribeButton";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { isBrowserOffline } from "@/lib/browser-polling-guard";
@@ -84,8 +85,6 @@ function getCategoryBadgeClasses(notification: AdminNotification) {
 }
 
 const NOTIFICATION_REFRESH_MS = 45_000;
-const ADMIN_NOTIFICATION_ROLES: UserRole[] = ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"];
-
 import { OrderRadar } from "@/components/admin/orders/OrderRadar";
 
 export function AdminTopBar({ role }: { role: UserRole }) {

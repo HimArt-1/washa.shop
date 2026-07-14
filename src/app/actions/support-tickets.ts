@@ -3,7 +3,7 @@
 import { SupportTicketPriority, SupportTicketStatus } from "@/types/database";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import { createUserNotification } from "./user-notifications";
+import { createUserNotification } from "@/lib/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getSupportTicketAccess, requireSupportAdmin } from "@/lib/support-ticket-access";
 import { emitSupportServiceEscalations } from "@/lib/operational-escalations";

@@ -4,6 +4,7 @@ import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import type { Database } from "@/types/database";
+import { ADMIN_NOTIFICATION_ROLES } from "@/lib/notification-roles";
 
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
@@ -37,10 +38,11 @@ function sanitizePushUrl(url?: string) {
 }
 
 async function sendPush(
-    scope: "admins" | "all",
+    scope: "admins" | "all" | "user",
     title: string,
     body: string,
-    url?: string
+    url?: string,
+    userId?: string
 ) {
     if (!isPushEnabled()) {
         await reportAdminOperationalAlert({
@@ -58,7 +60,7 @@ async function sendPush(
                 scope,
             },
         });
-        return { sent: 0 };
+        return { sent: 0, failed: 0 };
     }
 
     const sanitizedTitle = sanitizePushText(title, MAX_PUSH_TITLE_LENGTH);
@@ -66,7 +68,7 @@ async function sendPush(
     const sanitizedUrl = sanitizePushUrl(url);
 
     if (!sanitizedTitle || !sanitizedBody) {
-        return { sent: 0 };
+        return { sent: 0, failed: 0 };
     }
 
     try {
@@ -80,37 +82,50 @@ async function sendPush(
         let subscriptions: Array<{ endpoint: string; p256dh: string; auth: string }> = [];
 
         if (scope === "admins") {
-            const { data: admins } = await supabase
+            const { data: admins, error: adminsError } = await supabase
                 .from("profiles")
                 .select("id")
-                .eq("role", "admin");
+                .in("role", [...ADMIN_NOTIFICATION_ROLES]);
+            if (adminsError) throw adminsError;
 
             const adminIds = (admins || []).map((item) => item.id);
-            if (!adminIds.length) return { sent: 0 };
+            if (!adminIds.length) return { sent: 0, failed: 0 };
 
-            const { data: subs } = await supabase
+            const { data: subs, error: subscriptionsError } = await supabase
                 .from("push_subscriptions")
                 .select("endpoint, p256dh, auth")
                 .in("scope", ["admin", "both"])
                 .in("user_id", adminIds);
+            if (subscriptionsError) throw subscriptionsError;
+
+            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
+        } else if (scope === "user" && userId) {
+            const { data: subs, error: subscriptionsError } = await supabase
+                .from("push_subscriptions")
+                .select("endpoint, p256dh, auth")
+                .in("scope", ["user", "both"])
+                .eq("user_id", userId);
+            if (subscriptionsError) throw subscriptionsError;
 
             subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
         } else {
-            const { data: subs } = await supabase
+            const { data: subs, error: subscriptionsError } = await supabase
                 .from("push_subscriptions")
                 .select("endpoint, p256dh, auth")
                 .in("scope", ["user", "both"]);
+            if (subscriptionsError) throw subscriptionsError;
 
             subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
         }
 
-        if (!subscriptions.length) return { sent: 0 };
+        if (!subscriptions.length) return { sent: 0, failed: 0 };
 
         const uniqueSubscriptions = Array.from(
             new Map(subscriptions.map((item) => [item.endpoint, item])).values()
         );
 
         let sent = 0;
+        let failed = 0;
         const payload = JSON.stringify({
             title: sanitizedTitle,
             body: sanitizedBody,
@@ -132,10 +147,12 @@ async function sendPush(
                 const statusCode = (e as { statusCode?: number })?.statusCode;
                 if (statusCode === 410 || statusCode === 404) {
                     await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+                } else {
+                    failed++;
                 }
             }
         }
-        return { sent };
+        return { sent, failed };
     } catch (e) {
         console.error("[Push] sendToAll error:", e);
         await reportAdminOperationalAlert({
@@ -153,7 +170,7 @@ async function sendPush(
             },
             stack: e instanceof Error ? e.stack ?? null : null,
         });
-        return { sent: 0 };
+        return { sent: 0, failed: 1 };
     }
 }
 
@@ -163,4 +180,8 @@ export async function sendPushToAdmins(title: string, body: string, url?: string
 
 export async function sendPushToAll(title: string, body: string, url?: string) {
     return sendPush("all", title, body, url);
+}
+
+export async function sendPushToUser(userId: string, title: string, body: string, url?: string) {
+    return sendPush("user", title, body, url, userId);
 }

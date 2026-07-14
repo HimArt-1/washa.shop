@@ -11,10 +11,7 @@ import type {
 } from "@/types/database";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { getDefaultAdminNotificationMeta } from "@/lib/admin-notification-meta";
-
-// NOTE: "use server" files can only export async functions.
-// Import createUserNotification from "./user-notifications" directly.
-// Import AdminNotification type from "@/types/database" directly.
+import { ADMIN_NOTIFICATION_ROLES } from "@/lib/notification-roles";
 
 // Raw client (bypasses typed schema to avoid postgrest-js never-type issue)
 function getNotificationsClient() {
@@ -31,8 +28,6 @@ function getNotificationsClient() {
         { auth: { persistSession: false } }
     );
 }
-
-const NOTIFICATION_ROLES: UserRole[] = ["admin", "dev", "support_agent", "shipping_manager", "financial_manager"];
 
 /** إنشاء إشعار (يُستدعى من createOrder، applications، إلخ) */
 export async function createAdminNotification(data: {
@@ -67,14 +62,17 @@ async function requireAdmin() {
     if (!user) return null;
     const supabase = getNotificationsClient();
     const { profile } = await resolveAdminAccess(user);
-    return profile && NOTIFICATION_ROLES.includes(profile.role) ? supabase : null;
+    return profile && ADMIN_NOTIFICATION_ROLES.includes(profile.role)
+        ? { supabase, profileId: profile.id }
+        : null;
 }
 
 /** جلب الإشعارات للأدمن */
 export async function getAdminNotifications(limit = 20): Promise<AdminNotification[]> {
     try {
-        const supabase = await requireAdmin();
-        if (!supabase) return [];
+        const access = await requireAdmin();
+        if (!access) return [];
+        const { supabase, profileId } = access;
         const { data, error } = await supabase
             .from("admin_notifications")
             .select("*")
@@ -85,24 +83,42 @@ export async function getAdminNotifications(limit = 20): Promise<AdminNotificati
             console.error("[getAdminNotifications]", error);
             return [];
         }
-        return (data || []) as AdminNotification[];
+        const notifications = (data || []) as AdminNotification[];
+        if (!notifications.length) return [];
+
+        const { data: reads, error: readsError } = await supabase
+            .from("admin_notification_reads")
+            .select("notification_id")
+            .eq("profile_id", profileId)
+            .in("notification_id", notifications.map((notification) => notification.id));
+
+        if (readsError) {
+            console.error("[getAdminNotifications:reads]", readsError);
+            return notifications.map((notification) => ({ ...notification, is_read: false }));
+        }
+
+        const readIds = new Set((reads || []).map((read) => read.notification_id));
+        return notifications.map((notification) => ({
+            ...notification,
+            is_read: readIds.has(notification.id),
+        }));
     } catch {
         return [];
     }
 }
 
 /** عدد الإشعارات غير المقروءة */
-export async function getUnreadNotificationsCount(): Promise<number> {
+export async function getUnreadNotificationsCount(severity?: AdminNotificationSeverity): Promise<number> {
     try {
-        const supabase = await requireAdmin();
-        if (!supabase) return 0;
-        const { count, error } = await supabase
-            .from("admin_notifications")
-            .select("id", { count: "exact", head: true })
-            .eq("is_read", false);
+        const access = await requireAdmin();
+        if (!access) return 0;
+        const { data, error } = await access.supabase.rpc("get_admin_unread_notification_count", {
+            p_profile_id: access.profileId,
+            p_severity: severity ?? null,
+        });
 
         if (error) return 0;
-        return count ?? 0;
+        return Number(data ?? 0);
     } catch {
         return 0;
     }
@@ -111,12 +127,11 @@ export async function getUnreadNotificationsCount(): Promise<number> {
 /** تعليم إشعار كمقروء */
 export async function markNotificationRead(id: string) {
     try {
-        const supabase = await requireAdmin();
-        if (!supabase) return { success: false as const, error: "Unauthorized" };
-        const { error } = await supabase
-            .from("admin_notifications")
-            .update({ is_read: true })
-            .eq("id", id);
+        const access = await requireAdmin();
+        if (!access) return { success: false as const, error: "Unauthorized" };
+        const { error } = await access.supabase
+            .from("admin_notification_reads")
+            .upsert({ notification_id: id, profile_id: access.profileId });
 
         if (error) {
             return { success: false as const, error: error.message };
@@ -133,12 +148,11 @@ export async function markNotificationRead(id: string) {
 /** تعليم الكل كمقروء */
 export async function markAllNotificationsRead() {
     try {
-        const supabase = await requireAdmin();
-        if (!supabase) return { success: false as const, error: "Unauthorized" };
-        const { error } = await supabase
-            .from("admin_notifications")
-            .update({ is_read: true })
-            .eq("is_read", false);
+        const access = await requireAdmin();
+        if (!access) return { success: false as const, error: "Unauthorized" };
+        const { error } = await access.supabase.rpc("mark_all_admin_notifications_read", {
+            p_profile_id: access.profileId,
+        });
 
         if (error) {
             return { success: false as const, error: error.message };
