@@ -32,4 +32,22 @@ describe("WASHA AI generation configuration", () => {
             provider: "replicate",
         });
     });
+
+    it("keeps DTF on genai when the shared image provider is byteplus", () => {
+        const result = resolveWashaDtfGenerationConfiguration({
+            NODE_ENV: "production",
+            WASHA_DTF_GENERATION_ENABLED: "true",
+            WASHA_DTF_IMAGE_PROVIDER: "genai",
+            IMAGE_PROVIDER: "byteplus",
+            GEMINI_API_KEY: "test-gemini-key",
+        });
+
+        expect(result).toEqual({
+            enabled: true,
+            code: "ready",
+            message: "خدمة التوليد جاهزة.",
+            provider: "genai",
+        });
+        expect(JSON.stringify(result)).not.toContain("test-gemini-key");
+    });
 });

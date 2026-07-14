@@ -259,6 +259,46 @@ async function runReplicateMockupFallback(
     }
 }
 
+async function runOpenAIMockupFallback(
+    originalError: unknown,
+    prompt: string,
+    referenceImage: DtfImageReference | null | undefined,
+    traceId: string,
+    fromProvider: string
+) {
+    if (!isDtfProviderFallbackEnabled() || !isOpenAIKeyConfigured()) {
+        throw originalError;
+    }
+
+    logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai", {
+        from: fromProvider,
+    });
+
+    try {
+        let result: string | null = null;
+        if (referenceImage?.base64 && referenceImage.mimeType) {
+            result = await runOpenAIEditDataUrl(
+                prompt,
+                referenceToDataUrl(referenceImage),
+                { throwOnError: true }
+            );
+        }
+        if (!result) {
+            result = await runOpenAIGenerateDataUrl(prompt, { throwOnError: true });
+        }
+        if (result) return result;
+    } catch (fallbackError) {
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai_failed", {
+            from: fromProvider,
+            error_message: fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError ?? ""),
+        });
+    }
+
+    throw originalError;
+}
+
 /**
  * توليد موكب — باستخدام المزوّد المُعرَّف.
  */
@@ -289,7 +329,7 @@ export async function washDtfRoutedGenerateMockup(
         try {
             return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
         } catch (error) {
-            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
+            return runOpenAIMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
         }
     }
 
@@ -410,7 +450,31 @@ export async function washDtfRoutedExtractDesign(
         p === "gemini-2.5-flash-image-preview" ||
         p === "gemini-3.1-flash-image-preview"
     ) {
-        return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        try {
+            return await runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        } catch (error) {
+            if (!isDtfProviderFallbackEnabled() || !isOpenAIKeyConfigured()) {
+                throw error;
+            }
+
+            logDtfTrace("dtf.ai.extract-design", traceId, "genai_fallback_openai", {});
+            try {
+                const result = await runOpenAIEditDataUrl(
+                    prompt,
+                    `data:${mimeType};base64,${mockupImage}`,
+                    { throwOnError: true }
+                );
+                if (result) return result;
+            } catch (fallbackError) {
+                logDtfTrace("dtf.ai.extract-design", traceId, "genai_fallback_openai_failed", {
+                    error_message: fallbackError instanceof Error
+                        ? fallbackError.message
+                        : String(fallbackError ?? ""),
+                });
+            }
+
+            throw error;
+        }
     }
 
     // ─── OpenAI extract ──────────────────────────────────────
