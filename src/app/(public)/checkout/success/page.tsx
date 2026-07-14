@@ -24,7 +24,7 @@ function CheckoutSuccessContent() {
   useEffect(() => {
     // Basic verification just ensures we arrived here from Stripe
     if (!sessionId) {
-      router.push("/cart");
+      router.push("/checkout");
       return;
     }
 

@@ -111,7 +111,7 @@ export const PAGE_OPTIONS = [
     { value: "/contact", label: "تواصل معنا" },
     { value: "/faq", label: "الأسئلة الشائعة" },
     { value: "/account", label: "حسابي" },
-    { value: "/cart", label: "سلة المشتريات" },
+    { value: "/checkout", label: "إتمام الطلب" },
     { value: "/checkout", label: "الدفع" },
 ] as const;
 

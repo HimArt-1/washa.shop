@@ -117,6 +117,37 @@ describe("Torod API client", () => {
         });
     });
 
+    it("fails closed without credentials and never fabricates shipment identifiers", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+
+        const torod = await loadTorodWithEnv({
+            TOROD_CLIENT_ID: "",
+            TOROD_CLIENT_SECRET: "",
+        });
+
+        await expect(torod.bookShipment(sampleShipmentRequest())).resolves.toEqual({
+            success: false,
+            error: "تكامل طرود غير مهيأ. أضف بيانات الربط قبل حجز أي شحنة.",
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("fails closed when cancellation is requested without credentials", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        const torod = await loadTorodWithEnv({
+            TOROD_CLIENT_ID: "",
+            TOROD_CLIENT_SECRET: "",
+        });
+
+        await expect(torod.cancelOrder("TRD-123")).resolves.toEqual({
+            success: false,
+            error: "تكامل طرود غير مهيأ. لا يمكن إلغاء شحنة دون اتصال حقيقي.",
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it("cancels using the official tracking_or_order_id field", async () => {
         const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
             const body = init.body as FormData;

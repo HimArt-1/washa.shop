@@ -7,6 +7,7 @@ import { Globe, ExternalLink } from "lucide-react";
 import { FollowArtistButton } from "@/components/artist/FollowArtistButton";
 import { getArtistFollowersCount } from "@/app/actions/social";
 import { buildPersonSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 // ─── Fetch Artist by Username ───────────────────────────────
 
@@ -39,6 +40,9 @@ async function getArtistArtworksPublic(artistId: string) {
 // ─── Dynamic Metadata ───────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+    if ((await getPublicVisibility()).gallery === false) {
+        return { title: "غير موجود — وشّى", robots: { index: false, follow: false } };
+    }
     const { username } = await params;
     const artist = await getArtistByUsername(username);
     if (!artist) return { title: "غير موجود — وشّى" };
@@ -81,6 +85,7 @@ const socialLabels: Record<string, string> = {
 // ─── Page ───────────────────────────────────────────────────
 
 export default async function ArtistProfilePage({ params }: { params: Promise<{ username: string }> }) {
+    if ((await getPublicVisibility()).gallery === false) notFound();
     const { username } = await params;
     const artist = await getArtistByUsername(username);
     if (!artist) notFound();

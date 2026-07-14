@@ -15,6 +15,7 @@ import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { getSiteSettings } from "@/app/actions/settings";
 import { emitOrderCreatedAlert, emitPaymentReceivedAlert } from "@/lib/operational-event-alerts";
 import type { DiscountCoupon, UserRole } from "@/types/database";
+import { getPaymentReadiness } from "@/lib/payment-readiness";
 import {
     assertInternalPaymentAuthorization,
     type InternalPaymentAuthorization,
@@ -181,19 +182,6 @@ function normalizeSize(value: unknown) {
 
 function normalizeColorCode(value: unknown) {
     return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function validateBankTransferConfiguration() {
-    const bankName = process.env.BANK_TRANSFER_BANK_NAME?.trim();
-    const accountName = process.env.BANK_TRANSFER_ACCOUNT_NAME?.trim();
-    const iban = process.env.BANK_TRANSFER_IBAN?.replace(/\s/g, "").toUpperCase();
-    if (!bankName || !accountName || !iban) {
-        return { ok: false as const, error: "الدفع بالتحويل البنكي غير متاح مؤقتًا لعدم اكتمال بيانات الحساب." };
-    }
-    if (!/^SA\d{22}$/.test(iban)) {
-        return { ok: false as const, error: "بيانات IBAN البنكي غير صحيحة. تواصل مع الإدارة قبل إتمام الطلب." };
-    }
-    return { ok: true as const };
 }
 
 function normalizeEmail(value: unknown) {
@@ -1081,8 +1069,11 @@ export async function createOrder(
     const paymentMethod = serverPayload.paymentMethod;
 
     if (paymentMethod === "bank_transfer") {
-        const bankConfiguration = validateBankTransferConfiguration();
-        if (!bankConfiguration.ok) return { success: false, error: bankConfiguration.error };
+        const bankReadiness = getPaymentReadiness().bankTransfer;
+        if (!bankReadiness.enabled) return { success: false, error: bankReadiness.message };
+    }
+    if (paymentMethod === "tap" && !getPaymentReadiness().tap.enabled) {
+        return { success: false, error: "الدفع الإلكتروني عبر Tap غير متاح حالياً." };
     }
 
     // 3. Check stock availability

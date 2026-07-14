@@ -234,7 +234,7 @@ export function CartDrawer() {
                             <button
                               onClick={() => updateQuantity(item.id, item.quantity + 1, item.size, item.colorCode)}
                               className="w-8 h-8 flex items-center justify-center text-theme-subtle hover:text-theme hover:bg-theme-subtle transition-colors disabled:opacity-30"
-                              disabled={item.quantity >= (item.maxQuantity || 99)}
+                              disabled={item.quantity >= (item.maxQuantity ?? 1)}
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </button>

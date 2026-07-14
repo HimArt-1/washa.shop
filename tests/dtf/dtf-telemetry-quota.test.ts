@@ -5,6 +5,7 @@ const {
     mockCheckRateLimit,
     mockReleaseRateLimit,
     mockPeekRateLimit,
+    mockIsRateLimitRefundAvailable,
     mockGetSupabaseAdminClient,
     mockRpc,
 } = vi.hoisted(() => ({
@@ -12,6 +13,7 @@ const {
     mockCheckRateLimit: vi.fn(),
     mockReleaseRateLimit: vi.fn(),
     mockPeekRateLimit: vi.fn(),
+    mockIsRateLimitRefundAvailable: vi.fn(),
     mockGetSupabaseAdminClient: vi.fn(),
     mockRpc: vi.fn(),
 }));
@@ -24,6 +26,7 @@ vi.mock("@/lib/rate-limit", () => ({
     checkRateLimit: mockCheckRateLimit,
     releaseRateLimit: mockReleaseRateLimit,
     peekRateLimit: mockPeekRateLimit,
+    isRateLimitRefundAvailable: mockIsRateLimitRefundAvailable,
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -38,6 +41,7 @@ describe("DtfTelemetryService quota reservation", () => {
         mockCheckRateLimit.mockReset();
         mockReleaseRateLimit.mockReset();
         mockPeekRateLimit.mockReset();
+        mockIsRateLimitRefundAvailable.mockReset();
         mockGetSupabaseAdminClient.mockReset();
         mockRpc.mockReset();
         delete process.env.WASHA_AI_QUOTA_FAIL_OPEN;
@@ -61,6 +65,7 @@ describe("DtfTelemetryService quota reservation", () => {
         });
         mockReleaseRateLimit.mockResolvedValue(true);
         mockPeekRateLimit.mockResolvedValue({ success: true, remaining: 1, resetAt: Date.now() + 86_400_000 });
+        mockIsRateLimitRefundAvailable.mockResolvedValue(true);
         mockRpc.mockResolvedValue({
             data: {
                 granted: true,
@@ -94,6 +99,21 @@ describe("DtfTelemetryService quota reservation", () => {
             used: 1,
             tracked: true,
         });
+    });
+
+    it("fails closed before consuming guest quota when refund infrastructure is missing", async () => {
+        mockIsRateLimitRefundAvailable.mockResolvedValue(false);
+
+        const result = await DtfTelemetryService.reserveDailyQuota(undefined, "guest", {
+            guestIdentifier: "guest:127.0.0.1",
+        });
+
+        expect(result).toMatchObject({
+            allowed: false,
+            tracked: false,
+            reason: "quota_unavailable",
+        });
+        expect(mockCheckRateLimit).not.toHaveBeenCalled();
     });
 
     it("falls back without blocking guests when no identifier is available", async () => {

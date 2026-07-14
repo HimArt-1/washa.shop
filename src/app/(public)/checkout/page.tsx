@@ -4,10 +4,12 @@ import { getSiteSettings } from "@/app/actions/settings";
 import { getProfile } from "@/app/actions/profile";
 import { CheckoutContent } from "./CheckoutContent";
 import { auth } from "@clerk/nextjs/server";
+import { getPaymentReadiness } from "@/lib/payment-readiness";
 
 export const dynamic = "force-dynamic"; // لا cache — دائماً حديث
 
 export default async function CheckoutPage() {
+    const paymentReadiness = getPaymentReadiness();
     const [settings, profile, session] = await Promise.all([
         getSiteSettings(),
         getProfile(),
@@ -36,6 +38,7 @@ export default async function CheckoutPage() {
                 shippingConfig={shippingConfig} 
                 userRole={profile?.role as any} 
                 isLoggedIn={Boolean(session.userId)}
+                paymentReadiness={paymentReadiness}
                 bankTransferConfig={{
                     bankName: process.env.BANK_TRANSFER_BANK_NAME?.trim() || null,
                     accountName: process.env.BANK_TRANSFER_ACCOUNT_NAME?.trim() || null,

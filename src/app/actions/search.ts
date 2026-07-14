@@ -8,6 +8,8 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database, ProductType } from "@/types/database";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { getPublicVisibility } from "@/app/actions/settings";
+import { getVisiblePublicSearchTabs, type PublicSearchTab } from "@/lib/public-content-visibility";
 
 function getSearchClient() {
     try {
@@ -23,7 +25,7 @@ function getSearchClient() {
 
 // ─── Types ──────────────────────────────────────────────────
 
-export type SearchTab = "artworks" | "products" | "artists";
+export type SearchTab = PublicSearchTab;
 
 export interface SearchFilters {
     minPrice?: number;
@@ -54,6 +56,10 @@ export async function globalSearch(
     filters: SearchFilters = {}
 ): Promise<SearchResult> {
     try {
+        const visibility = await getPublicVisibility();
+        const visibleTabs = getVisiblePublicSearchTabs(visibility);
+        if (!visibleTabs.includes(tab)) return emptyResult;
+
         const supabase = getSearchClient();
         const itemsPerPage = 12;
         const from = (page - 1) * itemsPerPage;
@@ -63,7 +69,7 @@ export async function globalSearch(
         const result: SearchResult = { ...emptyResult };
 
         // ─── Search Artworks ────────────────────────────────────
-        if (tab === "artworks" || !query) {
+        if (visibleTabs.includes("artworks") && (tab === "artworks" || !query)) {
             let artworkQuery = supabase
                 .from("artworks")
                 .select(`
@@ -118,7 +124,7 @@ export async function globalSearch(
         }
 
         // ─── Search Products ────────────────────────────────────
-        if (tab === "products" || !query) {
+        if (visibleTabs.includes("products") && (tab === "products" || !query)) {
             let productQuery = supabase
                 .from("products")
                 .select(`
@@ -162,7 +168,7 @@ export async function globalSearch(
         }
 
         // ─── Search Artists ─────────────────────────────────────
-        if (tab === "artists" || !query) {
+        if (visibleTabs.includes("artists") && (tab === "artists" || !query)) {
             let artistQuery = supabase
                 .from("profiles")
                 .select("id, display_name, username, bio, avatar_url, cover_url, is_verified, total_artworks, total_sales", { count: "exact" })
@@ -196,6 +202,8 @@ export async function globalSearch(
 
 export async function getCategories() {
     try {
+        const visibility = await getPublicVisibility();
+        if (visibility.gallery === false) return [];
         const supabase = getSearchClient();
         const { data, error } = await supabase
             .from("categories")

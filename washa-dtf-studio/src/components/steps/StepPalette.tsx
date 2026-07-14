@@ -155,6 +155,7 @@ export default function StepPalette() {
     isGenerating,
     configLoading,
     configError,
+    config,
     paletteOptions,
   } = useDesign();
 
@@ -165,6 +166,7 @@ export default function StepPalette() {
     state.paletteId &&
     (!customPaletteSelected || state.customPalette?.trim())
   );
+  const generationUnavailable = config?.generation?.enabled === false;
 
   const generateHint = (
     <span className="inline-flex items-center justify-center gap-1.5 sm:justify-end">
@@ -218,6 +220,12 @@ export default function StepPalette() {
           {configError ? (
             <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
               {configError}
+            </div>
+          ) : null}
+
+          {generationUnavailable ? (
+            <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-950" role="status">
+              {config?.generation?.message || 'خدمة التوليد غير متاحة حالياً.'}
             </div>
           ) : null}
 
@@ -342,8 +350,8 @@ export default function StepPalette() {
         onBack={prevStep}
         onNext={() => void handleGenerate()}
         nextLabel={isGenerating ? 'جاري تجهيز التوليد...' : 'توليد التصميم'}
-        nextDisabled={!canGenerate || configLoading || isGenerating}
-        hint={generateHint}
+        nextDisabled={!canGenerate || configLoading || isGenerating || generationUnavailable}
+        hint={generationUnavailable ? <span>{config?.generation?.message}</span> : generateHint}
       />
     </>
   );

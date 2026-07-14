@@ -116,7 +116,7 @@ export function normalizeCartQuantity(value: unknown, maxQuantity?: unknown) {
     const rawMax = typeof maxQuantity === "number" ? maxQuantity : Number(maxQuantity);
     const max = Number.isFinite(rawMax) && rawMax > 0
         ? Math.min(MAX_CART_QUANTITY, Math.floor(rawMax))
-        : 99;
+        : 1;
     const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0
         ? Math.floor(rawQuantity)
         : 1;
@@ -125,8 +125,9 @@ export function normalizeCartQuantity(value: unknown, maxQuantity?: unknown) {
 }
 
 export function normalizeCartMaxQuantity(value: unknown) {
+    if (value === undefined || value === null || value === "") return 1;
     const max = typeof value === "number" ? value : Number(value);
-    if (!Number.isFinite(max) || max <= 0) return 99;
+    if (!Number.isFinite(max) || max <= 0) return 0;
     return Math.min(MAX_CART_QUANTITY, Math.max(1, Math.floor(max)));
 }
 
@@ -144,6 +145,7 @@ export function sanitizeCartItem(value: unknown): CommerceCartItem | null {
     const rawType = toCleanString(item.type, "product");
     const type = (CART_TYPES.has(rawType) ? rawType : "product") as CommerceCartItemType;
     const maxQuantity = normalizeCartMaxQuantity(item.maxQuantity);
+    if (maxQuantity <= 0) return null;
     const quantity = normalizeCartQuantity(item.quantity, maxQuantity);
 
     const customDesignUrl = type === "custom_design"
@@ -192,7 +194,7 @@ export function sanitizeCartItems(value: unknown): CommerceCartItem[] {
             continue;
         }
 
-        const maxQuantity = Math.max(existing.maxQuantity ?? 99, item.maxQuantity ?? 99);
+        const maxQuantity = Math.max(existing.maxQuantity ?? 1, item.maxQuantity ?? 1);
         merged.set(key, {
             ...existing,
             ...item,

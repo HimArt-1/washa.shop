@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelViewContent, pixelAddToCart } from "@/lib/meta-pixel";
 import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
+import { resolveCartMaxQuantity, resolveLegacyProductStock } from "@/lib/product-stock";
 
 type ProductVariant = {
     id: string;
@@ -83,7 +84,7 @@ export function ProductActions({
         [erpVariants]
     );
 
-    const legacyStock = product.in_stock === false ? 0 : (product.stock_quantity ?? 99);
+    const legacyStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity);
     const sizeOptions = useMemo(() => sizeValues.map((size) => {
         const quantity = hasErpVariants ? sumVariantQuantity(erpVariants, size, null) : legacyStock;
         return { size, quantity, available: quantity > 0 };
@@ -333,7 +334,7 @@ export function ProductActions({
                             type: "product",
                             size: selectedSize || null,
                             colorCode: selectedColor || null,
-                            maxQuantity: selectedVariantStock || product.stock_quantity || 99,
+                            maxQuantity: resolveCartMaxQuantity(selectedVariantStock, product.stock_quantity),
                         });
                         trackEvent("add_to_cart", {
                             entityType: "product",

@@ -23,6 +23,7 @@ import {
     CheckoutSubmissionTimeoutError,
     runCheckoutSubmission,
 } from "@/lib/checkout-submission";
+import { resolveCheckoutPaymentMethod, type PaymentReadiness } from "@/lib/payment-readiness";
 
 const CHECKOUT_SUBMISSION_TIMEOUT_MS = 15_000;
 type CheckoutSubmissionStage = "idle" | "saving" | "redirecting" | "complete" | "timeout";
@@ -98,7 +99,7 @@ async function verifyTapPayment(params: {
 
 // ─── Main Client Component ───────────────────────────────
 
-export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTransferConfig }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean; bankTransferConfig: BankTransferConfig }) {
+export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTransferConfig, paymentReadiness }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean; bankTransferConfig: BankTransferConfig; paymentReadiness: PaymentReadiness }) {
     const { items: rawItems, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
     const { user } = useUser();
     const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
@@ -113,7 +114,9 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank_transfer");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
+        paymentReadiness.tap.enabled ? "tap" : "bank_transfer"
+    );
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferWhatsAppDetails | null>(null);
@@ -241,8 +244,8 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     <p className="mt-0.5 text-xs text-theme-subtle">ستبقى السلة محفوظة بعد الدخول.</p>
                                 </div>
                             </div>
-                            <Link href="/cart" className="rounded-lg px-3 py-2 text-xs font-bold text-theme-subtle transition-colors hover:bg-white/5 hover:text-gold active:scale-[0.98]">
-                                العودة للسلة
+                            <Link href="/store" className="rounded-lg px-3 py-2 text-xs font-bold text-theme-subtle transition-colors hover:bg-white/5 hover:text-gold active:scale-[0.98]">
+                                العودة للمتجر
                             </Link>
                         </div>
 
@@ -366,6 +369,16 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     }
 
     async function onValidSubmit(data: AddressFormValues) {
+        const selectedPaymentReady = paymentMethod === "tap"
+            ? paymentReadiness.tap.enabled
+            : paymentMethod === "bank_transfer"
+                ? paymentReadiness.bankTransfer.enabled
+                : userRole === "booth";
+        if (!selectedPaymentReady) {
+            setError("لا توجد وسيلة دفع متاحة لإتمام الطلب حالياً.");
+            return;
+        }
+
         setIsSubmitting(true);
         setSubmissionStage("saving");
         setError(null);
@@ -396,10 +409,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
 
         const address = { ...data, state: "" };
         
-        let finalPaymentMethod: PaymentMethod = "cod";
-        if (paymentMethod === "bank_transfer") finalPaymentMethod = "bank_transfer";
-        if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
-        if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
+        const finalPaymentMethod = resolveCheckoutPaymentMethod(paymentMethod, userRole);
+        if (!finalPaymentMethod) {
+            setSubmissionStage("idle");
+            setIsSubmitting(false);
+            setError("طريقة الدفع المحددة غير متاحة لهذا الحساب.");
+            return;
+        }
 
         const currentCheckoutAttemptId = checkoutAttemptIdRef.current || crypto.randomUUID();
         checkoutAttemptIdRef.current = currentCheckoutAttemptId;
@@ -773,10 +789,12 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     whileTap={{ scale: 0.99 }}
                                     type="button"
                                     onClick={() => setPaymentMethod("bank_transfer")}
+                                    disabled={!paymentReadiness.bankTransfer.enabled}
+                                    aria-pressed={paymentMethod === "bank_transfer"}
                                     className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "bank_transfer"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
-                                        }`}
+                                        } disabled:cursor-not-allowed disabled:opacity-55`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
@@ -801,40 +819,55 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                         </div>
                                         <span className="inline-flex items-center gap-1.5 rounded bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
                                             <Banknote className="h-3 w-3" />
-                                            متاح الآن
+                                            {paymentReadiness.bankTransfer.enabled ? "متاح الآن" : "غير متاح"}
                                         </span>
                                     </div>
                                 </motion.button>
 
-                                {(bankTransferConfig.bankName || bankTransferConfig.accountName || bankTransferConfig.iban) ? (
+                                {paymentReadiness.bankTransfer.enabled ? (
                                     <div className="mr-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs leading-6 text-theme-subtle">
                                         {bankTransferConfig.bankName ? <p>البنك: <strong className="text-theme">{bankTransferConfig.bankName}</strong></p> : null}
                                         {bankTransferConfig.accountName ? <p>اسم الحساب: <strong className="text-theme">{bankTransferConfig.accountName}</strong></p> : null}
                                         {bankTransferConfig.iban ? <p dir="ltr" className="break-all text-left">IBAN: <strong className="font-mono text-theme">{bankTransferConfig.iban}</strong></p> : null}
                                     </div>
                                 ) : (
-                                    <p className="px-2 text-xs leading-5 text-theme-faint">ستصلك بيانات التحويل من فريق وشّى بعد تسجيل الطلب.</p>
+                                    <p className="px-2 text-xs leading-5 text-amber-300">{paymentReadiness.bankTransfer.message}</p>
                                 )}
 
-                                {/* Tap — visible but unavailable until account activation */}
-                                <div
-                                    aria-disabled="true"
-                                    className="relative w-full cursor-not-allowed rounded-xl border border-theme-subtle bg-theme-faint p-4 text-right opacity-55 grayscale"
+                                <motion.button
+                                    type="button"
+                                    onClick={() => setPaymentMethod("tap")}
+                                    disabled={!paymentReadiness.tap.enabled}
+                                    aria-pressed={paymentMethod === "tap"}
+                                    whileHover={paymentReadiness.tap.enabled ? { scale: 1.01 } : undefined}
+                                    whileTap={paymentReadiness.tap.enabled ? { scale: 0.99 } : undefined}
+                                    className={`relative w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "tap"
+                                        ? "border-gold/40 bg-gold/10"
+                                        : "border-theme-soft bg-theme-faint hover:border-gold/20"
+                                    } disabled:cursor-not-allowed disabled:opacity-55`}
                                 >
                                     <span className="absolute -top-2.5 right-4 rounded-full border border-theme-soft bg-[color:var(--wusha-bg)] px-3 py-1 text-[10px] font-black tracking-wide text-theme-faint">
-                                        قيد التطوير
+                                        {paymentReadiness.tap.enabled ? "متاح الآن" : "غير متاح"}
                                     </span>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="mt-0.5 h-4 w-4 rounded-full border-2 border-theme-soft" />
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "tap" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                {paymentMethod === "tap" ? <span className="h-1.5 w-1.5 rounded-full bg-[var(--wusha-bg)]" /> : null}
+                                            </div>
                                             <div>
                                                 <span className="font-bold text-theme-subtle">الدفع الإلكتروني الآمن</span>
-                                                <p className="mt-1 text-xs text-theme-faint">مدى وVisa وMastercard عبر Tap — سيتوفر قريبًا.</p>
+                                                <p className="mt-1 text-xs text-theme-faint">{paymentReadiness.tap.enabled ? "مدى وVisa وMastercard عبر Tap." : paymentReadiness.tap.message}</p>
                                             </div>
                                         </div>
-                                        <Lock className="h-4 w-4 text-theme-faint" />
+                                        {paymentReadiness.tap.enabled ? <CreditCard className="h-4 w-4 text-gold" /> : <Lock className="h-4 w-4 text-theme-faint" />}
                                     </div>
-                                </div>
+                                </motion.button>
+
+                                {!paymentReadiness.checkoutEnabled && userRole !== "booth" ? (
+                                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert">
+                                        لا توجد وسيلة دفع عامة متاحة حالياً. لم يتم إنشاء أي طلب.
+                                    </div>
+                                ) : null}
                                 
                                 {/* Booth POS Options */}
                                 {userRole === "booth" && (
@@ -923,7 +956,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
                                 <span className="inline-flex w-fit rounded-md border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
+                                    {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "tap" ? "دفع إلكتروني عبر Tap" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "غير محدد"}
                                 </span>
                             </div>
 
@@ -1085,7 +1118,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
                                 type="submit"
-                                disabled={isSubmitting || items.length === 0}
+                                disabled={isSubmitting || items.length === 0 || (!paymentReadiness.checkoutEnabled && userRole !== "booth")}
                                 form="checkout-form"
                                 className="mt-8 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold btn-gold disabled:cursor-not-allowed disabled:opacity-50"
                             >
@@ -1097,7 +1130,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "bank_transfer" ? "تأكيد طلب التحويل" : "تأكيد الطلب"}
+                                            {paymentMethod === "bank_transfer" ? "تأكيد طلب التحويل" : paymentMethod === "tap" ? "المتابعة إلى الدفع الآمن" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

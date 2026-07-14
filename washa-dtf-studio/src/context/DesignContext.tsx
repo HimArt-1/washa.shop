@@ -356,22 +356,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (loadError) {
         if (cancelled) return;
-        const message = getReadableErrorMessage(loadError, 'تعذر تحميل إعدادات استوديو DTF. تم تشغيل الوضع الاحتياطي.');
-        setConfig(FALLBACK_DTF_CONFIG);
+        const message = getReadableErrorMessage(loadError, 'تعذر تحميل خيارات الاستوديو الإنتاجية حالياً.');
+        setConfig(null);
         setConfigError(message);
-        setState((current) => {
-          // Don't initialise with fallback IDs if user already has real selections
-          const inFallback = (id: string | null, list: { id: string }[]) =>
-            !id || list.some((x) => x.id === id);
-          const hasRealSelections =
-            (current.garmentId || current.styleId || current.techniqueId || current.paletteId) &&
-            !inFallback(current.garmentId, FALLBACK_DTF_CONFIG.garments);
-          if (hasRealSelections) return current;
-          if (!current.garmentId && !current.styleId && !current.techniqueId && !current.paletteId) {
-            return buildInitialState(FALLBACK_DTF_CONFIG);
-          }
-          return current;
-        });
       } finally {
         if (!cancelled) {
           setConfigLoading(false);
@@ -573,6 +560,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
   const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
     if (generationInFlightRef.current || isGenerating) return;
+    if (config?.generation?.enabled === false) {
+      const message = config.generation.message || 'خدمة التوليد غير متاحة حالياً.';
+      setError(message);
+      showToast(message, 'error');
+      return;
+    }
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
@@ -764,6 +757,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       generationInFlightRef.current = false;
     }
   }, [
+    config?.generation,
     isGenerating,
     requestGenerationAccess,
     selectedGarment,

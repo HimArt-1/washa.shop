@@ -52,7 +52,7 @@ const createIntroLogoMask = (backgroundColor: string, filter?: string): CSSPrope
 export function Hero({
   backgroundMode = "shader",
   showAuthButtons = true,
-  showWashaAiButton = true,
+  showWashaAiButton = false,
   showJoinArtistButton = false,
 }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -543,7 +543,8 @@ export function Hero({
             <SignedOut>
               <div className="flex flex-col items-center gap-8">
                 {/* ═══ Outer Radiant Halo ═══ */}
-                <div className="relative">
+                {showWashaAiButton ? (
+                  <div className="relative">
                   <motion.div
                     className="absolute -inset-6 sm:-inset-8 rounded-[3.5rem] pointer-events-none"
                     style={{
@@ -660,7 +661,8 @@ export function Hero({
                     <div className="absolute bottom-4 left-4 w-4 h-4 border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
                     <div className="absolute bottom-4 right-4 w-4 h-4 border-b-[1.5px] border-r-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
                   </motion.button>
-                </div>
+                  </div>
+                ) : null}
 
                 {/* Auth Links — subtle and elegant */}
                 <div className="flex items-center gap-5">

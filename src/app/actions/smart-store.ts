@@ -1202,6 +1202,18 @@ export async function submitDesignOrder(orderData: {
         return { error: getFirstValidationError(validatedOrderData.error) };
     }
 
+    let user: Awaited<ReturnType<typeof currentUser>>;
+    try {
+        user = await currentUser();
+    } catch (error) {
+        console.error("[submitDesignOrder] Failed to verify Clerk session:", error);
+        return { error: "تعذر التحقق من جلسة الدخول حالياً. أعد المحاولة بعد قليل." };
+    }
+
+    if (!user) {
+        return { error: "يجب تسجيل الدخول قبل إرسال طلب التصميم." };
+    }
+
     const input = validatedOrderData.data;
     const sb = getSmartStoreSb();
     const designMethod = parseDesignMethodValue(input.design_method);
@@ -1281,26 +1293,23 @@ export async function submitDesignOrder(orderData: {
         userPrompt = `[تصميم من ستيديو وشّى: ${studioItemName ?? effectiveTextPrompt ?? "—"}]`;
     }
 
-    // Lookup authenticated user if they exist
+    // Resolve the authenticated customer's profile and trusted contact fallbacks.
     let userId: string | null = null;
     let finalCustomerName = sanitizePlainText(input.customer_name, 120);
     let finalCustomerEmail = sanitizePlainText(input.customer_email, 200);
     let finalCustomerPhone = sanitizePlainText(input.customer_phone, 40);
 
-    const user = await currentUser();
-    if (user) {
-        const { data: profile } = await sb.from("profiles").select("id").eq("clerk_id", user.id).single();
-        if (profile) userId = profile.id;
+    const { data: profile } = await sb.from("profiles").select("id").eq("clerk_id", user.id).single();
+    if (profile) userId = profile.id;
 
-        if (!finalCustomerName) {
-            finalCustomerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "عميل مسجل";
-        }
-        if (!finalCustomerEmail) {
-            finalCustomerEmail = user.emailAddresses?.[0]?.emailAddress;
-        }
-        if (!finalCustomerPhone) {
-            finalCustomerPhone = user.phoneNumbers?.[0]?.phoneNumber;
-        }
+    if (!finalCustomerName) {
+        finalCustomerName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "عميل مسجل";
+    }
+    if (!finalCustomerEmail) {
+        finalCustomerEmail = user.emailAddresses?.[0]?.emailAddress;
+    }
+    if (!finalCustomerPhone) {
+        finalCustomerPhone = user.phoneNumbers?.[0]?.phoneNumber;
     }
 
     // 4. Generate AI prompt

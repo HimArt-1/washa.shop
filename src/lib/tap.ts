@@ -1,11 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { getPaymentReadiness } from "@/lib/payment-readiness";
 
 const TAP_API_URL = "https://api.tap.company/v2";
 const secretKey = process.env.TAP_SECRET_KEY?.trim();
 const merchantId = process.env.TAP_MERCHANT_ID?.trim();
 
 export const TAP_ENABLED = Boolean(secretKey && merchantId);
-export const TAP_CHECKOUT_ENABLED = TAP_ENABLED && process.env.TAP_CHECKOUT_ENABLED === "true";
+export const TAP_CHECKOUT_ENABLED = TAP_ENABLED && getPaymentReadiness().tap.enabled;
 
 export type TapCharge = {
     id: string;

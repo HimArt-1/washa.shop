@@ -12,6 +12,8 @@ import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection"
 import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 import { ProductImageGallery } from "@/components/store/ProductImageGallery";
 import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
+import { resolveLegacyProductStock } from "@/lib/product-stock";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -30,6 +32,9 @@ function normalizeColorCode(value?: string | null) {
 // ─── Dynamic Metadata ───────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    if ((await getPublicVisibility()).store === false) {
+        return { title: "غير موجود — وشّى", robots: { index: false, follow: false } };
+    }
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) return { title: "غير موجود — وشّى" };
@@ -70,6 +75,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 // ─── Page ───────────────────────────────────────────────────
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    if ((await getPublicVisibility()).store === false) notFound();
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) notFound();
@@ -135,7 +141,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         hasErpStock = erpTotalStock > 0;
     } else {
         // Fallback to old system if no SKUs
-        hasErpStock = product.in_stock && (product.stock_quantity == null || product.stock_quantity > 0);
+        hasErpStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity) > 0;
     }
 
     // Determine final stock status

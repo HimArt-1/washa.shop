@@ -100,6 +100,13 @@ export interface DtfStudioPositionOption {
 }
 
 export interface DtfStudioConfig {
+  generation?: {
+    enabled: boolean;
+    code: 'ready' | 'disabled' | 'provider_not_configured' | 'temporarily_unavailable';
+    message: string;
+    provider?: string;
+    retryAfterSeconds?: number;
+  };
   garments: DtfStudioGarmentOption[];
   positions: DtfStudioPositionOption[];
   styles: DtfStudioCreativeOption[];

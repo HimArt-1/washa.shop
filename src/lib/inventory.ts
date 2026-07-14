@@ -6,6 +6,7 @@ import {
     restoreSmartStoreStockForOrder,
 } from "./smart-store-inventory";
 import { emitInventoryStockAlert } from "@/lib/operational-event-alerts";
+import { resolveLegacyProductStock } from "@/lib/product-stock";
 
 function getClient() {
     return createClient(
@@ -115,10 +116,13 @@ export async function checkStockAvailability(
             return { ok: false, error: `اللون المحدد غير متاح للمنتج "${product.title}"`, product: product.title };
         }
 
-        if (product.stock_quantity != null && product.stock_quantity < item.quantity) {
+        const legacyStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity);
+        if (legacyStock < item.quantity) {
             return {
                 ok: false,
-                error: `الكمية المطلوبة من "${product.title}" تتجاوز المخزون (${product.stock_quantity})`,
+                error: product.stock_quantity == null
+                    ? `مخزون المنتج "${product.title}" غير محدد؛ حدّث المخزون قبل البيع`
+                    : `الكمية المطلوبة من "${product.title}" تتجاوز المخزون (${legacyStock})`,
                 product: product.title,
             };
         }

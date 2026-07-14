@@ -1,4 +1,4 @@
-import { FALLBACK_DTF_CONFIG, type DtfStudioConfig } from '../types';
+import type { DtfStudioConfig } from '../types';
 
 const CONFIG_ENDPOINT = '/api/washa-dtf-studio/config';
 
@@ -17,14 +17,17 @@ function isDtfStudioConfig(value: unknown): value is DtfStudioConfig {
   );
 }
 
-function hydrateConfigWithFallback(config: DtfStudioConfig): DtfStudioConfig {
-  return {
-    garments: config.garments.length > 0 ? config.garments : FALLBACK_DTF_CONFIG.garments,
-    styles: config.styles.length > 0 ? config.styles : FALLBACK_DTF_CONFIG.styles,
-    techniques: config.techniques.length > 0 ? config.techniques : FALLBACK_DTF_CONFIG.techniques,
-    palettes: config.palettes.length > 0 ? config.palettes : FALLBACK_DTF_CONFIG.palettes,
-    positions: config.positions.length > 0 ? config.positions : FALLBACK_DTF_CONFIG.positions,
-  };
+function assertCompleteProductionConfig(config: DtfStudioConfig) {
+  const requiredCollections = [
+    config.garments,
+    config.styles,
+    config.techniques,
+    config.palettes,
+    config.positions,
+  ];
+  if (requiredCollections.some((collection) => collection.length === 0)) {
+    throw new Error('خيارات التصميم الإنتاجية غير مكتملة حالياً.');
+  }
 }
 
 export async function fetchDtfStudioConfig(): Promise<DtfStudioConfig> {
@@ -46,5 +49,6 @@ export async function fetchDtfStudioConfig(): Promise<DtfStudioConfig> {
     throw new Error('خيارات التصميم غير مكتملة حالياً.');
   }
 
-  return hydrateConfigWithFallback(data);
+  assertCompleteProductionConfig(data);
+  return data;
 }

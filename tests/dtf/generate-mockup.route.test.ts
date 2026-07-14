@@ -12,6 +12,9 @@ const {
     mockReleaseDailyQuota,
     mockGetWashaDtfErrorDetails,
     mockGetRequestClientIdentifier,
+    mockGetGenerationReadiness,
+    mockRecordGenerationFailure,
+    mockRecordGenerationSuccess,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockEnforceDtfRouteRateLimit: vi.fn(),
@@ -22,6 +25,9 @@ const {
     mockReleaseDailyQuota: vi.fn(),
     mockGetWashaDtfErrorDetails: vi.fn(),
     mockGetRequestClientIdentifier: vi.fn(),
+    mockGetGenerationReadiness: vi.fn(),
+    mockRecordGenerationFailure: vi.fn(),
+    mockRecordGenerationSuccess: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -53,6 +59,12 @@ vi.mock("@/lib/request-client", () => ({
     getRequestClientIdentifier: mockGetRequestClientIdentifier,
 }));
 
+vi.mock("@/lib/washa-dtf-generation-readiness", () => ({
+    getWashaDtfGenerationReadiness: mockGetGenerationReadiness,
+    recordWashaDtfGenerationFailure: mockRecordGenerationFailure,
+    recordWashaDtfGenerationSuccess: mockRecordGenerationSuccess,
+}));
+
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
 
 describe("generate-mockup route", () => {
@@ -66,6 +78,9 @@ describe("generate-mockup route", () => {
         mockReleaseDailyQuota.mockReset();
         mockGetWashaDtfErrorDetails.mockReset();
         mockGetRequestClientIdentifier.mockReset();
+        mockGetGenerationReadiness.mockReset();
+        mockRecordGenerationFailure.mockReset();
+        mockRecordGenerationSuccess.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -100,6 +115,11 @@ describe("generate-mockup route", () => {
             status: 503,
         });
         mockGetRequestClientIdentifier.mockReturnValue("guest:127.0.0.1");
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: true,
+            code: "ready",
+            message: "خدمة التوليد جاهزة.",
+        });
     });
 
     it("returns the access response unchanged when access is denied", async () => {
@@ -155,6 +175,25 @@ describe("generate-mockup route", () => {
             error: "الوصف مطلوب",
         });
         expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+    });
+
+    it("rejects generation before reserving quota when the provider is not ready", async () => {
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: false,
+            code: "disabled",
+            message: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toEqual({
+            error: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
+            code: "generation_unavailable",
+            retryable: false,
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
 
     it("allows the access resolver to admit public guest generation", async () => {
@@ -301,6 +340,7 @@ describe("generate-mockup route", () => {
                 timeoutMs: 90_000,
             })
         );
+        expect(mockRecordGenerationSuccess).toHaveBeenCalledTimes(1);
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",
@@ -341,6 +381,31 @@ describe("generate-mockup route", () => {
         expect(mockGenerateMockup).toHaveBeenCalledTimes(2);
     });
 
+    it("returns a successful generation even when success telemetry fails", async () => {
+        mockLogActivity.mockRejectedValueOnce(new Error("telemetry unavailable"));
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            imageUrl: "data:image/png;base64,MOCKUP",
+            remainingPoints: 4,
+        });
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+    });
+
+    it("does not open the provider circuit for a non-retryable 4xx rejection", async () => {
+        mockGenerateMockup.mockRejectedValue(new Error("invalid image input"));
+        mockGetWashaDtfErrorDetails.mockReturnValue({ message: "الصورة غير صالحة", status: 400 });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(400);
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+    });
+
     it("releases tracked quota and returns a public provider failure", async () => {
         mockGenerateMockup.mockRejectedValue(new Error("provider timeout"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
@@ -358,6 +423,7 @@ describe("generate-mockup route", () => {
         expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free", {
             guestIdentifier: null,
         });
+        expect(mockRecordGenerationFailure).toHaveBeenCalledWith(expect.any(Error));
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",

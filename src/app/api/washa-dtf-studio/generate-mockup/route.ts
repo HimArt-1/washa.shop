@@ -16,6 +16,11 @@ import {
     resolveDtfTraceId,
 } from "../utils/trace";
 import { DTF_PUBLIC_GENERATION_ERROR } from "../utils/public-error";
+import {
+    getWashaDtfGenerationReadiness,
+    recordWashaDtfGenerationFailure,
+    recordWashaDtfGenerationSuccess,
+} from "@/lib/washa-dtf-generation-readiness";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -90,6 +95,28 @@ export async function POST(request: NextRequest) {
         garment_reference_mime_type: garmentReferenceImage?.mimeType ?? null,
     });
 
+    const generationReadiness = getWashaDtfGenerationReadiness();
+    if (!generationReadiness.enabled) {
+        logDtfTrace("dtf.generate-mockup", traceId, "generation_unavailable", {
+            readiness_code: generationReadiness.code,
+            provider: generationReadiness.provider ?? null,
+            retry_after_seconds: generationReadiness.retryAfterSeconds ?? null,
+        });
+        return attachDtfTraceId(NextResponse.json(
+            {
+                error: generationReadiness.message,
+                code: "generation_unavailable",
+                retryable: generationReadiness.code === "temporarily_unavailable",
+            },
+            {
+                status: 503,
+                headers: generationReadiness.retryAfterSeconds
+                    ? { "Retry-After": String(generationReadiness.retryAfterSeconds) }
+                    : undefined,
+            }
+        ), traceId);
+    }
+
     const quotaStartedAt = Date.now();
     const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
         guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
@@ -159,50 +186,26 @@ export async function POST(request: NextRequest) {
         ), traceId);
     }
 
+    let imageUrl: string;
     try {
         const providerStartedAt = Date.now();
-        const imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
+        imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
             traceId,
             timeoutMs: GENERATE_MOCKUP_TIMEOUT_MS,
             garmentReferenceImage,
         });
+        recordWashaDtfGenerationSuccess();
         logDtfTrace("dtf.generate-mockup", traceId, "provider_completed", {
             duration_ms: Date.now() - providerStartedAt,
         });
 
-        const telemetryStartedAt = Date.now();
-        await DtfTelemetryService.logActivity({
-            profileId: access.profileId,
-            clerkId: access.clerkId,
-            action: "generate-mockup",
-            status: "success",
-            prompt,
-            referenceImageUrl: referenceImage?.base64 ? "base64_hidden" : undefined,
-            resultImageUrl: imageUrl || undefined,
-            metadata: {
-                hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
-                remainingPointsAfterReservation: quota.remaining,
-                usedPoints: quota.used,
-                quotaDate: quota.quotaDate,
-            },
-        });
-        logDtfTrace("dtf.generate-mockup", traceId, "success_logged", {
-            duration_ms: Date.now() - telemetryStartedAt,
-            total_duration_ms: Date.now() - routeStartedAt,
-        });
-
-        return attachDtfTraceId(NextResponse.json({
-            imageUrl,
-            remainingPoints: quota.tracked ? quota.remaining : null,
-            freeRemaining: quota.tracked ? quota.freeRemaining : null,
-            paidBalance: quota.tracked ? quota.paidBalance : null,
-            consumedSource: quota.tracked ? quota.source : null,
-            guest: access.role === "guest",
-        }), traceId);
     } catch (error) {
         console.error("[washa-dtf-studio.generate-mockup]", { traceId, error });
         const handled = getWashaDtfErrorDetails(error);
-        logDtfTrace("dtf.generate-mockup", traceId, "provider_or_route_failed", {
+        if (handled.status === 429 || handled.status >= 500) {
+            recordWashaDtfGenerationFailure(error);
+        }
+        logDtfTrace("dtf.generate-mockup", traceId, "provider_failed", {
             handled_status: handled.status,
             handled_message: handled.message,
             total_duration_ms: Date.now() - routeStartedAt,
@@ -250,4 +253,42 @@ export async function POST(request: NextRequest) {
             { status: handled.status }
         ), traceId);
     }
+
+    const telemetryStartedAt = Date.now();
+    try {
+        await DtfTelemetryService.logActivity({
+            profileId: access.profileId,
+            clerkId: access.clerkId,
+            action: "generate-mockup",
+            status: "success",
+            prompt,
+            referenceImageUrl: referenceImage?.base64 ? "base64_hidden" : undefined,
+            resultImageUrl: imageUrl || undefined,
+            metadata: {
+                hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
+                remainingPointsAfterReservation: quota.remaining,
+                usedPoints: quota.used,
+                quotaDate: quota.quotaDate,
+            },
+        });
+        logDtfTrace("dtf.generate-mockup", traceId, "success_logged", {
+            duration_ms: Date.now() - telemetryStartedAt,
+            total_duration_ms: Date.now() - routeStartedAt,
+        });
+    } catch (error) {
+        console.error("[washa-dtf-studio.generate-mockup] success telemetry failed", { traceId, error });
+        logDtfTrace("dtf.generate-mockup", traceId, "success_telemetry_failed", {
+            duration_ms: Date.now() - telemetryStartedAt,
+            total_duration_ms: Date.now() - routeStartedAt,
+        });
+    }
+
+    return attachDtfTraceId(NextResponse.json({
+        imageUrl,
+        remainingPoints: quota.tracked ? quota.remaining : null,
+        freeRemaining: quota.tracked ? quota.freeRemaining : null,
+        paidBalance: quota.tracked ? quota.paidBalance : null,
+        consumedSource: quota.tracked ? quota.source : null,
+        guest: access.role === "guest",
+    }), traceId);
 }

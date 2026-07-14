@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelAddToCart } from "@/lib/meta-pixel";
 import { sanitizeCommerceImageUrl } from "@/lib/commerce-safety";
+import { resolveCartMaxQuantity, resolveLegacyProductStock } from "@/lib/product-stock";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -95,11 +96,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             }
         });
     } else if (allSkus.length === 0) {
-        const legacyStock = product.in_stock !== false
-            ? (product.stock_quantity === undefined || product.stock_quantity === null
-                ? 999
-                : product.stock_quantity)
-            : 0;
+        const legacyStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity);
         erpTotalStock = legacyStock;
     }
 
@@ -196,7 +193,7 @@ export function ProductCard({ product, featured = false }: ProductCardProps) {
             artist_name: product.artist?.display_name || "وشّى",
             size: size ?? null,
             type: "product",
-            maxQuantity: selectedSizeStock || product.stock_quantity || 99,
+            maxQuantity: resolveCartMaxQuantity(selectedSizeStock, product.stock_quantity),
         });
         trackEvent("add_to_cart", {
             entityType: "product",

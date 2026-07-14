@@ -457,7 +457,7 @@ export default function JoinPage() {
 
                                 {/* Footer note */}
                                 <p className="text-center text-theme-muted text-xs mt-6">
-                                    بياناتك محفوظة بأمان ولن نشاركها مع أي جهة
+                                    تُستخدم بياناتك لمعالجة طلب الانضمام وقد تصل إلى فريق وشّى عبر قنواته التشغيلية، ولا تُباع لأطراف أخرى
                                 </p>
                             </motion.div>
                         )}

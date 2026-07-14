@@ -6,11 +6,15 @@ import { getSiteSettings } from "@/app/actions/settings";
 import { getProducts } from "@/app/actions/products";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
 import { isWashaAiRouteAvailable } from "@/lib/design-piece-runtime";
+import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
 
 export default async function Home() {
     const settings = await getSiteSettings();
     const v = settings.visibility;
-    const showWashaAiButton = (v.hero_washa_ai_button ?? true) && isWashaAiRouteAvailable(v);
+    const generationReadiness = getWashaDtfGenerationReadiness();
+    const showWashaAiButton = (v.hero_washa_ai_button ?? true)
+        && isWashaAiRouteAvailable(v)
+        && generationReadiness.enabled;
     const heroBackgroundMode = process.env.HERO_BACKGROUND_MODE === "video" ? "video" : "shader";
     const showStore = Boolean(v.store);
     const showAiSection = settings.visibility.ai_section !== false;

@@ -21,6 +21,7 @@ type WorkspaceTab = "washa-ai" | "preorder";
 
 type Props = {
     washaAiAvailable: boolean;
+    washaAiUnavailableMessage?: string;
     garments: CustomDesignGarment[];
     styles: CustomDesignStyle[];
     artStyles: CustomDesignArtStyle[];
@@ -35,6 +36,7 @@ type Props = {
 
 export function DesignWorkspaceHub({
     washaAiAvailable,
+    washaAiUnavailableMessage,
     garments,
     styles,
     artStyles,
@@ -112,6 +114,11 @@ export function DesignWorkspaceHub({
                         </span>
                     </button>
                 </motion.div>
+                {!washaAiAvailable && washaAiUnavailableMessage ? (
+                    <p role="status" className="max-w-md text-center text-xs leading-6 text-amber-300">
+                        {washaAiUnavailableMessage}
+                    </p>
+                ) : null}
             </div>
 
             {/* Workspace Content */}

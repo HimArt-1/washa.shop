@@ -2,7 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import type { WashaAiControls } from "@/types/database";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
-import { checkRateLimit, peekRateLimit, releaseRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, isRateLimitRefundAvailable, peekRateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
 import { StorageService } from "./storage.service";
 
@@ -228,6 +228,17 @@ export class DtfTelemetryService {
                 }
 
                 try {
+                    if (!await isRateLimitRefundAvailable()) {
+                        logDiagnosticWarning(
+                            "dtf-telemetry-guest-quota-refund-unavailable",
+                            new Error("refund_rate_limit RPC is unavailable")
+                        );
+                        return {
+                            allowed: false, remaining: 0, used: 0, tracked: false,
+                            source: "none", freeRemaining: 0, paidBalance: 0, reason: "quota_unavailable",
+                        };
+                    }
+
                     const result = await checkRateLimit(
                         `dtf-guest-daily-${guestIdentifier}`,
                         guestDailyLimit,
