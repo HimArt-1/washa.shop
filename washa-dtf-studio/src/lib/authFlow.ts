@@ -140,11 +140,13 @@ export function buildWashaAiSignUpUrl(returnPath = currentReturnPath()) {
   return `/sign-up?redirect_url=${encodeURIComponent(returnPath.startsWith('/') ? returnPath : '/design/washa-ai/app')}`;
 }
 
-export async function fetchWashaAiSession(): Promise<WashaAiSession> {
+export async function fetchWashaAiSession(sessionToken?: string | null): Promise<WashaAiSession> {
   const returnPath = currentReturnPath();
+  const token = sessionToken?.trim();
   const response = await fetch(`${SESSION_ENDPOINT}?returnPath=${encodeURIComponent(returnPath)}`, {
     method: 'GET',
-    credentials: 'same-origin',
+    credentials: token ? 'omit' : 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     cache: 'no-store',
   });
   const contentType = response.headers.get('content-type') || '';

@@ -3,9 +3,14 @@ import { ProfileForm } from "@/components/forms/ProfileForm";
 import { SettingsThemeSection } from "@/components/account/SettingsThemeSection";
 import { type ProfileFormData } from "@/lib/validations";
 import { type UserRole } from "@/types/database";
+import { getNotificationPreferences } from "@/app/actions/user-notifications";
+import { NotificationPreferencesSection } from "@/components/account/NotificationPreferencesSection";
 
 export default async function SettingsPage() {
-    const profile = await getProfile();
+    const [profile, notificationPreferences] = await Promise.all([
+        getProfile(),
+        getNotificationPreferences(),
+    ]);
 
     if (!profile) {
         return (
@@ -49,6 +54,9 @@ export default async function SettingsPage() {
 
             <div className="space-y-8">
                 <SettingsThemeSection />
+                {notificationPreferences && (
+                    <NotificationPreferencesSection initialPreferences={notificationPreferences} />
+                )}
                 <ProfileForm initialData={initialData} userRole={profile.role as UserRole} />
             </div>
         </div>

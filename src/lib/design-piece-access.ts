@@ -1,13 +1,25 @@
 import { auth } from "@clerk/nextjs/server";
+import { unstable_rethrow } from "next/navigation";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { ensureProfileWithStatus } from "@/lib/ensure-profile";
 
 // Leave empty to allow ALL authenticated users.
 // Populate to restrict by role: ["admin", "wushsha", "subscriber"]
 const ALLOWED_ROLES: string[] = [];
+const AUTH_UNAVAILABLE_REASONS = new Set([
+    "unexpected-error",
+    "secret-key-invalid",
+    "jwk-local-missing",
+    "jwk-remote-failed-to-load",
+    "jwk-remote-invalid",
+    "jwk-remote-missing",
+    "jwk-failed-to-resolve",
+    "jwk-kid-mismatch",
+]);
 
 export type DesignPieceAccessReason =
     | "not_signed_in"
+    | "auth_unavailable"
     | "guest_needs_approval"
     | "approved"
     | "public_access"
@@ -29,7 +41,7 @@ type ResolveDesignPieceAccessOptions = {
 };
 
 export function getDesignPieceDeniedVariant(reason: DesignPieceAccessReason | undefined): DesignPieceDeniedVariant {
-    if (reason === "supabase_error") {
+    if (reason === "auth_unavailable" || reason === "supabase_error") {
         return "service_unavailable";
     }
 
@@ -48,6 +60,13 @@ export function getDesignPieceAccessFailure(reason: DesignPieceAccessReason | un
         return {
             message: "يجب تسجيل الدخول لاستخدام WASHA AI وحفظ التصميم في حسابك.",
             status: 401,
+        };
+    }
+
+    if (reason === "auth_unavailable") {
+        return {
+            message: "تعذّر التحقق من جلسة الدخول مؤقتاً.",
+            status: 503,
         };
     }
 
@@ -78,8 +97,29 @@ export async function resolveDesignPieceAccess(
 
     // Use auth() — reads JWT directly from request headers (no extra Clerk API network call).
     // This is the recommended pattern for Route Handlers in Clerk v6.
-    const { userId } = await auth();
+    let authState: Awaited<ReturnType<typeof auth>>;
+    try {
+        authState = await auth({ acceptsToken: "session_token" });
+    } catch (error) {
+        unstable_rethrow(error);
+        console.error("[design-piece-access] Clerk session verification failed", {
+            errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+        return { allowed: false, reason: "auth_unavailable" };
+    }
+
+    const { userId } = authState;
     if (!userId) {
+        const authReason = typeof authState.debug === "function"
+            ? authState.debug()?.reason
+            : null;
+        if (typeof authReason === "string" && AUTH_UNAVAILABLE_REASONS.has(authReason)) {
+            console.error("[design-piece-access] Clerk session verification unavailable", {
+                reason: authReason,
+            });
+            return { allowed: false, reason: "auth_unavailable" };
+        }
+
         if (allowPublicAccess) {
             return { allowed: true, reason: "public_access", role: "guest" };
         }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import {
     getAdminNotifications,
+    getUnreadNotificationsCount,
     markAllNotificationsRead as markAllAdminNotificationsRead,
     markNotificationRead as markAdminNotificationRead,
 } from "@/app/actions/notifications";
@@ -44,6 +45,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }),
 
     markAsRead: async (id: string) => {
+        const previous = get();
+        const target = previous.notifications.find((notification) => notification.id === id);
+        if (!target || target.is_read) return;
         // Optimistic UI update
         set((state) => ({
             notifications: state.notifications.map((n) => 
@@ -55,10 +59,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         const result = await markAdminNotificationRead(id);
         if (!result.success) {
             console.error("Failed to mark notification as read", result.error);
+            set({ notifications: previous.notifications, unreadCount: previous.unreadCount });
         }
     },
 
     markAllAsRead: async () => {
+        const previous = get();
         // Optimistic UI update
         set((state) => ({
             notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
@@ -68,6 +74,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         const result = await markAllAdminNotificationsRead();
         if (!result.success) {
             console.error("Failed to mark all as read", result.error);
+            set({ notifications: previous.notifications, unreadCount: previous.unreadCount });
         }
     },
 
@@ -78,11 +85,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         
         set({ isLoading: true });
         try {
-            const data = await getAdminNotifications(50);
+            const [data, unreadCount] = await Promise.all([
+                getAdminNotifications(50),
+                getUnreadNotificationsCount(),
+            ]);
             notificationFetchGuard.recordSuccess();
             set({ 
                 notifications: data,
-                unreadCount: data.filter((n) => !n.is_read).length,
+                unreadCount,
                 isInitialized: true,
                 isLoading: false
             });

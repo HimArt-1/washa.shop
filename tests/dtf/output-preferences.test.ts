@@ -17,6 +17,7 @@ async function capturePrompt(removeBackground?: boolean, avoidHardEdges?: boolea
     avoidHardEdges,
     printPosition: 'chest',
     printSize: 'large',
+    sessionToken: 'session-token',
   });
   return prompt;
 }

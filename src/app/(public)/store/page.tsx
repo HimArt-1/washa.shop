@@ -72,7 +72,7 @@ export default async function StorePage({
             )}
             <div className="store-page-shell max-w-7xl mx-auto px-4 sm:px-6">
                 {/* ─── Header — تخطيط غير متماثل على الشاشات الواسعة ─── */}
-                <div className="store-hero-panel mb-8 rounded-[2rem] px-5 py-6 sm:mb-10 sm:px-7 sm:py-7 lg:px-8">
+                <div className="store-hero-panel mb-8 rounded-[1.5rem] px-5 py-6 sm:mb-10 sm:px-7 sm:py-7 lg:px-8">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
                         <div className="min-w-0 text-center lg:text-right">
                             <div className="store-kicker mb-3">
@@ -84,18 +84,18 @@ export default async function StorePage({
                             </h1>
                         </div>
                         <div className="flex flex-wrap items-center justify-center gap-2 text-xs lg:shrink-0 lg:justify-end">
-                            <span className="store-count-pill rounded-full px-3 py-1 font-semibold">
+                            <span className="store-count-pill rounded-md px-3 py-1 font-semibold">
                                 {count || 0} منتج متاح الآن
                             </span>
                             <Link
                                 href="/search"
-                                className="store-pill-link rounded-full px-3 py-1 transition-colors"
+                                className="store-pill-link rounded-md px-3 py-1 transition-colors"
                             >
                                 بحث سريع
                             </Link>
                             <Link
                                 href="/design"
-                                className="store-pill-link rounded-full px-3 py-1 transition-colors"
+                                className="store-pill-link rounded-md px-3 py-1 transition-colors"
                             >
                                 صمّم قطعتك
                             </Link>
@@ -107,7 +107,7 @@ export default async function StorePage({
                 {/* ─── Grid ─── */}
                 {list.length > 0 ? (
                     <>
-                        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 xl:grid-cols-4">
                             {list.map((product: any, index: number) => {
                                 const isFeatured = showFeaturedTile && index === 0;
                                 const singleFull = page === 1 && list.length === 1;
@@ -116,7 +116,7 @@ export default async function StorePage({
                                         key={product.id}
                                         className={cn(
                                             isFeatured && "col-span-2",
-                                            singleFull && index === 0 && "col-span-2 md:col-span-4",
+                                            singleFull && index === 0 && "col-span-2 md:col-span-3 xl:col-span-4",
                                         )}
                                     >
                                         <ProductCard product={product} featured={isFeatured} />

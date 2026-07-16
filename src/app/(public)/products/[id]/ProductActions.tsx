@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useTrackEvent } from "@/components/ops/EventTracker";
 import { pixelViewContent, pixelAddToCart } from "@/lib/meta-pixel";
 import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
+import { resolveCartMaxQuantity, resolveLegacyProductStock } from "@/lib/product-stock";
 
 type ProductVariant = {
     id: string;
@@ -83,7 +84,7 @@ export function ProductActions({
         [erpVariants]
     );
 
-    const legacyStock = product.in_stock === false ? 0 : (product.stock_quantity ?? 99);
+    const legacyStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity);
     const sizeOptions = useMemo(() => sizeValues.map((size) => {
         const quantity = hasErpVariants ? sumVariantQuantity(erpVariants, size, null) : legacyStock;
         return { size, quantity, available: quantity > 0 };
@@ -103,7 +104,7 @@ export function ProductActions({
     const [mounted, setMounted] = useState(false);
     const [shareFeedback, setShareFeedback] = useState<"idle" | "copied">("idle");
     const utilityButtonBase =
-        "inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl border border-theme-soft bg-theme-faint px-4 text-theme-subtle transition-colors hover:bg-theme-subtle sm:w-auto";
+        "inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-theme-soft bg-theme-faint px-4 text-theme-subtle transition-colors hover:bg-theme-subtle sm:w-auto";
 
     const colorOptions = useMemo(() => colorValues.map((color) => {
         const quantity = hasErpVariants ? sumVariantQuantity(erpVariants, selectedSize || null, color) : legacyStock;
@@ -236,10 +237,10 @@ export function ProductActions({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-[1.6rem] border border-theme-subtle bg-theme-faint px-4 py-4">
+            <div className="rounded-xl border border-theme-subtle bg-theme-faint px-4 py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold tracking-[0.18em] text-theme-faint">ORDER SNAPSHOT</p>
+                        <p className="text-xs font-semibold text-theme-faint">تفاصيل الاختيار</p>
                         <p className="mt-2 text-sm text-theme-subtle">
                             {inStock
                                 ? colorOptions.length > 0
@@ -249,7 +250,7 @@ export function ProductActions({
                         </p>
                     </div>
                     <span
-                        className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-xs font-semibold ${
+                        className={`inline-flex w-fit items-center rounded-md border px-3 py-1 text-xs font-semibold ${
                             inStock
                                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                                 : "border-red-500/30 bg-red-500/10 text-red-400"
@@ -263,7 +264,10 @@ export function ProductActions({
             {/* Size Selector */}
             {sizeOptions.length > 0 && (
                 <div>
-                    <label className="text-xs text-theme-faint mb-2 block">اختر المقاس</label>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                        <label className="text-sm font-semibold text-theme">المقاس</label>
+                        {selectedSize ? <span className="text-xs text-theme-faint">المحدد: {selectedSize}</span> : null}
+                    </div>
                     <div className="flex gap-2 flex-wrap">
                         {sizeOptions.map((option) => (
                             <button
@@ -271,7 +275,7 @@ export function ProductActions({
                                 onClick={() => option.available && setSelectedSize(option.size)}
                                 disabled={!option.available}
                                 className={`min-h-[48px] rounded-xl border px-4 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-45 ${selectedSize === option.size
-                                    ? "bg-gold/10 border-gold/40 text-gold"
+                                    ? "bg-earth border-earth text-white shadow-[0_8px_20px_rgba(104,72,59,0.16)]"
                                     : "border-theme-soft bg-theme-faint text-theme-subtle hover:border-gold/20 hover:bg-theme-subtle"
                                     }`}
                             >
@@ -288,7 +292,10 @@ export function ProductActions({
             {/* Color Selector */}
             {colorOptions.length > 0 && (
                 <div>
-                    <label className="text-xs text-theme-faint mb-2 block">اختر اللون</label>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                        <label className="text-sm font-semibold text-theme">اللون</label>
+                        {selectedColor ? <span className="text-xs text-theme-faint" dir="ltr">{selectedColor}</span> : null}
+                    </div>
                     <div className="flex gap-2 flex-wrap">
                         {colorOptions.map((option) => (
                             <button
@@ -297,7 +304,7 @@ export function ProductActions({
                                 disabled={!option.available}
                                 className={`flex min-h-[48px] items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-45 ${
                                     selectedColor === option.color
-                                        ? "border-gold/40 bg-gold/10 text-gold"
+                                        ? "border-earth bg-earth text-white shadow-[0_8px_20px_rgba(104,72,59,0.16)]"
                                         : "border-theme-soft bg-theme-faint text-theme-subtle hover:border-gold/20 hover:bg-theme-subtle"
                                 }`}
                             >
@@ -327,7 +334,7 @@ export function ProductActions({
                             type: "product",
                             size: selectedSize || null,
                             colorCode: selectedColor || null,
-                            maxQuantity: selectedVariantStock || product.stock_quantity || 99,
+                            maxQuantity: resolveCartMaxQuantity(selectedVariantStock, product.stock_quantity),
                         });
                         trackEvent("add_to_cart", {
                             entityType: "product",
@@ -337,7 +344,7 @@ export function ProductActions({
                         pixelAddToCart({ contentId: product.id, contentName: productTitle, value: productPrice });
                     }}
                     disabled={!canAddToCart}
-                    className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-2xl bg-gold py-3.5 font-bold text-[var(--wusha-bg)] shadow-[0_18px_40px_rgba(154,123,61,0.2)] transition-colors hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"
+                    className="col-span-2 flex min-h-[56px] w-full min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-earth py-3.5 font-bold text-white shadow-[0_18px_40px_rgba(104,72,59,0.18)] transition-colors hover:bg-[color-mix(in_srgb,var(--wusha-earth)_88%,black)] disabled:cursor-not-allowed disabled:opacity-30 sm:min-w-[220px]"
                     whileHover={canAddToCart ? { scale: 1.02 } : {}}
                     whileTap={canAddToCart ? { scale: 0.98 } : {}}
                 >

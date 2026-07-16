@@ -230,9 +230,32 @@ export type AdminNotification = {
     created_at: string;
 }
 
+export type EventDispatch = {
+    id: string;
+    dispatch_key: string;
+    event_type: string;
+    channel: string;
+    resource_type: string | null;
+    resource_id: string | null;
+    status: "processing" | "sent" | "failed" | "abandoned" | "delivery_unknown";
+    attempt_count: number;
+    metadata: Record<string, unknown>;
+    last_error: string | null;
+    sent_at: string | null;
+    created_at: string;
+    updated_at: string;
+};
+
 // ─── User Notifications ────────────────────────────────────
 
-export type UserNotificationType = "order_update" | "support_reply" | "system_alert" | "design_order_update";
+export type UserNotificationType =
+    | "order_update"
+    | "support_reply"
+    | "system_alert"
+    | "design_order_update"
+    | "artwork_update"
+    | "artist_sale"
+    | "artist_social";
 
 export type UserNotification = {
     id: string;
@@ -245,6 +268,21 @@ export type UserNotification = {
     metadata: Record<string, unknown>;
     created_at: string;
 }
+
+export type NotificationPreferences = {
+    profile_id: string;
+    push_enabled: boolean;
+    email_enabled: boolean;
+    order_updates: boolean;
+    support_replies: boolean;
+    design_updates: boolean;
+    artist_updates: boolean;
+    marketing: boolean;
+    quiet_hours_start: string | null;
+    quiet_hours_end: string | null;
+    timezone: string;
+    updated_at: string;
+};
 
 // ─── Support Tickets & Messages ──────────────────────────
 
@@ -1014,6 +1052,35 @@ export type Database = {
                 Update: Partial<Omit<AdminNotification, "id" | "created_at">>;
                 Relationships: any[];
             };
+            admin_notification_reads: {
+                Row: {
+                    notification_id: string;
+                    profile_id: string;
+                    read_at: string;
+                };
+                Insert: {
+                    notification_id: string;
+                    profile_id: string;
+                    read_at?: string;
+                };
+                Update: { read_at?: string };
+                Relationships: any[];
+            };
+            event_dispatches: {
+                Row: EventDispatch;
+                Insert: Omit<EventDispatch, "id" | "created_at" | "updated_at" | "status" | "attempt_count" | "metadata" | "last_error" | "sent_at"> & {
+                    id?: string;
+                    status?: EventDispatch["status"];
+                    attempt_count?: number;
+                    metadata?: Record<string, unknown>;
+                    last_error?: string | null;
+                    sent_at?: string | null;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: Partial<Omit<EventDispatch, "id" | "created_at">>;
+                Relationships: any[];
+            };
             user_notifications: {
                 Row: UserNotification;
                 Insert: {
@@ -1038,6 +1105,12 @@ export type Database = {
                     metadata?: Record<string, unknown>;
                     created_at?: string;
                 };
+                Relationships: any[];
+            };
+            notification_preferences: {
+                Row: NotificationPreferences;
+                Insert: Omit<NotificationPreferences, "updated_at"> & { updated_at?: string };
+                Update: Partial<Omit<NotificationPreferences, "profile_id">>;
                 Relationships: any[];
             };
             support_tickets: {
@@ -1190,6 +1263,65 @@ export type Database = {
             };
             refund_washa_ai_generation: {
                 Args: { p_profile_id: string; p_source: string; p_daily_limit?: number };
+                Returns: Record<string, unknown>;
+            };
+            claim_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_lease_seconds?: number;
+                    p_retention_seconds?: number;
+                };
+                Returns: Record<string, unknown>;
+            };
+            reserve_dtf_generation_quota_for_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_daily_limit: number;
+                    p_credits_enabled: boolean;
+                };
+                Returns: Record<string, unknown>;
+            };
+            get_dtf_generation_request_quota_state: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            complete_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_retention_seconds?: number;
+                };
+                Returns: boolean;
+            };
+            fail_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_block_retry?: boolean;
+                    p_retention_seconds?: number;
+                };
+                Returns: boolean;
+            };
+            refund_washa_ai_generation_once: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_source: string;
+                    p_quota_date: string | null;
+                    p_daily_limit?: number;
+                    p_retention_seconds?: number;
+                };
                 Returns: Record<string, unknown>;
             };
             admin_adjust_washa_ai_wallet: {

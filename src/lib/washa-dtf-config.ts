@@ -30,8 +30,10 @@ import type {
     CustomDesignStyle,
     CustomDesignPosition,
 } from "@/types/database";
+import type { WashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
 
 export type WashaDtfStudioConfig = {
+    generation?: WashaDtfGenerationReadiness;
     garments: Array<{
         id: string;
         name: string;

@@ -2200,7 +2200,7 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
                 </p>
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="mt-6 flex gap-4 justify-center">
                     <Link
-                        href="/cart"
+                        href="/checkout"
                         className="inline-flex items-center gap-2 px-8 py-3 rounded-2xl bg-gradient-to-r from-gold to-gold-light text-bg font-bold text-sm hover:shadow-lg hover:shadow-gold/30 transition-all duration-300"
                     >
                         إتمام الطلب

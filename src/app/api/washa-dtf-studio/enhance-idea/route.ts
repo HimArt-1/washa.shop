@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     try {
         const result = await AiStudioService.enhanceIdea(bodyResult.data, {
             traceId,
-            timeoutMs: 12_000,
+            timeoutMs: 20_000,
         });
 
         logDtfTrace("dtf.enhance-idea", traceId, "request_succeeded", {

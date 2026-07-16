@@ -20,6 +20,8 @@ export type RateLimitResult = {
 
 // Fallback cache if Supabase rate limiting is temporarily unavailable.
 const globalRateLimitCache = new Map<string, RateLimitRecord>();
+let refundReadinessCache: { available: boolean; expiresAt: number } | null = null;
+const REFUND_READINESS_CACHE_MS = 60_000;
 
 function consumeLocalRateLimit(
     identifier: string,
@@ -117,6 +119,33 @@ export async function releaseRateLimit(identifier: string, windowMs: number): Pr
     } catch (error) {
         console.warn("[rate-limit] unexpected distributed refund failure, using local fallback:", error);
         return releaseLocalRateLimit(identifier);
+    }
+}
+
+export async function isRateLimitRefundAvailable(): Promise<boolean> {
+    const now = Date.now();
+    if (refundReadinessCache && refundReadinessCache.expiresAt > now) {
+        return refundReadinessCache.available;
+    }
+
+    try {
+        const sb = getSupabaseAdminClient();
+        const { data, error } = await sb.rpc("refund_rate_limit", {
+            p_identifier: "washa:refund-readiness-probe",
+            p_window_seconds: 86_400,
+        });
+        const available = !error
+            && Boolean(data)
+            && typeof (data as { released?: unknown }).released === "boolean";
+        refundReadinessCache = { available, expiresAt: now + REFUND_READINESS_CACHE_MS };
+        if (error) {
+            console.warn("[rate-limit] refund RPC is unavailable; guest generation will remain disabled:", error);
+        }
+        return available;
+    } catch (error) {
+        console.warn("[rate-limit] failed to verify refund RPC; guest generation will remain disabled:", error);
+        refundReadinessCache = { available: false, expiresAt: now + REFUND_READINESS_CACHE_MS };
+        return false;
     }
 }
 

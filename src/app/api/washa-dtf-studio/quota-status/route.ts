@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
-import { requireDtfRouteAccess } from "../utils/route-runtime";
+import { rejectUnexpectedGuestAccess, requireDtfRouteAccess } from "../utils/route-runtime";
 import { getRequestClientIdentifier } from "@/lib/request-client";
 
 export const runtime = "nodejs";
@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
     }
 
     const access = accessResult.access;
+    const unexpectedGuestResponse = rejectUnexpectedGuestAccess(request, access);
+    if (unexpectedGuestResponse) return unexpectedGuestResponse;
+
     const status = await DtfTelemetryService.getQuotaStatus(access.profileId, access.role, {
         guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
     });

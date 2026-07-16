@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import {useAuth} from '@clerk/clerk-react';
 import {
   CUSTOM_PALETTE_ID,
   CUSTOM_PALETTE_LABEL,
@@ -120,6 +121,7 @@ export interface ToastState {
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
 const REFERENCE_IMAGE_QUALITY = 0.76;
+const REFERENCE_IMAGE_MAX_FILE_SIZE = 15 * 1024 * 1024;
 const GARMENT_REFERENCE_MAX_DIMENSION = 1280;
 const GARMENT_REFERENCE_QUALITY = 0.82;
 const TRANSPARENT_REFERENCE_TYPES = new Set(['image/png', 'image/webp']);
@@ -148,6 +150,7 @@ const EMPTY_STATE: DesignState = {
   calligraphyText: '',
   referenceImage: null,
   referenceImageMimeType: null,
+  referenceImageMode: 'reinterpret',
   styleId: null,
   style: '',
   techniqueId: null,
@@ -289,6 +292,7 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 }
 
 export function DesignProvider({ children }: { children: React.ReactNode }) {
+  const {getToken, isLoaded: authLoaded, isSignedIn} = useAuth();
   const { requestGenerationAccess } = useCredits();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(EMPTY_STATE);
@@ -354,22 +358,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (loadError) {
         if (cancelled) return;
-        const message = getReadableErrorMessage(loadError, 'تعذر تحميل إعدادات استوديو DTF. تم تشغيل الوضع الاحتياطي.');
-        setConfig(FALLBACK_DTF_CONFIG);
+        const message = getReadableErrorMessage(loadError, 'تعذر تحميل خيارات الاستوديو الإنتاجية حالياً.');
+        setConfig(null);
         setConfigError(message);
-        setState((current) => {
-          // Don't initialise with fallback IDs if user already has real selections
-          const inFallback = (id: string | null, list: { id: string }[]) =>
-            !id || list.some((x) => x.id === id);
-          const hasRealSelections =
-            (current.garmentId || current.styleId || current.techniqueId || current.paletteId) &&
-            !inFallback(current.garmentId, FALLBACK_DTF_CONFIG.garments);
-          if (hasRealSelections) return current;
-          if (!current.garmentId && !current.styleId && !current.techniqueId && !current.paletteId) {
-            return buildInitialState(FALLBACK_DTF_CONFIG);
-          }
-          return current;
-        });
       } finally {
         if (!cancelled) {
           setConfigLoading(false);
@@ -483,6 +474,16 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('الملف المختار ليس صورة صالحة.');
+        showToast('اختر صورة بصيغة PNG أو JPG أو WebP', 'error');
+        return;
+      }
+      if (file.size > REFERENCE_IMAGE_MAX_FILE_SIZE) {
+        setError('حجم الصورة أكبر من الحد المسموح.');
+        showToast('اختر صورة أصغر من 15 ميجابايت', 'error');
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
@@ -509,36 +510,35 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const requireAuthenticatedAction = useCallback(async (intent: WashaAiAuthIntent) => {
-    try {
-      const session = await fetchWashaAiSession();
-      if (session.authenticated && session.canGenerate) {
-        return true;
-      }
-
-      const draft = saveWashaAiAuthDraft(state, intent, intent === 'submit' ? mockupImage : null);
-      if (!draft.saved) {
-        const message = 'تعذر حفظ التصميم في هذا المتصفح. أبقِ الصفحة مفتوحة وجرّب مرة أخرى بعد تفريغ مساحة التخزين.';
-        setError(message);
-        showToast(message, 'error');
-        return false;
-      }
-      const referenceNote = draft.referenceImageOmitted
-        ? ' لم نستطع حفظ الصورة المرجعية محلياً؛ ستحتاج رفعها مجدداً بعد الرجوع.'
-        : '';
-      const resultNote = draft.resultOmitted
-        ? ' سنعيد توليد النتيجة بعد الدخول لأن حجمها أكبر من مساحة الحفظ المحلية.'
-        : ' تصميمك الحالي محفوظ وسيعود معك بعد الدخول.';
-
-      setAuthGateNotice(`${resultNote}${referenceNote}`.trim());
-      setAuthGateIntent(intent);
-      return false;
-    } catch (authError) {
-      const message = getReadableErrorMessage(authError, 'تعذر التحقق من جلسة الدخول حالياً. حاول مرة أخرى.');
+    if (!authLoaded) {
+      const message = 'تعذّر التحقق من جلسة الدخول مؤقتاً.';
       setError(message);
       showToast(message, 'error');
       return false;
     }
-  }, [mockupImage, showToast, state]);
+
+    if (isSignedIn) {
+      return true;
+    }
+
+    const draft = saveWashaAiAuthDraft(state, intent, intent === 'submit' ? mockupImage : null);
+    if (!draft.saved) {
+      const message = 'تعذر حفظ التصميم في هذا المتصفح. أبقِ الصفحة مفتوحة وجرّب مرة أخرى بعد تفريغ مساحة التخزين.';
+      setError(message);
+      showToast(message, 'error');
+      return false;
+    }
+    const referenceNote = draft.referenceImageOmitted
+      ? ' لم نستطع حفظ الصورة المرجعية محلياً؛ ستحتاج رفعها مجدداً بعد الرجوع.'
+      : '';
+    const resultNote = draft.resultOmitted
+      ? ' سنعيد توليد النتيجة بعد الدخول لأن حجمها أكبر من مساحة الحفظ المحلية.'
+      : ' تصميمك الحالي محفوظ وسيعود معك بعد الدخول.';
+
+    setAuthGateNotice(`${resultNote}${referenceNote}`.trim());
+    setAuthGateIntent(intent);
+    return false;
+  }, [authLoaded, isSignedIn, mockupImage, showToast, state]);
 
   const closeAuthGate = useCallback(() => {
     setAuthGateIntent(null);
@@ -561,6 +561,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
   const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
     if (generationInFlightRef.current || isGenerating) return;
+    if (config?.generation?.enabled === false) {
+      const message = config.generation.message || 'خدمة التوليد غير متاحة حالياً.';
+      setError(message);
+      showToast(message, 'error');
+      return;
+    }
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
@@ -592,11 +598,24 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
 
     generationInFlightRef.current = true;
-    let session;
+    const authenticated = await requireAuthenticatedAction('generate');
+    if (!authenticated) {
+      generationInFlightRef.current = false;
+      return;
+    }
+
+    let sessionToken: string | null = null;
     try {
-      session = await fetchWashaAiSession();
-    } catch (sessionError) {
-      const message = getReadableErrorMessage(sessionError, 'تعذر التحقق من إمكانية التوليد حالياً. حاول مرة أخرى.');
+      sessionToken = await getToken({skipCache: true});
+    } catch {
+      const message = 'تعذّر التحقق من جلسة الدخول مؤقتاً.';
+      setError(message);
+      showToast(message, 'error');
+      generationInFlightRef.current = false;
+      return;
+    }
+    if (!sessionToken) {
+      const message = 'تعذّر التحقق من جلسة الدخول مؤقتاً.';
       setError(message);
       showToast(message, 'error');
       generationInFlightRef.current = false;
@@ -606,24 +625,23 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setIsGenerating(true);
     setError(null);
 
-    if (session.authenticated) {
-      const creditAccess = await requestGenerationAccess();
-      if (creditAccess.allowed === false) {
-        if (creditAccess.reason === 'unavailable') {
-          const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
-          setError(message);
-          showToast(message, 'error');
-        } else {
-          setError(null);
-        }
-        setIsGenerating(false);
-        generationInFlightRef.current = false;
-        return;
+    const creditAccess = await requestGenerationAccess(sessionToken);
+    if (creditAccess.allowed === false) {
+      if (creditAccess.reason === 'unavailable') {
+        const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
+        setError(message);
+        showToast(message, 'error');
+      } else {
+        setError(null);
       }
+      setIsGenerating(false);
+      generationInFlightRef.current = false;
+      return;
     }
 
     setExtractedImage(null);
     setStep(6);
+    const generationRequestId = crypto.randomUUID();
 
     const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
       ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
@@ -661,6 +679,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         garmentReferenceImageBase64: garmentReference?.base64,
         garmentReferenceImageMimeType: garmentReference?.mimeType,
         garmentReferenceSide: garmentReference?.side,
+        referenceImageMode: state.referenceImageMode,
+        sessionToken,
+        requestId: generationRequestId,
       }
     );
 
@@ -707,36 +728,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       }
 
       const message = getReadableErrorMessage(generationError, PUBLIC_GENERATION_ERROR, 'generation');
-      const canRetryWithLighterReference = Boolean(
-        isLikelyGenerationTimeoutError(generationError, message) &&
-        state.referenceImage &&
-        state.referenceImageMimeType
-      );
-
-      if (canRetryWithLighterReference) {
-        try {
-          showToast('نجرب نسخة أخف من الصورة المرجعية...', 'info');
-          const compressedReference = await resizeDataUrl(
-            `data:${state.referenceImageMimeType};base64,${state.referenceImage}`,
-            {
-              maxDimension: 768,
-              quality: 0.62,
-              outputMimeType: 'image/webp',
-            }
-          );
-          const lighterRef = stripDataUrlPrefix(compressedReference.dataUrl);
-          const retryMockup = await runGenerate(lighterRef, compressedReference.mimeType);
-          const retryValidation = await validateGeneratedImage(retryMockup);
-          if (retryValidation.valid) {
-            setMockupImage(retryMockup);
-            setMockupState({ ...state });
-            showToast('تم التوليد بعد تحسين الصورة المرجعية', 'success');
-            return;
-          }
-        } catch {
-          // fallback to original error message below
-        }
-      }
 
       const timeoutHint = isLikelyGenerationTimeoutError(generationError, message)
         ? ' جرّب وصفًا أقصر أو صورة مرجعية أصغر ثم أعد المحاولة.'
@@ -749,7 +740,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       generationInFlightRef.current = false;
     }
   }, [
+    config?.generation,
+    getToken,
     isGenerating,
+    requireAuthenticatedAction,
     requestGenerationAccess,
     selectedGarment,
     selectedPalette,
@@ -761,7 +755,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   useEffect(() => {
-    if (restoredAuthDraftRef.current || configLoading || !config) return;
+    if (!authLoaded || restoredAuthDraftRef.current || configLoading || !config) return;
     restoredAuthDraftRef.current = true;
 
     const draft = consumeWashaAiAuthDraft();
@@ -842,7 +836,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
     async function continueAfterConfirmedAuth() {
       try {
-        const session = await fetchWashaAiSession();
+        const sessionToken = isSignedIn
+          ? await getToken({skipCache: true})
+          : null;
+        const session = await fetchWashaAiSession(sessionToken);
         if (cancelled) return;
 
         if (session.authenticated && session.canGenerate && (draft.intent === 'generate' || !restoredMockup)) {
@@ -864,7 +861,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [config, configLoading, showToast]);
+  }, [authLoaded, config, configLoading, getToken, isSignedIn, showToast]);
 
   useEffect(() => {
     if (!studioDraftReady || configLoading || !config || isGenerating || isSubmittingOrder) return;

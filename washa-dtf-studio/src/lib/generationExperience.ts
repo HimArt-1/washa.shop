@@ -66,7 +66,7 @@ export async function validateGeneratedImage(
 
 const FINGERPRINT_FIELDS: Array<keyof DesignState> = [
   'garmentId', 'garmentType', 'garmentColorId', 'garmentColor', 'garmentColorHex', 'garmentSizeId', 'garmentSize',
-  'designMethod', 'designPosition', 'printOptionId', 'printPosition', 'printSize', 'prompt', 'calligraphyText',
+  'designMethod', 'designPosition', 'printOptionId', 'printPosition', 'printSize', 'prompt', 'calligraphyText', 'referenceImageMode',
   'styleId', 'style', 'techniqueId', 'technique', 'paletteId', 'palette', 'customPalette', 'removeBackground', 'avoidHardEdges',
 ];
 

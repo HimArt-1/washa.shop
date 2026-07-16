@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SubpageFooter } from "@/components/layout/SubpageFooter";
 import { getPublicVisibility, type SiteSettingsType } from "@/app/actions/settings";
 
 /**
@@ -9,9 +10,11 @@ import { getPublicVisibility, type SiteSettingsType } from "@/app/actions/settin
 export async function PublicPageWrapper({
     children,
     visibility,
+    footer = "subpage",
 }: {
     children: React.ReactNode;
     visibility?: SiteSettingsType["visibility"];
+    footer?: "home" | "subpage";
 }) {
     const resolvedVisibility = visibility ?? await getPublicVisibility();
     
@@ -27,7 +30,11 @@ export async function PublicPageWrapper({
                     {children}
                 </div>
             </div>
-            <Footer visibility={resolvedVisibility} />
+            {footer === "home" ? (
+                <Footer visibility={resolvedVisibility} />
+            ) : (
+                <SubpageFooter />
+            )}
         </>
     );
 }

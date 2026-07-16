@@ -1,9 +1,12 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
-import type { UserNotificationType, UserNotification } from "@/types/database";
+import type { NotificationPreferences, UserNotification } from "@/types/database";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import {
+    DEFAULT_NOTIFICATION_PREFERENCES,
+} from "@/lib/notification-preferences";
 
 // Raw client for user_notifications (bypasses typed schema to avoid postgrest-js never-type issue)
 function getRawClient() {
@@ -45,30 +48,103 @@ async function getCurrentProfileId() {
     }
 }
 
-export async function createUserNotification(data: {
-    userId: string;
-    type: UserNotificationType | string;
-    title: string;
-    message: string;
-    link?: string;
-    metadata?: Record<string, unknown>;
-}) {
+export async function getNotificationPreferences(): Promise<NotificationPreferences | null> {
+    const profileId = await getCurrentProfileId();
+    if (!profileId) return null;
+
     const supabase = getRawClient();
-    const { error } = await supabase.from("user_notifications").insert({
-        user_id: data.userId,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        link: data.link || null,
-        metadata: data.metadata || {},
-    });
+    const { data, error } = await supabase
+        .from("notification_preferences")
+        .select("*")
+        .eq("profile_id", profileId)
+        .maybeSingle();
 
     if (error) {
-        console.error("[createUserNotification]", error.message);
-        return { success: false, error: error.message };
+        console.error("[getNotificationPreferences]", error.message);
+        return null;
     }
 
-    return { success: true };
+    return {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        ...(data || {}),
+        profile_id: profileId,
+        updated_at: data?.updated_at || new Date(0).toISOString(),
+    } as NotificationPreferences;
+}
+
+export async function updateNotificationPreferences(input: Partial<Pick<
+    NotificationPreferences,
+    | "push_enabled"
+    | "order_updates"
+    | "support_replies"
+    | "design_updates"
+    | "artist_updates"
+    | "quiet_hours_start"
+    | "quiet_hours_end"
+    | "timezone"
+>>) {
+    const profileId = await getCurrentProfileId();
+    if (!profileId) return { success: false as const, error: "Unauthorized" };
+
+    const booleanKeys = [
+        "push_enabled",
+        "order_updates",
+        "support_replies",
+        "design_updates",
+        "artist_updates",
+    ] as const;
+    const update: Record<string, boolean | string | null> = {};
+    for (const key of booleanKeys) {
+        if (typeof input[key] === "boolean") update[key] = input[key];
+    }
+
+    for (const key of ["quiet_hours_start", "quiet_hours_end"] as const) {
+        const value = input[key];
+        if (value === null || (typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value))) {
+            update[key] = value;
+        }
+    }
+
+    if (typeof input.timezone === "string" && input.timezone.length <= 80) {
+        try {
+            new Intl.DateTimeFormat("en", { timeZone: input.timezone }).format();
+            update.timezone = input.timezone;
+        } catch {
+            return { success: false as const, error: "Invalid timezone" };
+        }
+    }
+
+    const supabase = getRawClient();
+    const { data: updated, error: updateError } = await supabase
+        .from("notification_preferences")
+        .update({ ...update, updated_at: new Date().toISOString() })
+        .eq("profile_id", profileId)
+        .select("profile_id")
+        .maybeSingle();
+
+    if (updateError) return { success: false as const, error: updateError.message };
+
+    if (!updated) {
+        const { error: insertError } = await supabase.from("notification_preferences").insert({
+            ...DEFAULT_NOTIFICATION_PREFERENCES,
+            ...update,
+            profile_id: profileId,
+            updated_at: new Date().toISOString(),
+        });
+
+        if (insertError?.code === "23505") {
+            const { error: retryError } = await supabase
+                .from("notification_preferences")
+                .update({ ...update, updated_at: new Date().toISOString() })
+                .eq("profile_id", profileId);
+            if (retryError) return { success: false as const, error: retryError.message };
+        } else if (insertError) {
+            return { success: false as const, error: insertError.message };
+        }
+    }
+
+    revalidatePath("/account/settings");
+    return { success: true as const };
 }
 
 export async function getUserNotifications(limit = 20) {

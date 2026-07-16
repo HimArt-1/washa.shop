@@ -51,7 +51,7 @@ export function StoreFilters({
                     <button
                         key={t.value}
                         onClick={() => router.push(`/store?${buildParams({ type: t.value })}`)}
-                        className={`store-filter-chip min-h-[40px] shrink-0 rounded-2xl border px-4 py-2 text-xs font-medium transition-all ${
+                        className={`store-filter-chip min-h-[40px] shrink-0 rounded-lg border px-4 py-2 text-xs font-medium transition-all ${
                             currentType === t.value ? "store-filter-chip--active" : ""
                         }`}
                     >
@@ -66,7 +66,7 @@ export function StoreFilters({
                     <select
                         value={currentSort}
                         onChange={(e) => router.push(`/store?${buildParams({ sort: e.target.value })}`)}
-                        className="store-select h-11 w-full rounded-2xl px-4 text-sm sm:min-w-[220px]"
+                        className="store-select h-11 w-full rounded-xl px-4 text-sm sm:min-w-[220px]"
                     >
                         {sortOptions.map((o) => (
                             <option key={o.value} value={o.value}>{o.label}</option>
@@ -74,7 +74,7 @@ export function StoreFilters({
                     </select>
                 </div>
 
-                <label className="store-stock-toggle flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 sm:min-w-[220px]">
+                <label className="store-stock-toggle flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:min-w-[220px]">
                     <span className="text-sm font-medium transition-colors">المتوفر فقط</span>
                     <div className="relative">
                         <input

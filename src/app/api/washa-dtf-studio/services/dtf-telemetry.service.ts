@@ -2,7 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { getWashaAiSettings } from "@/app/actions/settings";
 import type { WashaAiControls } from "@/types/database";
 import { normalizeDtfTelemetryImageUrlForLog } from "@/lib/dtf-telemetry-sanitize";
-import { checkRateLimit, peekRateLimit, releaseRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, isRateLimitRefundAvailable, peekRateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { logDiagnosticWarning } from "../utils/api-error";
 import { StorageService } from "./storage.service";
 
@@ -34,6 +34,11 @@ type DailyQuotaRpcPayload = {
     paid_balance?: unknown;
 };
 
+type DtfGenerationRequestQuotaStatePayload = {
+    found?: unknown;
+    quota_payload?: unknown;
+};
+
 /**
  * أي مصدر استُهلكت منه الحصة — يحدد كيفية الاسترجاع عند الفشل.
  * `blocked` = الفئة معطّلة (يُمنع التوليد)؛ `unlimited` = الحصص معطّلة عالمياً.
@@ -57,10 +62,15 @@ export interface DailyQuotaReservation {
     reason?: "audience_disabled" | "quota_exceeded" | "quota_unavailable";
     /** هل يحقّ لهذا المستخدم شراء رصيد إضافي (حسب مفاتيح التحكّم)؟ */
     canPurchase?: boolean;
+    /** هل تأكدنا أن الحجز حصل، لم يحصل، أم تعذّر حسم حالته بعد خطأ نقل؟ */
+    reservationState?: "confirmed" | "not_reserved" | "ambiguous";
 }
 
 type DailyQuotaOptions = {
     guestIdentifier?: string | null;
+    requestId?: string | null;
+    operation?: string | null;
+    quotaDate?: string | null;
 };
 
 export interface QuotaStatus {
@@ -228,6 +238,17 @@ export class DtfTelemetryService {
                 }
 
                 try {
+                    if (!await isRateLimitRefundAvailable()) {
+                        logDiagnosticWarning(
+                            "dtf-telemetry-guest-quota-refund-unavailable",
+                            new Error("refund_rate_limit RPC is unavailable")
+                        );
+                        return {
+                            allowed: false, remaining: 0, used: 0, tracked: false,
+                            source: "none", freeRemaining: 0, paidBalance: 0, reason: "quota_unavailable",
+                        };
+                    }
+
                     const result = await checkRateLimit(
                         `dtf-guest-daily-${guestIdentifier}`,
                         guestDailyLimit,
@@ -264,23 +285,117 @@ export class DtfTelemetryService {
 
         const dailyLimit = await DtfTelemetryService.resolveDailyLimit(userRole);
         const canPurchase = DtfTelemetryService.canRolePurchase(controls, userRole);
-        const backendFailureReservation = (): DailyQuotaReservation => {
-            if (DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()) {
+        const backendFailureReservation = (
+            reservationState: DailyQuotaReservation["reservationState"] = "not_reserved"
+        ): DailyQuotaReservation => {
+            if (
+                reservationState !== "ambiguous"
+                && DtfTelemetryService.shouldFailOpenOnQuotaBackendFailure()
+            ) {
                 return {
                     allowed: true, remaining: dailyLimit, used: 0, tracked: false,
                     source: "free", freeRemaining: dailyLimit, paidBalance: 0, canPurchase,
+                    reservationState,
                 };
             }
 
             return {
                 allowed: false, remaining: 0, used: 0, tracked: false,
                 source: "none", freeRemaining: 0, paidBalance: 0,
-                reason: "quota_unavailable", canPurchase,
+                reason: "quota_unavailable", canPurchase, reservationState,
             };
         };
 
         try {
             const sb = getSupabaseAdminClient();
+            const requestId = options.requestId?.trim();
+
+            if (requestId) {
+                const operation = options.operation?.trim() || "generate-mockup";
+                const { data, error } = await sb.rpc("reserve_dtf_generation_quota_for_request", {
+                    p_profile_id: profileId,
+                    p_operation: operation,
+                    p_request_id: requestId,
+                    p_daily_limit: dailyLimit,
+                    p_credits_enabled: controls.credits_enabled,
+                });
+                let resolvedData: unknown = data;
+
+                if (error || !DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null)) {
+                    if (error) {
+                        logDiagnosticWarning("dtf-telemetry-quota-reserve-request", error);
+                    } else {
+                        logDiagnosticWarning("dtf-telemetry-quota-reserve-request-invalid", data);
+                    }
+
+                    const { data: stateData, error: stateError } = await sb.rpc(
+                        "get_dtf_generation_request_quota_state",
+                        {
+                            p_profile_id: profileId,
+                            p_operation: operation,
+                            p_request_id: requestId,
+                        }
+                    );
+                    if (stateError) {
+                        logDiagnosticWarning("dtf-telemetry-quota-reserve-reconcile", stateError);
+                        return backendFailureReservation("ambiguous");
+                    }
+
+                    const statePayload = stateData as DtfGenerationRequestQuotaStatePayload | null;
+                    if (
+                        statePayload?.found === true
+                        && statePayload.quota_payload
+                        && typeof statePayload.quota_payload === "object"
+                        && !Array.isArray(statePayload.quota_payload)
+                    ) {
+                        resolvedData = statePayload.quota_payload;
+                    } else {
+                        return backendFailureReservation("not_reserved");
+                    }
+                }
+
+                const payload = DtfTelemetryService.normalizeQuotaPayload(resolvedData as DailyQuotaRpcPayload | null);
+                if (!payload || typeof payload.granted !== "boolean") {
+                    logDiagnosticWarning("dtf-telemetry-quota-reserve-reconcile-invalid", resolvedData);
+                    return backendFailureReservation("ambiguous");
+                }
+
+                if (controls.credits_enabled) {
+                    const freeRemaining = typeof payload.free_remaining === "number" ? payload.free_remaining : 0;
+                    const paidBalance = typeof payload.paid_balance === "number" ? payload.paid_balance : 0;
+                    const source: QuotaSource =
+                        payload.source === "paid" ? "paid" : payload.source === "none" ? "none" : "free";
+
+                    return {
+                        allowed: payload.granted,
+                        remaining: freeRemaining + paidBalance,
+                        used: typeof payload.free_used === "number" ? payload.free_used : 0,
+                        quotaDate: typeof payload.quota_date === "string" ? payload.quota_date : undefined,
+                        tracked: payload.granted,
+                        source,
+                        freeRemaining,
+                        paidBalance,
+                        reason: payload.granted ? undefined : "quota_exceeded",
+                        canPurchase,
+                        reservationState: payload.granted ? "confirmed" : "not_reserved",
+                    };
+                }
+
+                const freeRemaining = typeof payload.remaining === "number" ? payload.remaining : 0;
+                return {
+                    allowed: payload.granted,
+                    remaining: freeRemaining,
+                    used: typeof payload.used === "number" ? payload.used : 0,
+                    quotaDate: typeof payload.quota_date === "string" ? payload.quota_date : undefined,
+                    tracked: payload.granted,
+                    source: payload.granted ? "free" : "none",
+                    freeRemaining,
+                    paidBalance: 0,
+                    reason: payload.granted ? undefined : "quota_exceeded",
+                    canPurchase,
+                    reservationState: payload.granted ? "confirmed" : "not_reserved",
+                };
+            }
 
             if (controls.credits_enabled) {
                 // الدالة الهجينة: المجاني اليومي أولاً ثم الرصيد المدفوع، ذرّياً.
@@ -381,6 +496,27 @@ export class DtfTelemetryService {
 
         try {
             const sb = getSupabaseAdminClient();
+
+            const requestId = options.requestId?.trim();
+            if (requestId) {
+                const { data, error } = await sb.rpc("refund_washa_ai_generation_once", {
+                    p_profile_id: profileId,
+                    p_operation: options.operation?.trim() || "generate-mockup",
+                    p_request_id: requestId,
+                    p_source: source,
+                    p_quota_date: options.quotaDate || null,
+                    p_daily_limit: dailyLimit,
+                    p_retention_seconds: 24 * 60 * 60,
+                });
+
+                if (error) {
+                    logDiagnosticWarning("dtf-telemetry-quota-release-once", error);
+                    return false;
+                }
+
+                const payload = DtfTelemetryService.normalizeQuotaPayload(data as DailyQuotaRpcPayload | null);
+                return payload?.released === true;
+            }
 
             const { data, error } = await sb.rpc("refund_washa_ai_generation", {
                 p_profile_id: profileId,

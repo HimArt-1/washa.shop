@@ -14,6 +14,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import {useAuth} from '@clerk/clerk-react';
 import {
   fetchQuotaStatus,
   type QuotaStatus,
@@ -33,7 +34,7 @@ interface CreditsContextValue {
   /** غير null عندما تُفتح النافذة بسبب نفاد/منع (لعرض لافتة مناسبة). */
   noticeReason: CreditsNoticeReason;
   refresh: () => void;
-  requestGenerationAccess: () => Promise<GenerationCreditCheckResult>;
+  requestGenerationAccess: (sessionToken: string) => Promise<GenerationCreditCheckResult>;
   openPurchase: () => void;
   closePurchase: () => void;
 }
@@ -41,6 +42,7 @@ interface CreditsContextValue {
 const CreditsContext = createContext<CreditsContextValue | null>(null);
 
 export function CreditsProvider({ children }: { children: ReactNode }) {
+  const {getToken, isLoaded: authLoaded, isSignedIn} = useAuth();
   const [status, setStatus] = useState<QuotaStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchaseOpen, setPurchaseOpen] = useState(false);
@@ -49,15 +51,32 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(() => {
     abortRef.current?.abort();
+    if (!authLoaded) {
+      setLoading(true);
+      return;
+    }
+
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
-    void fetchQuotaStatus(controller.signal).then((next) => {
+
+    void (async () => {
+      let sessionToken: string | null = null;
+      if (isSignedIn) {
+        try {
+          sessionToken = await getToken();
+        } catch {
+          if (!controller.signal.aborted) setLoading(false);
+          return;
+        }
+      }
+
+      const next = await fetchQuotaStatus(controller.signal, sessionToken);
       if (controller.signal.aborted) return;
       if (next) setStatus(next);
       setLoading(false);
-    });
-  }, []);
+    })();
+  }, [authLoaded, getToken, isSignedIn]);
 
   const openPurchase = useCallback(() => {
     setNoticeReason(null); // فتح يدوي من الشريحة — شراء صرف بلا لافتة.
@@ -68,14 +87,21 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     setNoticeReason(null);
   }, []);
 
-  const requestGenerationAccess = useCallback(async (): Promise<GenerationCreditCheckResult> => {
+  const requestGenerationAccess = useCallback(async (sessionToken: string): Promise<GenerationCreditCheckResult> => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
     setLoading(true);
 
-    const next = await fetchQuotaStatus(controller.signal);
+    const next = await fetchQuotaStatus(controller.signal, sessionToken);
     if (controller.signal.aborted) {
+      return { allowed: false, reason: 'unavailable' };
+    }
+
+    // Never let a transient public resolution replace an authenticated user's
+    // role/balance and trigger a false guest sign-in prompt.
+    if (next?.audience === 'guest') {
+      setLoading(false);
       return { allowed: false, reason: 'unavailable' };
     }
 

@@ -1,5 +1,6 @@
 import { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
 
@@ -12,15 +13,18 @@ function getSupabase() {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = BASE_URL.replace(/\/$/, "");
+    const visibility = await getPublicVisibility();
 
     const staticRoutes: MetadataRoute.Sitemap = [
         { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
-        { url: `${baseUrl}/gallery`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-        { url: `${baseUrl}/store`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-        { url: `${baseUrl}/design`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.8 },
-        { url: `${baseUrl}/design/preorder`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.75 },
+        ...(visibility.gallery !== false ? [{ url: `${baseUrl}/gallery`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.9 }] : []),
+        ...(visibility.store !== false ? [{ url: `${baseUrl}/store`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.9 }] : []),
+        ...(visibility.design_piece !== false ? [
+            { url: `${baseUrl}/design`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.8 },
+            { url: `${baseUrl}/design/preorder`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.75 },
+        ] : []),
         { url: `${baseUrl}/search`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-        { url: `${baseUrl}/join`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
+        ...(visibility.join !== false ? [{ url: `${baseUrl}/join`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.6 }] : []),
     ];
 
     const supabase = getSupabase();
@@ -29,9 +33,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (supabase) {
         try {
             const [{ data: artworks }, { data: products }, { data: profiles }] = await Promise.all([
-                supabase.from("artworks").select("id, updated_at").eq("status", "published").limit(500),
-                supabase.from("products").select("id, updated_at").limit(500),
-                supabase.from("profiles").select("username, updated_at").eq("role", "wushsha").limit(200),
+                visibility.gallery !== false
+                    ? supabase.from("artworks").select("id, updated_at").eq("status", "published").limit(500)
+                    : Promise.resolve({ data: [] }),
+                visibility.store !== false
+                    ? supabase.from("products").select("id, updated_at").limit(500)
+                    : Promise.resolve({ data: [] }),
+                visibility.gallery !== false
+                    ? supabase.from("profiles").select("username, updated_at").eq("role", "wushsha").limit(200)
+                    : Promise.resolve({ data: [] }),
             ]);
 
             (artworks || []).forEach((a: { id: string; updated_at?: string }) => {

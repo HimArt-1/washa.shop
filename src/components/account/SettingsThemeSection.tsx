@@ -11,7 +11,7 @@ export function SettingsThemeSection() {
 
     return (
         <div
-            className="theme-surface-panel rounded-[2rem] p-5 transition-all duration-300 sm:p-6"
+            className="theme-surface-panel rounded-[1.375rem] p-5 transition-all duration-300 sm:p-6"
             style={{
                 backgroundColor: "color-mix(in srgb, var(--wusha-surface) 50%, transparent)",
                 borderColor: "color-mix(in srgb, var(--wusha-text) 6%, transparent)",

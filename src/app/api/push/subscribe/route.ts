@@ -9,6 +9,7 @@ import {
     normalizeStoredPushScope,
     removePushScope,
 } from "@/lib/push-subscription-scope";
+import { canReceiveAdminNotifications } from "@/lib/notification-roles";
 
 function getSupabaseClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: endpointValidation.error }, { status: 400 });
         }
 
-        if (requestedScope === "admin" && authResult.role !== "admin") {
+        if (requestedScope === "admin" && !canReceiveAdminNotifications(authResult.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -187,7 +188,7 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: endpointValidation.error }, { status: 400 });
         }
 
-        if (requestedScope === "admin" && authResult.role !== "admin") {
+        if (requestedScope === "admin" && !canReceiveAdminNotifications(authResult.role)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 

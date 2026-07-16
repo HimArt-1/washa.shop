@@ -168,7 +168,7 @@ function buildCartRecoveryEmail(
             سلتك لا تزال في انتظارك. أكمل طلبك الآن قبل نفاد الكمية.
           </p>
           <div style="text-align:center;margin:24px 0;">
-            <a href="${SITE_URL}/cart"
+            <a href="${SITE_URL}/checkout"
                style="display:inline-block;background:#D4AF37;color:#1a1612;text-decoration:none;padding:14px 40px;border-radius:12px;font-weight:bold;font-size:16px;">
               أكمل الشراء 🛒
             </a>

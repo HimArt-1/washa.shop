@@ -9,6 +9,8 @@ export type PrintPosition = 'chest' | 'back' | 'shoulder_right' | 'shoulder_left
 export type PrintSize = 'large' | 'small';
 export type DtfStudioGarmentAiReferenceMode = 'match_reference' | 'prompt_realistic';
 export type IdeaEntryMode = 'guided' | 'free';
+export type GuidedIdeaDirection = 'cinematic' | 'symbolic' | 'abstract';
+export type ReferenceImageMode = 'reinterpret' | 'preserve_subject' | 'style_inspiration';
 
 export interface GuidedIdeaBrief {
   subject: string;
@@ -16,6 +18,7 @@ export interface GuidedIdeaBrief {
   meaning: string;
   wording: string;
   avoid: string;
+  direction: GuidedIdeaDirection | '';
 }
 
 export interface DtfStudioColorToken {
@@ -97,6 +100,13 @@ export interface DtfStudioPositionOption {
 }
 
 export interface DtfStudioConfig {
+  generation?: {
+    enabled: boolean;
+    code: 'ready' | 'disabled' | 'provider_not_configured' | 'temporarily_unavailable';
+    message: string;
+    provider?: string;
+    retryAfterSeconds?: number;
+  };
   garments: DtfStudioGarmentOption[];
   positions: DtfStudioPositionOption[];
   styles: DtfStudioCreativeOption[];
@@ -128,6 +138,7 @@ export interface DesignState {
   calligraphyText: string;
   referenceImage: string | null;
   referenceImageMimeType: string | null;
+  referenceImageMode?: ReferenceImageMode;
   styleId: string | null;
   style: ArtisticStyle;
   techniqueId: string | null;

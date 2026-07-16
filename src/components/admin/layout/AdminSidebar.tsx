@@ -68,7 +68,7 @@ export function AdminSidebar({
                             exit={{ opacity: 0, x: -10 }}
                             className="flex items-center gap-2.5"
                         >
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-earth">
                                 <Shield className="w-4 h-4 text-bg" />
                             </div>
                             <div>
@@ -228,11 +228,7 @@ export function AdminSidebar({
                             <Link
                                 href="/"
                                 className="mt-2 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                                style={{
-                                    background: "linear-gradient(to right, #5A3E2B, #ceae7f, #5A3E2B)",
-                                    color: "#fff",
-                                    boxShadow: "0 2px 12px rgba(206, 174, 127, 0.2)",
-                                }}
+                                style={{ background: "var(--wusha-earth)", color: "#fff" }}
                             >
                                 <Home className="w-4 h-4" />
                                 العودة للصفحة الرئيسية

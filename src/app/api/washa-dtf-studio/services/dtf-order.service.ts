@@ -12,7 +12,8 @@ import {
 } from "@/lib/smart-store-core";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { runRecoverableAdminWebhookDispatch } from "@/lib/admin-notification-delivery";
+import { escapeAdminNotificationHtml } from "@/lib/notifications";
 import {
     releaseSmartStoreSizeReservation,
     reserveSmartStoreSizeStock,
@@ -95,28 +96,23 @@ export class DtfOrderService {
                     }
                 }
             ),
-            runIdempotentDispatch(
+            runRecoverableAdminWebhookDispatch(
                 {
                     dispatchKey: `dtf_design_order:${params.orderId}:webhook_admin:new_order`,
                     eventType: "design_order_created",
-                    channel: "webhook_admin",
                     resourceType: "design_order",
                     resourceId: params.orderId,
                     metadata,
                 },
-                async () => {
-                    await sendAdminNotification(
-                        [
-                            "🎨 <b>طلب تصميم جديد</b>",
-                            `الطلب: #${escapeAdminNotificationHtml(params.orderNumber)}`,
-                            `العميل: ${escapeAdminNotificationHtml(params.customerName)}`,
-                            `البريد: ${escapeAdminNotificationHtml(params.customerEmail)}`,
-                            `الجوال: ${escapeAdminNotificationHtml(params.customerPhone)}`,
-                            `المنتج: ${escapeAdminNotificationHtml(params.garmentName)} (${escapeAdminNotificationHtml(params.colorName)})`,
-                            `المصدر: WASHA AI DTF Studio`,
-                        ].join("\n")
-                    );
-                }
+                [
+                    "🎨 <b>طلب تصميم جديد</b>",
+                    `الطلب: #${escapeAdminNotificationHtml(params.orderNumber)}`,
+                    `العميل: ${escapeAdminNotificationHtml(params.customerName)}`,
+                    `البريد: ${escapeAdminNotificationHtml(params.customerEmail)}`,
+                    `الجوال: ${escapeAdminNotificationHtml(params.customerPhone)}`,
+                    `المنتج: ${escapeAdminNotificationHtml(params.garmentName)} (${escapeAdminNotificationHtml(params.colorName)})`,
+                    `المصدر: WASHA AI DTF Studio`,
+                ].join("\n")
             ),
         ]);
 
@@ -367,6 +363,9 @@ export class DtfOrderService {
             const resolvedTechniqueName = artStyleRow?.name || technique;
             const resolvedPaletteName = colorPackageRow?.name || palette;
             const resolvedPaletteLabel = customPalette || resolvedPaletteName;
+            const resolvedColorPackageId =
+                colorPackageRow?.id ??
+                (paletteId && UUID_REGEX.test(paletteId) ? paletteId : null);
 
             if (!resolvedGarmentName || !resolvedColorName || !resolvedSizeName || !resolvedStyleName || !resolvedTechniqueName) {
                 logDtfTrace("dtf.submit-order.service", traceId, "resolved_data_incomplete", {
@@ -522,7 +521,7 @@ export class DtfOrderService {
                 art_style_id: artStyleRow?.id ?? null,
                 art_style_name: resolvedTechniqueName,
                 art_style_image_url: artStyleRow?.image_url ?? null,
-                color_package_id: colorPackageRow?.id ?? (paletteId ?? null),
+                color_package_id: resolvedColorPackageId,
                 color_package_name: resolvedPaletteLabel,
                 custom_colors: DtfOrderService.buildCustomColorsPayload(customPalette),
                 studio_item_id: null,
@@ -605,7 +604,7 @@ export class DtfOrderService {
                         styleName: resolvedStyleName,
                         techniqueId: artStyleRow?.id ?? null,
                         techniqueName: resolvedTechniqueName,
-                        paletteId: colorPackageRow?.id ?? paletteId ?? null,
+                        paletteId: resolvedColorPackageId,
                         paletteName: resolvedPaletteLabel || null,
                         customColors: DtfOrderService.buildCustomColorsPayload(customPalette),
                         designMethod: "studio",

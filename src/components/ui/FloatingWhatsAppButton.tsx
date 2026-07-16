@@ -13,8 +13,13 @@ export function FloatingWhatsAppButton({ phoneNumber = "+966532235005" }: Floati
     const pathname = usePathname();
     const [visible, setVisible] = useState(false);
 
-    // Don't show on dashboard or studio
-    const hidden = pathname?.startsWith("/dashboard") || pathname?.startsWith("/studio");
+    // Keep transactional and workspace screens clear of floating controls.
+    const hidden =
+        pathname?.startsWith("/dashboard") ||
+        pathname?.startsWith("/studio") ||
+        pathname?.startsWith("/store") ||
+        pathname?.startsWith("/products/") ||
+        pathname?.startsWith("/checkout");
 
     useEffect(() => {
         const t = setTimeout(() => setVisible(true), 2000);
@@ -29,10 +34,10 @@ export function FloatingWhatsAppButton({ phoneNumber = "+966532235005" }: Floati
         <AnimatePresence>
             {visible && (
                 <motion.div
-                    className="fixed bottom-6 left-6 z-50"
+                    className="fixed bottom-4 left-4 z-50 sm:bottom-6 sm:left-6"
                     style={{
-                        bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)",
-                        left: "calc(env(safe-area-inset-left, 0px) + 1.5rem)",
+                        bottom: "calc(env(safe-area-inset-bottom, 0px) + clamp(1rem, 3vw, 1.5rem))",
+                        left: "calc(env(safe-area-inset-left, 0px) + clamp(1rem, 3vw, 1.5rem))",
                     }}
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -49,8 +54,8 @@ export function FloatingWhatsAppButton({ phoneNumber = "+966532235005" }: Floati
                             <div className="absolute inset-0 bg-[#25D366]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                             {/* Button - WhatsApp Identity */}
-                            <div className="relative w-14 h-14 bg-gradient-to-br from-[#25D366] to-[#128C7E] rounded-full flex items-center justify-center shadow-lg shadow-green-500/20 group-hover:shadow-green-500/40 transition-all duration-300 border border-white/20">
-                                <MessageCircle className="w-8 h-8 text-white fill-white/10" />
+                            <div className="relative flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-[#168f68] shadow-lg shadow-green-900/15 transition-all duration-300 group-hover:bg-[#12805e] group-hover:shadow-green-900/25 sm:h-14 sm:w-14">
+                                <MessageCircle className="h-6 w-6 fill-white/10 text-white sm:h-8 sm:w-8" />
                             </div>
 
                             {/* Tooltip */}

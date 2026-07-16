@@ -6,11 +6,13 @@ const {
     mockGetDesignPieceAccessFailure,
     mockCheckRateLimit,
     mockGetRequestClientIdentifier,
+    mockRpc,
 } = vi.hoisted(() => ({
     mockResolveDesignPieceAccess: vi.fn(),
     mockGetDesignPieceAccessFailure: vi.fn(),
     mockCheckRateLimit: vi.fn(),
     mockGetRequestClientIdentifier: vi.fn(),
+    mockRpc: vi.fn(),
 }));
 
 vi.mock("@/lib/design-piece-access", () => ({
@@ -26,8 +28,17 @@ vi.mock("@/lib/request-client", () => ({
     getRequestClientIdentifier: mockGetRequestClientIdentifier,
 }));
 
+vi.mock("@/lib/supabase", () => ({
+    getSupabaseAdminClient: () => ({
+        rpc: mockRpc,
+    }),
+}));
+
 import {
+    claimDtfGenerationRequest,
+    completeDtfGenerationRequest,
     enforceDtfRouteRateLimit,
+    failDtfGenerationRequest,
     parseAndValidateDtfJson,
     requireDtfRouteAccess,
 } from "@/app/api/washa-dtf-studio/utils/route-runtime";
@@ -40,6 +51,7 @@ describe("dtf route runtime", () => {
         mockGetDesignPieceAccessFailure.mockReset();
         mockCheckRateLimit.mockReset();
         mockGetRequestClientIdentifier.mockReset();
+        mockRpc.mockReset();
 
         mockGetDesignPieceAccessFailure.mockReturnValue({
             message: "غير مصرح لك باستخدام استوديو DTF",
@@ -145,6 +157,77 @@ describe("dtf route runtime", () => {
 
         expect(response).toBeNull();
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("claims generation idempotency through the durable request lease", async () => {
+        mockRpc.mockResolvedValue({
+            data: {
+                claimed: true,
+                state: "claimed",
+                retry_after_seconds: 0,
+            },
+            error: null,
+        });
+
+        await expect(claimDtfGenerationRequest(
+            "profile_1",
+            "request_123",
+        )).resolves.toEqual({
+            claimed: true,
+            state: "claimed",
+            retryAfterSeconds: 0,
+        });
+
+        expect(mockRpc).toHaveBeenCalledWith("claim_dtf_generation_request", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "request_123",
+            p_lease_seconds: 300,
+            p_retention_seconds: 86400,
+        });
+    });
+
+    it("reports an active request lease with its retry delay", async () => {
+        mockRpc.mockResolvedValue({
+            data: {
+                claimed: false,
+                state: "processing",
+                retry_after_seconds: 87,
+            },
+            error: null,
+        });
+
+        await expect(claimDtfGenerationRequest(
+            "profile_1",
+            "request_123",
+        )).resolves.toEqual({
+            claimed: false,
+            state: "processing",
+            retryAfterSeconds: 87,
+        });
+    });
+
+    it("marks durable generation requests complete or failed", async () => {
+        mockRpc.mockResolvedValue({ data: true, error: null });
+
+        await expect(completeDtfGenerationRequest("profile_1", "request_123")).resolves.toBe(true);
+        await expect(failDtfGenerationRequest("profile_1", "request_456", {
+            blockRetry: true,
+        })).resolves.toBe(true);
+
+        expect(mockRpc).toHaveBeenNthCalledWith(1, "complete_dtf_generation_request", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "request_123",
+            p_retention_seconds: 86400,
+        });
+        expect(mockRpc).toHaveBeenNthCalledWith(2, "fail_dtf_generation_request", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "request_456",
+            p_block_retry: true,
+            p_retention_seconds: 86400,
+        });
     });
 
     it("returns a 429 response with reset header when the threshold is hit", async () => {

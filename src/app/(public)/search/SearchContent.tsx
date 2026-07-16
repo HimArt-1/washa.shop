@@ -107,7 +107,6 @@ function ArtworkCard({ artwork }: { artwork: any }) {
 
 // ─── Product Card ───────────────────────────────────────────
 function ProductCard({ product }: { product: any }) {
-    const addItem = useCartStore((s) => s.addItem);
     const productCardImage = product.thumbnail_url || product.image_url;
 
     return (
@@ -140,19 +139,12 @@ function ProductCard({ product }: { product: any }) {
                     <span className="text-xs text-theme-subtle">{product.artist?.display_name}</span>
                     <span className="text-sm font-bold text-gold">{Number(product.price).toLocaleString()} ر.س</span>
                 </div>
-                <button
-                    onClick={() => addItem({
-                        id: product.id,
-                        title: product.title,
-                        price: Number(product.price),
-                        image_url: productCardImage,
-                        artist_name: product.artist?.display_name || "فنان وشّى",
-                        type: "product",
-                    })}
-                    className="mt-3 w-full py-2.5 text-xs font-bold bg-gold/10 text-gold rounded-xl border border-gold/15 hover:bg-gold/20 transition-colors"
+                <Link
+                    href={`/products/${product.id}`}
+                    className="mt-3 block w-full rounded-xl border border-gold/15 bg-gold/10 py-2.5 text-center text-xs font-bold text-gold transition-colors hover:bg-gold/20"
                 >
-                    أضف للسلة
-                </button>
+                    عرض المنتج واختيار الخيارات
+                </Link>
             </div>
         </motion.div>
     );
@@ -208,11 +200,16 @@ function ArtistCard({ artist }: { artist: any }) {
 //  MAIN SEARCH PAGE
 // ═══════════════════════════════════════════════════════════
 
-export default function SearchContent() {
+export default function SearchContent({ galleryVisible = true, storeVisible = true }: { galleryVisible?: boolean; storeVisible?: boolean }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const initialQuery = searchParams.get("q") || "";
-    const initialTab = (searchParams.get("tab") as SearchTab) || "artworks";
+    const visibleTabs = tabs.filter((tab) => tab.id === "products" ? storeVisible : galleryVisible);
+    const defaultTab: SearchTab = galleryVisible ? "artworks" : "products";
+    const requestedTab = searchParams.get("tab") as SearchTab | null;
+    const initialTab = visibleTabs.some((tab) => tab.id === requestedTab)
+        ? requestedTab as SearchTab
+        : defaultTab;
     const trackEvent = useTrackEvent();
 
     const [query, setQuery] = useState(initialQuery);
@@ -262,9 +259,9 @@ export default function SearchContent() {
         // Update URL
         const params = new URLSearchParams();
         if (query) params.set("q", query);
-        if (activeTab !== "artworks") params.set("tab", activeTab);
+        if (activeTab !== defaultTab) params.set("tab", activeTab);
         router.replace(`/search?${params.toString()}`, { scroll: false });
-    }, [query, activeTab, page, filters, doSearch, router]);
+    }, [query, activeTab, page, filters, doSearch, router, defaultTab]);
 
     // Current tab data
     const currentData = results?.[activeTab];
@@ -353,12 +350,16 @@ export default function SearchContent() {
                             transition={{ delay: 0.28 }}
                             className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs"
                         >
-                            <Link href="/gallery" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
-                                المعرض
-                            </Link>
-                            <Link href="/store" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
-                                المتجر
-                            </Link>
+                            {galleryVisible ? (
+                                <Link href="/gallery" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
+                                    المعرض
+                                </Link>
+                            ) : null}
+                            {storeVisible ? (
+                                <Link href="/store" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
+                                    المتجر
+                                </Link>
+                            ) : null}
                             <Link href="/design" className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1.5 text-theme-soft transition-colors hover:border-gold/25 hover:text-gold">
                                 صمّم قطعتك
                             </Link>
@@ -371,7 +372,7 @@ export default function SearchContent() {
                 {/* ─── Tabs + Filter Toggle ─── */}
                 <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                        {tabs.map((tab) => (
+                        {visibleTabs.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => { setActiveTab(tab.id); setPage(1); }}

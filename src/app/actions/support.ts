@@ -5,8 +5,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { createAdminNotification } from "@/app/actions/notifications";
 import { revalidatePath } from "next/cache";
-import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { runRecoverableAdminWebhookDispatch } from "@/lib/admin-notification-delivery";
+import { escapeAdminNotificationHtml } from "@/lib/notifications";
 
 interface GenerateTicketInput {
     name: string;
@@ -89,11 +89,10 @@ export async function submitSupportTicket(data: GenerateTicketInput) {
             link: `/dashboard/support/${ticket.id}`,
         });
 
-        await runIdempotentDispatch(
+        await runRecoverableAdminWebhookDispatch(
             {
                 dispatchKey: `support_ticket:${ticket.id}:webhook_admin:created`,
                 eventType: "support_ticket_created",
-                channel: "webhook_admin",
                 resourceType: "support_ticket",
                 resourceId: ticket.id,
                 metadata: {
@@ -103,18 +102,14 @@ export async function submitSupportTicket(data: GenerateTicketInput) {
                     source: "public_support",
                 },
             },
-            async () => {
-                await sendAdminNotification(
-                    [
-                        "🎫 <b>تذكرة دعم جديدة</b>",
-                        `الموضوع: ${escapeAdminNotificationHtml(subject)}`,
-                        `الأولوية: عادي`,
-                        `العميل: ${escapeAdminNotificationHtml(name)}`,
-                        `البريد: ${escapeAdminNotificationHtml(email)}`,
-                        `الرابط: ${escapeAdminNotificationHtml(`/dashboard/support/${ticket.id}`)}`,
-                    ].join("\n")
-                );
-            }
+            [
+                "🎫 <b>تذكرة دعم جديدة</b>",
+                `الموضوع: ${escapeAdminNotificationHtml(subject)}`,
+                `الأولوية: عادي`,
+                `العميل: ${escapeAdminNotificationHtml(name)}`,
+                `البريد: ${escapeAdminNotificationHtml(email)}`,
+                `الرابط: ${escapeAdminNotificationHtml(`/dashboard/support/${ticket.id}`)}`,
+            ].join("\n")
         ).catch(console.error);
 
         revalidatePath("/support");

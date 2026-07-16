@@ -13,6 +13,10 @@
         {
             "path": "/api/cron/bank-transfer-reservations",
             "schedule": "7 * * * *"
+        },
+        {
+            "path": "/api/cron/post-response-jobs",
+            "schedule": "*/5 * * * *"
         }
     ]
 }

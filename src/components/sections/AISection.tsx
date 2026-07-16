@@ -124,6 +124,9 @@ export function AISection({ config }: AISectionProps) {
             viewport={{ once: true }}
             transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
           >
+            <p className="mb-3 text-xs font-bold tracking-[0.16em] text-theme-faint">
+              مثال توضيحي لمسار التصميم — لا ينفّذ توليدًا حقيقيًا
+            </p>
             <h2 className="home-section-title">صممها بنفسك</h2>
           </motion.div>
 
@@ -254,20 +257,20 @@ export function AISection({ config }: AISectionProps) {
                             <>
                               <Image
                                 src={resultImage}
-                                alt="نتيجة التصميم المولدة"
+                                alt="مثال توضيحي لنتيجة تصميم"
                                 fill
                                 className="object-cover"
                                 sizes="(max-width: 640px) 176px, 224px"
                               />
                               <span className="home-ai-image-tag">
                                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                                أصلي
+                                مثال توضيحي
                               </span>
                             </>
                           ) : (
                             <div className="home-ai-generating">
                               <Sparkles className="h-5 w-5" aria-hidden />
-                              <span>جاري بناء المعاينة</span>
+                              <span>جاري عرض المثال</span>
                             </div>
                           )}
                         </motion.div>
@@ -290,7 +293,7 @@ export function AISection({ config }: AISectionProps) {
                         >
                           <Image
                             src={finalMockupImage}
-                            alt="معاينة التصميم النهائي على المنتج"
+                            alt="مثال توضيحي لمعاينة التصميم على المنتج"
                             fill
                             className="object-cover"
                             sizes="(max-width: 640px) calc(100vw - 64px), 448px"
@@ -303,7 +306,7 @@ export function AISection({ config }: AISectionProps) {
                             className="block h-5 w-6 shrink-0 bg-current text-gold"
                             style={wushaIntroMarkMaskStyle}
                           />
-                          <span>المعاينة جاهزة للطلب</span>
+                          <span>مثال للمعاينة النهائية</span>
                         </div>
                       </motion.div>
                     )}

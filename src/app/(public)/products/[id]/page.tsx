@@ -12,6 +12,8 @@ import { RecentlyViewedSection } from "@/components/store/RecentlyViewedSection"
 import { buildProductSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
 import { ProductImageGallery } from "@/components/store/ProductImageGallery";
 import { sanitizeCommerceImageUrl, sanitizeOptionalCommerceImageUrl } from "@/lib/commerce-safety";
+import { resolveLegacyProductStock } from "@/lib/product-stock";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 const TYPE_LABELS: Record<string, string> = {
     apparel: "ملابس",
@@ -30,6 +32,9 @@ function normalizeColorCode(value?: string | null) {
 // ─── Dynamic Metadata ───────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    if ((await getPublicVisibility()).store === false) {
+        return { title: "غير موجود — وشّى", robots: { index: false, follow: false } };
+    }
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) return { title: "غير موجود — وشّى" };
@@ -70,6 +75,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 // ─── Page ───────────────────────────────────────────────────
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    if ((await getPublicVisibility()).store === false) notFound();
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) notFound();
@@ -135,7 +141,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         hasErpStock = erpTotalStock > 0;
     } else {
         // Fallback to old system if no SKUs
-        hasErpStock = product.in_stock && (product.stock_quantity == null || product.stock_quantity > 0);
+        hasErpStock = resolveLegacyProductStock(product.in_stock, product.stock_quantity) > 0;
     }
 
     // Determine final stock status
@@ -196,7 +202,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 </nav>
 
                 {/* ─── Main Content ─── */}
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-12">
+                <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] lg:gap-10 xl:gap-14">
                     {/* Image */}
                     <ProductImageGallery
                         mainImage={safeProductImage}
@@ -213,13 +219,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     />
 
                     {/* Info */}
-                    <div className="theme-surface-panel flex flex-col justify-center rounded-[2rem] p-5 sm:p-8 lg:p-10">
+                    <div className="theme-surface-panel flex flex-col rounded-[1.5rem] p-5 sm:p-7 lg:sticky lg:top-28 lg:p-8">
                         <div className="mb-4 flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
+                            <span className="rounded-md border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
                                 {typeLabel(product.type)}
                             </span>
                             <span
-                                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                                className={`rounded-md border px-3 py-1 text-xs font-semibold ${
                                     isCurrentlyInStock
                                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
                                         : "border-red-500/30 bg-red-500/10 text-red-400"
@@ -261,25 +267,25 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         )}
 
                         {/* Price */}
-                        <div className="mb-5 rounded-[1.35rem] border border-gold/15 bg-gold/5 px-4 py-4">
+                        <div className="mb-5 border-y border-gold/15 bg-gold/[0.035] px-1 py-4">
                             {hasDiscount && (
                                 <div className="mb-1 flex items-center gap-2">
                                     <span className="text-sm text-theme-faint line-through">
                                         {originalPrice.toLocaleString()} ر.س
                                     </span>
-                                    <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold">
+                                    <span className="rounded-md bg-gold/15 px-2 py-0.5 text-xs font-bold text-gold">
                                         خصم {Math.round(((originalPrice - productPrice) / originalPrice) * 100)}%
                                     </span>
                                 </div>
                             )}
-                            <span className="text-3xl font-bold text-gold">{productPrice.toLocaleString()} ر.س</span>
+                            <span data-numeric className="text-3xl font-bold text-gold">{productPrice.toLocaleString()} ر.س</span>
                             <span className="text-xs text-theme-faint mr-2">{product.currency || "SAR"}</span>
                         </div>
 
                         {/* Description */}
                         {product.description && (
-                            <div className="mb-5 rounded-[1.35rem] border border-theme-subtle bg-theme-faint px-4 py-4">
-                                <p className="text-sm leading-7 text-theme-subtle">{product.description}</p>
+                            <div className="mb-5 border-b border-theme-subtle pb-5">
+                                <p className="prose-readable text-sm leading-7 text-theme-subtle">{product.description}</p>
                             </div>
                         )}
 
@@ -311,7 +317,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                                 <Link
                                     key={item.id}
                                     href={`/products/${item.id}`}
-                                    className="group theme-surface-panel rounded-[1.65rem] overflow-hidden hover:border-gold/30 transition-all"
+                                    className="group theme-surface-panel overflow-hidden rounded-[1.375rem] transition-all duration-300 hover:-translate-y-1 hover:border-gold/30"
                                 >
                                     <div className="aspect-square relative">
                                         <Image

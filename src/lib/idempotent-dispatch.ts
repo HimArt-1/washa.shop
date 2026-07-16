@@ -8,7 +8,7 @@ const MAX_RESOURCE_TYPE_LENGTH = 80;
 const MAX_RESOURCE_ID_LENGTH = 120;
 const MAX_ERROR_LENGTH = 1000;
 
-type DispatchStatus = "processing" | "sent" | "failed";
+type DispatchStatus = "processing" | "sent" | "failed" | "abandoned" | "delivery_unknown";
 
 interface EventDispatchRow {
     id: string;
@@ -25,6 +25,26 @@ interface DispatchOptions {
     resourceId?: string | null;
     metadata?: Record<string, unknown>;
     staleAfterMs?: number;
+}
+
+export class DispatchDeliveryError extends Error {
+    readonly dispatchMetadata: Record<string, unknown>;
+
+    constructor(message: string, dispatchMetadata: Record<string, unknown> = {}) {
+        super(message);
+        this.name = "DispatchDeliveryError";
+        this.dispatchMetadata = dispatchMetadata;
+    }
+}
+
+export class DispatchPersistenceError extends Error {
+    readonly stage: "claim" | "ack";
+
+    constructor(stage: "claim" | "ack", message: string) {
+        super(message);
+        this.name = "DispatchPersistenceError";
+        this.stage = stage;
+    }
 }
 
 function getDispatchClient() {
@@ -72,20 +92,26 @@ function normalizeOptions(options: DispatchOptions) {
 
 async function markDispatch(
     dispatchId: string,
+    attemptCount: number,
     patch: Record<string, unknown>
 ) {
     const supabase = getDispatchClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from("event_dispatches")
         .update({
             ...patch,
             updated_at: new Date().toISOString(),
         })
-        .eq("id", dispatchId);
+        .eq("id", dispatchId)
+        .eq("status", "processing")
+        .eq("attempt_count", attemptCount)
+        .select("id")
+        .maybeSingle();
 
     if (error) {
-        console.error("[idempotent-dispatch.markDispatch]", error);
+        throw new Error(`Failed to persist dispatch result: ${error.message}`);
     }
+    return Boolean(data?.id);
 }
 
 async function claimDispatch(options: ReturnType<typeof normalizeOptions>) {
@@ -112,7 +138,7 @@ async function claimDispatch(options: ReturnType<typeof normalizeOptions>) {
         .maybeSingle();
 
     if (inserted?.id) {
-        return { acquired: true as const, dispatchId: inserted.id };
+        return { acquired: true as const, dispatchId: inserted.id, attemptCount: 1 };
     }
 
     if (insertError && insertError.code !== "23505") {
@@ -137,10 +163,13 @@ async function claimDispatch(options: ReturnType<typeof normalizeOptions>) {
 
     const ageMs = Date.now() - new Date(existing.updated_at).getTime();
     const isStaleProcessing = existing.status === "processing" && ageMs > options.staleAfterMs;
-    const canRetry = existing.status === "failed" || isStaleProcessing;
+    const canRetry = existing.status === "failed";
 
     if (!canRetry) {
-        return { acquired: false as const, reason: existing.status };
+        return {
+            acquired: false as const,
+            reason: isStaleProcessing ? "stale_processing" : existing.status,
+        };
     }
 
     const { data: reclaimed, error: reclaimError } = await supabase
@@ -166,7 +195,11 @@ async function claimDispatch(options: ReturnType<typeof normalizeOptions>) {
         return { acquired: false as const, reason: "race" };
     }
 
-    return { acquired: true as const, dispatchId: reclaimed.id };
+    return {
+        acquired: true as const,
+        dispatchId: reclaimed.id,
+        attemptCount: (existing.attempt_count || 1) + 1,
+    };
 }
 
 export async function runIdempotentDispatch(
@@ -174,27 +207,70 @@ export async function runIdempotentDispatch(
     task: () => Promise<void>
 ) {
     const normalized = normalizeOptions(options);
-    const claim = await claimDispatch(normalized);
+    let claim: Awaited<ReturnType<typeof claimDispatch>>;
+    try {
+        claim = await claimDispatch(normalized);
+    } catch (error) {
+        throw new DispatchPersistenceError(
+            "claim",
+            error instanceof Error ? error.message : "Failed to persist dispatch claim"
+        );
+    }
 
-    if (!claim.acquired || !claim.dispatchId) {
+    if (!claim.acquired || !claim.dispatchId || !claim.attemptCount) {
         return { success: true as const, skipped: true as const, reason: claim.reason ?? "duplicate" };
     }
 
     try {
         await task();
-        await markDispatch(claim.dispatchId, {
+    } catch (error) {
+        try {
+            await markDispatch(claim.dispatchId, claim.attemptCount, {
+                status: "failed",
+                metadata: error instanceof DispatchDeliveryError
+                    ? { ...normalized.metadata, ...error.dispatchMetadata }
+                    : normalized.metadata,
+                last_error: error instanceof Error
+                    ? error.message.slice(0, MAX_ERROR_LENGTH)
+                    : "Unknown dispatch error",
+            });
+        } catch (persistenceError) {
+            console.error("[idempotent-dispatch.failure-ack]", persistenceError);
+        }
+        throw error;
+    }
+
+    let marked: boolean;
+    try {
+        marked = await markDispatch(claim.dispatchId, claim.attemptCount, {
             status: "sent",
             sent_at: new Date().toISOString(),
             last_error: null,
         });
-        return { success: true as const, skipped: false as const };
-    } catch (error) {
-        await markDispatch(claim.dispatchId, {
-            status: "failed",
-            last_error: error instanceof Error
-                ? error.message.slice(0, MAX_ERROR_LENGTH)
-                : "Unknown dispatch error",
-        });
-        throw error;
+    } catch (acknowledgementError) {
+        try {
+            const unknownMarked = await markDispatch(claim.dispatchId, claim.attemptCount, {
+                status: "delivery_unknown",
+                sent_at: null,
+                last_error: acknowledgementError instanceof Error
+                    ? acknowledgementError.message.slice(0, MAX_ERROR_LENGTH)
+                    : "Dispatch acknowledgement failed",
+            });
+            if (!unknownMarked) {
+                return { success: true as const, skipped: true as const, reason: "lease_lost" };
+            }
+        } catch (unknownStateError) {
+            console.error("[idempotent-dispatch.unknown-ack]", unknownStateError);
+        }
+        throw new DispatchPersistenceError(
+            "ack",
+            acknowledgementError instanceof Error
+                ? acknowledgementError.message
+                : "Failed to persist dispatch acknowledgement"
+        );
     }
+    if (!marked) {
+        return { success: true as const, skipped: true as const, reason: "lease_lost" };
+    }
+    return { success: true as const, skipped: false as const };
 }

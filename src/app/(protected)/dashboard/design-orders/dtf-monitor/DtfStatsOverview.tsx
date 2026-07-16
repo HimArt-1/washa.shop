@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import {
     Area,
     AreaChart,
@@ -36,7 +36,7 @@ function MetricCard({
     label: string;
     value: string | number;
     helper: string;
-    icon: JSX.Element;
+    icon: ReactElement;
     tone?: "neutral" | "success" | "warning" | "error";
 }) {
     const toneClass = {

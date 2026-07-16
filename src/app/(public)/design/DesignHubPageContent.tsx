@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getPublicVisibility } from "@/app/actions/settings";
 import { isWashaAiRouteAvailable } from "@/lib/design-piece-runtime";
+import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
 import { DesignWorkspaceHub } from "@/components/design-your-piece/DesignWorkspaceHub";
 import {
     getActiveGarments,
@@ -22,7 +23,12 @@ export async function DesignHubPageContent({ initialTab }: { initialTab?: Design
         redirect("/");
     }
 
-    const washaAiAvailable = isWashaAiRouteAvailable(visibility);
+    const generationReadiness = getWashaDtfGenerationReadiness();
+    const washaAiRouteAvailable = isWashaAiRouteAvailable(visibility);
+    const washaAiAvailable = washaAiRouteAvailable && generationReadiness.enabled;
+    const washaAiUnavailableMessage = !washaAiRouteAvailable
+        ? "مسار WASHA AI غير متاح حالياً من إعدادات المنصة."
+        : generationReadiness.message;
 
     const [garments, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities] = await Promise.all([
         getActiveGarments(),
@@ -45,6 +51,7 @@ export async function DesignHubPageContent({ initialTab }: { initialTab?: Design
             <div className="relative z-10 py-10 px-4 sm:py-14 sm:px-6 lg:px-8 max-w-6xl mx-auto">
                 <DesignWorkspaceHub
                     washaAiAvailable={washaAiAvailable}
+                    washaAiUnavailableMessage={washaAiAvailable ? undefined : washaAiUnavailableMessage}
                     garments={garments}
                     styles={styles}
                     artStyles={artStyles}

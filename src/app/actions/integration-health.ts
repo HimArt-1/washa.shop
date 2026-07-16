@@ -17,6 +17,8 @@ import {
     type TelegramBotDiagnostics,
 } from "@/lib/telegram-bot";
 import { getTelegramCommandList } from "@/lib/telegram-command-center";
+import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
+import { getPaymentReadiness } from "@/lib/payment-readiness";
 
 export type IntegrationHealthStatus = "ready" | "warning" | "missing";
 
@@ -248,6 +250,8 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             : ["genai", "gemini", "nanobanana"].includes(aiProvider)
                 ? hasEnv("GEMINI_API_KEY") || hasEnv("GOOGLE_GENERATIVE_AI_API_KEY")
                 : false;
+    const aiGenerationReadiness = getWashaDtfGenerationReadiness();
+    const paymentReadiness = getPaymentReadiness();
     const telegramCommands = getTelegramCommandList();
     const telegramCommandCenter = getTelegramBotDiagnostics(telegramCommands.length);
     const telegramBotReady = hasEnv("TELEGRAM_BOT_TOKEN") && hasEnv("TELEGRAM_CHAT_ID");
@@ -349,8 +353,16 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             id: "washa-ai",
             name: "WASHA AI",
             category: "التصميم والذكاء",
-            summary: `المزوّد الحالي: ${aiProvider}`,
+            summary: aiGenerationReadiness.enabled
+                ? `المزوّد الحالي جاهز إعدادياً: ${aiProvider}`
+                : aiGenerationReadiness.message,
             checks: [
+                {
+                    label: "بوابة التوليد الإنتاجية",
+                    ok: aiGenerationReadiness.enabled,
+                    required: true,
+                    detail: aiGenerationReadiness.code,
+                },
                 {
                     label: "مزوّد الصور",
                     ok: ["openai", "replicate", "genai", "gemini", "nanobanana"].includes(aiProvider),
@@ -367,9 +379,44 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
                 check("Gemini", "GEMINI_API_KEY", false),
                 check("Replicate", "REPLICATE_API_TOKEN", false),
             ],
-            action: aiProviderKeyReady
-                ? "اختبر توليد تصميم من صفحة الاستوديو."
-                : "اضبط مفتاح المزوّد المحدد أو غيّر WASHA_DTF_IMAGE_PROVIDER.",
+            action: aiGenerationReadiness.enabled
+                ? "نفّذ توليداً حقيقياً وتحقق من الحصة قبل اعتماد الجاهزية النهائية."
+                : "أكمل إعداد المزوّد ثم اضبط WASHA_DTF_GENERATION_ENABLED=true بعد نجاح اختبار فعلي.",
+        }),
+        item({
+            id: "checkout-payments",
+            name: "وسائل الدفع العامة",
+            category: "الدفع",
+            summary: paymentReadiness.checkoutEnabled
+                ? "توجد وسيلة دفع عامة جاهزة إعدادياً."
+                : "لا توجد وسيلة دفع عامة مكتملة الإعداد.",
+            checks: [
+                {
+                    label: "التحويل البنكي",
+                    ok: paymentReadiness.bankTransfer.enabled,
+                    required: false,
+                    detail: paymentReadiness.bankTransfer.message,
+                },
+                {
+                    label: "Tap Checkout",
+                    ok: paymentReadiness.tap.enabled,
+                    required: false,
+                    detail: paymentReadiness.tap.message,
+                },
+                {
+                    label: "وسيلة عامة واحدة على الأقل",
+                    ok: paymentReadiness.checkoutEnabled,
+                    required: true,
+                    detail: paymentReadiness.checkoutEnabled ? "متاحة" : "غير متاحة",
+                },
+            ],
+            endpoints: [
+                { label: "Tap Webhook", url: makeEndpoint("/api/webhooks/tap") },
+                { label: "Tap Return", url: makeEndpoint("/checkout") },
+            ],
+            action: paymentReadiness.checkoutEnabled
+                ? "اختبر الوسيلة المتاحة من إنشاء الطلب حتى تأكيد الدفعة."
+                : "أكمل بيانات التحويل البنكي أو فعّل Tap بعد اختبار Sandbox.",
         }),
         item({
             id: "messages",
@@ -562,7 +609,10 @@ export async function sendAdminAlertTest(): Promise<AdminAlertTestResult> {
     const channelResults = alertResult?.webhookChannels ?? [];
     const failedChannels = channelResults.filter((channel) => !channel.ok);
     const notificationSkipped = alertResult?.notification?.skipped === true;
-    const webhookSkipped = alertResult?.webhook?.skipped === true;
+    const webhookSkipped = Boolean(
+        alertResult?.webhook?.length
+        && alertResult.webhook.every((dispatch) => dispatch.skipped === true)
+    );
 
     if (configuredChannels.length === 0) {
         return {

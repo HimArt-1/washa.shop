@@ -8,10 +8,14 @@ import { ArtworkActions } from "./ArtworkActions";
 import { ArtworkReviews } from "@/components/reviews/ArtworkReviews";
 import { ChevronLeft, Eye, Sparkles } from "lucide-react";
 import { buildArtworkSchema, buildBreadcrumbSchema, JsonLd } from "@/lib/seo";
+import { getPublicVisibility } from "@/app/actions/settings";
 
 // ─── Dynamic Metadata ───────────────────────────────────────
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    if ((await getPublicVisibility()).gallery === false) {
+        return { title: "غير موجود — وشّى", robots: { index: false, follow: false } };
+    }
     const { id } = await params;
     const artwork = await getArtworkById(id);
     if (!artwork) return { title: "غير موجود — وشّى" };
@@ -45,6 +49,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 // ─── Page ───────────────────────────────────────────────────
 
 export default async function ArtworkDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    if ((await getPublicVisibility()).gallery === false) notFound();
     const { id } = await params;
     const artwork = await getArtworkById(id);
     if (!artwork) notFound();

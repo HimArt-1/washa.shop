@@ -26,6 +26,7 @@ const INTRO_READY_HOLD_MS = 760;
 const INTRO_LOGO_ENTER_DURATION = 1.15;
 const INTRO_LOGO_EXIT_DURATION = 1.6;
 const INTRO_CURTAIN_EXIT_DURATION = 0.85;
+const INTRO_HARD_LIMIT_MS = 3600;
 const INTRO_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const INTRO_EASE_IN_OUT: [number, number, number, number] = [0.42, 0, 0.58, 1];
 
@@ -51,7 +52,7 @@ const createIntroLogoMask = (backgroundColor: string, filter?: string): CSSPrope
 export function Hero({
   backgroundMode = "shader",
   showAuthButtons = true,
-  showWashaAiButton = true,
+  showWashaAiButton = false,
   showJoinArtistButton = false,
 }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +114,25 @@ export function Hero({
     return () => clearTimeout(timer);
   }, []);
 
+  // The cinematic intro is decorative. It must never become a dependency for
+  // accessing the page when WebGL, authentication, or hydration is delayed.
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) {
+      setIntroMinimumElapsed(true);
+      setIntroExiting(true);
+      setCurtainLifted(true);
+      return;
+    }
+
+    const hardLimit = window.setTimeout(() => {
+      setIntroExiting(true);
+      setCurtainLifted(true);
+    }, INTRO_HARD_LIMIT_MS);
+
+    return () => window.clearTimeout(hardLimit);
+  }, []);
+
   // Keep the intro visible long enough to feel intentional, even when WebGL is ready immediately.
   useEffect(() => {
     if (!backgroundReady || !introMinimumElapsed) return;
@@ -153,7 +173,8 @@ export function Hero({
         {!curtainLifted && (
           <motion.div
             data-intro-curtain
-            className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+            aria-hidden="true"
+            className={`fixed inset-0 z-[200] flex flex-col items-center justify-center ${introExiting ? "pointer-events-none" : ""}`}
             style={{ backgroundColor: "var(--wusha-bg)" }}
             exit={{ opacity: 0 }}
             transition={{ duration: INTRO_CURTAIN_EXIT_DURATION, ease: INTRO_EASE_OUT }}
@@ -286,7 +307,7 @@ export function Hero({
             <AnimatePresence>
               {backgroundReady && (
                 <motion.span
-                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-alnaseeb"
+                  className="absolute bottom-[40%] text-gold/40 text-sm tracking-[0.3em] font-arsenica"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: introExiting ? 0 : 1, y: introExiting ? -8 : 0 }}
                   exit={{ opacity: 0 }}
@@ -352,6 +373,7 @@ export function Hero({
         className="relative z-10 container-wusha text-center px-4 sm:px-6"
         style={{ y, opacity, scale }}
       >
+        <h1 className="sr-only">وشّى — فنٌ يُرتدى</h1>
         {/* Main Title */}
         <motion.div
           className="mb-2 sm:mb-3 flex justify-center cursor-pointer select-none"
@@ -492,13 +514,13 @@ export function Hero({
                     type="button"
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
                     style={{
-                      borderColor: "rgba(168, 85, 247, 0.32)",
-                      background: "linear-gradient(120deg, rgba(154, 123, 61, 0.2), rgba(180, 55, 37, 0.2), rgba(250, 243, 230, 0.1))",
+                      borderColor: "rgba(224, 201, 154, 0.34)",
+                      background: "linear-gradient(120deg, rgba(104, 72, 59, 0.78), rgba(167, 131, 67, 0.36))",
                       color: "rgba(250, 243, 230, 0.92)",
                     }}
                     whileHover={{
-                      boxShadow: "0 8px 32px rgba(168, 85, 247, 0.22)",
-                      borderColor: "rgba(192, 132, 252, 0.4)",
+                      boxShadow: "0 12px 34px rgba(75, 52, 42, 0.22)",
+                      borderColor: "rgba(224, 201, 154, 0.52)",
                     }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => router.push("/design/washa-ai")}
@@ -521,7 +543,8 @@ export function Hero({
             <SignedOut>
               <div className="flex flex-col items-center gap-8">
                 {/* ═══ Outer Radiant Halo ═══ */}
-                <div className="relative">
+                {showWashaAiButton ? (
+                  <div className="relative">
                   <motion.div
                     className="absolute -inset-6 sm:-inset-8 rounded-[3.5rem] pointer-events-none"
                     style={{
@@ -586,7 +609,7 @@ export function Hero({
                           />
                         </motion.div>
                         <span
-                          className="text-3xl sm:text-4xl font-alnaseeb italic tracking-widest"
+                          className="text-3xl sm:text-4xl font-arsenica italic tracking-widest"
                           style={{
                             background: "var(--hero-ai-card-title)",
                             WebkitBackgroundClip: "text",
@@ -638,7 +661,8 @@ export function Hero({
                     <div className="absolute bottom-4 left-4 w-4 h-4 border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
                     <div className="absolute bottom-4 right-4 w-4 h-4 border-b-[1.5px] border-r-[1.5px]" style={{ borderColor: "var(--hero-ai-card-border)" }} />
                   </motion.button>
-                </div>
+                  </div>
+                ) : null}
 
                 {/* Auth Links — subtle and elegant */}
                 <div className="flex items-center gap-5">

@@ -85,27 +85,6 @@ class TorodClient {
         return { res, data };
     }
 
-    /**
-     * يحاكي عملية الحجز في حال عدم توفر مفاتيح الربط
-     */
-    private async simulateBooking(request: TorodShipmentRequest): Promise<TorodShipmentResponse> {
-        console.log("[Torod Simulation] Booking order:", request.order_number);
-        
-        // محاكاة تأخير الشبكة
-        await new Promise(r => setTimeout(r, 1500));
-
-        const randomTrack = Math.floor(1000000000 + Math.random() * 9000000000).toString();
-        
-        return {
-            success: true,
-            tracking_number: `TRD-${randomTrack}`,
-            courier_name: "Torod Express (Simulated)",
-            waybill_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-            torod_order_id: `TOR-${Date.now()}`,
-            is_simulation: true
-        };
-    }
-
     private async getAccessToken(): Promise<string> {
         if (!this.clientId || !this.clientSecret) {
             throw new Error("Torod credentials missing");
@@ -135,7 +114,10 @@ class TorodClient {
 
     async bookShipment(request: TorodShipmentRequest): Promise<TorodShipmentResponse> {
         if (!this.isConfigured()) {
-            return this.simulateBooking(request);
+            return {
+                success: false,
+                error: "تكامل طرود غير مهيأ. أضف بيانات الربط قبل حجز أي شحنة.",
+            };
         }
 
         try {
@@ -218,8 +200,10 @@ class TorodClient {
 
     async cancelOrder(trackingOrOrderId: string): Promise<{ success: boolean; error?: string }> {
         if (!this.isConfigured()) {
-            console.log("[Torod Simulation] Cancelling order:", trackingOrOrderId);
-            return { success: true };
+            return {
+                success: false,
+                error: "تكامل طرود غير مهيأ. لا يمكن إلغاء شحنة دون اتصال حقيقي.",
+            };
         }
 
         try {

@@ -40,9 +40,18 @@ export interface CheckoutResponse {
 const DTF_BASE = '/api/washa-dtf-studio';
 const CREDITS_BASE = '/api/washa-ai/credits';
 
-export async function fetchQuotaStatus(signal?: AbortSignal): Promise<QuotaStatus | null> {
+export async function fetchQuotaStatus(
+  signal?: AbortSignal,
+  sessionToken?: string | null,
+): Promise<QuotaStatus | null> {
   try {
-    const res = await fetch(`${DTF_BASE}/quota-status`, { signal, cache: 'no-store' });
+    const token = sessionToken?.trim();
+    const res = await fetch(`${DTF_BASE}/quota-status`, {
+      signal,
+      cache: 'no-store',
+      credentials: token ? 'omit' : 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
     if (!res.ok) return null;
     return (await res.json()) as QuotaStatus;
   } catch {

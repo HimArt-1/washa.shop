@@ -1,4 +1,6 @@
 import { isCleanOutputEnabled } from '../lib/outputPreferences';
+import { getReferenceFallbackConcept, getReferenceGenerationDirectives, normalizeReferenceImageMode } from '../lib/referenceImage';
+import type { ReferenceImageMode } from '../types';
 
 // Use the integrated Next.js API instead of a separate local proxy server.
 import {
@@ -21,7 +23,24 @@ interface GenerationPreferences {
   garmentReferenceImageBase64?: string;
   garmentReferenceImageMimeType?: string;
   garmentReferenceSide?: 'front' | 'back';
+  referenceImageMode?: ReferenceImageMode;
+  /** Fresh Clerk session token minted immediately before this request. */
+  sessionToken?: string;
+  /** Stable identifier for this single user-triggered generation attempt. */
+  requestId?: string;
 }
+
+type GenerationApiResponse = {
+  ok?: boolean;
+  imageUrl?: string | null;
+  error?: string;
+  message?: string;
+  code?: string;
+  requestId?: string;
+  freeRemaining?: unknown;
+  paidBalance?: unknown;
+  guest?: unknown;
+};
 
 // أحداث تحدّث واجهة الرصيد بعد كل توليد أو عند نفاد الحصة.
 export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
@@ -134,6 +153,11 @@ export async function generateMockup(
   ]);
   const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
   const cleanOutputEnabled = isCleanOutputEnabled(preferences);
+  const referenceImageMode = normalizeReferenceImageMode(preferences.referenceImageMode);
+  const customerConcept = userDescription.trim() || getReferenceFallbackConcept(referenceImageMode);
+  const referenceDirectives = referenceImageBase64
+    ? getReferenceGenerationDirectives(referenceImageMode)
+    : [];
   const garmentReferenceDirectives = [
     hasGarmentReference
       ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
@@ -228,14 +252,15 @@ export async function generateMockup(
       ])
     : compactPrompt([
         sceneDirectives,
-        `Mandatory customer artwork concept: ${userDescription}.`,
+        `Mandatory customer artwork concept: ${customerConcept}.`,
+        ...referenceDirectives,
         'Create a new visible print artwork from the customer concept first, then place that artwork on the selected garment as a DTF print.',
         'The result is invalid if the garment is blank, if only the garment color changes, or if the customer concept is missing from the print.',
         'The print artwork may be graphic or illustrative, while the garment mockup must remain photorealistic. No text, letters, words, or typography unless the customer explicitly requested them.',
         `Style: ${style}.`,
         `Technique: ${technique}.`,
         `Palette: ${palette}.`,
-        `The printed artwork must be instantly recognizable as: ${userDescription}.`,
+        `The printed artwork must be instantly recognizable as: ${customerConcept}.`,
         'Single clean design with sharp details on fabric and no duplicated layers.',
         ...printDirectives,
       ]);
@@ -255,16 +280,36 @@ export async function generateMockup(
       };
     }
 
+    const sessionToken = preferences.sessionToken?.trim();
+    if (!sessionToken) {
+      throw createPublicApiError(
+        'يلزم تسجيل الدخول لإكمال العملية.',
+        'generation',
+        undefined,
+        { ok: false, code: 'AUTH_REQUIRED' },
+      );
+    }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionToken}`,
+    };
+    if (preferences.requestId) {
+      headers['X-Request-Id'] = preferences.requestId;
+    }
+
     const response = await fetch(`${API_BASE_URL}/generate-mockup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'omit',
+      cache: 'no-store',
       body: JSON.stringify(body),
     });
+    const data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
 
-    const data = await parseApiResponse(response, 'generation');
-    if (data?.error) throw createPublicApiError(data.error, 'generation', response, data);
+    if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
-    return data.imageUrl || null;
+    return typeof data?.imageUrl === 'string' ? data.imageUrl : null;
   } catch (error) {
     const info = (error as { data?: Record<string, unknown> })?.data;
     if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {

@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createOrder } from "@/app/actions/orders";
+import { createOrder, getCheckoutAttemptStatus } from "@/app/actions/orders";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
@@ -19,6 +19,14 @@ import { validateDiscountCoupon } from "@/app/actions/discount-coupons";
 import { Lock } from "lucide-react";
 import { cartItemsSignature, sanitizeCartItems } from "@/lib/commerce-safety";
 import { buildBankTransferWhatsAppUrl, type BankTransferWhatsAppDetails } from "@/lib/bank-transfer";
+import {
+    CheckoutSubmissionTimeoutError,
+    runCheckoutSubmission,
+} from "@/lib/checkout-submission";
+import { resolveCheckoutPaymentMethod, type PaymentReadiness } from "@/lib/payment-readiness";
+
+const CHECKOUT_SUBMISSION_TIMEOUT_MS = 15_000;
+type CheckoutSubmissionStage = "idle" | "saving" | "redirecting" | "complete" | "timeout";
 
 function normalizeSaudiPhone(value: string) {
     const compact = value.replace(/[\s\-()]/g, "");
@@ -91,7 +99,7 @@ async function verifyTapPayment(params: {
 
 // ─── Main Client Component ───────────────────────────────
 
-export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTransferConfig }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean; bankTransferConfig: BankTransferConfig }) {
+export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTransferConfig, paymentReadiness }: { shippingConfig: ShippingConfig; userRole?: string; isLoggedIn?: boolean; bankTransferConfig: BankTransferConfig; paymentReadiness: PaymentReadiness }) {
     const { items: rawItems, clearCart, getSubtotal, getDiscountAmount, coupon, applyCoupon, removeCoupon } = useCartStore();
     const { user } = useUser();
     const items = useMemo(() => sanitizeCartItems(rawItems), [rawItems]);
@@ -100,15 +108,19 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     const cartWasCleaned = rawItemsSignature !== cleanItemsSignature;
     const searchParams = useSearchParams();
     const verifiedPaymentKeyRef = useRef<string | null>(null);
+    const submissionLockRef = useRef(false);
+    const checkoutAttemptIdRef = useRef<string | null>(null);
     const trackEvent = useTrackEvent();
     const [isClient, setIsClient] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank_transfer");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() =>
+        paymentReadiness.tap.enabled ? "tap" : "bank_transfer"
+    );
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferWhatsAppDetails | null>(null);
-    const [checkoutAttemptId, setCheckoutAttemptId] = useState<string | null>(null);
+    const [submissionStage, setSubmissionStage] = useState<CheckoutSubmissionStage>("idle");
     const [couponCode, setCouponCode] = useState("");
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [couponError, setCouponError] = useState<string | null>(null);
@@ -206,8 +218,8 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         return (
             <div className="relative min-h-[calc(100dvh-5rem)] overflow-hidden px-4 pb-16 pt-28 sm:px-6">
                 <div aria-hidden="true" className="container-wusha grid gap-6 opacity-30 blur-[2px] lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="theme-surface-panel min-h-[30rem] rounded-[2rem] border border-theme-subtle" />
-                    <div className="theme-surface-panel min-h-[24rem] rounded-[2rem] border border-theme-subtle" />
+                    <div className="theme-surface-panel min-h-[30rem] rounded-[1.5rem] border border-theme-subtle" />
+                    <div className="theme-surface-panel min-h-[24rem] rounded-[1.5rem] border border-theme-subtle" />
                 </div>
 
                 <div
@@ -232,8 +244,8 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     <p className="mt-0.5 text-xs text-theme-subtle">ستبقى السلة محفوظة بعد الدخول.</p>
                                 </div>
                             </div>
-                            <Link href="/cart" className="rounded-lg px-3 py-2 text-xs font-bold text-theme-subtle transition-colors hover:bg-white/5 hover:text-gold active:scale-[0.98]">
-                                العودة للسلة
+                            <Link href="/store" className="rounded-lg px-3 py-2 text-xs font-bold text-theme-subtle transition-colors hover:bg-white/5 hover:text-gold active:scale-[0.98]">
+                                العودة للمتجر
                             </Link>
                         </div>
 
@@ -269,7 +281,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         const failedOrderId = searchParams.get("order_id");
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
-                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                <div className="theme-surface-panel max-w-2xl rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12">
                     <h1 className="mb-4 text-2xl font-bold">تعذر تأكيد الدفع تلقائياً</h1>
                     <p className="mb-8 text-theme-subtle">{error}</p>
                     <div className="flex flex-wrap justify-center gap-3">
@@ -296,7 +308,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
     if (items.length === 0 && !success) {
         return (
             <div className="container-wusha flex min-h-screen flex-col items-center justify-center pb-16 pt-28 text-center sm:pb-20 sm:pt-32">
-                <div className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12">
+                <div className="theme-surface-panel max-w-2xl rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12">
                     <div className="w-20 h-20 bg-theme-subtle rounded-full flex items-center justify-center mb-6 mx-auto">
                         <ShoppingBagIcon className="w-10 h-10 text-theme-faint" />
                     </div>
@@ -332,8 +344,43 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
         : 0;
     const total = taxableAmount + shippingCost + taxAmount;
 
-    async function onSubmit(data: AddressFormValues) {
+    function completeCheckoutOrder(
+        result: { order_number?: string; total?: number },
+        data: AddressFormValues
+    ) {
+        if (paymentMethod === "bank_transfer" && result.order_number) {
+            setBankTransferConfirmation({
+                orderNumber: result.order_number,
+                total: result.total || total,
+                customerName: data.name,
+                customerPhone: data.phone,
+                items: items.map((item) => ({
+                    title: item.title,
+                    quantity: item.quantity,
+                    size: item.size || null,
+                })),
+            });
+        }
+        setSubmissionStage("complete");
+        setSuccess(result.order_number || "#ORDER");
+        checkoutAttemptIdRef.current = null;
+        clearCart();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function onValidSubmit(data: AddressFormValues) {
+        const selectedPaymentReady = paymentMethod === "tap"
+            ? paymentReadiness.tap.enabled
+            : paymentMethod === "bank_transfer"
+                ? paymentReadiness.bankTransfer.enabled
+                : userRole === "booth";
+        if (!selectedPaymentReady) {
+            setError("لا توجد وسيلة دفع متاحة لإتمام الطلب حالياً.");
+            return;
+        }
+
         setIsSubmitting(true);
+        setSubmissionStage("saving");
         setError(null);
 
         const orderItems = items.map((item) => {
@@ -362,75 +409,102 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
 
         const address = { ...data, state: "" };
         
-        let finalPaymentMethod: PaymentMethod = "cod";
-        if (paymentMethod === "bank_transfer") finalPaymentMethod = "bank_transfer";
-        if (paymentMethod === "pos_cash" && userRole === "booth") finalPaymentMethod = "pos_cash";
-        if (paymentMethod === "pos_card" && userRole === "booth") finalPaymentMethod = "pos_card";
-
-        const currentCheckoutAttemptId = checkoutAttemptId || crypto.randomUUID();
-        setCheckoutAttemptId(currentCheckoutAttemptId);
-        const result = await createOrder(orderItems, address, {
-            paymentMethod: finalPaymentMethod,
-            couponId: coupon?.id,
-            discountAmount: discount,
-            checkoutAttemptId: currentCheckoutAttemptId,
-        });
-
-        if (!result.success) {
-            setError(result.error || "حدث خطأ أثناء إنشاء الطلب");
+        const finalPaymentMethod = resolveCheckoutPaymentMethod(paymentMethod, userRole);
+        if (!finalPaymentMethod) {
+            setSubmissionStage("idle");
             setIsSubmitting(false);
+            setError("طريقة الدفع المحددة غير متاحة لهذا الحساب.");
             return;
         }
 
-        if (paymentMethod === "tap" && result.order_id && result.order_number && result.total) {
-            try {
-                const response = await fetch("/api/tap/create-charge", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        orderId: result.order_id,
-                        clientName: data.name,
-                        clientMobile: data.phone,
-                        clientEmail: accountEmail || undefined,
-                    }),
-                });
+        const currentCheckoutAttemptId = checkoutAttemptIdRef.current || crypto.randomUUID();
+        checkoutAttemptIdRef.current = currentCheckoutAttemptId;
+        let awaitingTapRedirect = false;
+        try {
+            const result = await runCheckoutSubmission(
+                createOrder(orderItems, address, {
+                    paymentMethod: finalPaymentMethod,
+                    couponId: coupon?.id,
+                    discountAmount: discount,
+                    checkoutAttemptId: currentCheckoutAttemptId,
+                }),
+                CHECKOUT_SUBMISSION_TIMEOUT_MS
+            );
 
-                const json = await response.json();
+            if (!result.success) {
+                setSubmissionStage("idle");
+                setError(result.error || "حدث خطأ أثناء إنشاء الطلب");
+                return;
+            }
+
+            if (paymentMethod === "tap" && result.order_id && result.order_number && result.total) {
+                awaitingTapRedirect = true;
+                setSubmissionStage("redirecting");
+                const { response, json } = await runCheckoutSubmission(
+                    fetch("/api/tap/create-charge", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId: result.order_id,
+                            clientName: data.name,
+                            clientMobile: data.phone,
+                            clientEmail: accountEmail || undefined,
+                        }),
+                    }).then(async (response) => ({ response, json: await response.json() })),
+                    CHECKOUT_SUBMISSION_TIMEOUT_MS
+                );
 
                 if (!response.ok || !json.url) {
+                    setSubmissionStage("idle");
                     setError(json.error || "فشل في إنشاء رابط الدفع");
-                    setIsSubmitting(false);
                     return;
                 }
 
                 window.location.href = json.url;
                 return;
-            } catch {
-                setError("خطأ في الاتصال — تحقق من الإنترنت وأعد المحاولة");
-                setIsSubmitting(false);
-                return;
+            } else {
+                completeCheckoutOrder(result, data);
             }
-        } else {
-            if (paymentMethod === "bank_transfer" && result.order_number) {
-                setBankTransferConfirmation({
-                    orderNumber: result.order_number,
-                    total: result.total || total,
-                    customerName: data.name,
-                    customerPhone: data.phone,
-                    items: items.map((item) => ({
-                        title: item.title,
-                        quantity: item.quantity,
-                        size: item.size || null,
-                    })),
-                });
+        } catch (submissionError) {
+            if (submissionError instanceof CheckoutSubmissionTimeoutError) {
+                if (!awaitingTapRedirect) {
+                    try {
+                        const reconciliation = await runCheckoutSubmission(
+                            getCheckoutAttemptStatus(currentCheckoutAttemptId),
+                            5_000
+                        );
+                        if (reconciliation.success && reconciliation.state === "ready") {
+                            completeCheckoutOrder(reconciliation, data);
+                            return;
+                        }
+                    } catch {
+                        // The recovery panel below keeps the form and attempt id available.
+                    }
+                }
+                setSubmissionStage("timeout");
+                setError("استغرق تثبيت الطلب وقتًا أطول من المعتاد. قد يكون الطلب تم تسجيله؛ تحقق من طلباتك أو أعد المحاولة بأمان.");
+            } else {
+                setSubmissionStage("idle");
+                setError("تعذر الاتصال بخادم الطلبات. بقيت بياناتك محفوظة ويمكنك إعادة المحاولة.");
             }
-            setSuccess(result.order_number || "#ORDER");
-            setCheckoutAttemptId(null);
-            clearCart();
-            window.scrollTo({ top: 0, behavior: "smooth" });
+        } finally {
+            submissionLockRef.current = false;
+            setIsSubmitting(false);
         }
+    }
 
-        setIsSubmitting(false);
+    function handleCheckoutFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+        if (submissionLockRef.current) {
+            event.preventDefault();
+            return;
+        }
+        submissionLockRef.current = true;
+        void form.handleSubmit(
+            onValidSubmit,
+            () => {
+                submissionLockRef.current = false;
+            }
+        )(event);
     }
 
     async function handleApplyCoupon(e: React.FormEvent) {
@@ -458,7 +532,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                    className="theme-surface-panel max-w-2xl rounded-[2rem] px-6 py-10 sm:px-8 sm:py-12 relative overflow-hidden"
+                    className="theme-surface-panel relative max-w-2xl overflow-hidden rounded-[1.5rem] px-6 py-10 sm:px-8 sm:py-12"
                 >
                     {/* Background Glow */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-32 bg-green-500/10 blur-3xl rounded-full" />
@@ -489,7 +563,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ delay: 0.3 }}
                         className="text-3xl font-bold mb-2 relative z-10"
                     >
-                        تم استلام طلبك بنجاح!
+                        تم استلام طلبك
                     </motion.h1>
                     
                     <motion.p 
@@ -564,7 +638,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="mb-6 theme-surface-panel rounded-[2rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7"
+                    className="theme-surface-panel mb-6 rounded-[1.5rem] px-5 py-5 sm:mb-8 sm:px-8 sm:py-7"
                 >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div>
@@ -585,13 +659,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
                         className="space-y-6 lg:col-span-7 sm:space-y-8"
                     >
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <MapPin className="text-gold w-5 h-5" />
                                 عنوان الشحن
                             </h2>
 
-                            <form id="checkout-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <form id="checkout-form" onSubmit={handleCheckoutFormSubmit} className="space-y-4">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2">
                                         <label htmlFor="checkout-name" className="text-sm text-theme-soft">الاسم الكامل</label>
@@ -702,7 +776,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         </div>
 
                         {/* Payment Method */}
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                                 <CreditCard className="text-gold w-5 h-5" />
                                 طريقة الدفع
@@ -715,10 +789,12 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     whileTap={{ scale: 0.99 }}
                                     type="button"
                                     onClick={() => setPaymentMethod("bank_transfer")}
+                                    disabled={!paymentReadiness.bankTransfer.enabled}
+                                    aria-pressed={paymentMethod === "bank_transfer"}
                                     className={`w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "bank_transfer"
                                         ? "border-gold/40 bg-gold/10"
                                         : "border-theme-soft bg-theme-faint hover:border-gold/20 hover:bg-theme-subtle"
-                                        }`}
+                                        } disabled:cursor-not-allowed disabled:opacity-55`}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
@@ -743,40 +819,55 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                         </div>
                                         <span className="inline-flex items-center gap-1.5 rounded bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">
                                             <Banknote className="h-3 w-3" />
-                                            متاح الآن
+                                            {paymentReadiness.bankTransfer.enabled ? "متاح الآن" : "غير متاح"}
                                         </span>
                                     </div>
                                 </motion.button>
 
-                                {(bankTransferConfig.bankName || bankTransferConfig.accountName || bankTransferConfig.iban) ? (
+                                {paymentReadiness.bankTransfer.enabled ? (
                                     <div className="mr-1 rounded-xl border border-theme-subtle bg-theme-faint px-4 py-3 text-xs leading-6 text-theme-subtle">
                                         {bankTransferConfig.bankName ? <p>البنك: <strong className="text-theme">{bankTransferConfig.bankName}</strong></p> : null}
                                         {bankTransferConfig.accountName ? <p>اسم الحساب: <strong className="text-theme">{bankTransferConfig.accountName}</strong></p> : null}
                                         {bankTransferConfig.iban ? <p dir="ltr" className="break-all text-left">IBAN: <strong className="font-mono text-theme">{bankTransferConfig.iban}</strong></p> : null}
                                     </div>
                                 ) : (
-                                    <p className="px-2 text-xs leading-5 text-theme-faint">ستصلك بيانات التحويل من فريق وشّى بعد تسجيل الطلب.</p>
+                                    <p className="px-2 text-xs leading-5 text-amber-300">{paymentReadiness.bankTransfer.message}</p>
                                 )}
 
-                                {/* Tap — visible but unavailable until account activation */}
-                                <div
-                                    aria-disabled="true"
-                                    className="relative w-full cursor-not-allowed rounded-xl border border-theme-subtle bg-theme-faint p-4 text-right opacity-55 grayscale"
+                                <motion.button
+                                    type="button"
+                                    onClick={() => setPaymentMethod("tap")}
+                                    disabled={!paymentReadiness.tap.enabled}
+                                    aria-pressed={paymentMethod === "tap"}
+                                    whileHover={paymentReadiness.tap.enabled ? { scale: 1.01 } : undefined}
+                                    whileTap={paymentReadiness.tap.enabled ? { scale: 0.99 } : undefined}
+                                    className={`relative w-full rounded-xl border p-4 text-right transition-colors ${paymentMethod === "tap"
+                                        ? "border-gold/40 bg-gold/10"
+                                        : "border-theme-soft bg-theme-faint hover:border-gold/20"
+                                    } disabled:cursor-not-allowed disabled:opacity-55`}
                                 >
                                     <span className="absolute -top-2.5 right-4 rounded-full border border-theme-soft bg-[color:var(--wusha-bg)] px-3 py-1 text-[10px] font-black tracking-wide text-theme-faint">
-                                        قيد التطوير
+                                        {paymentReadiness.tap.enabled ? "متاح الآن" : "غير متاح"}
                                     </span>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
-                                            <div className="mt-0.5 h-4 w-4 rounded-full border-2 border-theme-soft" />
+                                            <div className={`mt-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 ${paymentMethod === "tap" ? "border-gold bg-gold" : "border-theme-soft"}`}>
+                                                {paymentMethod === "tap" ? <span className="h-1.5 w-1.5 rounded-full bg-[var(--wusha-bg)]" /> : null}
+                                            </div>
                                             <div>
                                                 <span className="font-bold text-theme-subtle">الدفع الإلكتروني الآمن</span>
-                                                <p className="mt-1 text-xs text-theme-faint">مدى وVisa وMastercard عبر Tap — سيتوفر قريبًا.</p>
+                                                <p className="mt-1 text-xs text-theme-faint">{paymentReadiness.tap.enabled ? "مدى وVisa وMastercard عبر Tap." : paymentReadiness.tap.message}</p>
                                             </div>
                                         </div>
-                                        <Lock className="h-4 w-4 text-theme-faint" />
+                                        {paymentReadiness.tap.enabled ? <CreditCard className="h-4 w-4 text-gold" /> : <Lock className="h-4 w-4 text-theme-faint" />}
                                     </div>
-                                </div>
+                                </motion.button>
+
+                                {!paymentReadiness.checkoutEnabled && userRole !== "booth" ? (
+                                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300" role="alert">
+                                        لا توجد وسيلة دفع عامة متاحة حالياً. لم يتم إنشاء أي طلب.
+                                    </div>
+                                ) : null}
                                 
                                 {/* Booth POS Options */}
                                 {userRole === "booth" && (
@@ -858,14 +949,14 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                         transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
                         className="lg:col-span-5"
                     >
-                        <div className="theme-surface-panel rounded-[2rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
+                        <div className="theme-surface-panel rounded-[1.5rem] p-5 sm:p-6 md:p-8 lg:sticky lg:top-28">
                             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                     <h2 className="text-xl font-bold">ملخص الطلب</h2>
                                     <p className="mt-1 text-sm text-theme-subtle">{items.length} عنصر في السلة</p>
                                 </div>
-                                <span className="inline-flex w-fit rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
-                                    {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "دفع عند الاستلام"}
+                                <span className="inline-flex w-fit rounded-md border border-theme-subtle bg-theme-faint px-3 py-1 text-xs text-theme-subtle">
+                                    {paymentMethod === "bank_transfer" ? "تحويل بنكي — بانتظار التحقق" : paymentMethod === "tap" ? "دفع إلكتروني عبر Tap" : paymentMethod === "pos_cash" ? "الدفع الآن (كاش)" : paymentMethod === "pos_card" ? "الدفع الآن (شبكة)" : "غير محدد"}
                                 </span>
                             </div>
 
@@ -877,7 +968,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
 
                             <div className="mb-6 space-y-4 max-h-[280px] overflow-y-auto pr-2 custom-scrollbar sm:max-h-[320px]">
                                 {items.map((item) => (
-                                    <div key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`} className="flex gap-3 rounded-2xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
+                                    <div key={`${item.id}-${item.size || "default"}-${item.colorCode || "default"}`} className="flex gap-3 rounded-xl border border-theme-subtle bg-theme-faint p-3 sm:gap-4">
                                         <div className="relative w-16 h-16 bg-theme-subtle rounded-lg overflow-hidden shrink-0">
                                             <Image
                                                 src={item.image_url}
@@ -913,7 +1004,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                             <div className="space-y-3 border-t border-theme-soft pt-6">
                                 <div className="flex justify-between text-theme-soft text-sm">
                                     <span>المجموع الفرعي</span>
-                                    <span>{subtotal.toLocaleString()} ر.س</span>
+                                    <span data-numeric>{subtotal.toLocaleString()} ر.س</span>
                                 </div>
                                 {discount > 0 && (
                                     <div className="flex justify-between items-center text-green-400 text-sm">
@@ -964,9 +1055,9 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     <span>الشحن</span>
                                     <span>
                                         {!shippingConfig.shipping_enabled
-                                            ? <span className="text-green-400 text-xs">مجاني 🎁</span>
+                                            ? <span className="text-green-400 text-xs">مجاني</span>
                                             : taxableAmount >= shippingConfig.free_above
-                                                ? <span className="text-green-400 text-xs">شحن مجاني 🎉</span>
+                                                ? <span className="text-green-400 text-xs">شحن مجاني</span>
                                                 : `${shippingCost.toLocaleString()} ر.س`}
                                     </span>
                                 </div>
@@ -980,11 +1071,44 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 </div>
                                 <div className="flex justify-between font-bold text-lg pt-4 border-t border-theme-soft mt-4">
                                     <span>الإجمالي</span>
-                                    <span className="text-gold">{total.toLocaleString()} ر.س</span>
+                                    <span data-numeric className="text-gold">{total.toLocaleString()} ر.س</span>
                                 </div>
                             </div>
 
-                            {error && (
+                            <AnimatePresence mode="wait">
+                                {(isSubmitting || submissionStage === "timeout") && (
+                                    <motion.div
+                                        key={submissionStage}
+                                        initial={{ opacity: 0, y: 6 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -4 }}
+                                        className={`mt-6 rounded-2xl border px-4 py-3 ${submissionStage === "timeout" ? "border-amber-500/25 bg-amber-500/10" : "border-gold/20 bg-gold/[0.06]"}`}
+                                        role={submissionStage === "timeout" ? "alert" : "status"}
+                                        aria-live={submissionStage === "timeout" ? "assertive" : "polite"}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {submissionStage === "timeout" ? (
+                                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300"><Lock className="h-4 w-4" /></span>
+                                            ) : (
+                                                <Loader2 className="h-5 w-5 animate-spin text-gold" />
+                                            )}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold text-theme">
+                                                    {submissionStage === "redirecting" ? "جارٍ تجهيز صفحة الدفع" : submissionStage === "timeout" ? "لم نفقد بيانات طلبك" : "جارٍ تثبيت الطلب"}
+                                                </p>
+                                                <p className="mt-1 text-xs leading-5 text-theme-subtle">
+                                                    {submissionStage === "timeout" ? "يمكنك التحقق من الطلبات أو إعادة الإرسال؛ سنستخدم محاولة الطلب نفسها لتجنب التكرار." : "نتحقق من السلة ونثبت المنتجات والحجز. لا تغلق الصفحة."}
+                                                </p>
+                                            </div>
+                                            {submissionStage === "timeout" ? (
+                                                <Link href="/account/orders" className="shrink-0 rounded-xl border border-amber-500/25 px-3 py-2 text-[11px] font-bold text-amber-300 transition hover:bg-amber-500/10">طلباتي</Link>
+                                            ) : null}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {error && submissionStage !== "timeout" && (
                                 <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm p-4 rounded-xl mt-6">
                                     {error}
                                 </div>
@@ -994,16 +1118,19 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                 whileHover={{ scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
                                 type="submit"
-                                disabled={isSubmitting || items.length === 0}
+                                disabled={isSubmitting || items.length === 0 || (!paymentReadiness.checkoutEnabled && userRole !== "booth")}
                                 form="checkout-form"
                                 className="mt-8 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-xl py-4 text-base font-bold btn-gold disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSubmitting ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        <span>{submissionStage === "redirecting" ? "تجهيز الدفع…" : "تثبيت الطلب…"}</span>
+                                    </>
                                 ) : (
                                     <>
                                         <span>
-                                            {paymentMethod === "bank_transfer" ? "تأكيد طلب التحويل" : "تأكيد الطلب"}
+                                            {paymentMethod === "bank_transfer" ? "تأكيد طلب التحويل" : paymentMethod === "tap" ? "المتابعة إلى الدفع الآمن" : "تأكيد الطلب"}
                                         </span>
                                         <ArrowRight className="w-5 h-5" />
                                     </>

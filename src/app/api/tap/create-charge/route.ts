@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { createTapCharge, retrieveTapCharge, TAP_CHECKOUT_ENABLED } from "@/lib/tap";
 import { emitPaymentInvoiceCreatedAlert } from "@/lib/operational-event-alerts";
+import { getRecordedOrderPaymentMethod } from "@/lib/payment-readiness";
 
 function appUrl(path: string) {
     const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
@@ -33,6 +34,9 @@ export async function POST(req: NextRequest) {
         if (order.buyer_id !== profile.id) return NextResponse.json({ error: "غير مصرح لهذا الطلب" }, { status: 403 });
         if (order.payment_status === "paid") return NextResponse.json({ error: "هذا الطلب مدفوع مسبقاً" }, { status: 409 });
         if (order.status !== "pending") return NextResponse.json({ error: "لا يمكن إنشاء عملية دفع لهذا الطلب" }, { status: 409 });
+        if (getRecordedOrderPaymentMethod(order.metadata) !== "tap") {
+            return NextResponse.json({ error: "طريقة الدفع المسجلة لهذا الطلب ليست Tap" }, { status: 409 });
+        }
 
         const amount = Math.round(Number(order.total) * 100) / 100;
         if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "إجمالي الطلب غير صالح" }, { status: 409 });
@@ -64,7 +68,9 @@ export async function POST(req: NextRequest) {
 
         // Return to the same origin that initiated checkout. This keeps local
         // Sandbox testing on localhost while production returns to production.
-        const redirect = new URL("/checkout", req.nextUrl.origin);
+        const redirect = process.env.NODE_ENV === "production"
+            ? new URL(appUrl("/checkout"))
+            : new URL("/checkout", req.nextUrl.origin);
         redirect.searchParams.set("tap_return", "1");
         redirect.searchParams.set("order", order.order_number);
         redirect.searchParams.set("order_id", order.id);

@@ -115,7 +115,7 @@ export const useCartStore = create<CartState>()(
                         // Item exists, increment quantity
                         const newItems = [...currentItems];
                         const item = newItems[existingItemIndex];
-                        const max = Math.max(item.maxQuantity || 99, cleanNewItem.maxQuantity || 99);
+                        const max = Math.max(item.maxQuantity ?? 1, cleanNewItem.maxQuantity ?? 1);
 
                         if (item.quantity < max) {
                             newItems[existingItemIndex] = {
@@ -158,7 +158,7 @@ export const useCartStore = create<CartState>()(
                             (item.size ?? null) === (size ?? null) &&
                             (item.colorCode ?? null) === (colorCode ?? null)
                         ) {
-                            const max = item.maxQuantity || 99;
+                            const max = item.maxQuantity ?? 1;
                             return { ...item, quantity: normalizeCartQuantity(quantity, max) };
                         }
                         return item;

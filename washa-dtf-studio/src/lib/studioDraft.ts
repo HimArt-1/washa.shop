@@ -53,6 +53,7 @@ function compactState(state: DesignState): DesignState {
           meaning: state.ideaBrief.meaning.slice(0, 240),
           wording: state.ideaBrief.wording.slice(0, 180),
           avoid: state.ideaBrief.avoid.slice(0, 240),
+          direction: state.ideaBrief.direction ?? '',
         }
       : undefined,
     ideaBriefPromptSource: state.ideaBriefPromptSource?.slice(0, 420),
@@ -93,11 +94,12 @@ function isStoredDesignState(value: unknown): value is DesignState {
     'paletteId',
   ];
 
-  const ideaBrief = state.ideaBrief as Partial<Record<'subject' | 'mood' | 'meaning' | 'wording' | 'avoid', unknown>> | undefined;
+  const ideaBrief = state.ideaBrief as Partial<Record<'subject' | 'mood' | 'meaning' | 'wording' | 'avoid' | 'direction', unknown>> | undefined;
   const validIdeaBrief = ideaBrief === undefined || (
     ideaBrief !== null &&
     typeof ideaBrief === 'object' &&
-    ['subject', 'mood', 'meaning', 'wording', 'avoid'].every((field) => typeof ideaBrief[field as keyof typeof ideaBrief] === 'string')
+    ['subject', 'mood', 'meaning', 'wording', 'avoid'].every((field) => typeof ideaBrief[field as keyof typeof ideaBrief] === 'string') &&
+    (ideaBrief.direction === undefined || ['', 'cinematic', 'symbolic', 'abstract'].includes(String(ideaBrief.direction)))
   );
 
   return stringFields.every((field) => typeof state[field] === 'string') &&
@@ -109,6 +111,7 @@ function isStoredDesignState(value: unknown): value is DesignState {
     typeof state.avoidHardEdges === 'boolean' &&
     (state.customPalette === undefined || typeof state.customPalette === 'string') &&
     (state.ideaEntryMode === undefined || state.ideaEntryMode === 'guided' || state.ideaEntryMode === 'free') &&
+    (state.referenceImageMode === undefined || ['reinterpret', 'preserve_subject', 'style_inspiration'].includes(String(state.referenceImageMode))) &&
     (state.ideaBriefPromptSource === undefined || typeof state.ideaBriefPromptSource === 'string') &&
     (state.printScale === undefined || (typeof state.printScale === 'number' && state.printScale >= 55 && state.printScale <= 120)) &&
     (state.printOffsetX === undefined || (typeof state.printOffsetX === 'number' && state.printOffsetX >= -30 && state.printOffsetX <= 30)) &&

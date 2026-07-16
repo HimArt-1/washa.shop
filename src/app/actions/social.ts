@@ -8,6 +8,8 @@
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { createUserNotification } from "@/lib/user-notifications";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 
 async function getCurrentProfile() {
     try {
@@ -17,7 +19,7 @@ async function getCurrentProfile() {
         const supabase = getSupabaseAdminClient();
         const { data, error } = await supabase
             .from("profiles")
-            .select("id")
+            .select("id, display_name, username")
             .eq("clerk_id", userId)
             .maybeSingle();
 
@@ -26,7 +28,7 @@ async function getCurrentProfile() {
             return null;
         }
 
-        return (data as { id: string } | null) ?? null;
+        return (data as { id: string; display_name: string | null; username: string | null } | null) ?? null;
     } catch (error) {
         console.error("[social.getCurrentProfile] Failed to resolve auth state:", error);
         return null;
@@ -67,13 +69,54 @@ export async function followArtist(artistId: string) {
     if (profile.id === artist.id) return { success: false, error: "لا يمكن متابعة نفسك" };
 
     const supabase = getSupabaseAdminClient();
-    const { error } = await supabase
+    const { data: insertedFollow, error } = await supabase
         .from("artist_follows")
-        .insert({ follower_id: profile.id, artist_id: artist.id });
+        .insert({ follower_id: profile.id, artist_id: artist.id })
+        .select("id")
+        .maybeSingle();
 
-    if (error) {
-        if (error.code === "23505") return { success: true };
+    if (error && error.code !== "23505") {
         return { success: false, error: error.message };
+    }
+
+    let followId = insertedFollow?.id as string | undefined;
+    if (!followId) {
+        const { data: existingFollow, error: existingFollowError } = await supabase
+            .from("artist_follows")
+            .select("id")
+            .eq("follower_id", profile.id)
+            .eq("artist_id", artist.id)
+            .maybeSingle();
+        if (existingFollowError || !existingFollow?.id) {
+            return { success: false, error: existingFollowError?.message || "تعذر تثبيت المتابعة" };
+        }
+        followId = existingFollow.id;
+    }
+
+    try {
+        await runIdempotentDispatch(
+            {
+                dispatchKey: `artist_follow:${followId}:user_notification`,
+                eventType: "artist_followed",
+                channel: "user_notification",
+                resourceType: "artist_follow",
+                resourceId: followId,
+                metadata: { follow_id: followId, follower_id: profile.id, artist_id: artist.id },
+            },
+            async () => {
+                const result = await createUserNotification({
+                    userId: artist.id,
+                    type: "artist_social",
+                    title: "متابع جديد",
+                    message: `بدأ ${profile.display_name || "أحد أعضاء وشّى"} بمتابعة معرضك.`,
+                    link: profile.username ? `/artists/${profile.username}` : "/studio",
+                    metadata: { follow_id: followId, follower_id: profile.id },
+                });
+                if (!result.success) throw new Error(result.error || "Failed to notify artist of new follower");
+            }
+        );
+    } catch (notificationError) {
+        console.error("[followArtist:notification]", notificationError);
     }
 
     revalidatePath("/artists/[username]", "page");

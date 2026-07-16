@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { torod } from "@/lib/shipping/torod";
 import { emitShippingEventAlert } from "@/lib/operational-event-alerts";
+import { createUserNotification } from "@/lib/user-notifications";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 
 /**
  * ═══════════════════════════════════════════════════════════
@@ -78,7 +80,7 @@ async function findOrderByTorodIdentifiers(
     for (const target of targets) {
         const { data, error } = await supabase
             .from("orders")
-            .select("id, order_number, status, tracking_number, torod_order_id, metadata")
+            .select("id, order_number, buyer_id, status, tracking_number, torod_order_id, metadata")
             .eq(target.column, target.value)
             .single();
 
@@ -195,17 +197,23 @@ export async function POST(req: Request) {
             ? currentMetadata.shipping_history
             : [];
         
+        const providerTimestamp = payloadString(payload, ["date_time", "dateTime"]);
+        const eventTimestamp = providerTimestamp || new Date().toISOString();
         const newHistoryEntry = {
             status: normalizedStatus,
-            timestamp: payloadString(payload, ["date_time", "dateTime"]) || new Date().toISOString(),
+            timestamp: eventTimestamp,
             raw_payload: payload
         };
+        const hasHistoryEntry = history.some((entry: any) =>
+            entry?.status === normalizedStatus
+            && (!providerTimestamp || entry?.timestamp === providerTimestamp)
+        );
 
         const updateData: any = {
             torod_last_status: status,
             metadata: {
                 ...currentMetadata,
-                shipping_history: [...history, newHistoryEntry]
+                shipping_history: hasHistoryEntry ? history : [...history, newHistoryEntry]
             },
             updated_at: new Date().toISOString()
         };
@@ -224,6 +232,51 @@ export async function POST(req: Request) {
         }
 
         console.log(`[Torod Webhook Success] Updated Order #${order.id} status to: ${normalizedStatus}`);
+
+        if (wushaStatus && order.buyer_id) {
+            const customerStatusLabels: Record<string, string> = {
+                processing: "طلبك قيد التجهيز",
+                shipped: "تم شحن طلبك",
+                delivered: "تم توصيل طلبك",
+                cancelled: "تم إلغاء شحنة طلبك",
+            };
+            const statusLabel = customerStatusLabels[wushaStatus];
+            if (statusLabel) {
+                // Keep this failure visible to Torod so the provider retries the same event.
+                // The dispatch key and history de-duplication make that retry safe.
+                await runIdempotentDispatch(
+                    {
+                        dispatchKey: `order:${order.id}:user_notification:shipping:${wushaStatus}`,
+                        eventType: "order_shipping_status",
+                        channel: "user_notification",
+                        resourceType: "order",
+                        resourceId: order.id,
+                        metadata: {
+                            order_id: order.id,
+                            order_status: wushaStatus,
+                            shipping_status: normalizedStatus,
+                            tracking_number: tracking_id || order.tracking_number || null,
+                        },
+                    },
+                    async () => {
+                        const result = await createUserNotification({
+                            userId: order.buyer_id,
+                            type: "order_update",
+                            title: "تحديث الشحنة",
+                            message: `${statusLabel} #${order.order_number}${tracking_id ? ` — رقم التتبع ${tracking_id}` : ""}`,
+                            link: `/account/orders?order=${order.id}`,
+                            metadata: {
+                                order_id: order.id,
+                                order_status: wushaStatus,
+                                shipping_status: normalizedStatus,
+                                tracking_number: tracking_id || order.tracking_number || null,
+                            },
+                        });
+                        if (!result.success) throw new Error(result.error || "Failed to notify buyer of shipping update");
+                    }
+                );
+            }
+        }
 
         if (status) {
             const isException = ["failed", "rto", "damage", "lost", "cancelled"].includes(normalizedStatus);

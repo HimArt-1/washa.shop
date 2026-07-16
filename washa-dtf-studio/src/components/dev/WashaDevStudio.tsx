@@ -226,7 +226,7 @@ function PageIntro() {
         <Sparkles className="h-3.5 w-3.5" />
         {meta.eyebrow}
       </div>
-      <h1 className="text-balance font-alnaseeb text-3xl font-black leading-[1.35] text-[#1A1A1A] sm:text-5xl">
+      <h1 className="text-balance font-arsenica text-3xl font-black leading-[1.35] text-[#1A1A1A] sm:text-5xl">
         {meta.title}
       </h1>
       {meta.subtitle ? (
@@ -370,7 +370,7 @@ function StepGarmentDev() {
                   <div className={cn(active ? 'flex flex-col' : 'mt-5')}>
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className={cn('font-alnaseeb font-black text-[#1A1A1A]', active ? 'text-3xl leading-tight sm:text-4xl' : 'text-2xl')}>
+                        <p className={cn('font-arsenica font-black text-[#1A1A1A]', active ? 'text-3xl leading-tight sm:text-4xl' : 'text-2xl')}>
                           {garment.name}
                         </p>
                         <p className="mt-1 text-xs font-bold text-[#8B7A5E]">
@@ -635,7 +635,7 @@ function StepIdeaDev() {
                   value={state.calligraphyText}
                   onChange={(event) => updateState({ calligraphyText: event.target.value })}
                   placeholder="اكتب الكلمة أو العبارة"
-                  className="min-h-[180px] resize-none rounded-3xl border-[#C9A84C]/20 bg-[#FAF8F4] p-7 text-center font-alnaseeb text-3xl leading-[1.7] text-[#1A1A1A]"
+                  className="min-h-[180px] resize-none rounded-3xl border-[#C9A84C]/20 bg-[#FAF8F4] p-7 text-center font-arsenica text-3xl leading-[1.7] text-[#1A1A1A]"
                   maxLength={80}
                   dir="auto"
                 />
@@ -856,7 +856,7 @@ function StepArtStyleDev() {
         <div className="space-y-8">
           <section>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-alnaseeb text-2xl font-black text-[#1A1A1A]">الأسلوب الفني</h2>
+              <h2 className="font-arsenica text-2xl font-black text-[#1A1A1A]">الأسلوب الفني</h2>
               <span className="text-xs font-black text-[#C9A84C]">{styleOptions.length} أساليب</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -877,7 +877,7 @@ function StepArtStyleDev() {
 
           <section>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-alnaseeb text-2xl font-black text-[#1A1A1A]">تقنية التنفيذ</h2>
+              <h2 className="font-arsenica text-2xl font-black text-[#1A1A1A]">تقنية التنفيذ</h2>
               <span className="text-xs font-black text-[#C9A84C]">{techniqueOptions.length} تقنيات</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1100,7 +1100,7 @@ function StepResultDev() {
           <div className="mx-auto flex h-28 w-28 items-center justify-center rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10">
             <Loader2 className="h-10 w-10 animate-spin text-[#C9A84C]" />
           </div>
-          <h2 className="mt-8 font-alnaseeb text-3xl font-black text-[#C9A84C] sm:text-4xl">يتم الآن نسج التصميم</h2>
+          <h2 className="mt-8 font-arsenica text-3xl font-black text-[#C9A84C] sm:text-4xl">يتم الآن نسج التصميم</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-white/62">WASHA AI يحول اختياراتك إلى موكب حقيقي جاهز للمراجعة والطباعة.</p>
           <div className="mx-auto mt-8 grid max-w-2xl gap-3 sm:grid-cols-4">
             {['تحليل الفكرة', 'تطبيق الأسلوب', 'ضبط الطباعة', 'مراجعة الجودة'].map((label, index) => (

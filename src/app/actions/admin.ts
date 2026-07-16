@@ -22,6 +22,9 @@ import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-o
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 import { confirmOrderPayment } from "@/app/actions/orders";
 import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
+import { getAdminNotifications, getUnreadNotificationsCount } from "@/app/actions/notifications";
+import { createUserNotification } from "@/lib/user-notifications";
+import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 
 /** توليد كلمة مرور عشوائية آمنة (12 حرف) */
 function generateTempPassword(): string {
@@ -232,12 +235,9 @@ export async function getAdminCommandCenterData() {
             supabase.from("support_tickets").select("id", { count: "exact", head: true }).eq("priority", "high").in("status", ["open", "in_progress"]),
             supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "new"),
             supabase.from("custom_design_orders").select("id", { count: "exact", head: true }).eq("status", "awaiting_review"),
-            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false),
-            supabase.from("admin_notifications").select("id", { count: "exact", head: true }).eq("is_read", false).eq("severity", "critical"),
-            supabase.from("admin_notifications")
-                .select("id, title, message, category, severity, created_at, link, is_read")
-                .order("created_at", { ascending: false })
-                .limit(6),
+            getUnreadNotificationsCount().then((count) => ({ count })),
+            getUnreadNotificationsCount("critical").then((count) => ({ count })),
+            getAdminNotifications(6).then((data) => ({ data })),
             supabase.from("support_tickets")
                 .select("id, subject, status, priority, name, email, created_at")
                 .in("status", ["open", "in_progress"])
@@ -265,7 +265,7 @@ export async function getAdminCommandCenterData() {
                 return;
             }
 
-            if (res.value?.error) {
+            if (res.value && typeof res.value === "object" && "error" in res.value && res.value.error) {
                 console.error(`Command center query ${idx} returned DB error:`, res.value.error);
                 if (!issues.includes("بعض بيانات مركز القيادة غير مكتملة الآن.")) {
                     issues.push("بعض بيانات مركز القيادة غير مكتملة الآن.");
@@ -2061,26 +2061,75 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         return { success: false, error: "Invalid status" };
     }
 
-    const { data: currentOrder } = await supabase
+    const { data: currentOrder, error: currentOrderError } = await supabase
         .from("orders")
-        .select("status, payment_status, buyer_id, order_number, metadata, coupon_id")
+        .select("status, payment_status, buyer_id, order_number, metadata, coupon_id, updated_at")
         .eq("id", orderId)
         .single();
 
-    const updateData: Record<string, unknown> = { status: newStatus };
+    if (currentOrderError || !currentOrder) {
+        return { success: false, error: currentOrderError?.message || "الطلب غير موجود" };
+    }
+
+    const currentMetadata = currentOrder.metadata && typeof currentOrder.metadata === "object"
+        ? currentOrder.metadata as Record<string, unknown>
+        : {};
+    const activeReleaseStartedAt = typeof currentMetadata.reservation_release_started_at === "string"
+        ? new Date(currentMetadata.reservation_release_started_at).getTime()
+        : Number.NaN;
+    const reservationReleaseIsProcessing = currentMetadata.reservation_release_status === "processing";
+    const reservationReleaseIsActive = reservationReleaseIsProcessing
+        && Number.isFinite(activeReleaseStartedAt)
+        && Date.now() - activeReleaseStartedAt < 10 * 60 * 1000;
+    const resumesSameRelease = reservationReleaseIsProcessing
+        && newStatus === currentOrder.status
+        && (newStatus === "cancelled" || newStatus === "refunded");
+    if (reservationReleaseIsProcessing && (reservationReleaseIsActive || !resumesSameRelease)) {
+        return { success: false, error: "تحرير مخزون الطلب قيد المعالجة من جلسة أخرى؛ انتظر قليلًا ثم حدّث الصفحة." };
+    }
+
+    const statusChanged = newStatus !== currentOrder.status;
+    const pendingNotificationVersion = typeof currentMetadata.status_notification_version === "string"
+        ? currentMetadata.status_notification_version
+        : null;
+    const requestedTransitionVersion = statusChanged
+        ? new Date().toISOString()
+        : pendingNotificationVersion || currentOrder.updated_at || new Date().toISOString();
+    let statusTransitionVersion = requestedTransitionVersion;
+    const statusNotificationPending = statusChanged || currentMetadata.status_notification_pending === true;
+    let updateData: Record<string, unknown> = statusChanged
+        ? { status: newStatus, updated_at: requestedTransitionVersion }
+        : {};
+    let statusAlreadyPersisted = false;
 
     if (newStatus === "confirmed" && currentOrder?.status === "pending") {
         return { success: false, error: "أكد استلام الدفعة أولًا من إجراء تأكيد التحويل البنكي." };
     }
-    if (newStatus === "refunded") updateData.payment_status = "refunded";
+    if (newStatus === "refunded" && currentOrder.payment_status !== "refunded") {
+        updateData.payment_status = "refunded";
+    }
 
-    const currentMetadata = currentOrder?.metadata && typeof currentOrder.metadata === "object"
-        ? currentOrder.metadata as Record<string, unknown>
-        : {};
     const hadStockDeducted = currentMetadata.inventory_reserved === true
         || ((currentOrder?.payment_status === "paid" || currentMetadata.payment_method === "cod")
             && ["confirmed", "processing", "shipped"].includes(currentOrder?.status || ""));
     if ((newStatus === "cancelled" || newStatus === "refunded") && hadStockDeducted) {
+        const releaseStartedAt = typeof currentMetadata.reservation_release_started_at === "string"
+            ? new Date(currentMetadata.reservation_release_started_at).getTime()
+            : Number.NaN;
+        const releaseIsActive = currentMetadata.reservation_release_status === "processing"
+            && Number.isFinite(releaseStartedAt)
+            && Date.now() - releaseStartedAt < 10 * 60 * 1000;
+        if (!statusChanged && releaseIsActive) {
+            return { success: false, error: "إلغاء الطلب قيد المعالجة من جلسة أخرى؛ انتظر قليلًا ثم حدّث الصفحة." };
+        }
+
+        let releaseClaimMetadata: Record<string, unknown> = {
+            ...currentMetadata,
+            reservation_release_status: "processing",
+            reservation_release_started_at: new Date().toISOString(),
+            status_notification_pending: true,
+            status_notification_version: requestedTransitionVersion,
+        };
         if (currentMetadata.payment_method === "bank_transfer" && currentOrder?.status === "pending") {
             const { data: cancellationClaimed, error: cancellationClaimError } = await supabase.rpc(
                 "claim_bank_transfer_cancellation" as never,
@@ -2089,6 +2138,61 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
             if (cancellationClaimError || cancellationClaimed !== true) {
                 return { success: false, error: "جرى التعامل مع الطلب من جلسة أخرى؛ حدّث الصفحة." };
             }
+            const { data: claimedOrder, error: claimedOrderError } = await supabase
+                .from("orders")
+                .select("updated_at, metadata")
+                .eq("id", orderId)
+                .single();
+            if (claimedOrderError || !claimedOrder) {
+                return { success: false, error: "تم حجز الإلغاء لكن تعذر قراءة حالة الطلب؛ راجعه يدويًا." };
+            }
+            statusAlreadyPersisted = true;
+            releaseClaimMetadata = {
+                ...(claimedOrder.metadata && typeof claimedOrder.metadata === "object"
+                    ? claimedOrder.metadata as Record<string, unknown>
+                    : releaseClaimMetadata),
+                reservation_release_status: "processing",
+                reservation_release_started_at: new Date().toISOString(),
+                status_notification_pending: true,
+                status_notification_version: requestedTransitionVersion,
+            };
+            const { data: releaseClaim, error: releaseClaimError } = await supabase
+                .from("orders")
+                .update({
+                    metadata: releaseClaimMetadata,
+                    updated_at: requestedTransitionVersion,
+                })
+                .eq("id", orderId)
+                .eq("updated_at", claimedOrder.updated_at)
+                .select("updated_at")
+                .maybeSingle();
+            if (releaseClaimError || !releaseClaim) {
+                return { success: false, error: "جرى التعامل مع الإلغاء من جلسة أخرى؛ حدّث الصفحة." };
+            }
+            statusTransitionVersion = releaseClaim.updated_at || requestedTransitionVersion;
+        } else {
+            const claimUpdate: Record<string, unknown> = {
+                status: newStatus,
+                updated_at: requestedTransitionVersion,
+                metadata: releaseClaimMetadata,
+            };
+            if (newStatus === "refunded" && currentOrder.payment_status !== "refunded") {
+                claimUpdate.payment_status = "refunded";
+            }
+            const { data: claimedOrder, error: claimError } = await supabase
+                .from("orders")
+                .update(claimUpdate)
+                .eq("id", orderId)
+                .eq("status", currentOrder.status)
+                .eq("updated_at", currentOrder.updated_at)
+                .select("updated_at")
+                .maybeSingle();
+            if (claimError) return { success: false, error: claimError.message };
+            if (!claimedOrder) {
+                return { success: false, error: "جرى تحديث الطلب من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+            }
+            statusAlreadyPersisted = true;
+            statusTransitionVersion = claimedOrder.updated_at || requestedTransitionVersion;
         }
         if (currentMetadata.coupon_reserved === true && currentOrder?.coupon_id) {
             const { error: couponReleaseError } = await supabase.rpc(
@@ -2096,7 +2200,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
                 { p_order_id: orderId } as never
             );
             if (couponReleaseError) {
-                return { success: false, error: "أُعيد المخزون لكن تعذر تحرير حجز الكوبون. راجع الطلب يدويًا." };
+                return { success: false, error: "تم حجز الإلغاء، لكن تعذر تحرير حجز الكوبون. أعد المحاولة أو راجع الطلب يدويًا." };
             }
         }
         const { restoreStockForOrder } = await import("@/lib/inventory");
@@ -2104,35 +2208,51 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         if (!restoration.success) {
             if (currentMetadata.coupon_reserved === true) {
                 await supabase.from("orders").update({
-                    metadata: { ...currentMetadata, coupon_reserved: false },
+                    metadata: { ...releaseClaimMetadata, coupon_reserved: false },
                 }).eq("id", orderId);
             }
-            return { success: false, error: restoration.error || "تعذر إعادة المخزون؛ لم تتغير حالة الطلب." };
+            return { success: false, error: restoration.error || "تم حجز الإلغاء لكن تعذر إعادة المخزون؛ أعد المحاولة." };
         }
         const releasedMetadata: Record<string, unknown> = {
-            ...currentMetadata,
+            ...releaseClaimMetadata,
             inventory_reserved: false,
             coupon_reserved: false,
             bank_transfer_status: "cancelled",
+            reservation_release_status: "completed",
             reservation_released_at: new Date().toISOString(),
+            status_notification_pending: true,
+            status_notification_version: statusTransitionVersion,
         };
-        updateData.metadata = releasedMetadata;
-        const { error: releaseMetadataError } = await supabase
+        updateData = { metadata: releasedMetadata };
+    }
+
+    let orderUpdateError: { message: string } | null = null;
+    if (Object.keys(updateData).length > 0) {
+        let updateQuery = supabase
             .from("orders")
-            .update({ metadata: releasedMetadata })
+            .update(updateData)
             .eq("id", orderId);
-        if (releaseMetadataError) {
-            return { success: false, error: "تحرر المخزون، لكن تعذر تثبيت حالة التحرير. راجع الطلب يدويًا." };
+        if (statusChanged && !statusAlreadyPersisted) {
+            updateQuery = updateQuery.eq("status", currentOrder.status);
+        } else if (statusAlreadyPersisted) {
+            updateQuery = updateQuery
+                .eq("status", newStatus as typeof currentOrder.status)
+                .eq("updated_at", statusTransitionVersion);
+        }
+        const { data: persistedOrder, error } = await updateQuery
+            .select("updated_at")
+            .maybeSingle();
+        orderUpdateError = error;
+        if (!error && !persistedOrder) {
+            return { success: false, error: "جرى تحديث الطلب من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+        }
+        if (statusChanged && !statusAlreadyPersisted && persistedOrder?.updated_at) {
+            statusTransitionVersion = persistedOrder.updated_at;
         }
     }
 
-    const { error } = await supabase
-        .from("orders")
-        .update(updateData)
-        .eq("id", orderId);
-
-    if (error) {
-        console.error("Update order status error:", error);
+    if (orderUpdateError) {
+        console.error("Update order status error:", orderUpdateError);
         await reportAdminActionAlert({
             dispatchKey: `admin:update_order_status_failed:${orderId}:${newStatus}`,
             bucketMs: 30 * 60 * 1000,
@@ -2147,13 +2267,25 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
             metadata: {
                 order_id: orderId,
                 new_status: newStatus,
-                error: error.message,
+                error: orderUpdateError.message,
             },
         });
-        return { success: false, error: error.message };
+        return { success: false, error: orderUpdateError.message };
     }
 
-    if (currentOrder?.buyer_id && newStatus !== currentOrder.status) {
+    const orderNotificationDispatchKey = `order:${orderId}:user_notification:status:${statusTransitionVersion}`;
+    let shouldNotifyBuyer = statusChanged || statusNotificationPending;
+    if (currentOrder?.buyer_id && !shouldNotifyBuyer) {
+        const { data: failedDispatch } = await supabase
+            .from("event_dispatches")
+            .select("id")
+            .eq("dispatch_key", orderNotificationDispatchKey)
+            .eq("status", "failed")
+            .maybeSingle();
+        shouldNotifyBuyer = Boolean(failedDispatch);
+    }
+
+    if (currentOrder?.buyer_id && shouldNotifyBuyer) {
         let statusAr = "";
         switch (newStatus) {
             case "confirmed": statusAr = "تم تأكيد"; break;
@@ -2165,14 +2297,61 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         }
 
         if (statusAr) {
-            await supabase.from("user_notifications").insert({
-                user_id: currentOrder.buyer_id,
-                type: "order_update",
-                title: "تحديث حالة الطلب",
-                message: `${statusAr} طلبك #${currentOrder.order_number}`,
-                link: `/account/orders?order=${orderId}`,
-                metadata: { order_id: orderId, new_status: newStatus }
-            });
+            try {
+                const notificationDispatch = await runIdempotentDispatch(
+                    {
+                        dispatchKey: orderNotificationDispatchKey,
+                        eventType: "order_status_changed",
+                        channel: "user_notification",
+                        resourceType: "order",
+                        resourceId: orderId,
+                        metadata: { order_id: orderId, new_status: newStatus },
+                    },
+                    async () => {
+                        const result = await createUserNotification({
+                            userId: currentOrder.buyer_id!,
+                            type: "order_update",
+                            title: "تحديث حالة الطلب",
+                            message: `${statusAr} طلبك #${currentOrder.order_number}`,
+                            link: `/account/orders?order=${orderId}`,
+                            metadata: { order_id: orderId, new_status: newStatus },
+                        });
+                        if (!result.success) throw new Error(result.error || "Failed to notify buyer of order status");
+                    }
+                );
+                const notificationConfirmed = !notificationDispatch.skipped
+                    || notificationDispatch.reason === "sent";
+                if (
+                    notificationConfirmed
+                    && (newStatus === "cancelled" || newStatus === "refunded")
+                ) {
+                    const { error: clearIntentError } = await supabase.rpc(
+                        "mark_order_status_notification_sent" as never,
+                        {
+                            p_order_id: orderId,
+                            p_status: newStatus,
+                            p_version: statusTransitionVersion,
+                        } as never
+                    );
+                    if (clearIntentError) {
+                        console.error("[updateOrderStatus:clear_notification_intent]", clearIntentError);
+                    }
+                }
+            } catch (notificationError) {
+                console.error("[updateOrderStatus:notification]", notificationError);
+                await reportAdminActionAlert({
+                    dispatchKey: `admin:order_status_notification_failed:${orderId}:${statusTransitionVersion}`,
+                    title: "تعذر إرسال تحديث حالة الطلب للعميل",
+                    message: `تغيرت حالة الطلب #${currentOrder.order_number} إلى ${newStatus} لكن تعذر إنشاء إشعار العميل.`,
+                    source: "admin.orders.status_notification",
+                    category: "orders",
+                    severity: "warning",
+                    link: `/dashboard/orders/${orderId}`,
+                    resourceType: "order",
+                    resourceId: orderId,
+                    metadata: { order_id: orderId, new_status: newStatus },
+                });
+            }
         }
     }
 
@@ -3865,10 +4044,36 @@ export async function updateArtworkStatus(
 ) {
     const { supabase } = await requireAdmin();
 
-    const { error } = await supabase
+    const { data: artwork, error: artworkError } = await supabase
         .from("artworks")
-        .update({ status: newStatus })
-        .eq("id", id);
+        .select("artist_id, title, status, updated_at")
+        .eq("id", id)
+        .single();
+
+    if (artworkError || !artwork) {
+        return { success: false, error: artworkError?.message || "العمل الفني غير موجود" };
+    }
+
+    const artworkStatusChanged = artwork.status !== newStatus;
+    let transitionVersion = artwork.updated_at;
+    let error: { message: string } | null = null;
+    if (artworkStatusChanged) {
+        transitionVersion = new Date().toISOString();
+        const updateResult = await supabase
+            .from("artworks")
+            .update({ status: newStatus, updated_at: transitionVersion })
+            .eq("id", id)
+            .eq("status", artwork.status)
+            .select("id, updated_at")
+            .maybeSingle();
+        error = updateResult.error;
+        if (!error && !updateResult.data) {
+            return { success: false, error: "تغيرت حالة العمل من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+        }
+        if (!error && updateResult.data?.updated_at) {
+            transitionVersion = updateResult.data.updated_at;
+        }
+    }
 
     if (error) {
         console.error("Update artwork status error:", error);
@@ -3890,6 +4095,73 @@ export async function updateArtworkStatus(
             },
         });
         return { success: false, error: error.message };
+    }
+
+    const artworkNotificationDispatchKey = `artwork:${id}:user_notification:status:${transitionVersion}`;
+    let shouldNotifyArtist = artworkStatusChanged;
+    if (artwork.artist_id && !artworkStatusChanged) {
+        const { data: failedDispatch } = await supabase
+            .from("event_dispatches")
+            .select("id")
+            .eq("dispatch_key", artworkNotificationDispatchKey)
+            .eq("status", "failed")
+            .maybeSingle();
+        shouldNotifyArtist = Boolean(failedDispatch);
+    }
+
+    if (artwork.artist_id && shouldNotifyArtist) {
+        const statusDetails = {
+            published: {
+                title: "تم نشر عملك الفني",
+                message: `أصبح عملك «${artwork.title}» ظاهرًا في معرض وشّى.`,
+            },
+            rejected: {
+                title: "يحتاج عملك إلى مراجعة",
+                message: `لم يتم اعتماد «${artwork.title}» للنشر حاليًا. راجع العمل أو تواصل مع الدعم.`,
+            },
+            archived: {
+                title: "تمت أرشفة عملك الفني",
+                message: `تم نقل «${artwork.title}» إلى الأرشيف.`,
+            },
+        }[newStatus];
+
+        try {
+            await runIdempotentDispatch(
+                {
+                    dispatchKey: artworkNotificationDispatchKey,
+                    eventType: "artwork_status_changed",
+                    channel: "user_notification",
+                    resourceType: "artwork",
+                    resourceId: id,
+                    metadata: { artwork_id: id, artist_id: artwork.artist_id, new_status: newStatus, transition_version: transitionVersion },
+                },
+                async () => {
+                    const result = await createUserNotification({
+                        userId: artwork.artist_id,
+                        type: "artwork_update",
+                        title: statusDetails.title,
+                        message: statusDetails.message,
+                        link: "/studio/artworks",
+                        metadata: { artwork_id: id, new_status: newStatus },
+                    });
+                    if (!result.success) throw new Error(result.error || "Failed to notify artist of artwork status");
+                }
+            );
+        } catch (notificationError) {
+            console.error("[updateArtworkStatus:notification]", notificationError);
+            await reportAdminActionAlert({
+                dispatchKey: `admin:artwork_status_notification_failed:${id}:${transitionVersion}`,
+                title: "تعذر إرسال تحديث العمل الفني للوشّاي",
+                message: `تغيرت حالة العمل «${artwork.title}» إلى ${newStatus} لكن تعذر إنشاء إشعار الوشّاي.`,
+                source: "admin.artworks.status_notification",
+                category: "design",
+                severity: "warning",
+                link: "/dashboard/artworks",
+                resourceType: "artwork",
+                resourceId: id,
+                metadata: { artwork_id: id, new_status: newStatus, transition_version: transitionVersion },
+            });
+        }
     }
 
     revalidatePath("/dashboard/artworks");

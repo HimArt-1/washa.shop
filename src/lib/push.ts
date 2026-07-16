@@ -4,6 +4,7 @@ import webpush from "web-push";
 import { createClient } from "@supabase/supabase-js";
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import type { Database } from "@/types/database";
+import { ADMIN_NOTIFICATION_ROLES } from "@/lib/notification-roles";
 
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
@@ -37,80 +38,105 @@ function sanitizePushUrl(url?: string) {
 }
 
 async function sendPush(
-    scope: "admins" | "all",
+    scope: "admins" | "all" | "user",
     title: string,
     body: string,
-    url?: string
+    url?: string,
+    userId?: string,
+    targetEndpoints?: string[]
 ) {
-    if (!isPushEnabled()) {
-        await reportAdminOperationalAlert({
-            dispatchKey: "push:vapid_config_missing",
-            bucketMs: 6 * 60 * 60 * 1000,
-            category: "system",
-            severity: "warning",
-            title: "تنبيهات البوش غير مهيأة",
-            message: "مفاتيح VAPID غير مكتملة، لذلك لن يتم إرسال إشعارات البوش حتى تصحيح الإعدادات.",
-            link: "/dashboard/settings",
-            source: "push.config",
-            metadata: {
-                has_vapid_public: !!VAPID_PUBLIC,
-                has_vapid_private: !!VAPID_PRIVATE,
-                scope,
-            },
-        });
-        return { sent: 0 };
-    }
-
     const sanitizedTitle = sanitizePushText(title, MAX_PUSH_TITLE_LENGTH);
     const sanitizedBody = sanitizePushText(body, MAX_PUSH_BODY_LENGTH);
     const sanitizedUrl = sanitizePushUrl(url);
 
     if (!sanitizedTitle || !sanitizedBody) {
-        return { sent: 0 };
+        return { sent: 0, failed: 0 };
     }
 
     try {
         const supabase = getPushAdminClient();
+        let subscriptions: Array<{ endpoint: string; p256dh: string; auth: string }> = [];
+
+        if (scope === "admins") {
+            const { data: admins, error: adminsError } = await supabase
+                .from("profiles")
+                .select("id")
+                .in("role", [...ADMIN_NOTIFICATION_ROLES]);
+            if (adminsError) throw adminsError;
+
+            const adminIds = (admins || []).map((item) => item.id);
+            if (!adminIds.length) return { sent: 0, failed: 0 };
+
+            const { data: subs, error: subscriptionsError } = await supabase
+                .from("push_subscriptions")
+                .select("endpoint, p256dh, auth")
+                .in("scope", ["admin", "both"])
+                .in("user_id", adminIds);
+            if (subscriptionsError) throw subscriptionsError;
+
+            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
+        } else if (scope === "user" && userId) {
+            const { data: subs, error: subscriptionsError } = await supabase
+                .from("push_subscriptions")
+                .select("endpoint, p256dh, auth")
+                .in("scope", ["user", "both"])
+                .eq("user_id", userId);
+            if (subscriptionsError) throw subscriptionsError;
+
+            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
+        } else {
+            const { data: subs, error: subscriptionsError } = await supabase
+                .from("push_subscriptions")
+                .select("endpoint, p256dh, auth")
+                .in("scope", ["user", "both"]);
+            if (subscriptionsError) throw subscriptionsError;
+
+            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
+        }
+
+        if (targetEndpoints?.length) {
+            const allowedEndpoints = new Set(targetEndpoints);
+            subscriptions = subscriptions.filter((subscription) => allowedEndpoints.has(subscription.endpoint));
+        }
+
+        if (!subscriptions.length) return { sent: 0, failed: 0, failedEndpoints: [] as string[] };
+
+        if (!isPushEnabled()) {
+            await reportAdminOperationalAlert({
+                dispatchKey: "push:vapid_config_missing",
+                bucketMs: 6 * 60 * 60 * 1000,
+                category: "system",
+                severity: "warning",
+                title: "تنبيهات البوش غير مهيأة",
+                message: "مفاتيح VAPID غير مكتملة، لذلك لن يتم إرسال إشعارات البوش حتى تصحيح الإعدادات.",
+                link: "/dashboard/settings",
+                source: "push.config",
+                metadata: {
+                    has_vapid_public: !!VAPID_PUBLIC,
+                    has_vapid_private: !!VAPID_PRIVATE,
+                    scope,
+                },
+            });
+            return {
+                sent: 0,
+                failed: subscriptions.length,
+                failedEndpoints: subscriptions.map((subscription) => subscription.endpoint),
+            };
+        }
+
         webpush.setVapidDetails(
             "mailto:support@washa.shop",
             VAPID_PUBLIC!,
             VAPID_PRIVATE!
         );
 
-        let subscriptions: Array<{ endpoint: string; p256dh: string; auth: string }> = [];
-
-        if (scope === "admins") {
-            const { data: admins } = await supabase
-                .from("profiles")
-                .select("id")
-                .eq("role", "admin");
-
-            const adminIds = (admins || []).map((item) => item.id);
-            if (!adminIds.length) return { sent: 0 };
-
-            const { data: subs } = await supabase
-                .from("push_subscriptions")
-                .select("endpoint, p256dh, auth")
-                .in("scope", ["admin", "both"])
-                .in("user_id", adminIds);
-
-            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
-        } else {
-            const { data: subs } = await supabase
-                .from("push_subscriptions")
-                .select("endpoint, p256dh, auth")
-                .in("scope", ["user", "both"]);
-
-            subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
-        }
-
-        if (!subscriptions.length) return { sent: 0 };
-
         const uniqueSubscriptions = Array.from(
             new Map(subscriptions.map((item) => [item.endpoint, item])).values()
         );
 
         let sent = 0;
+        let failed = 0;
+        const failedEndpoints: string[] = [];
         const payload = JSON.stringify({
             title: sanitizedTitle,
             body: sanitizedBody,
@@ -132,10 +158,13 @@ async function sendPush(
                 const statusCode = (e as { statusCode?: number })?.statusCode;
                 if (statusCode === 410 || statusCode === 404) {
                     await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+                } else {
+                    failed++;
+                    failedEndpoints.push(sub.endpoint);
                 }
             }
         }
-        return { sent };
+        return { sent, failed, failedEndpoints };
     } catch (e) {
         console.error("[Push] sendToAll error:", e);
         await reportAdminOperationalAlert({
@@ -153,14 +182,42 @@ async function sendPush(
             },
             stack: e instanceof Error ? e.stack ?? null : null,
         });
-        return { sent: 0 };
+        return { sent: 0, failed: 1, failedEndpoints: targetEndpoints || [] };
     }
 }
 
-export async function sendPushToAdmins(title: string, body: string, url?: string) {
-    return sendPush("admins", title, body, url);
+export async function sendPushToAdmins(
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    return sendPush("admins", title, body, url, undefined, targetEndpoints);
+}
+
+export async function sendPushToAdminsReliably(
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    const delivery = await sendPushToAdmins(title, body, url, targetEndpoints);
+    if (delivery.failed > 0) {
+        throw new Error(`Admin push delivery failed for ${delivery.failed} subscription(s)`);
+    }
+    return delivery;
 }
 
 export async function sendPushToAll(title: string, body: string, url?: string) {
     return sendPush("all", title, body, url);
+}
+
+export async function sendPushToUser(
+    userId: string,
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    return sendPush("user", title, body, url, userId, targetEndpoints);
 }
