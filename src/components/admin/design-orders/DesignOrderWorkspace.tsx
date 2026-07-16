@@ -44,7 +44,6 @@ import {
 } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
 import { DesignOrderAdminChat } from "@/components/admin/DesignOrderAdminChat";
-import { downloadTransparentDesignAsPng } from "@/lib/download-design";
 
 type AdminProfile = {
     id: string;
@@ -445,15 +444,17 @@ export function DesignOrderWorkspace({
         setDownloadingDtf(true);
         setError(null);
         try {
-            await downloadTransparentDesignAsPng(
-                `/api/dashboard/design-orders/${currentOrder.id}/dtf-download?mode=inline`,
-                `washa-dtf-${currentOrder.order_number}`,
-                {
-                    targetLongEdge: 4096,
-                    maxLongEdge: 8192,
-                    removeEdgeBackground: true,
-                },
+            const response = await fetch(
+                `/api/dashboard/design-orders/${currentOrder.id}/dtf-download`,
+                { cache: "no-store" },
             );
+            if (!response.ok) throw new Error("تعذر تحميل ملف الإنتاج المعتمد.");
+            const objectUrl = URL.createObjectURL(await response.blob());
+            const anchor = document.createElement("a");
+            anchor.href = objectUrl;
+            anchor.download = `washa-dtf-${currentOrder.order_number}.png`;
+            anchor.click();
+            URL.revokeObjectURL(objectUrl);
         } catch (error) {
             console.error("DTF export failed", error);
             setError(error instanceof Error ? error.message : "تعذر تصدير ملف DTF الآن.");
@@ -950,7 +951,7 @@ export function DesignOrderWorkspace({
                                             <span className="text-xs font-bold text-gold uppercase tracking-wider">نموذج الطباعة DTF</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-theme-faint">PNG شفاف · 4K</span>
+                                            <span className="text-[10px] text-theme-faint">PNG شفاف · أصل إنتاج معتمد</span>
                                             <button
                                                 type="button"
                                                 onClick={handleDownloadDtf}

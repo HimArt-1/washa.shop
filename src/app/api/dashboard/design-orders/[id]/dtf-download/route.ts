@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
+import { verifyApprovedOrderAssetGraph } from "@/lib/washa-artwork/order-integrity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,26 +58,41 @@ export async function GET(
 
     const { data: order, error } = await access.supabase
         .from("custom_design_orders")
-        .select("order_number, dtf_extracted_url")
+        .select("order_number, dtf_extracted_url, design_request_id, design_master_asset_id, design_revision_id, master_checksum, print_asset_path, asset_schema_version, production_readiness_status")
         .eq("id", params.id)
         .single();
 
-    if (error || !order?.dtf_extracted_url) {
+    if (error || !order) {
         return NextResponse.json({ error: "DTF file not found" }, { status: 404 });
     }
 
-    const sourceUrl = getHttpUrl(order.dtf_extracted_url);
-    if (!sourceUrl) {
-        return NextResponse.json({ error: "Invalid DTF file URL" }, { status: 422 });
-    }
+    let contentType = "image/png";
+    let buffer: ArrayBuffer;
+    if ((order.asset_schema_version ?? 0) >= 1 && order.print_asset_path) {
+        const integrity = await verifyApprovedOrderAssetGraph(access.supabase, order);
+        if (!integrity.ok || !integrity.printBuffer) {
+            return NextResponse.json(
+                { error: integrity.ok ? "Approved production asset is unavailable" : integrity.error },
+                { status: 409 }
+            );
+        }
+        buffer = integrity.printBuffer.buffer.slice(
+            integrity.printBuffer.byteOffset,
+            integrity.printBuffer.byteOffset + integrity.printBuffer.byteLength
+        ) as ArrayBuffer;
+    } else {
+        const sourceUrl = getHttpUrl(order.dtf_extracted_url);
+        if (!sourceUrl) {
+            return NextResponse.json({ error: "Invalid DTF file URL" }, { status: 422 });
+        }
 
-    const upstream = await fetch(sourceUrl, { cache: "no-store" });
-    if (!upstream.ok) {
-        return NextResponse.json({ error: "Unable to fetch DTF file" }, { status: 502 });
+        const upstream = await fetch(sourceUrl, { cache: "no-store" });
+        if (!upstream.ok) {
+            return NextResponse.json({ error: "Unable to fetch DTF file" }, { status: 502 });
+        }
+        contentType = upstream.headers.get("content-type") || "image/png";
+        buffer = await upstream.arrayBuffer();
     }
-
-    const contentType = upstream.headers.get("content-type") || "image/png";
-    const buffer = await upstream.arrayBuffer();
     const dispositionType = request.nextUrl.searchParams.get("mode") === "inline" ? "inline" : "attachment";
     const filename = `washa-dtf-${safeFilename(order.order_number)}.png`;
 

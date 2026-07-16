@@ -25,9 +25,22 @@ export function getGenerationStage(elapsedMs: number): GenerationStage {
 export function isUsableGeneratedImageUrl(value: unknown): value is string {
   if (typeof value !== 'string' || !value.trim()) return false;
   const url = value.trim();
-  return /^data:image\/png;base64,iVBORw0KGgo[a-z0-9+/=]+$/i.test(url) ||
+  if (/^data:image\/png;base64,iVBORw0KGgo[a-z0-9+/=]+$/i.test(url) ||
     /^data:image\/jpe?g;base64,\/9j\/[a-z0-9+/=]+$/i.test(url) ||
-    /^data:image\/webp;base64,UklGR[a-z0-9+/=]+$/i.test(url);
+    /^data:image\/webp;base64,UklGR[a-z0-9+/=]+$/i.test(url)) {
+    return true;
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    return ![
+      'replicate.delivery',
+      'pbxt.replicate.delivery',
+      'oaidalleapiprodscus.blob.core.windows.net',
+    ].some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`));
+  } catch {
+    return false;
+  }
 }
 
 type ImageDimensions = { width: number; height: number };
@@ -66,17 +79,32 @@ export async function validateGeneratedImage(
 
 const FINGERPRINT_FIELDS: Array<keyof DesignState> = [
   'garmentId', 'garmentType', 'garmentColorId', 'garmentColor', 'garmentColorHex', 'garmentSizeId', 'garmentSize',
-  'designMethod', 'designPosition', 'printOptionId', 'printPosition', 'printSize', 'prompt', 'calligraphyText', 'referenceImageMode',
+  'designMethod', 'designPosition', 'printOptionId', 'printPosition', 'printSize', 'printScale', 'printOffsetX', 'printOffsetY', 'prompt', 'calligraphyText', 'referenceImageMode',
   'styleId', 'style', 'techniqueId', 'technique', 'paletteId', 'palette', 'customPalette', 'removeBackground', 'avoidHardEdges',
 ];
 
-export function createGenerationFingerprint(state: DesignState) {
+const ARTWORK_FINGERPRINT_FIELDS: Array<keyof DesignState> = [
+  'designMethod', 'prompt', 'calligraphyText', 'referenceImageMode',
+  'styleId', 'style', 'techniqueId', 'technique', 'paletteId', 'palette', 'customPalette',
+];
+
+function referenceSignature(state: DesignState) {
   const reference = state.referenceImage || '';
-  const referenceSignature = reference
+  return reference
     ? `${reference.length}:${reference.slice(0, 24)}:${reference.slice(-24)}:${state.referenceImageMimeType || ''}`
     : '';
+}
+
+export function createGenerationFingerprint(state: DesignState) {
   return JSON.stringify([
     ...FINGERPRINT_FIELDS.map((field) => state[field] ?? null),
-    referenceSignature,
+    referenceSignature(state),
+  ]);
+}
+
+export function createArtworkFingerprint(state: DesignState) {
+  return JSON.stringify([
+    ...ARTWORK_FINGERPRINT_FIELDS.map((field) => state[field] ?? null),
+    referenceSignature(state),
   ]);
 }

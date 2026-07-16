@@ -42,6 +42,16 @@ export type WashaDtfStudioConfig = {
         aiReferenceFrontUrl: string | null;
         aiReferenceBackUrl: string | null;
         aiReferenceMode: "match_reference" | "prompt_realistic";
+        mockupManifest: Array<{
+            id: string;
+            colorId: string | null;
+            colorHex: string | null;
+            side: "front" | "back";
+            sourceType: "reference" | "generated_blank_garment";
+            printAreaId: string;
+            printArea: Record<string, unknown>;
+            colorizationMode: "none" | "verified";
+        }>;
         sortOrder: number;
         basePrice: number;
         pricing: {
@@ -251,6 +261,19 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
     const artStyles = ((artStylesRes.data as CustomDesignArtStyle[] | null) ?? []).map(normalizeArtStyleRow);
     const colorPackages = ((colorPackagesRes.data as CustomDesignColorPackage[] | null) ?? []).map(normalizeColorPackageRow);
     const positions = (positionsRes.data as CustomDesignPosition[] | null) ?? [];
+    const mockupManifestResult = await (sb as any)
+        .from("washa_garment_mockup_assets")
+        .select("id, product_id, color_id, color_hex, side, source_type, print_area_id, print_area, colorization_mode")
+        .eq("is_active", true);
+    const mockupManifestRows = mockupManifestResult.error
+        && /washa_garment_mockup_assets|schema cache|could not find/i.test(mockupManifestResult.error.message || "")
+        ? []
+        : (() => {
+            if (mockupManifestResult.error) {
+                throw new Error(`washa_garment_mockup_assets: ${mockupManifestResult.error.message}`);
+            }
+            return mockupManifestResult.data ?? [];
+        })();
 
     return {
         garments: garments.map((garment) => {
@@ -277,6 +300,18 @@ export async function getWashaDtfStudioConfig(): Promise<WashaDtfStudioConfig> {
                 aiReferenceFrontUrl: garmentWithAiReferences.ai_reference_front_url ?? null,
                 aiReferenceBackUrl: garmentWithAiReferences.ai_reference_back_url ?? null,
                 aiReferenceMode: garmentWithAiReferences.ai_reference_mode === "prompt_realistic" ? "prompt_realistic" : "match_reference",
+                mockupManifest: mockupManifestRows
+                    .filter((asset: any) => asset.product_id === garment.id)
+                    .map((asset: any) => ({
+                        id: asset.id,
+                        colorId: asset.color_id ?? null,
+                        colorHex: asset.color_hex ?? null,
+                        side: asset.side,
+                        sourceType: asset.source_type,
+                        printAreaId: asset.print_area_id,
+                        printArea: asset.print_area ?? {},
+                        colorizationMode: asset.colorization_mode === "verified" ? "verified" : "none",
+                    })),
                 sortOrder: garment.sort_order,
                 basePrice: garment.base_price,
                 pricing: {

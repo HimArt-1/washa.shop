@@ -1,12 +1,39 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractDesign, generateMockup } from '../../washa-dtf-studio/src/services/geminiService';
 import { isCleanOutputEnabled, normalizeOutputPreferences } from '../../washa-dtf-studio/src/lib/outputPreferences';
+import { buildIsolatedArtworkPrompt } from '@/lib/washa-artwork/prompt';
 
 async function capturePrompt(removeBackground?: boolean, avoidHardEdges?: boolean, mode: 'text' | 'image' | 'calligraphy' = 'text') {
   let prompt = '';
   vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
     prompt = JSON.parse(String(init?.body)).prompt;
-    return new Response(JSON.stringify({ imageUrl: 'data:image/png;base64,AAAA' }), {
+    return new Response(JSON.stringify({
+      imageUrl: 'https://cdn.example/mockup.webp',
+      previewUrl: 'https://cdn.example/mockup.webp',
+      frontPreviewUrl: 'https://cdn.example/mockup.webp',
+      backPreviewUrl: null,
+      designRequestId: '11111111-1111-4111-8111-111111111111',
+      masterAssetId: '22222222-2222-4222-8222-222222222222',
+      masterAssetUrl: 'https://cdn.example/design-master.png',
+      masterChecksum: 'a'.repeat(64),
+      mockupSourceType: 'reference',
+      placement: {
+        side: 'front',
+        x: 0.5,
+        y: 0.5,
+        scale: 1,
+        rotation: 0,
+        printWidthCm: 30,
+        printHeightCm: 40,
+        anchorX: 0.5,
+        anchorY: 0.5,
+        referenceMockupId: null,
+        printAreaId: 'front_default',
+        transformVersion: 1,
+      },
+      transparencyVerificationStatus: 'verified',
+      productionReadinessStatus: 'ready',
+    }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
     });
@@ -38,29 +65,51 @@ async function captureExtractPrompt(cleanOutputEnabled: boolean) {
 describe('WASHA AI output preferences', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('makes transparent, borderless artwork mandatory when cleanup is enabled', async () => {
-    const prompt = await capturePrompt(true, true);
+  it('generates the isolated print artwork instead of asking the provider to draw it on a garment', async () => {
+    const clientConcept = await capturePrompt(true, true);
+    const prompt = buildIsolatedArtworkPrompt(clientConcept, {
+      designMethod: 'text',
+      style: 'هندسي',
+      technique: 'DTF',
+      palette: 'ذهبي',
+    });
 
-    expect(prompt).toContain('MANDATORY CLEAN ARTWORK OUTPUT');
-    expect(prompt).toContain('transparent cutout boundary');
-    expect(prompt).toContain('no frame, border, crop edge');
-    expect(prompt).toContain('invalid if the artwork contains a background panel or hard outer edge');
+    expect(prompt).toContain('Create only the isolated print design artwork.');
+    expect(prompt).toContain('true transparent background with a real alpha channel');
+    expect(prompt).not.toContain('Studio mockup of a full');
+    expect(prompt).not.toContain('place that artwork on the selected garment');
   });
 
-  it('explicitly allows backgrounds and defined edges when cleanup is disabled', async () => {
-    const prompt = await capturePrompt(false, false);
+  it('makes transparent, borderless artwork mandatory when cleanup is enabled', async () => {
+    const prompt = buildIsolatedArtworkPrompt(await capturePrompt(true, true), {});
 
-    expect(prompt).toContain('OUTPUT CLEANUP DISABLED');
-    expect(prompt).toContain('background panels and defined outer edges are allowed');
-    expect(prompt).not.toContain('MANDATORY CLEAN ARTWORK OUTPUT');
+    expect(prompt).toContain('true transparent background with a real alpha channel');
+    expect(prompt).toContain('Do not generate a white, black, colored, checkerboard, or simulated transparent background');
+    expect(prompt).toContain('fully visible, uncropped, and surrounded by safe transparent padding');
+  });
+
+  it('keeps true transparency mandatory even when a legacy cleanup preference is disabled', async () => {
+    const prompt = buildIsolatedArtworkPrompt(await capturePrompt(false, false), {});
+
+    expect(prompt).toContain('true transparent background with a real alpha channel');
+    expect(prompt).not.toContain('background panels and defined outer edges are allowed');
   });
 
   it.each(['text', 'image', 'calligraphy'] as const)('keeps clean output mandatory for %s generation', async (mode) => {
-    expect(await capturePrompt(true, true, mode)).toContain('MANDATORY CLEAN ARTWORK OUTPUT');
+    const customerConcept = await capturePrompt(true, true, mode);
+    expect(buildIsolatedArtworkPrompt(customerConcept, {
+      designMethod: mode,
+      calligraphyText: mode === 'calligraphy' ? 'وشّى' : null,
+    })).toContain('true transparent background with a real alpha channel');
   });
 
   it('defaults to clean output when service preferences are omitted', async () => {
-    expect(await capturePrompt()).toContain('MANDATORY CLEAN ARTWORK OUTPUT');
+    expect(buildIsolatedArtworkPrompt(await capturePrompt(), {}))
+      .toContain('true transparent background with a real alpha channel');
+  });
+
+  it('keeps authoritative system instructions server-side instead of duplicating them in the client payload', async () => {
+    expect(await capturePrompt()).toBe('صقر هندسي');
   });
 
   it('normalizes a legacy mixed preference to the enabled combined setting', () => {

@@ -20,6 +20,10 @@ import {
 } from "@/lib/smart-store-inventory";
 import type { PrintPosition, PrintSize } from "@/lib/design-intelligence";
 import { logDtfTrace } from "../utils/trace";
+import {
+    DesignRevisionService,
+    type ApprovedRevision,
+} from "./design-revision.service";
 
 import type {
     CustomDesignArtStyle,
@@ -144,6 +148,13 @@ export class DtfOrderService {
             normalized.includes("dtf_style_label") ||
             normalized.includes("dtf_technique_label") ||
             normalized.includes("dtf_palette_label") ||
+            normalized.includes("design_request_id") ||
+            normalized.includes("design_master_asset_id") ||
+            normalized.includes("design_revision_id") ||
+            normalized.includes("master_checksum") ||
+            normalized.includes("placement_data") ||
+            normalized.includes("asset_schema_version") ||
+            normalized.includes("washa_design_") ||
             normalized.includes("pricing_snapshot") ||
             normalized.includes("garment_id") ||
             normalized.includes("color_id") ||
@@ -228,7 +239,7 @@ export class DtfOrderService {
     static async prepareCartItem(
         payload: SubmitOrderPayload,
         userProfile: any | null,
-        options?: { traceId?: string }
+        options?: { traceId?: string; profileId?: string | null }
     ): Promise<{ error?: string; status?: number; data?: any }> {
         const traceId = options?.traceId ?? crypto.randomUUID();
         const serviceStartedAt = Date.now();
@@ -239,7 +250,8 @@ export class DtfOrderService {
                 sizeId, garmentSize, styleId, style, techniqueId, technique,
                 paletteId, palette, customPalette, prompt, calligraphyText,
                 printOptionId, printPosition, printSize, printPositionLabel,
-                mockupDataUrl, extractedDataUrl
+                mockupDataUrl, extractedDataUrl,
+                designRequestId, masterAssetId, masterChecksum, placementData
             } = payload;
 
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_started", {
@@ -251,6 +263,8 @@ export class DtfOrderService {
                 has_palette_id: Boolean(paletteId),
                 has_mockup_data_url: Boolean(mockupDataUrl),
                 has_extracted_data_url: Boolean(extractedDataUrl),
+                design_request_id: designRequestId ?? null,
+                master_asset_id: masterAssetId ?? null,
                 authenticated: Boolean(userProfile),
             });
 
@@ -390,43 +404,84 @@ export class DtfOrderService {
             reservedSizeId = reservedStock.tracked ? (sizeRow?.id ?? null) : null;
 
             const slug = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-            const mockupUploadStartedAt = Date.now();
-            const mockupResult = await StorageService.uploadBase64Image(
-                mockupDataUrl,
-                `design-orders/dtf-${slug}/mockup.png`
-            );
-            logDtfTrace("dtf.submit-order.service", traceId, "mockup_upload_completed", {
-                duration_ms: Date.now() - mockupUploadStartedAt,
-                success: !("error" in mockupResult),
-                status: "error" in mockupResult ? mockupResult.status : 200,
-            });
-
-            if ("error" in mockupResult) {
-                logDiagnosticWarning("dtf-cart-mockup-upload", mockupResult.error);
-                if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
-                return { error: mockupResult.error, status: mockupResult.status };
-            }
-
+            let approvedRevision: ApprovedRevision | null = null;
+            let mockupUrl: string;
             let extractedUrl: string | null = null;
-            if (extractedDataUrl) {
-                const extractedUploadStartedAt = Date.now();
-                const extractedResult = await StorageService.uploadBase64Image(
-                    extractedDataUrl,
-                    `design-orders/dtf-${slug}/extracted.png`
-                );
-                logDtfTrace("dtf.submit-order.service", traceId, "extracted_upload_completed", {
-                    duration_ms: Date.now() - extractedUploadStartedAt,
-                    success: !("error" in extractedResult),
-                    status: "error" in extractedResult ? extractedResult.status : 200,
+            if (designRequestId && masterAssetId && masterChecksum && placementData) {
+                if (!options?.profileId) {
+                    if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
+                    return { error: "تعذر ربط اعتماد التصميم بحساب المستخدم.", status: 401 };
+                }
+                approvedRevision = await DesignRevisionService.approve({
+                    profileId: options.profileId,
+                    designRequestId,
+                    masterAssetId,
+                    masterChecksum,
+                    placement: placementData,
+                    productVariant: {
+                        garmentId: garmentRow?.id ?? null,
+                        garmentName: resolvedGarmentName,
+                        sizeId: sizeRow?.id ?? null,
+                        sizeName: resolvedSizeName,
+                        printOptionId: safePrintOptionId,
+                        printPosition: selectedPrintPosition,
+                        printSize: selectedPrintSize,
+                    },
+                    garmentColor: {
+                        colorId: colorRow?.id ?? null,
+                        colorName: resolvedColorName,
+                        colorHex: resolvedColorHex,
+                    },
                 });
+                mockupUrl = selectedPrintPosition === "back"
+                    ? approvedRevision.backPreviewUrl || approvedRevision.frontPreviewUrl || ""
+                    : approvedRevision.frontPreviewUrl || approvedRevision.backPreviewUrl || "";
+                if (!mockupUrl) {
+                    if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
+                    return { error: "معاينة التصميم المعتمدة غير متوفرة.", status: 409 };
+                }
+                extractedUrl = approvedRevision.printAssetUrl;
+            } else {
+                if (!mockupDataUrl) {
+                    if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
+                    return { error: "صورة الموكب القديمة غير متوفرة.", status: 400 };
+                }
+                const mockupUploadStartedAt = Date.now();
+                const legacyMockupResult = await StorageService.uploadBase64Image(
+                    mockupDataUrl,
+                    `design-orders/dtf-${slug}/mockup.png`
+                );
+                logDtfTrace("dtf.submit-order.service", traceId, "legacy_mockup_upload_completed", {
+                    duration_ms: Date.now() - mockupUploadStartedAt,
+                    success: !("error" in legacyMockupResult),
+                    status: "error" in legacyMockupResult ? legacyMockupResult.status : 200,
+                });
+                if ("error" in legacyMockupResult) {
+                    logDiagnosticWarning("dtf-cart-mockup-upload", legacyMockupResult.error);
+                    if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
+                    return { error: legacyMockupResult.error, status: legacyMockupResult.status };
+                }
+                mockupUrl = legacyMockupResult.url;
 
-                if (!("error" in extractedResult)) {
-                    extractedUrl = extractedResult.url;
-                } else {
-                    logDiagnosticWarning("dtf-cart-extracted-upload", extractedResult.error);
+                if (extractedDataUrl) {
+                    const extractedUploadStartedAt = Date.now();
+                    const extractedResult = await StorageService.uploadBase64Image(
+                        extractedDataUrl,
+                        `design-orders/dtf-${slug}/extracted.png`
+                    );
+                    logDtfTrace("dtf.submit-order.service", traceId, "legacy_extracted_upload_completed", {
+                        duration_ms: Date.now() - extractedUploadStartedAt,
+                        success: !("error" in extractedResult),
+                        status: "error" in extractedResult ? extractedResult.status : 200,
+                    });
+                    if (!("error" in extractedResult)) {
+                        extractedUrl = extractedResult.url;
+                    } else {
+                        logDiagnosticWarning("dtf-cart-extracted-upload", extractedResult.error);
+                    }
                 }
             }
+            const mockupResult = { url: mockupUrl };
 
             const pricingStartedAt = Date.now();
             const pricing = await getGarmentPricingRecord(sb, resolvedGarmentName, garmentRow?.id ?? null);
@@ -511,7 +566,7 @@ export class DtfOrderService {
                 size_name: resolvedSizeName,
                 design_method: "studio",
                 text_prompt: calligraphyText?.trim() ? `مخطوطة: ${calligraphyText.trim()}` : (prompt || "تصميم DTF من الاستوديو"),
-                reference_image_url: extractedUrl ?? mockupResult.url,
+                reference_image_url: approvedRevision?.masterAssetUrl ?? extractedUrl ?? mockupResult.url,
                 preset_id: null,
                 preset_name: null,
                 preset_fully_aligned: false,
@@ -537,6 +592,17 @@ export class DtfOrderService {
                 dtf_style_label: resolvedStyleName,
                 dtf_technique_label: resolvedTechniqueName,
                 dtf_palette_label: resolvedPaletteLabel,
+                design_request_id: approvedRevision ? designRequestId : null,
+                design_master_asset_id: approvedRevision?.masterAssetId ?? null,
+                design_revision_id: approvedRevision?.designRevisionId ?? null,
+                master_checksum: approvedRevision?.masterChecksum ?? null,
+                placement_data: approvedRevision ? placementData : null,
+                mockup_source_type: approvedRevision?.mockupSourceType ?? null,
+                preview_front_url: approvedRevision?.frontPreviewUrl ?? null,
+                preview_back_url: approvedRevision?.backPreviewUrl ?? null,
+                print_asset_path: approvedRevision?.printAssetPath ?? null,
+                asset_schema_version: approvedRevision ? 1 : 0,
+                production_readiness_status: approvedRevision ? "ready" : "legacy_unverified",
             };
             const { data: insertedOrder, error: insertOrderError } = await sb
                 .from("custom_design_orders")
@@ -584,6 +650,10 @@ export class DtfOrderService {
                     trackerToken: insertedOrder?.tracker_token ?? null,
                     mockupUrl: mockupResult.url,
                     extractedUrl,
+                    designRequestId: approvedRevision ? designRequestId : null,
+                    designRevisionId: approvedRevision?.designRevisionId ?? null,
+                    masterAssetId: approvedRevision?.masterAssetId ?? null,
+                    masterChecksum: approvedRevision?.masterChecksum ?? null,
                     pricing: {
                         basePrice: pricing.base_price,
                         designPrice,

@@ -922,7 +922,7 @@ export type Database = {
             };
             custom_design_orders: {
                 Row: CustomDesignOrder;
-                Insert: Omit<CustomDesignOrder, "id" | "created_at" | "updated_at" | "order_number" | "tracker_token" | "tracker_token_expires_at" | "status" | "skip_results" | "is_sent_to_customer" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "final_price" | "admin_notes" | "assigned_to" | "modification_request" | "modification_design_url" | "dtf_mockup_url" | "dtf_extracted_url" | "dtf_style_label" | "dtf_technique_label" | "dtf_palette_label"> & {
+                Insert: Omit<CustomDesignOrder, "id" | "created_at" | "updated_at" | "order_number" | "tracker_token" | "tracker_token_expires_at" | "status" | "skip_results" | "is_sent_to_customer" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "final_price" | "admin_notes" | "assigned_to" | "modification_request" | "modification_design_url" | "dtf_mockup_url" | "dtf_extracted_url" | "dtf_style_label" | "dtf_technique_label" | "dtf_palette_label" | "design_request_id" | "design_master_asset_id" | "design_revision_id" | "master_checksum" | "placement_data" | "mockup_source_type" | "preview_front_url" | "preview_back_url" | "print_asset_path" | "asset_schema_version" | "production_readiness_status"> & {
                     status?: CustomDesignOrderStatus;
                     skip_results?: boolean;
                     is_sent_to_customer?: boolean;
@@ -939,6 +939,17 @@ export type Database = {
                     dtf_style_label?: string | null;
                     dtf_technique_label?: string | null;
                     dtf_palette_label?: string | null;
+                    design_request_id?: string | null;
+                    design_master_asset_id?: string | null;
+                    design_revision_id?: string | null;
+                    master_checksum?: string | null;
+                    placement_data?: Record<string, unknown> | null;
+                    mockup_source_type?: "reference" | "generated_blank_garment" | null;
+                    preview_front_url?: string | null;
+                    preview_back_url?: string | null;
+                    print_asset_path?: string | null;
+                    asset_schema_version?: number;
+                    production_readiness_status?: string | null;
                 };
                 Update: Partial<Omit<CustomDesignOrder, "id" | "created_at" | "order_number" | "tracker_token" | "tracker_token_expires_at">>;
                 Relationships: any[];
@@ -1543,6 +1554,17 @@ export type CustomDesignOrder = {
     dtf_style_label: string | null;
     dtf_technique_label: string | null;
     dtf_palette_label: string | null;
+    design_request_id: string | null;
+    design_master_asset_id: string | null;
+    design_revision_id: string | null;
+    master_checksum: string | null;
+    placement_data: Record<string, unknown> | null;
+    mockup_source_type: "reference" | "generated_blank_garment" | null;
+    preview_front_url: string | null;
+    preview_back_url: string | null;
+    print_asset_path: string | null;
+    asset_schema_version: number;
+    production_readiness_status: string | null;
 
     // Timestamps
     created_at: string;

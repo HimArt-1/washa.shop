@@ -31,9 +31,31 @@ describe('WASHA AI reference image guidance', () => {
 
   it('injects the chosen mode and a useful fallback concept into the real generation prompt', async () => {
     let prompt = '';
+    let referenceImage: unknown;
+    let generationContext: { referenceImageMode?: string } | undefined;
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
-      prompt = JSON.parse(String(init?.body)).prompt;
-      return new Response(JSON.stringify({ imageUrl: 'data:image/png;base64,AAAA' }), {
+      const body = JSON.parse(String(init?.body));
+      prompt = body.prompt;
+      referenceImage = body.referenceImage;
+      generationContext = body.generationContext;
+      return new Response(JSON.stringify({
+        imageUrl: 'https://cdn.example/mockup.webp',
+        previewUrl: 'https://cdn.example/mockup.webp',
+        frontPreviewUrl: 'https://cdn.example/mockup.webp',
+        backPreviewUrl: null,
+        designRequestId: '11111111-1111-4111-8111-111111111111',
+        masterAssetId: '22222222-2222-4222-8222-222222222222',
+        masterAssetUrl: 'https://cdn.example/design-master.png',
+        masterChecksum: 'a'.repeat(64),
+        mockupSourceType: 'reference',
+        placement: {
+          side: 'front', x: 0.5, y: 0.5, scale: 1, rotation: 0,
+          printWidthCm: 30, printHeightCm: 40, anchorX: 0.5, anchorY: 0.5,
+          referenceMockupId: null, printAreaId: 'front_default', transformVersion: 1,
+        },
+        transparencyVerificationStatus: 'verified',
+        productionReadinessStatus: 'ready',
+      }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
@@ -55,9 +77,9 @@ describe('WASHA AI reference image guidance', () => {
       },
     );
 
-    expect(prompt).toContain('REFERENCE MODE — PRESERVE SUBJECT');
-    expect(prompt).toContain('the main subject in the supplied reference image');
-    expect(prompt).toContain('Do not paste, crop, photocopy');
-    expect(prompt).not.toContain('Mandatory customer artwork concept: .');
+    expect(referenceImage).toEqual({ base64: 'AAAA', mimeType: 'image/webp' });
+    expect(generationContext?.referenceImageMode).toBe('preserve_subject');
+    expect(prompt).toBe('Artwork inspired by the uploaded customer reference image.');
+    expect(prompt).not.toContain('Studio mockup');
   });
 });

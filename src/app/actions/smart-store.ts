@@ -97,6 +97,7 @@ import {
 } from "@/lib/smart-store-inventory";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { escapeAdminNotificationHtml } from "@/lib/notifications";
+import { verifyApprovedOrderAssetGraph } from "@/lib/washa-artwork/order-integrity";
 
 
 function getSmartStoreSb() {
@@ -1524,12 +1525,12 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
     const { sb } = await requireSmartStoreAdmin();
     const { data: currentOrder } = await sb
         .from("custom_design_orders")
-        .select("id, status, user_id, order_number, size_id, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
+        .select("id, status, user_id, order_number, size_id, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, dtf_mockup_url, dtf_extracted_url, design_request_id, design_master_asset_id, design_revision_id, master_checksum, print_asset_path, asset_schema_version, production_readiness_status, skip_results")
         .eq("id", id)
         .single();
     const order = currentOrder as Pick<
         CustomDesignOrder,
-        "id" | "status" | "user_id" | "order_number" | "size_id" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
+        "id" | "status" | "user_id" | "order_number" | "size_id" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "dtf_mockup_url" | "dtf_extracted_url" | "design_request_id" | "design_master_asset_id" | "design_revision_id" | "master_checksum" | "print_asset_path" | "asset_schema_version" | "production_readiness_status" | "skip_results"
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
 
@@ -1545,6 +1546,13 @@ export async function updateDesignOrderStatus(id: string, status: CustomDesignOr
 
     if (status === "awaiting_review" && !order.skip_results && !hasOrderDeliverables(order)) {
         return { error: "لا يمكن إرسال الطلب للمراجعة قبل رفع نتيجة واحدة على الأقل." };
+    }
+    if (
+        (status === "awaiting_review" || status === "completed")
+        && (order.asset_schema_version ?? 0) >= 1
+    ) {
+        const integrity = await verifyApprovedOrderAssetGraph(sb, order);
+        if (!integrity.ok) return { error: integrity.error };
     }
 
     const { error, data: updatedOrder } = await sb.from("custom_design_orders")
@@ -1750,12 +1758,12 @@ export async function sendDesignOrderToCustomer(id: string, finalPrice: number) 
 
     const { data: currentOrder } = await sb
         .from("custom_design_orders")
-        .select("status, user_id, order_number, is_sent_to_customer, print_position, print_size, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results")
+        .select("status, user_id, order_number, is_sent_to_customer, print_position, print_size, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, dtf_mockup_url, dtf_extracted_url, design_request_id, design_master_asset_id, design_revision_id, master_checksum, print_asset_path, asset_schema_version, production_readiness_status, skip_results")
         .eq("id", id)
         .single();
     const order = currentOrder as Pick<
         CustomDesignOrder,
-        "status" | "user_id" | "order_number" | "is_sent_to_customer" | "print_position" | "print_size" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results"
+        "status" | "user_id" | "order_number" | "is_sent_to_customer" | "print_position" | "print_size" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "dtf_mockup_url" | "dtf_extracted_url" | "design_request_id" | "design_master_asset_id" | "design_revision_id" | "master_checksum" | "print_asset_path" | "asset_schema_version" | "production_readiness_status" | "skip_results"
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
     if (order.is_sent_to_customer) {
@@ -1767,6 +1775,10 @@ export async function sendDesignOrderToCustomer(id: string, finalPrice: number) 
     }
     if (!order.skip_results && !hasOrderDeliverables(order)) {
         return { error: "ارفع نتيجة واحدة على الأقل قبل إرسال الطلب للعميل." };
+    }
+    if ((order.asset_schema_version ?? 0) >= 1) {
+        const integrity = await verifyApprovedOrderAssetGraph(sb, order);
+        if (!integrity.ok) return { error: integrity.error };
     }
 
     // Update the database to lock in the final price and mark it as sent
@@ -1923,13 +1935,13 @@ export async function confirmDesignOrder(id: string, position?: string | null, s
     const sb = getSmartStoreSb();
     const { data: currentOrder } = await sb
         .from("custom_design_orders")
-        .select("order_number, garment_id, garment_name, status, print_position, print_size, is_sent_to_customer, final_price, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, skip_results, pricing_snapshot")
+        .select("order_number, garment_id, garment_name, status, print_position, print_size, is_sent_to_customer, final_price, result_design_url, result_mockup_url, result_pdf_url, modification_design_url, dtf_mockup_url, dtf_extracted_url, design_request_id, design_master_asset_id, design_revision_id, master_checksum, print_asset_path, asset_schema_version, production_readiness_status, skip_results, pricing_snapshot")
         .eq("id", id)
         .eq("user_id", profileId)
         .single();
     const order = currentOrder as Pick<
         CustomDesignOrder,
-        "order_number" | "garment_id" | "garment_name" | "status" | "print_position" | "print_size" | "is_sent_to_customer" | "final_price" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "skip_results" | "pricing_snapshot"
+        "order_number" | "garment_id" | "garment_name" | "status" | "print_position" | "print_size" | "is_sent_to_customer" | "final_price" | "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url" | "dtf_mockup_url" | "dtf_extracted_url" | "design_request_id" | "design_master_asset_id" | "design_revision_id" | "master_checksum" | "print_asset_path" | "asset_schema_version" | "production_readiness_status" | "skip_results" | "pricing_snapshot"
     > | null;
     if (!order) return { error: "الطلب غير موجود." };
     if (order.status !== "awaiting_review") {
@@ -1937,6 +1949,10 @@ export async function confirmDesignOrder(id: string, position?: string | null, s
     }
     if (!order.skip_results && !hasOrderDeliverables(order)) {
         return { error: "لا توجد نتائج مرفوعة لهذا الطلب بعد." };
+    }
+    if ((order.asset_schema_version ?? 0) >= 1) {
+        const integrity = await verifyApprovedOrderAssetGraph(sb, order);
+        if (!integrity.ok) return { error: integrity.error };
     }
 
     let finalPosition: PrintPosition | null = null;

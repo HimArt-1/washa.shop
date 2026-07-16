@@ -17,10 +17,14 @@ import {
   type DtfStudioPositionOption,
   type DtfStudioSizeOption,
 } from '../types';
-import { generateMockup, extractDesign } from '../services/geminiService';
+import {
+  generateMockup,
+  recomposeMockup,
+  type GeneratedArtworkResult,
+} from '../services/geminiService';
 import { useCredits } from './CreditsContext';
 import { fetchDtfStudioConfig } from '../services/configService';
-import { makeEdgeBackgroundTransparent, parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
+import { parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 import {
   getPublicStudioErrorMessage,
   PUBLIC_EXTRACTION_ERROR,
@@ -57,8 +61,11 @@ import {
   syncStudioStepInUrl,
 } from '../lib/studioDraft';
 import { createEmptyGuidedIdeaBrief } from '../lib/ideaBuilder';
-import { isCleanOutputEnabled } from '../lib/outputPreferences';
-import { createGenerationFingerprint, validateGeneratedImage } from '../lib/generationExperience';
+import {
+  createArtworkFingerprint,
+  createGenerationFingerprint,
+  validateGeneratedImage,
+} from '../lib/generationExperience';
 
 export interface OrderResult {
   itemTitle: string;
@@ -78,6 +85,7 @@ interface DesignContextType {
   mockupState: DesignState | null;
   isMockupCurrent: boolean;
   extractedImage: string | null;
+  generationResult: GeneratedArtworkResult | null;
   error: string | null;
   isSubmittingOrder: boolean;
   orderResult: OrderResult | null;
@@ -122,8 +130,6 @@ const DesignContext = createContext<DesignContextType | undefined>(undefined);
 const REFERENCE_IMAGE_MAX_DIMENSION = 1200;
 const REFERENCE_IMAGE_QUALITY = 0.76;
 const REFERENCE_IMAGE_MAX_FILE_SIZE = 15 * 1024 * 1024;
-const GARMENT_REFERENCE_MAX_DIMENSION = 1280;
-const GARMENT_REFERENCE_QUALITY = 0.82;
 const TRANSPARENT_REFERENCE_TYPES = new Set(['image/png', 'image/webp']);
 
 const EMPTY_STATE: DesignState = {
@@ -202,57 +208,6 @@ async function parseApiPayload(response: Response) {
   return { error: getPublicStudioErrorMessage(text, 'submit', PUBLIC_SUBMIT_ERROR) };
 }
 
-function resolveOperationalGarmentReference(
-  garment: DtfStudioGarmentOption | null,
-  printPosition: DesignState['printPosition']
-) {
-  if (!garment) return null;
-  if (garment.aiReferenceMode === 'prompt_realistic') return null;
-  const frontUrl = garment.aiReferenceFrontUrl?.trim() || '';
-  const backUrl = garment.aiReferenceBackUrl?.trim() || '';
-  const side: 'front' | 'back' = printPosition === 'back' ? 'back' : 'front';
-  const url = side === 'back' ? (backUrl || frontUrl) : (frontUrl || backUrl);
-  return url ? { url, side } : null;
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('تعذر قراءة مرجع القطعة'));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function loadOperationalGarmentReference(reference: { url: string; side: 'front' | 'back' } | null) {
-  if (!reference) return null;
-
-  try {
-    const url = new URL(reference.url, window.location.origin).toString();
-    const response = await fetch(url, { cache: 'force-cache' });
-    if (!response.ok) return null;
-
-    const blob = await response.blob();
-    if (blob.type && !/^image\/(png|jpe?g|webp)$/i.test(blob.type)) return null;
-
-    const dataUrl = await blobToDataUrl(blob);
-    const resized = await resizeDataUrl(dataUrl, {
-      maxDimension: GARMENT_REFERENCE_MAX_DIMENSION,
-      quality: GARMENT_REFERENCE_QUALITY,
-      outputMimeType: 'image/jpeg',
-    });
-
-    return {
-      base64: stripDataUrlPrefix(resized.dataUrl),
-      mimeType: resized.mimeType,
-      side: reference.side,
-    };
-  } catch (error) {
-    console.warn('Failed to load operational garment reference', error);
-    return null;
-  }
-}
-
 function resolveDefaultSize(garment: DtfStudioGarmentOption | null, colorId?: string | null) {
   if (!garment) return null;
   const orderableSizes = garment.sizes.filter((size) => size.stockStatus !== 'out');
@@ -305,6 +260,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [mockupImage, setMockupImage] = useState<string | null>(null);
   const [mockupState, setMockupState] = useState<DesignState | null>(null);
   const [extractedImage, setExtractedImage] = useState<string | null>(null);
+  const [generationResult, setGenerationResult] = useState<GeneratedArtworkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
@@ -316,6 +272,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const restoredAuthDraftRef = useRef(false);
   const studioDraftReferenceOmittedRef = useRef(false);
   const generationInFlightRef = useRef(false);
+  const generationRetryRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
   const isMockupCurrent = Boolean(
     mockupImage && mockupState && createGenerationFingerprint(mockupState) === createGenerationFingerprint(state)
   );
@@ -465,7 +422,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [selectedPalette]);
 
   const updateState = (updates: Partial<DesignState>) => {
-    setState((prev) => ({ ...prev, ...updates }));
+    setState((prev) => ({
+      ...prev,
+      ...updates,
+      removeBackground: true,
+      avoidHardEdges: true,
+    }));
   };
 
   const nextStep = () => setStep((value) => Math.min(6, value + 1));
@@ -625,23 +587,41 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setIsGenerating(true);
     setError(null);
 
-    const creditAccess = await requestGenerationAccess(sessionToken);
-    if (creditAccess.allowed === false) {
-      if (creditAccess.reason === 'unavailable') {
-        const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
-        setError(message);
-        showToast(message, 'error');
-      } else {
-        setError(null);
+    const canRecompose = Boolean(
+      generationResult
+      && mockupState
+      && !options.promptOverride?.trim()
+      && createArtworkFingerprint(mockupState) === createArtworkFingerprint(state)
+    );
+    if (!canRecompose) {
+      const creditAccess = await requestGenerationAccess(sessionToken);
+      if (creditAccess.allowed === false) {
+        if (creditAccess.reason === 'unavailable') {
+          const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
+          setError(message);
+          showToast(message, 'error');
+        } else {
+          setError(null);
+        }
+        setIsGenerating(false);
+        generationInFlightRef.current = false;
+        return;
       }
-      setIsGenerating(false);
-      generationInFlightRef.current = false;
-      return;
     }
 
     setExtractedImage(null);
     setStep(6);
-    const generationRequestId = crypto.randomUUID();
+    const currentGenerationFingerprint = createGenerationFingerprint(state);
+    const generationRequestId =
+      generationRetryRef.current?.fingerprint === currentGenerationFingerprint
+        ? generationRetryRef.current.requestId
+        : crypto.randomUUID();
+    if (!canRecompose) {
+      generationRetryRef.current = {
+        fingerprint: currentGenerationFingerprint,
+        requestId: generationRequestId,
+      };
+    }
 
     const palettePrompt = state.paletteId === CUSTOM_PALETTE_ID
       ? (state.customPalette || CUSTOM_PALETTE_PROMPT)
@@ -650,10 +630,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     const stylePrompt = selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style;
     const effectivePrintPosition = state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition);
     const effectivePrintSize = state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition);
-    const garmentReference = await loadOperationalGarmentReference(
-      resolveOperationalGarmentReference(selectedGarment, effectivePrintPosition)
-    );
-
     const generationPrompt = state.designMethod === 'calligraphy'
       ? state.prompt
       : (options.promptOverride?.trim() || state.prompt);
@@ -676,9 +652,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         printSize: effectivePrintSize,
         printPositionLabel: state.printPositionLabel ?? undefined,
         garmentColorHex: state.garmentColorHex,
-        garmentReferenceImageBase64: garmentReference?.base64,
-        garmentReferenceImageMimeType: garmentReference?.mimeType,
-        garmentReferenceSide: garmentReference?.side,
+        garmentId: state.garmentId,
+        colorId: state.garmentColorId,
+        sizeId: state.garmentSizeId,
+        printScale: state.printScale,
+        printOffsetX: state.printOffsetX,
+        printOffsetY: state.printOffsetY,
         referenceImageMode: state.referenceImageMode,
         sessionToken,
         requestId: generationRequestId,
@@ -686,15 +665,47 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     );
 
     try {
-      const mockup = await runGenerate(
-        state.referenceImage || undefined,
-        state.referenceImageMimeType || undefined
-      );
+      const generationPreferences = {
+        removeBackground: state.removeBackground,
+        avoidHardEdges: state.avoidHardEdges,
+        designPosition: state.designPosition,
+        printPosition: effectivePrintPosition,
+        printSize: effectivePrintSize,
+        printPositionLabel: state.printPositionLabel ?? undefined,
+        garmentColorHex: state.garmentColorHex,
+        garmentId: state.garmentId,
+        colorId: state.garmentColorId,
+        sizeId: state.garmentSizeId,
+        printScale: state.printScale,
+        printOffsetX: state.printOffsetX,
+        printOffsetY: state.printOffsetY,
+        referenceImageMode: state.referenceImageMode,
+        sessionToken,
+        requestId: generationRequestId,
+      };
+      const generated = canRecompose
+        ? await recomposeMockup(
+            generationResult!,
+            state.garmentType,
+            state.garmentColor,
+            techniquePrompt,
+            stylePrompt,
+            palettePrompt,
+            state.designMethod === 'calligraphy' ? state.calligraphyText : undefined,
+            generationPreferences,
+          )
+        : await runGenerate(
+            state.referenceImage || undefined,
+            state.referenceImageMimeType || undefined
+          );
 
-      const validation = await validateGeneratedImage(mockup);
+      const validation = await validateGeneratedImage(generated?.previewUrl ?? null);
       if (validation.valid) {
-        setMockupImage(mockup);
+        if (!canRecompose) generationRetryRef.current = null;
+        setGenerationResult(generated);
+        setMockupImage(generated!.previewUrl);
         setMockupState({ ...state });
+        setExtractedImage(generated!.masterAssetUrl);
         showToast('تم توليد التصميم بنجاح', 'success');
       } else {
         setError('لم تصل صورة صالحة من خدمة التوليد. نتيجتك السابقة محفوظة ويمكنك إعادة المحاولة.');
@@ -741,8 +752,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
   }, [
     config?.generation,
+    generationResult,
     getToken,
     isGenerating,
+    mockupState,
     requireAuthenticatedAction,
     requestGenerationAccess,
     selectedGarment,
@@ -914,32 +927,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [handleGenerate, pendingGenerateAfterAuth]);
 
   const handleExtract = async () => {
-    if (!mockupImage) return;
+    if (!generationResult) return;
 
     setIsExtracting(true);
     setError(null);
 
     try {
-      const parts = parseDataUrlParts(mockupImage);
-      if (!parts) {
-        setError('صورة الموكب غير صالحة. أعد التوليد ثم حاول الاستخراج.');
-        showToast('صورة الموكب غير صالحة', 'error');
-        return;
-      }
-
-      const cleanOutputEnabled = isCleanOutputEnabled(state);
-      const extracted = await extractDesign(parts.base64, parts.mimeType, cleanOutputEnabled);
-
-      if (extracted) {
-        const printReady = cleanOutputEnabled
-          ? await makeEdgeBackgroundTransparent(extracted).catch(() => null)
-          : null;
-        setExtractedImage(printReady?.dataUrl ?? extracted);
-        showToast('تم استخراج التصميم بنجاح! 🎨', 'success');
-      } else {
-        setError('فشل في استخراج التصميم.');
-        showToast('فشل في استخراج التصميم', 'error');
-      }
+      setExtractedImage(generationResult.masterAssetUrl);
+      showToast('ملف التصميم الأصلي جاهز للطباعة', 'success');
     } catch (extractError) {
       const message = getReadableErrorMessage(extractError, PUBLIC_EXTRACTION_ERROR, 'extraction');
       setError(message);
@@ -960,7 +955,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const submitOrder = async (): Promise<boolean> => {
-    if (!mockupImage) return false;
+    if (!mockupImage || !generationResult) return false;
 
     if (!isMockupCurrent) {
       const message = 'هذه النتيجة تخص إعدادات سابقة. أعد التوليد بالإعدادات الحالية قبل إضافتها إلى السلة.';
@@ -985,48 +980,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      let submitMockupBg = mockupImage;
-      let submitExtractedBg = extractedImage;
-
-      if (!submitExtractedBg) {
-        showToast('جاري تجهيز التصميم للطباعة عالية الجودة...', 'info');
-        try {
-          const parts = parseDataUrlParts(mockupImage);
-          if (parts) {
-            const cleanOutputEnabled = isCleanOutputEnabled(state);
-            submitExtractedBg = await extractDesign(parts.base64, parts.mimeType, cleanOutputEnabled);
-            if (submitExtractedBg && cleanOutputEnabled) {
-              const printReady = await makeEdgeBackgroundTransparent(submitExtractedBg).catch(() => null);
-              submitExtractedBg = printReady?.dataUrl ?? submitExtractedBg;
-            }
-            if (submitExtractedBg) setExtractedImage(submitExtractedBg);
-          }
-        } catch (err) {
-          console.warn('Could not extract design automatically', err);
-        }
-      }
-
-      try {
-        // Keep the mockup compact, but preserve the extracted DTF as transparent PNG.
-        const compressedMockup = await resizeDataUrl(mockupImage, {
-          maxDimension: 2048,
-          quality: 0.8,
-          outputMimeType: 'image/webp'
-        });
-        submitMockupBg = compressedMockup.dataUrl;
-
-        if (submitExtractedBg) {
-          const compressedExtracted = await resizeDataUrl(submitExtractedBg, {
-            maxDimension: 4096,
-            quality: 1,
-            outputMimeType: 'image/png'
-          });
-          submitExtractedBg = compressedExtracted.dataUrl;
-        }
-      } catch (err) {
-        console.warn('Could not compress images, sending original...', err);
-      }
-
       const res = await fetch('/api/washa-dtf-studio/submit-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1052,8 +1005,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
           printPosition: state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition),
           printSize: state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition),
           printPositionLabel: state.printPositionLabel,
-          mockupDataUrl: submitMockupBg,
-          extractedDataUrl: submitExtractedBg || null,
+          designRequestId: generationResult.designRequestId,
+          masterAssetId: generationResult.masterAssetId,
+          masterChecksum: generationResult.masterChecksum,
+          placementData: generationResult.placement,
         }),
       });
 
@@ -1111,6 +1066,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setMockupImage(null);
     setMockupState(null);
     setExtractedImage(null);
+    setGenerationResult(null);
     setError(null);
     setOrderResult(null);
   };
@@ -1130,6 +1086,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         mockupState,
         isMockupCurrent,
         extractedImage,
+        generationResult,
         error,
         isSubmittingOrder,
         orderResult,

@@ -10,7 +10,7 @@
 |--------|----------|----------------|---------|
 | **Replicate** | مشاريع صغيرة/متوسطة، صورة مرجعية | دفع حسب الاستخدام (~$0.003–0.03/صورة) | مدعوم حالياً (نص + صورة→صورة)، سهل الإعداد |
 | **Gemini (Imagen 3)** | بيئة Google، جودة عالية، عربي | ~$0.03/صورة | مدعوم حالياً (نص→صورة فقط)، مفتاح واحد من Google AI |
-| **OpenAI DALL-E 3** | جودة عالية، واجهة بسيطة | أعلى من الخيارين أعلاه | يمكن إضافته لاحقاً بنفس النمط |
+| **OpenAI GPT Image** | أصل طباعة PNG شفاف في WASHA AI | حسب النموذج والجودة | المسار الإلزامي حاليًا لـ`design-master.png` لأنه يضبط Alpha عبر API |
 
 - إن كان لديك **Replicate** بالفعل: اترك الإعداد الحالي، يعمل من الصندوق.
 - إن فضّلت **Google (Gemini)**: أضف `GEMINI_API_KEY` و`IMAGE_PROVIDER=gemini` (انظر أدناه).
@@ -56,9 +56,12 @@ IMAGE_PROVIDER=gemini
 
 ## WASHA AI (مسار DTF / `/design/washa-ai`)
 
-- يدعم نفس **نمط** الاختيار عبر `WASHA_DTF_IMAGE_PROVIDER`، وإن تُرك فارغاً يُستخدَم `IMAGE_PROVIDER`، وإن بقي فارغاً يُلجأ إلى **`genai`** (نموذج `gemini-2.5-flash-image` عبر `@google/genai`).
-- القيم: **`genai`** (افتراضي واضح) | **`replicate`** (Flux) | **`nanobanana`** | **`gemini`**.
-- **الكود:** `src/lib/washa-dtf-image-router.ts` + `src/lib/replicate-predictions.ts` + `src/lib/gemini-rest-image.ts`
+- أصل التصميم الشفاف يستخدم GPT Image مع `PNG` و`background=transparent`، ثم يُتحقق من Alpha ويُحفظ دائمًا قبل العرض.
+- الإعدادات: `OPENAI_IMAGE_MODEL=gpt-image-1` و`WASHA_ARTWORK_OPENAI_SIZE=1024x1536`، مع حد effective DPI قابل للضبط عبر `WASHA_DTF_MIN_EFFECTIVE_DPI`.
+- `WASHA_DTF_IMAGE_PROVIDER` يحدد مزود القطعة الفارغة فقط عند غياب صورة مرجعية مطابقة.
+- Gemini/Replicate لا يُسمح لهما بإعادة رسم تصميم العميل على القماش.
+- **الكود:** `src/lib/washa-artwork/*` و`src/app/api/washa-dtf-studio/services/design-asset.service.ts`.
+- **التفاصيل والمmigration:** `docs/WASHA_AI_SINGLE_SOURCE_ASSETS.md`.
 
 ---
 

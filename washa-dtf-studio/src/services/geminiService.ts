@@ -1,5 +1,3 @@
-import { isCleanOutputEnabled } from '../lib/outputPreferences';
-import { getReferenceFallbackConcept, getReferenceGenerationDirectives, normalizeReferenceImageMode } from '../lib/referenceImage';
 import type { ReferenceImageMode } from '../types';
 
 // Use the integrated Next.js API instead of a separate local proxy server.
@@ -20,19 +18,49 @@ interface GenerationPreferences {
   printSize?: 'large' | 'small' | null;
   printPositionLabel?: string | null;
   garmentColorHex?: string | null;
-  garmentReferenceImageBase64?: string;
-  garmentReferenceImageMimeType?: string;
-  garmentReferenceSide?: 'front' | 'back';
   referenceImageMode?: ReferenceImageMode;
   /** Fresh Clerk session token minted immediately before this request. */
   sessionToken?: string;
   /** Stable identifier for this single user-triggered generation attempt. */
   requestId?: string;
+  garmentId?: string | null;
+  colorId?: string | null;
+  sizeId?: string | null;
+  printScale?: number | null;
+  printOffsetX?: number | null;
+  printOffsetY?: number | null;
 }
 
-type GenerationApiResponse = {
+export type GeneratedArtworkResult = {
+  imageUrl: string;
+  previewUrl: string;
+  frontPreviewUrl: string | null;
+  backPreviewUrl: string | null;
+  designRequestId: string;
+  masterAssetId: string;
+  masterAssetUrl: string;
+  masterChecksum: string;
+  mockupSourceType: 'reference' | 'generated_blank_garment';
+  placement: {
+    side: 'front' | 'back';
+    x: number;
+    y: number;
+    scale: number;
+    rotation: number;
+    printWidthCm: number;
+    printHeightCm: number;
+    anchorX: number;
+    anchorY: number;
+    referenceMockupId: string | null;
+    printAreaId: string;
+    transformVersion: number;
+  };
+  transparencyVerificationStatus: 'verified' | 'fallback_processed';
+  productionReadinessStatus: 'ready';
+};
+
+type GenerationApiResponse = Partial<GeneratedArtworkResult> & {
   ok?: boolean;
-  imageUrl?: string | null;
   error?: string;
   message?: string;
   code?: string;
@@ -80,15 +108,6 @@ function dispatchQuotaExceeded(info: {
   );
 }
 
-function compactPrompt(parts: Array<string | null | undefined>) {
-  return parts
-    .map((part) => (typeof part === 'string' ? part.trim() : ''))
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function createPublicApiError(
   message: string | null | undefined,
   scope: PublicStudioErrorScope,
@@ -133,6 +152,50 @@ async function parseApiResponse(response: Response, scope: PublicStudioErrorScop
   throw createPublicApiError(text || null, scope, response);
 }
 
+function buildGenerationContext(params: {
+  garmentType: string;
+  color: string;
+  technique: string;
+  style: string;
+  palette: string;
+  calligraphyText?: string;
+  hasReferenceImage?: boolean;
+  preferences: GenerationPreferences;
+}) {
+  const printPosition =
+    params.preferences.printPosition ||
+    (params.preferences.designPosition?.startsWith('back') ? 'back' :
+      params.preferences.designPosition === 'logo_right' ? 'shoulder_right' :
+        params.preferences.designPosition === 'logo_left' ? 'shoulder_left' :
+          'chest');
+  const printSize =
+    params.preferences.printSize ||
+    (params.preferences.designPosition?.includes('small') || params.preferences.designPosition?.startsWith('logo_')
+      ? 'small'
+      : 'large');
+  return {
+    garmentId: params.preferences.garmentId || null,
+    colorId: params.preferences.colorId || null,
+    sizeId: params.preferences.sizeId || null,
+    garmentType: params.garmentType,
+    garmentColor: params.color,
+    colorHex: params.preferences.garmentColorHex || null,
+    designMethod: params.calligraphyText?.trim()
+      ? 'calligraphy'
+      : (params.hasReferenceImage ? 'image' : 'text'),
+    style: params.style,
+    technique: params.technique,
+    palette: params.palette,
+    calligraphyText: params.calligraphyText?.trim() || null,
+    referenceImageMode: params.preferences.referenceImageMode || 'reinterpret',
+    printPosition,
+    printSize,
+    printScale: params.preferences.printScale ?? 100,
+    printOffsetX: params.preferences.printOffsetX ?? 0,
+    printOffsetY: params.preferences.printOffsetY ?? 0,
+  };
+}
+
 export async function generateMockup(
   garmentType: string,
   color: string,
@@ -144,126 +207,11 @@ export async function generateMockup(
   referenceImageMimeType?: string,
   calligraphyText?: string,
   preferences: GenerationPreferences = {}
-): Promise<string | null> {
-  const isCalligraphy = Boolean(calligraphyText && calligraphyText.trim());
-  const isArabicText = isCalligraphy && /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(calligraphyText!);
-  const selectedColorDirective = compactPrompt([
-    color ? `selected color name: ${color}` : null,
-    preferences.garmentColorHex ? `selected color hex: ${preferences.garmentColorHex}` : null,
-  ]);
-  const hasGarmentReference = Boolean(preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType);
-  const cleanOutputEnabled = isCleanOutputEnabled(preferences);
-  const referenceImageMode = normalizeReferenceImageMode(preferences.referenceImageMode);
-  const customerConcept = userDescription.trim() || getReferenceFallbackConcept(referenceImageMode);
-  const referenceDirectives = referenceImageBase64
-    ? getReferenceGenerationDirectives(referenceImageMode)
-    : [];
-  const garmentReferenceDirectives = [
-    hasGarmentReference
-      ? 'Use the hidden operational garment reference image only as the base product reference for the final mockup: preserve garment cut, collar, sleeves, seams, fit, fabric folds, proportions, camera angle, and studio lighting.'
-      : 'No hidden garment reference is supplied. Treat the selected garment type, color, side, and print placement as authoritative product specifications. Generate a photorealistic premium studio product mockup with the correct garment silhouette, collar/hood/sleeves/fit, fabric behavior, and camera framing; not line art, sketch, vector preview, drawing, or flat catalog icon.',
-    hasGarmentReference && preferences.garmentReferenceSide
-      ? `The garment reference side is ${preferences.garmentReferenceSide}; generate the same side unless the selected print placement explicitly requires otherwise.`
-      : null,
-    `Recolor only the garment fabric to the customer's selected color (${selectedColorDirective || color}); keep realistic texture, wrinkles, shadows, and highlights. Do not leave the garment white unless white is the selected color.`,
-    hasGarmentReference
-      ? 'The garment reference is operational only. Never treat the blank garment or recolored garment as the finished result; it must receive the new customer artwork described in the text prompt.'
-      : null,
-    'The final mockup must show the selected garment type clearly and realistically with the print integrated on fabric.',
-  ];
-  const printDirectives = [
-    'Premium DTF print integrated directly into the garment.',
-    cleanOutputEnabled
-      ? 'MANDATORY CLEAN ARTWORK OUTPUT: the print artwork must have a transparent cutout boundary with no background of any kind; no frame, border, crop edge, enclosing rectangle, boxed field, white square, colored panel, or hard outer edge. The result is invalid if the artwork contains a background panel or hard outer edge.'
-      : 'OUTPUT CLEANUP DISABLED: background panels and defined outer edges are allowed. Preserve an intentional background, frame, crop boundary, or hard edge when it supports the requested concept; do not automatically convert the artwork into a transparent cutout.',
-    referenceImageBase64 && cleanOutputEnabled
-      ? 'If a reference image has transparency, use only the visible foreground artwork; treat transparent pixels as absent and never render them as white, black, gray, or any background patch.'
-      : null,
-    referenceImageBase64 && cleanOutputEnabled
-      ? 'Do not preserve the reference image background, frame, crop, or edges.'
-      : null,
-    ...garmentReferenceDirectives,
-  ];
-
-  const effectivePrintPosition =
-    preferences.printPosition ||
-    (preferences.designPosition?.startsWith('back') ? 'back' :
-      preferences.designPosition === 'logo_right' ? 'shoulder_right' :
-        preferences.designPosition === 'logo_left' ? 'shoulder_left' :
-          'chest');
-  const effectivePrintSize =
-    preferences.printSize ||
-    (preferences.designPosition?.includes('small') || preferences.designPosition?.startsWith('logo_') ? 'small' : 'large');
-  let sceneDirectives = '';
-  if (effectivePrintPosition === 'shoulder_right' || effectivePrintPosition === 'shoulder_left') {
-    const imageSide = effectivePrintPosition === 'shoulder_right'
-      ? "LEFT side of the image / viewer-left upper chest (the wearer's right side)"
-      : "RIGHT side of the image / viewer-right upper chest over the heart area (the wearer's left side)";
-    const forbiddenSide = effectivePrintPosition === 'shoulder_right'
-      ? 'viewer-right upper chest'
-      : 'viewer-left upper chest';
-    const placementCode = effectivePrintPosition === 'shoulder_right'
-      ? 'LOGO_ON_IMAGE_LEFT'
-      : 'LOGO_ON_IMAGE_RIGHT';
-
-    sceneDirectives = compactPrompt([
-      `Front-facing medium close-up photography of the upper torso showing a ${color} ${garmentType}.`,
-      `Placement code: ${placementCode}.`,
-      `A single ${effectivePrintSize === 'large' ? 'medium-large' : 'small pocket-sized'} DTF logo is placed strictly on the ${imageSide} of the ${color} ${garmentType}.`,
-      `Use screen/image coordinates only: image right means the viewer's right side, image left means the viewer's left side.`,
-      `Camera framing: upper body visible, showing the collar, shoulders, and chest clearly so the garment type and the ${color} color are obvious.`,
-      `Keep the center chest blank. Do not place the logo on the ${forbiddenSide}, do not center it on the chest, do not place it on a sleeve or shoulder, and do not move it to the back.`,
-      preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
-      `Clean studio lighting, soft fabric texture visible, professional garment mockup quality.`,
-    ]);
-  } else {
-    const side = effectivePrintPosition === 'back' ? 'back panel / rear side' : 'chest/front';
-    const scale = effectivePrintSize === 'large'
-      ? 'large and centered, filling roughly 60-70% of the printable area'
-      : 'small and neatly placed, filling roughly 20-30% of the printable area';
-    const backInstruction = effectivePrintPosition === 'back'
-      ? 'Rear-view mockup only: show the back side of the garment clearly, as if the garment/person is facing away from the camera. Do not show or use the chest/front side.'
-      : 'Front-view mockup only: show the chest/front side of the garment clearly; do not place the artwork on the back.';
-
-    sceneDirectives = compactPrompt([
-      `Studio mockup of a full ${color} ${garmentType} with one DTF print placed on the ${side}.`,
-      `Placement: ${scale}.`,
-      backInstruction,
-      effectivePrintPosition === 'back'
-        ? 'The artwork must be on the rear back panel, not on the front chest. The front of the garment must not be visible as the printed side.'
-        : 'The artwork must be on the front chest panel, not on the rear back panel.',
-      preferences.printPositionLabel ? `Selected placement label: ${preferences.printPositionLabel}.` : null,
-      `Full garment visible, clean studio background.`,
-    ]);
-  }
-  const prompt = isCalligraphy
-    ? compactPrompt([
-        sceneDirectives,
-        isArabicText
-          ? `قم بتصميم المخطوطة الفنية التالية بالخط العربي الاحترافي وبدقة عالية وبدون أي نصوص لاتينية: "${calligraphyText}".`
-          : `Render ONLY this phrase as artistic calligraphy: "${calligraphyText}".`,
-        `Calligraphy style: ${style}.`,
-        `Technique: ${technique}.`,
-        `Palette: ${palette}.`,
-        isArabicText
-          ? 'خط عربي سليم، تداخل انسيابي للكلمات، تفاصيل عالية الوضوح على القماش، وبدون أي طبقات مكررة أو كلمات إضافية.'
-          : 'Graceful curves, elegant strokes, sharp lettering on fabric, and no duplicated layers or extra words.',
-        ...printDirectives,
-      ])
-    : compactPrompt([
-        sceneDirectives,
-        `Mandatory customer artwork concept: ${customerConcept}.`,
-        ...referenceDirectives,
-        'Create a new visible print artwork from the customer concept first, then place that artwork on the selected garment as a DTF print.',
-        'The result is invalid if the garment is blank, if only the garment color changes, or if the customer concept is missing from the print.',
-        'The print artwork may be graphic or illustrative, while the garment mockup must remain photorealistic. No text, letters, words, or typography unless the customer explicitly requested them.',
-        `Style: ${style}.`,
-        `Technique: ${technique}.`,
-        `Palette: ${palette}.`,
-        `The printed artwork must be instantly recognizable as: ${customerConcept}.`,
-        'Single clean design with sharp details on fabric and no duplicated layers.',
-        ...printDirectives,
-      ]);
+): Promise<GeneratedArtworkResult | null> {
+  const prompt =
+    calligraphyText?.trim()
+    || userDescription.trim()
+    || 'Artwork inspired by the uploaded customer reference image.';
 
   try {
     const body: any = { prompt };
@@ -273,12 +221,16 @@ export async function generateMockup(
         mimeType: referenceImageMimeType
       };
     }
-    if (preferences.garmentReferenceImageBase64 && preferences.garmentReferenceImageMimeType) {
-      body.garmentReferenceImage = {
-        base64: preferences.garmentReferenceImageBase64,
-        mimeType: preferences.garmentReferenceImageMimeType,
-      };
-    }
+    body.generationContext = buildGenerationContext({
+      garmentType,
+      color,
+      technique,
+      style,
+      palette,
+      calligraphyText,
+      hasReferenceImage: Boolean(referenceImageBase64),
+      preferences,
+    });
 
     const sessionToken = preferences.sessionToken?.trim();
     if (!sessionToken) {
@@ -309,7 +261,18 @@ export async function generateMockup(
 
     if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
-    return typeof data?.imageUrl === 'string' ? data.imageUrl : null;
+    if (
+      typeof data?.imageUrl !== 'string' ||
+      typeof data?.previewUrl !== 'string' ||
+      typeof data?.designRequestId !== 'string' ||
+      typeof data?.masterAssetId !== 'string' ||
+      typeof data?.masterAssetUrl !== 'string' ||
+      typeof data?.masterChecksum !== 'string' ||
+      !data?.placement
+    ) {
+      throw createPublicApiError('تعذر تثبيت أصل التصميم الدائم.', 'generation', response, data);
+    }
+    return data as GeneratedArtworkResult;
   } catch (error) {
     const info = (error as { data?: Record<string, unknown> })?.data;
     if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {
@@ -319,6 +282,54 @@ export async function generateMockup(
     if (error instanceof Error) throw error;
     throw new Error(PUBLIC_GENERATION_ERROR);
   }
+}
+
+export async function recomposeMockup(
+  existing: Pick<GeneratedArtworkResult, 'designRequestId' | 'masterAssetId'>,
+  garmentType: string,
+  color: string,
+  technique: string,
+  style: string,
+  palette: string,
+  calligraphyText: string | undefined,
+  preferences: GenerationPreferences,
+): Promise<GeneratedArtworkResult> {
+  const sessionToken = preferences.sessionToken?.trim();
+  if (!sessionToken) {
+    throw createPublicApiError('يلزم تسجيل الدخول لإكمال العملية.', 'generation');
+  }
+  const response = await fetch(`${API_BASE_URL}/recompose-preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionToken}`,
+    },
+    credentials: 'omit',
+    cache: 'no-store',
+    body: JSON.stringify({
+      designRequestId: existing.designRequestId,
+      masterAssetId: existing.masterAssetId,
+      generationContext: buildGenerationContext({
+        garmentType,
+        color,
+        technique,
+        style,
+        palette,
+        calligraphyText,
+        preferences,
+      }),
+    }),
+  });
+  const data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
+  if (
+    typeof data.previewUrl !== 'string'
+    || typeof data.masterAssetId !== 'string'
+    || typeof data.designRequestId !== 'string'
+    || !data.placement
+  ) {
+    throw createPublicApiError('تعذر تحديث المعاينة من أصل التصميم.', 'generation', response, data);
+  }
+  return data as GeneratedArtworkResult;
 }
 
 export async function extractDesign(mockupImageBase64: string, mimeType: string, cleanOutputEnabled = true): Promise<string | null> {

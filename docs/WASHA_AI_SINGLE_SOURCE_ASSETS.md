@@ -1,0 +1,62 @@
+# WASHA AI — Single Source Artwork Pipeline
+
+## المبدأ
+
+يُولّد ملف Artwork واحد فقط، ثم يُحفظ كـ `design-master.png` غير قابل للاستبدال. جميع المعاينات والموكبات وملف الإنتاج مشتقات مسجلة من هذا الأصل، وتحمل نفس `masterAssetId` و`sourceChecksum`.
+
+## المسار الجديد
+
+1. يستقبل `/api/washa-dtf-studio/generate-mockup` فكرة العميل والاختيارات المنظمة.
+2. يبني الخادم برومبت Artwork معزولًا ويطلب من GPT Image:
+   - `output_format=png`
+   - `background=transparent`
+   - `quality=high`
+3. يُفحص الملف عبر Sharp: PNG، Alpha حقيقية، بكسلات شفافة، مساحة آمنة، دقة وحدود سليمة.
+   كما تُرفض لوحة خلفية معتمة داخل هامش شفاف، ويُفحص الـeffective DPI مقابل مقاس الطباعة الفعلي.
+   وعند وجود `calligraphyText` صريح، يمر الناتج بتحقق OCR عربي مطابق حرفيًا قبل القبول.
+4. يُحسب SHA-256، ثم يُرفع مرة واحدة إلى:
+   `washa-design-assets/design-masters/{profileId}/{masterAssetId}/design-master.png`
+5. يُعاد تنزيل الملف فورًا وتُقارن بصمته قبل تسجيله في `washa_design_master_assets`.
+   الـbucket خاص، والروابط الدائمة تمر عبر `/api/washa-dtf-studio/assets/...` مع تحقق المالك أو فريق الإنتاج.
+6. يبحث resolver عن مرجع يطابق المنتج واللون والجهة في `washa_garment_mockup_assets`.
+7. عند غياب المرجع المطلوب، يولّد المزود قطعة فارغة فقط ويحفظها كـ `generated_blank_garment`.
+   قبل التخزين تُفحص الدقة واللون، ثم يتحقق نموذج رؤية من نوع القطعة واللون والجهة وخلوها من أي شعار/نص، ويعيد print area normalized للتركيب.
+8. يركب Sharp نفس `design-master.png` على القطعة باستخدام `placement_data`.
+9. عند الاعتماد، ينشئ `washa_design_revisions` و`print-production.png` من الأصل نفسه فقط.
+   تسجل مشتقات الإنتاج بصمتها الخاصة، ويعاد التحقق من revision/master/derivative وبصماتها عند إكمال الطلب وتنزيل الإنتاج.
+10. تغيير القطعة أو الجهة أو الموضع يستدعي `/api/washa-dtf-studio/recompose-preview`، ولا يستدعي مزود Artwork ولا يستهلك توليدًا جديدًا.
+
+إذا فشل المرجع أو fallback أو إنشاء المعاينة بعد حفظ الأصل، يبقى `washa_design_requests` بحالة `blocked` مرتبطًا بالأصل. إعادة المحاولة بالمعرّف نفسه تستأنف من `masterAssetId` بدل إعادة توليد Artwork.
+
+## الجداول
+
+- `washa_design_master_assets`: الأصل الرئيسي والبصمة وبيانات التوليد والتحقق.
+- `washa_garment_mockup_assets`: Manifest المراجع والقطع الفارغة المولدة لكل لون/جهة.
+- `washa_design_asset_derivatives`: thumbnails/previews/mockups/print-production وعلاقتها بالأصل.
+- `washa_design_requests`: الطلب الجاري، الأصل الحالي، الموضع ومصدر الموكب.
+- `washa_design_revisions`: لقطة اعتماد immutable مرتبطة بالطلب.
+- `custom_design_orders`: أعمدة ربط nullable جديدة؛ الطلبات القديمة تبقى `asset_schema_version=0`.
+
+## قواعد التوافق
+
+- الطلبات القديمة لا تُعدّل أصولها ولا تُعاد توليدها.
+- مسار Base64 القديم في `submit-order` يبقى للقراءة/الإرسال القديم فقط ويُسجّل كـ `legacy_unverified`.
+- استخراج التصميم من الموكب معطل افتراضيًا. يمكن تفعيله مؤقتًا فقط عبر:
+  `WASHA_DTF_LEGACY_EXTRACTION_ENABLED=true`
+- الواجهة الجديدة لا تستدعي الاستخراج التوليدي ولا إزالة الخلفية.
+
+## تطبيق migration
+
+طبّق:
+
+`supabase/migrations/20260716120000_washa_ai_single_source_assets.sql`
+
+ينشئ migration bucket خاصًا `washa-design-assets` والجداول والقيود والـRLS وManifest أولي من صور الألوان والمقاسات الحالية. لا يفترض أن مرجع الأمام صالح للخلف.
+
+مراجع `ai_reference_front_url/back_url` القديمة تُسجل كسجلات Manifest غير فعالة لأنها غير مرتبطة بلون مؤكد. لا تدخل المسار حتى يربطها المشرف بلون مطابق ويفعّلها.
+
+## اختبار E2E حي
+
+`npm run qa:washa-single-source`
+
+يتطلب بيئة staging ومستخدمًا مصادقًا ومتغيرات `WASHA_E2E_*`. ينفذ توليدًا حقيقيًا، يجلب الأصل الخاص، يطابق SHA-256، ثم يغيّر الموضع عبر recompositing ويتأكد أن `masterAssetId` و`masterChecksum` لم يتغيرا.

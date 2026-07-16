@@ -10,6 +10,8 @@ const {
     mockEnforceDtfRouteRateLimit,
     mockParseAndValidateDtfJson,
     mockGenerateMockup,
+    mockGetExistingGeneration,
+    mockHasPersistedGenerationAttempt,
     mockReserveDailyQuota,
     mockLogActivity,
     mockReleaseDailyQuota,
@@ -18,6 +20,7 @@ const {
     mockGetGenerationReadiness,
     mockRecordGenerationFailure,
     mockRecordGenerationSuccess,
+    mockGetArtworkProviderReadiness,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
@@ -26,6 +29,8 @@ const {
     mockEnforceDtfRouteRateLimit: vi.fn(),
     mockParseAndValidateDtfJson: vi.fn(),
     mockGenerateMockup: vi.fn(),
+    mockGetExistingGeneration: vi.fn(),
+    mockHasPersistedGenerationAttempt: vi.fn(),
     mockReserveDailyQuota: vi.fn(),
     mockLogActivity: vi.fn(),
     mockReleaseDailyQuota: vi.fn(),
@@ -34,6 +39,7 @@ const {
     mockGetGenerationReadiness: vi.fn(),
     mockRecordGenerationFailure: vi.fn(),
     mockRecordGenerationSuccess: vi.fn(),
+    mockGetArtworkProviderReadiness: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -46,10 +52,16 @@ vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal)
     parseAndValidateDtfJson: mockParseAndValidateDtfJson,
 }));
 
-vi.mock("@/app/api/washa-dtf-studio/services/ai-studio.service", () => ({
-    AiStudioService: {
-        generateMockup: mockGenerateMockup,
+vi.mock("@/app/api/washa-dtf-studio/services/design-asset.service", () => ({
+    DesignAssetService: {
+        generate: mockGenerateMockup,
+        getExistingGeneration: mockGetExistingGeneration,
+        hasPersistedGenerationAttempt: mockHasPersistedGenerationAttempt,
     },
+}));
+
+vi.mock("@/lib/washa-artwork/provider", () => ({
+    getIsolatedArtworkProviderReadiness: mockGetArtworkProviderReadiness,
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/services/dtf-telemetry.service", () => ({
@@ -76,6 +88,36 @@ vi.mock("@/lib/washa-dtf-generation-readiness", () => ({
 
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
 
+function generationResult(preview = "https://cdn.example/mockup-front.webp") {
+    return {
+        imageUrl: preview,
+        previewUrl: preview,
+        frontPreviewUrl: preview,
+        backPreviewUrl: null,
+        designRequestId: "11111111-1111-4111-8111-111111111111",
+        masterAssetId: "22222222-2222-4222-8222-222222222222",
+        masterAssetUrl: "https://cdn.example/design-master.png",
+        masterChecksum: "a".repeat(64),
+        mockupSourceType: "reference",
+        placement: {
+            side: "front",
+            x: 0.5,
+            y: 0.5,
+            scale: 1,
+            rotation: 0,
+            printWidthCm: 30,
+            printHeightCm: 40,
+            anchorX: 0.5,
+            anchorY: 0.5,
+            referenceMockupId: "33333333-3333-4333-8333-333333333333",
+            printAreaId: "front_default",
+            transformVersion: 1,
+        },
+        transparencyVerificationStatus: "verified",
+        productionReadinessStatus: "ready",
+    };
+}
+
 describe("generate-mockup route", () => {
     beforeEach(() => {
         mockRequireDtfRouteAccess.mockReset();
@@ -85,6 +127,8 @@ describe("generate-mockup route", () => {
         mockEnforceDtfRouteRateLimit.mockReset();
         mockParseAndValidateDtfJson.mockReset();
         mockGenerateMockup.mockReset();
+        mockGetExistingGeneration.mockReset();
+        mockHasPersistedGenerationAttempt.mockReset();
         mockReserveDailyQuota.mockReset();
         mockLogActivity.mockReset();
         mockReleaseDailyQuota.mockReset();
@@ -93,6 +137,7 @@ describe("generate-mockup route", () => {
         mockGetGenerationReadiness.mockReset();
         mockRecordGenerationFailure.mockReset();
         mockRecordGenerationSuccess.mockReset();
+        mockGetArtworkProviderReadiness.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -114,6 +159,24 @@ describe("generate-mockup route", () => {
             data: {
                 prompt: "تصميم عربي حديث",
                 referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: {
+                    garmentId: "44444444-4444-4444-8444-444444444444",
+                    colorId: "55555555-5555-4555-8555-555555555555",
+                    sizeId: "66666666-6666-4666-8666-666666666666",
+                    garmentType: "تيشيرت",
+                    garmentColor: "أسود",
+                    colorHex: "#111111",
+                    designMethod: "text",
+                    style: "هندسي",
+                    technique: "رقمي",
+                    palette: "ذهبي",
+                    printPosition: "chest",
+                    printSize: "large",
+                    printScale: 100,
+                    printOffsetX: 0,
+                    printOffsetY: 0,
+                },
             },
         });
         mockReserveDailyQuota.mockResolvedValue({
@@ -126,7 +189,9 @@ describe("generate-mockup route", () => {
             freeRemaining: 4,
             paidBalance: 0,
         });
-        mockGenerateMockup.mockResolvedValue("data:image/png;base64,MOCKUP");
+        mockGenerateMockup.mockResolvedValue(generationResult());
+        mockGetExistingGeneration.mockResolvedValue(null);
+        mockHasPersistedGenerationAttempt.mockResolvedValue(false);
         mockLogActivity.mockResolvedValue(true);
         mockReleaseDailyQuota.mockResolvedValue(true);
         mockGetWashaDtfErrorDetails.mockReturnValue({
@@ -138,6 +203,11 @@ describe("generate-mockup route", () => {
             enabled: true,
             code: "ready",
             message: "خدمة التوليد جاهزة.",
+        });
+        mockGetArtworkProviderReadiness.mockReturnValue({
+            ready: true,
+            provider: "openai",
+            model: "gpt-image-1",
         });
     });
 
@@ -155,6 +225,25 @@ describe("generate-mockup route", () => {
         await expect(response.json()).resolves.toEqual({
             error: "غير مصرح لك باستخدام استوديو DTF",
         });
+    });
+
+    it("resumes a persisted master without provider readiness or a second quota reservation", async () => {
+        mockHasPersistedGenerationAttempt.mockResolvedValue(true);
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: false,
+            code: "temporarily_unavailable",
+            message: "provider unavailable",
+        });
+        mockGetArtworkProviderReadiness.mockReturnValue({
+            ready: false,
+            message: "transparent provider unavailable",
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(200);
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).toHaveBeenCalledOnce();
     });
 
     it("returns the rate-limit response unchanged when the threshold is hit", async () => {
@@ -393,7 +482,9 @@ describe("generate-mockup route", () => {
         expect(response.headers.get("X-Trace-Id")).toBeTruthy();
         await expect(response.json()).resolves.toMatchObject({
             ok: true,
-            imageUrl: "data:image/png;base64,MOCKUP",
+            imageUrl: "https://cdn.example/mockup-front.webp",
+            masterAssetId: "22222222-2222-4222-8222-222222222222",
+            masterChecksum: "a".repeat(64),
             remainingPoints: 4,
             freeRemaining: 4,
             paidBalance: 0,
@@ -402,11 +493,15 @@ describe("generate-mockup route", () => {
         });
         expect(response.headers.get("X-Request-Id")).toBeTruthy();
         expect(mockGenerateMockup).toHaveBeenCalledWith(
-            "تصميم عربي حديث",
-            null,
             expect.objectContaining({
-                traceId: expect.any(String),
-                timeoutMs: 90_000,
+                profileId: "profile_1",
+                generationRequestId: expect.any(String),
+                userIdea: "تصميم عربي حديث",
+                selection: expect.objectContaining({
+                    garmentId: "44444444-4444-4444-8444-444444444444",
+                    colorId: "55555555-5555-4555-8555-555555555555",
+                    printPosition: "chest",
+                }),
             })
         );
         expect(mockReserveDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", {
@@ -501,7 +596,7 @@ describe("generate-mockup route", () => {
             });
         mockGenerateMockup
             .mockRejectedValueOnce(new Error("provider timeout"))
-            .mockResolvedValueOnce("data:image/png;base64,RETRY");
+            .mockResolvedValueOnce(generationResult("https://cdn.example/retry.webp"));
         mockGetWashaDtfErrorDetails.mockReturnValue({
             message: "انتهت مهلة التوليد من المزود الخارجي.",
             status: 504,
@@ -546,7 +641,7 @@ describe("generate-mockup route", () => {
 
         expect(response.status).toBe(200);
         await expect(response.json()).resolves.toMatchObject({
-            imageUrl: "data:image/png;base64,MOCKUP",
+            imageUrl: "https://cdn.example/mockup-front.webp",
             remainingPoints: 4,
         });
         expect(mockRecordGenerationFailure).not.toHaveBeenCalled();

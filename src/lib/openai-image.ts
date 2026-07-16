@@ -25,6 +25,10 @@ export function isOpenAIKeyConfigured(): boolean {
     return Boolean(OPENAI_API_KEY);
 }
 
+export function getOpenAIImageModel() {
+    return OPENAI_IMAGE_MODEL;
+}
+
 function getProviderErrorMessage(rawBody: string): string {
     try {
         const parsed = JSON.parse(rawBody) as { error?: { message?: unknown } };
@@ -40,7 +44,13 @@ function getProviderErrorMessage(rawBody: string): string {
  */
 export async function runOpenAIGenerateDataUrl(
     prompt: string,
-    options: { throwOnError?: boolean } = {}
+    options: {
+        throwOnError?: boolean;
+        background?: "transparent" | "opaque" | "auto";
+        outputFormat?: "png" | "webp" | "jpeg";
+        quality?: "auto" | "low" | "medium" | "high";
+        size?: string;
+    } = {}
 ): Promise<string | null> {
     if (!OPENAI_API_KEY) return null;
 
@@ -48,13 +58,14 @@ export async function runOpenAIGenerateDataUrl(
         model: OPENAI_IMAGE_MODEL,
         prompt,
         n: 1,
-        size: OPENAI_IMAGE_SIZE,
+        size: options.size || OPENAI_IMAGE_SIZE,
     };
 
     // gpt-image-1 يدعم quality و output_format
-    if (OPENAI_IMAGE_MODEL === "gpt-image-1") {
-        body.quality = OPENAI_IMAGE_QUALITY;
-        body.output_format = "png";
+    if (OPENAI_IMAGE_MODEL.startsWith("gpt-image-")) {
+        body.quality = options.quality || OPENAI_IMAGE_QUALITY;
+        body.output_format = options.outputFormat || "png";
+        body.background = options.background || "auto";
     } else if (OPENAI_IMAGE_MODEL === "dall-e-3") {
         body.quality = OPENAI_IMAGE_QUALITY === "auto" ? "standard" : "hd";
         body.response_format = "b64_json";
@@ -116,7 +127,13 @@ export async function runOpenAIGenerateDataUrl(
 export async function runOpenAIEditDataUrl(
     prompt: string,
     imageDataUrl: string,
-    options: { throwOnError?: boolean } = {}
+    options: {
+        throwOnError?: boolean;
+        background?: "transparent" | "opaque" | "auto";
+        outputFormat?: "png" | "webp" | "jpeg";
+        quality?: "auto" | "low" | "medium" | "high";
+        size?: string;
+    } = {}
 ): Promise<string | null> {
     if (!OPENAI_API_KEY) return null;
 
@@ -140,7 +157,12 @@ export async function runOpenAIEditDataUrl(
     formData.append("image", blob, `reference.${ext === "jpeg" ? "png" : ext}`);
     formData.append("prompt", prompt);
     formData.append("n", "1");
-    formData.append("size", OPENAI_IMAGE_SIZE);
+    formData.append("size", options.size || OPENAI_IMAGE_SIZE);
+    if (OPENAI_IMAGE_MODEL.startsWith("gpt-image-")) {
+        formData.append("quality", options.quality || OPENAI_IMAGE_QUALITY);
+        formData.append("output_format", options.outputFormat || "png");
+        formData.append("background", options.background || "auto");
+    }
 
     const res = await fetch("https://api.openai.com/v1/images/edits", {
         method: "POST",

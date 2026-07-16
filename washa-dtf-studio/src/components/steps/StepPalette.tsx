@@ -5,7 +5,6 @@ import { useDesign } from '../../context/DesignContext';
 import { cn } from '../../lib/utils';
 import { CUSTOM_PALETTE_ID, CUSTOM_PALETTE_LABEL } from '../../types';
 import StepNavigationBar from './StepNavigationBar';
-import { isCleanOutputEnabled } from '../../lib/outputPreferences';
 
 /* ── Color Swatch Picker ── */
 const COLOR_SWATCHES = [
@@ -160,7 +159,6 @@ export default function StepPalette() {
   } = useDesign();
 
   const customPaletteSelected = state.paletteId === CUSTOM_PALETTE_ID;
-  const cleanOutputEnabled = isCleanOutputEnabled(state);
   const canGenerate = Boolean(
     state.styleId &&
     state.paletteId &&
@@ -314,33 +312,20 @@ export default function StepPalette() {
           </section>
 
           <section className="border-t border-washa-border/35 pt-4" aria-labelledby="output-preference-title">
-            <button
-              type="button"
-              aria-pressed={cleanOutputEnabled}
-              onClick={() => updateState({
-                removeBackground: !cleanOutputEnabled,
-                avoidHardEdges: !cleanOutputEnabled,
-              })}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-right transition-[border-color,background-color,transform] duration-200 active:scale-[0.99]',
-                cleanOutputEnabled
-                  ? 'border-washa-gold/35 bg-washa-gold/[0.07]'
-                  : 'border-washa-border/45 bg-washa-bg/35 hover:border-washa-gold/30',
-              )}
-            >
-              <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', cleanOutputEnabled ? 'bg-washa-gold text-washa-bg' : 'bg-washa-elevated text-washa-text-faint')}>
+            <div className="flex w-full items-center gap-3 rounded-xl border border-washa-gold/35 bg-washa-gold/[0.07] px-3.5 py-3 text-right">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-washa-gold text-washa-bg">
                 <ShieldCheck className="h-4.5 w-4.5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
-                <span id="output-preference-title" className="block text-sm font-bold text-washa-text">إخراج نظيف للطباعة</span>
+                <span id="output-preference-title" className="block text-sm font-bold text-washa-text">أصل طباعة شفاف ومعتمد</span>
                 <span className="mt-0.5 block text-[11px] leading-5 text-washa-text-sec">
-                  {cleanOutputEnabled ? 'بدون خلفية وبدون حواف خارجية — مضمّن في التوليد' : 'يسمح بخلفية وحدود خارجية عند الحاجة'}
+                  يُولّد التصميم وحده بخلفية شفافة حقيقية، ثم يُستخدم الأصل نفسه في المعاينة والطباعة.
                 </span>
               </span>
-              <span className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200', cleanOutputEnabled ? 'bg-washa-gold' : 'bg-washa-border')} aria-hidden="true">
-                <span className={cn('absolute left-1 top-1 h-4 w-4 rounded-full bg-washa-ivory shadow-sm transition-transform duration-200', cleanOutputEnabled ? 'translate-x-5' : 'translate-x-0')} />
+              <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-washa-gold/15 px-2 text-[10px] font-bold text-washa-gold" aria-hidden="true">
+                ثابت
               </span>
-            </button>
+            </div>
           </section>
         </div>
       )}

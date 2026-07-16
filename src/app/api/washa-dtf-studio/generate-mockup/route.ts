@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMockupSchema } from "../validators/ai-studio.schema";
 import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
-import { AiStudioService } from "../services/ai-studio.service";
+import { DesignAssetService } from "../services/design-asset.service";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import {
     claimDtfGenerationRequest,
@@ -23,16 +23,11 @@ import {
     recordWashaDtfGenerationSuccess,
 } from "@/lib/washa-dtf-generation-readiness";
 import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
+import { getIsolatedArtworkProviderReadiness } from "@/lib/washa-artwork/provider";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
-const GENERATE_MOCKUP_TIMEOUT_MS = (() => {
-    const parsed = Number.parseInt(process.env.WASHA_DTF_PROVIDER_TIMEOUT_MS || "90000", 10);
-    if (!Number.isFinite(parsed)) return 90_000;
-    return Math.min(Math.max(parsed, 15_000), 180_000);
-})();
-
 const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
 const GENERATE_MOCKUP_OPERATION = "generate-mockup";
 
@@ -153,11 +148,12 @@ export async function POST(request: NextRequest) {
             return attachDtfTraceId(bodyResult.response, traceId);
         }
 
-        const { prompt, referenceImage, garmentReferenceImage } = bodyResult.data;
+        const { prompt, referenceImage, garmentReferenceImage, generationContext } = bodyResult.data;
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "payload_ready", {
             promptLength: prompt.length,
             hasReferenceImage: Boolean(referenceImage?.base64),
             hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
+            hasStructuredGenerationContext: Boolean(generationContext),
         });
 
         const accessStartedAt = Date.now();
@@ -208,7 +204,38 @@ export async function POST(request: NextRequest) {
         }
 
         const generationReadiness = getWashaDtfGenerationReadiness();
-        if (!generationReadiness.enabled) {
+        if (!access.profileId) {
+            return structuredErrorResponse(
+                traceId,
+                500,
+                "INTERNAL_ERROR",
+                "تعذّر ربط عملية التوليد بحساب المستخدم.",
+                { retryable: false }
+            );
+        }
+
+        const existingGeneration = await DesignAssetService.getExistingGeneration(
+            access.profileId,
+            traceId
+        );
+        if (existingGeneration) {
+            return attachDtfTraceId(NextResponse.json({
+                ok: true,
+                requestId: traceId,
+                ...existingGeneration,
+                remainingPoints: null,
+                freeRemaining: null,
+                paidBalance: null,
+                consumedSource: null,
+                guest: false,
+                reused: true,
+            }), traceId);
+        }
+        const hasPersistedAttempt = await DesignAssetService.hasPersistedGenerationAttempt(
+            access.profileId,
+            traceId
+        );
+        if (!hasPersistedAttempt && !generationReadiness.enabled) {
             logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_unavailable", {
                 provider: generationReadiness.provider ?? null,
                 statusCode: 503,
@@ -227,13 +254,13 @@ export async function POST(request: NextRequest) {
                 }
             );
         }
-
-        if (!access.profileId) {
+        const artworkProviderReadiness = getIsolatedArtworkProviderReadiness();
+        if (!hasPersistedAttempt && !artworkProviderReadiness.ready) {
             return structuredErrorResponse(
                 traceId,
-                500,
-                "INTERNAL_ERROR",
-                "تعذّر ربط عملية التوليد بحساب المستخدم.",
+                503,
+                "TRANSPARENT_ARTWORK_PROVIDER_UNAVAILABLE",
+                artworkProviderReadiness.message,
                 { retryable: false }
             );
         }
@@ -279,11 +306,21 @@ export async function POST(request: NextRequest) {
         }
 
         const quotaStartedAt = Date.now();
-        const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
-            guestIdentifier: null,
-            requestId: traceId,
-            operation: GENERATE_MOCKUP_OPERATION,
-        });
+        const quota = hasPersistedAttempt
+            ? {
+                allowed: true,
+                remaining: 0,
+                used: 0,
+                tracked: false,
+                source: "bypass" as const,
+                freeRemaining: 0,
+                paidBalance: 0,
+            }
+            : await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
+                guestIdentifier: null,
+                requestId: traceId,
+                operation: GENERATE_MOCKUP_OPERATION,
+            });
         const quotaStateAmbiguous =
             quota.reason === "quota_unavailable"
             && quota.reservationState === "ambiguous";
@@ -380,13 +417,36 @@ export async function POST(request: NextRequest) {
             ), traceId);
         }
 
-        let imageUrl: string;
+        let generationResult: Awaited<ReturnType<typeof DesignAssetService.generate>>;
         try {
         const providerStartedAt = Date.now();
-        imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
-            traceId,
-            timeoutMs: GENERATE_MOCKUP_TIMEOUT_MS,
-            garmentReferenceImage,
+        generationResult = await DesignAssetService.generate({
+            profileId: access.profileId,
+            generationRequestId: traceId,
+            userIdea: prompt,
+            referenceImage,
+            legacyGarmentReference: garmentReferenceImage,
+            context: {
+                designMethod: generationContext?.designMethod,
+                style: generationContext?.style,
+                technique: generationContext?.technique,
+                palette: generationContext?.palette,
+                calligraphyText: generationContext?.calligraphyText,
+                referenceImageMode: generationContext?.referenceImageMode,
+            },
+            selection: {
+                garmentId: generationContext?.garmentId ?? null,
+                colorId: generationContext?.colorId ?? null,
+                sizeId: generationContext?.sizeId ?? null,
+                garmentType: generationContext?.garmentType || "قطعة ملابس",
+                garmentColor: generationContext?.garmentColor || "اللون المختار",
+                colorHex: generationContext?.colorHex ?? null,
+                printPosition: generationContext?.printPosition ?? "chest",
+                printSize: generationContext?.printSize ?? "large",
+                printScale: generationContext?.printScale,
+                printOffsetX: generationContext?.printOffsetX,
+                printOffsetY: generationContext?.printOffsetY,
+            },
         });
         recordWashaDtfGenerationSuccess();
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {
@@ -483,9 +543,12 @@ export async function POST(request: NextRequest) {
             status: "success",
             prompt,
             referenceImageUrl: referenceImage?.base64 ? "base64_hidden" : undefined,
-            resultImageUrl: imageUrl || undefined,
+            resultImageUrl: generationResult.previewUrl,
             metadata: {
-                hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
+                masterAssetId: generationResult.masterAssetId,
+                masterChecksum: generationResult.masterChecksum,
+                designRequestId: generationResult.designRequestId,
+                mockupSourceType: generationResult.mockupSourceType,
                 remainingPointsAfterReservation: quota.remaining,
                 usedPoints: quota.used,
                 quotaDate: quota.quotaDate,
@@ -519,7 +582,7 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(NextResponse.json({
             ok: true,
             requestId: traceId,
-            imageUrl,
+            ...generationResult,
             remainingPoints: quota.tracked ? quota.remaining : null,
             freeRemaining: quota.tracked ? quota.freeRemaining : null,
             paidBalance: quota.tracked ? quota.paidBalance : null,

@@ -14,6 +14,7 @@ import {
     resolveDtfTraceId,
 } from "../utils/trace";
 import { DTF_PUBLIC_EXTRACTION_ERROR } from "../utils/public-error";
+import { DesignAssetService } from "../services/design-asset.service";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -67,12 +68,34 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { prompt, mockupImage, mimeType } = bodyResult.data;
+        const { masterAssetId, prompt, mockupImage, mimeType } = bodyResult.data;
         logDtfTrace("dtf.extract-design", traceId, "payload_ready", {
             prompt_length: prompt.length,
             mime_type: mimeType,
             mockup_image_length: mockupImage.length,
+            master_asset_id: masterAssetId ?? null,
         });
+
+        if (masterAssetId) {
+            if (!access.profileId) {
+                return attachDtfTraceId(NextResponse.json(
+                    { error: "تعذر ربط أصل التصميم بحساب المستخدم." },
+                    { status: 401 }
+                ), traceId);
+            }
+            const master = await DesignAssetService.getMasterAsset(access.profileId, masterAssetId);
+            return attachDtfTraceId(NextResponse.json(master), traceId);
+        }
+
+        if (process.env.WASHA_DTF_LEGACY_EXTRACTION_ENABLED !== "true") {
+            return attachDtfTraceId(NextResponse.json(
+                {
+                    error: "مسار استخراج التصميم من الموكب متوقف. أعد توليد التصميم ليُحفظ كأصل شفاف مباشر.",
+                    code: "LEGACY_EXTRACTION_DISABLED",
+                },
+                { status: 410 }
+            ), traceId);
+        }
 
         const providerStartedAt = Date.now();
         const imageUrl = await AiStudioService.extractDesign(prompt, mockupImage, mimeType, {

@@ -202,13 +202,39 @@ export function hasOrderDeliverables(
     order: Pick<
         CustomDesignOrder,
         "result_design_url" | "result_mockup_url" | "result_pdf_url" | "modification_design_url"
-    >
+    > & Partial<Pick<
+        CustomDesignOrder,
+        | "dtf_mockup_url"
+        | "dtf_extracted_url"
+        | "design_request_id"
+        | "design_master_asset_id"
+        | "design_revision_id"
+        | "master_checksum"
+        | "print_asset_path"
+        | "asset_schema_version"
+        | "production_readiness_status"
+    >>
 ) {
+    if ((order.asset_schema_version ?? 0) >= 1) {
+        return Boolean(
+            order.design_request_id
+            && order.design_master_asset_id
+            && order.design_revision_id
+            && order.master_checksum
+            && order.print_asset_path
+            && order.production_readiness_status === "ready"
+            && order.dtf_mockup_url
+            && order.dtf_extracted_url
+        );
+    }
+
     return Boolean(
         order.result_design_url ||
         order.result_mockup_url ||
         order.result_pdf_url ||
-        order.modification_design_url
+        order.modification_design_url ||
+        order.dtf_mockup_url ||
+        order.dtf_extracted_url
     );
 }
 

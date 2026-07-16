@@ -15,7 +15,8 @@ describe('WASHA AI generation experience', () => {
 
   it('accepts supported generated image URLs and rejects malformed output', () => {
     expect(isUsableGeneratedImageUrl(validPngSource)).toBe(true);
-    expect(isUsableGeneratedImageUrl('https://cdn.example.com/mockup.webp')).toBe(false);
+    expect(isUsableGeneratedImageUrl('https://cdn.example.com/mockup.webp')).toBe(true);
+    expect(isUsableGeneratedImageUrl('https://replicate.delivery/output.png')).toBe(false);
     expect(isUsableGeneratedImageUrl('data:image/png;base64,AAAA')).toBe(false);
     expect(isUsableGeneratedImageUrl('data:text/plain;base64,AAAA')).toBe(false);
     expect(isUsableGeneratedImageUrl('')).toBe(false);
@@ -33,10 +34,12 @@ describe('WASHA AI generation experience', () => {
       garmentId: 'shirt', garmentType: 'تيشيرت', garmentColorId: 'black', garmentColor: 'أسود', garmentColorHex: '#111111',
       garmentSizeId: 'large', garmentSize: 'L', designMethod: 'text', designPosition: 'front_large', printOptionId: 'front',
       printPosition: 'chest', printSize: 'large', printPositionLabel: 'تصميم أمامي كبير', prompt: 'صقر هندسي', calligraphyText: '',
+      printScale: 100, printOffsetX: 0, printOffsetY: 0,
       referenceImage: null, referenceImageMimeType: null, styleId: 'geometric', style: 'هندسي', techniqueId: 'digital', technique: 'رقمي',
       paletteId: 'auto', palette: 'تلقائي', customPalette: '', removeBackground: true, avoidHardEdges: true,
     } as DesignState;
 
     expect(createGenerationFingerprint(state)).not.toBe(createGenerationFingerprint({ ...state, prompt: 'نخلة هندسية' }));
+    expect(createGenerationFingerprint(state)).not.toBe(createGenerationFingerprint({ ...state, printOffsetX: 10 }));
   });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -9,6 +9,7 @@ const {
     mockExtractDesign,
     mockLogActivity,
     mockGetWashaDtfErrorDetails,
+    mockGetMasterAsset,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockEnforceDtfRouteRateLimit: vi.fn(),
@@ -16,6 +17,7 @@ const {
     mockExtractDesign: vi.fn(),
     mockLogActivity: vi.fn(),
     mockGetWashaDtfErrorDetails: vi.fn(),
+    mockGetMasterAsset: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
@@ -27,6 +29,12 @@ vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
 vi.mock("@/app/api/washa-dtf-studio/services/ai-studio.service", () => ({
     AiStudioService: {
         extractDesign: mockExtractDesign,
+    },
+}));
+
+vi.mock("@/app/api/washa-dtf-studio/services/design-asset.service", () => ({
+    DesignAssetService: {
+        getMasterAsset: mockGetMasterAsset,
     },
 }));
 
@@ -43,6 +51,10 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
 import { POST } from "@/app/api/washa-dtf-studio/extract-design/route";
 
 describe("extract-design route", () => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
     beforeEach(() => {
         mockRequireDtfRouteAccess.mockReset();
         mockEnforceDtfRouteRateLimit.mockReset();
@@ -50,6 +62,8 @@ describe("extract-design route", () => {
         mockExtractDesign.mockReset();
         mockLogActivity.mockReset();
         mockGetWashaDtfErrorDetails.mockReset();
+        mockGetMasterAsset.mockReset();
+        vi.stubEnv("WASHA_DTF_LEGACY_EXTRACTION_ENABLED", "true");
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -72,6 +86,15 @@ describe("extract-design route", () => {
         mockGetWashaDtfErrorDetails.mockReturnValue({
             message: "خدمة Washa AI تحت ضغط مؤقت الآن. أعد المحاولة بعد قليل.",
             status: 503,
+        });
+        mockGetMasterAsset.mockResolvedValue({
+            masterAssetId: "22222222-2222-4222-8222-222222222222",
+            imageUrl: "https://cdn.example/design-master.png",
+            permanentStoragePath: "design-masters/profile/master/design-master.png",
+            masterChecksum: "a".repeat(64),
+            mimeType: "image/png",
+            width: 1024,
+            height: 1024,
         });
     });
 
@@ -133,6 +156,43 @@ describe("extract-design route", () => {
                 status: "success",
             })
         );
+    });
+
+    it("returns the stored immutable master without invoking an image model", async () => {
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                masterAssetId: "22222222-2222-4222-8222-222222222222",
+                prompt: "",
+                mockupImage: "",
+                mimeType: "image/png",
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            masterAssetId: "22222222-2222-4222-8222-222222222222",
+            imageUrl: "https://cdn.example/design-master.png",
+            masterChecksum: "a".repeat(64),
+        });
+        expect(mockGetMasterAsset).toHaveBeenCalledWith(
+            "profile_1",
+            "22222222-2222-4222-8222-222222222222"
+        );
+        expect(mockExtractDesign).not.toHaveBeenCalled();
+    });
+
+    it("disables generative extraction from mockups by default", async () => {
+        vi.stubEnv("WASHA_DTF_LEGACY_EXTRACTION_ENABLED", "false");
+
+        const response = await POST(new Request("http://localhost/api/dtf/extract") as NextRequest);
+
+        expect(response.status).toBe(410);
+        await expect(response.json()).resolves.toMatchObject({
+            code: "LEGACY_EXTRACTION_DISABLED",
+        });
+        expect(mockExtractDesign).not.toHaveBeenCalled();
     });
 
     it("returns a public provider failure", async () => {

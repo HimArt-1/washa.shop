@@ -57,6 +57,16 @@ export interface DtfStudioGarmentOption {
   aiReferenceFrontUrl: string | null;
   aiReferenceBackUrl: string | null;
   aiReferenceMode: DtfStudioGarmentAiReferenceMode;
+  mockupManifest?: Array<{
+    id: string;
+    colorId: string | null;
+    colorHex: string | null;
+    side: 'front' | 'back';
+    sourceType: 'reference' | 'generated_blank_garment';
+    printAreaId: string;
+    printArea: Record<string, unknown>;
+    colorizationMode: 'none' | 'verified';
+  }>;
   sortOrder: number;
   basePrice: number;
   pricing: {

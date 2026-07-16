@@ -245,13 +245,28 @@ export default function StepResult() {
     submitOrder,
     handleGenerate,
     state,
+    generationResult,
   } = useDesign();
 
   const [showTerms, setShowTerms] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [activePreviewImage, setActivePreviewImage] = useState<string | null>(null);
   const generation = useGenerationProgress(isGenerating);
   const resultState = mockupState ?? state;
   const cleanOutputEnabled = isCleanOutputEnabled(resultState);
+  const displayPreviewImage = activePreviewImage || mockupImage;
+
+  useEffect(() => {
+    if (!generationResult) {
+      setActivePreviewImage(null);
+      return;
+    }
+    setActivePreviewImage(
+      generationResult.placement.side === 'back'
+        ? generationResult.backPreviewUrl || generationResult.frontPreviewUrl
+        : generationResult.frontPreviewUrl || generationResult.backPreviewUrl
+    );
+  }, [generationResult]);
 
   // Derived garment color for ambient preview
   const garmentHex   = resultState.garmentColorHex || '#111111';
@@ -462,14 +477,14 @@ export default function StepResult() {
               {/* Image */}
               <div className="relative aspect-[4/3] w-full">
                 <img
-                  src={mockupImage}
+                  src={displayPreviewImage || mockupImage}
                   alt="نتيجة تصميم وشّى على القطعة المختارة"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
                 />
                 {/* Hover zoom hint */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end justify-center p-6">
                   <button
-                    onClick={() => setLightboxImage(mockupImage)}
+                    onClick={() => setLightboxImage(displayPreviewImage || mockupImage)}
                     className="px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 transition-colors flex items-center gap-2 border border-white/15"
                   >
                     <ZoomIn className="w-4 h-4" /> عرض بالحجم الكامل
@@ -486,13 +501,36 @@ export default function StepResult() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDownload(mockupImage, 'washa-mockup.png')}
+                  onClick={() => handleDownload(displayPreviewImage || mockupImage, 'washa-mockup.png')}
                   className="gap-2 rounded-xl shrink-0"
                 >
                   <Download className="w-4 h-4" /> تحميل الموكب
                 </Button>
               </div>
             </motion.div>
+
+            {generationResult?.frontPreviewUrl && generationResult?.backPreviewUrl ? (
+              <div className="flex justify-center gap-2" aria-label="اختيار جهة الموكب">
+                {[
+                  { label: 'الأمام', url: generationResult.frontPreviewUrl },
+                  { label: 'الخلف', url: generationResult.backPreviewUrl },
+                ].map((preview) => (
+                  <button
+                    key={preview.label}
+                    type="button"
+                    onClick={() => setActivePreviewImage(preview.url)}
+                    className={cn(
+                      'rounded-full border px-4 py-2 text-xs font-bold transition-colors',
+                      displayPreviewImage === preview.url
+                        ? 'border-washa-gold bg-washa-gold/10 text-washa-gold'
+                        : 'border-washa-border/45 text-washa-text-sec hover:border-washa-gold/35'
+                    )}
+                  >
+                    {preview.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             <section className="grid gap-px overflow-hidden rounded-xl border border-washa-border/30 bg-washa-border/30 sm:grid-cols-2" aria-label="ملخص التصميم">
               <div className="bg-washa-ivory px-4 py-3 text-right">
@@ -508,6 +546,10 @@ export default function StepResult() {
                 </p>
               </div>
             </section>
+
+            <p className="rounded-xl border border-emerald-700/15 bg-emerald-700/5 px-4 py-3 text-right text-xs leading-6 text-washa-text-sec">
+              يُستخدم نفس ملف التصميم المعتمد في المعاينة والطباعة. قد تختلف فقط إضاءة القماش وملمسه الظاهران في الموكب عن المنتج الفعلي.
+            </p>
 
             {/* ── Order CTA ── */}
             <motion.div

@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
         palette_id: bodyResult.data.paletteId ?? null,
         has_mockup_data_url: Boolean(bodyResult.data.mockupDataUrl),
         has_extracted_data_url: Boolean(bodyResult.data.extractedDataUrl),
+        design_request_id: bodyResult.data.designRequestId ?? null,
+        master_asset_id: bodyResult.data.masterAssetId ?? null,
         design_method: bodyResult.data.designMethod,
         print_option_id: bodyResult.data.printOptionId ?? null,
         print_position: bodyResult.data.printPosition ?? null,
@@ -102,7 +104,10 @@ export async function POST(request: NextRequest) {
     }
 
     const serviceStartedAt = Date.now();
-    const result = await DtfOrderService.prepareCartItem(bodyResult.data, userProfile, { traceId });
+    const result = await DtfOrderService.prepareCartItem(bodyResult.data, userProfile, {
+        traceId,
+        profileId: access.profileId,
+    });
     logDtfTrace("dtf.submit-order", traceId, "service_resolved", {
         duration_ms: Date.now() - serviceStartedAt,
         success: !result.error,

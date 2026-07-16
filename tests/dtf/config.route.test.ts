@@ -5,10 +5,12 @@ const {
     mockRequireDtfRouteAccess,
     mockGetWashaDtfStudioConfig,
     mockGetGenerationReadiness,
+    mockGetArtworkProviderReadiness,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockGetWashaDtfStudioConfig: vi.fn(),
     mockGetGenerationReadiness: vi.fn(),
+    mockGetArtworkProviderReadiness: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
@@ -23,6 +25,10 @@ vi.mock("@/lib/washa-dtf-generation-readiness", () => ({
     getWashaDtfGenerationReadiness: mockGetGenerationReadiness,
 }));
 
+vi.mock("@/lib/washa-artwork/provider", () => ({
+    getIsolatedArtworkProviderReadiness: mockGetArtworkProviderReadiness,
+}));
+
 import { GET } from "@/app/api/washa-dtf-studio/config/route";
 
 describe("dtf config route", () => {
@@ -30,6 +36,7 @@ describe("dtf config route", () => {
         mockRequireDtfRouteAccess.mockReset();
         mockGetWashaDtfStudioConfig.mockReset();
         mockGetGenerationReadiness.mockReset();
+        mockGetArtworkProviderReadiness.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: { allowed: true },
@@ -42,6 +49,11 @@ describe("dtf config route", () => {
             enabled: false,
             code: "disabled",
             message: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
+        });
+        mockGetArtworkProviderReadiness.mockReturnValue({
+            ready: true,
+            provider: "openai",
+            model: "gpt-image-1",
         });
     });
 

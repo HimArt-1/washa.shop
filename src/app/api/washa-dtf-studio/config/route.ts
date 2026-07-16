@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getWashaDtfStudioConfig } from "@/lib/washa-dtf-config";
 import { requireDtfRouteAccess } from "../utils/route-runtime";
 import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
+import { getIsolatedArtworkProviderReadiness } from "@/lib/washa-artwork/provider";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,21 @@ export async function GET() {
 
     try {
         const config = await getWashaDtfStudioConfig();
-        const generation = getWashaDtfGenerationReadiness();
+        const baseGeneration = getWashaDtfGenerationReadiness();
+        const artworkProvider = getIsolatedArtworkProviderReadiness();
+        const generation = baseGeneration.enabled && !artworkProvider.ready
+            ? {
+                enabled: false,
+                code: "provider_not_configured" as const,
+                message: artworkProvider.message,
+                provider: "openai",
+            }
+            : baseGeneration.enabled && artworkProvider.ready
+                ? {
+                    ...baseGeneration,
+                    provider: `${artworkProvider.provider}:${artworkProvider.model}`,
+                }
+                : baseGeneration;
         return NextResponse.json({ ...config, generation }, {
             headers: {
                 "Cache-Control": "no-store",
