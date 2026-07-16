@@ -24,13 +24,19 @@ interface GenerationPreferences {
   garmentReferenceImageMimeType?: string;
   garmentReferenceSide?: 'front' | 'back';
   referenceImageMode?: ReferenceImageMode;
-  /** The UI verified Clerk immediately before this generation request. */
-  authenticatedSession?: boolean;
+  /** Fresh Clerk session token minted immediately before this request. */
+  sessionToken?: string;
+  /** Stable identifier for this single user-triggered generation attempt. */
+  requestId?: string;
 }
 
 type GenerationApiResponse = {
+  ok?: boolean;
   imageUrl?: string | null;
   error?: string;
+  message?: string;
+  code?: string;
+  requestId?: string;
   freeRemaining?: unknown;
   paidBalance?: unknown;
   guest?: unknown;
@@ -274,33 +280,33 @@ export async function generateMockup(
       };
     }
 
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (preferences.authenticatedSession) {
-      headers['X-Washa-Auth-State'] = 'authenticated';
+    const sessionToken = preferences.sessionToken?.trim();
+    if (!sessionToken) {
+      throw createPublicApiError(
+        'يلزم تسجيل الدخول لإكمال العملية.',
+        'generation',
+        undefined,
+        { ok: false, code: 'AUTH_REQUIRED' },
+      );
     }
 
-    let data: GenerationApiResponse | undefined;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const response = await fetch(`${API_BASE_URL}/generate-mockup`, {
-          method: 'POST',
-          headers,
-          credentials: 'same-origin',
-          cache: 'no-store',
-          body: JSON.stringify(body),
-        });
-        data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
-        break;
-      } catch (requestError) {
-        const code = (requestError as { data?: { code?: string } })?.data?.code;
-        if (attempt === 0 && code === 'session_unavailable') {
-          continue;
-        }
-        throw requestError;
-      }
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionToken}`,
+    };
+    if (preferences.requestId) {
+      headers['X-Request-Id'] = preferences.requestId;
     }
 
-    if (!data) throw createPublicApiError(null, 'generation');
+    const response = await fetch(`${API_BASE_URL}/generate-mockup`, {
+      method: 'POST',
+      headers,
+      credentials: 'omit',
+      cache: 'no-store',
+      body: JSON.stringify(body),
+    });
+    const data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
+
     if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
     return typeof data?.imageUrl === 'string' ? data.imageUrl : null;

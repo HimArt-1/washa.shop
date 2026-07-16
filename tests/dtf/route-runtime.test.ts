@@ -27,6 +27,7 @@ vi.mock("@/lib/request-client", () => ({
 }));
 
 import {
+    claimDtfGenerationRequest,
     enforceDtfRouteRateLimit,
     parseAndValidateDtfJson,
     requireDtfRouteAccess,
@@ -145,6 +146,25 @@ describe("dtf route runtime", () => {
 
         expect(response).toBeNull();
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("claims generation idempotency through the distributed limiter", async () => {
+        mockCheckRateLimit.mockResolvedValue({
+            success: true,
+            remaining: 0,
+            resetAt: Date.now() + 300_000,
+        });
+
+        await expect(claimDtfGenerationRequest(
+            "profile_1",
+            "request_123",
+        )).resolves.toBe(true);
+
+        expect(mockCheckRateLimit).toHaveBeenCalledWith(
+            "dtf-generation-idempotency-profile_1-request_123",
+            1,
+            300_000
+        );
     });
 
     it("returns a 429 response with reset header when the threshold is hit", async () => {

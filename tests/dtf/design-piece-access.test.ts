@@ -63,6 +63,11 @@ describe("design-piece access", () => {
             status: 401,
         });
 
+        expect(getDesignPieceAccessFailure("auth_unavailable")).toEqual({
+            message: "تعذّر التحقق من جلسة الدخول مؤقتاً.",
+            status: 503,
+        });
+
         expect(getDesignPieceAccessFailure("guest_needs_approval")).toEqual({
             message: "غير مصرح لك باستخدام استوديو DTF",
             status: 403,
@@ -95,6 +100,39 @@ describe("design-piece access", () => {
             allowed: true,
             reason: "public_access",
             role: "guest",
+        });
+    });
+
+    it("classifies a Clerk runtime failure separately from a signed-out session", async () => {
+        mockAuth.mockRejectedValue(new Error("Clerk JWKS temporarily unavailable"));
+
+        await expect(resolveDesignPieceAccess()).resolves.toEqual({
+            allowed: false,
+            reason: "auth_unavailable",
+        });
+    });
+
+    it("classifies a Clerk JWKS resolution failure even when auth returns signed out", async () => {
+        mockAuth.mockResolvedValue({
+            userId: null,
+            debug: () => ({ reason: "jwk-remote-failed-to-load" }),
+        });
+
+        await expect(resolveDesignPieceAccess()).resolves.toEqual({
+            allowed: false,
+            reason: "auth_unavailable",
+        });
+    });
+
+    it("treats an expired Clerk session as signed out instead of a service failure", async () => {
+        mockAuth.mockResolvedValue({
+            userId: null,
+            debug: () => ({ reason: "token-expired" }),
+        });
+
+        await expect(resolveDesignPieceAccess()).resolves.toEqual({
+            allowed: false,
+            reason: "not_signed_in",
         });
     });
 

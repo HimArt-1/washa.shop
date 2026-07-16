@@ -33,17 +33,17 @@ describe("quota-status route", () => {
         });
     });
 
-    it("does not replace an authenticated balance with transient guest quota", async () => {
+    it("returns 401 instead of treating a missing authenticated identity as transient", async () => {
         const request = new Request("http://localhost/api/washa-dtf-studio/quota-status", {
             headers: { "x-washa-auth-state": "authenticated" },
         }) as NextRequest;
 
         const response = await GET(request);
 
-        expect(response.status).toBe(503);
+        expect(response.status).toBe(401);
         await expect(response.json()).resolves.toMatchObject({
-            code: "session_unavailable",
-            retryable: true,
+            code: "AUTH_REQUIRED",
+            message: "يلزم تسجيل الدخول لإكمال العملية.",
             guest: false,
         });
         expect(mockGetQuotaStatus).not.toHaveBeenCalled();

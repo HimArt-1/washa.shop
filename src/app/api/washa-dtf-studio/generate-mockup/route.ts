@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateMockupSchema } from "../validators/ai-studio.schema";
 import { getWashaDtfErrorDetails } from "@/lib/washa-dtf-studio";
-import { getRequestClientIdentifier } from "@/lib/request-client";
 import { AiStudioService } from "../services/ai-studio.service";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import {
+    claimDtfGenerationRequest,
     enforceDtfRouteRateLimit,
     parseAndValidateDtfJson,
-    rejectUnexpectedGuestAccess,
     requireDtfRouteAccess,
 } from "../utils/route-runtime";
 import {
@@ -21,6 +20,7 @@ import {
     recordWashaDtfGenerationFailure,
     recordWashaDtfGenerationSuccess,
 } from "@/lib/washa-dtf-generation-readiness";
+import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -30,105 +30,235 @@ const GENERATE_MOCKUP_TIMEOUT_MS = (() => {
     return Math.min(Math.max(parsed, 15_000), 180_000);
 })();
 
+const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
+
+function structuredErrorResponse(
+    requestId: string,
+    status: number,
+    code: string,
+    message: string,
+    options: {
+        retryable?: boolean;
+        headers?: HeadersInit;
+    } = {}
+) {
+    return attachDtfTraceId(NextResponse.json(
+        {
+            ok: false,
+            code,
+            message,
+            requestId,
+            ...(options.retryable === undefined ? {} : { retryable: options.retryable }),
+        },
+        {
+            status,
+            headers: {
+                "Cache-Control": "private, no-store",
+                "X-Washa-Error-Code": code,
+                ...(options.headers || {}),
+            },
+        }
+    ), requestId);
+}
+
+function accessErrorResponder(requestId: string) {
+    return (
+        _message: string,
+        _status: number,
+        _logContext?: unknown,
+        reason?: DesignPieceAccessResult["reason"]
+    ) => {
+        if (reason === "auth_unavailable") {
+            return structuredErrorResponse(
+                requestId,
+                503,
+                "AUTH_TEMPORARILY_UNAVAILABLE",
+                "تعذّر التحقق من جلسة الدخول مؤقتاً.",
+                { retryable: true }
+            );
+        }
+
+        if (reason === "supabase_error") {
+            return structuredErrorResponse(
+                requestId,
+                503,
+                "USER_SERVICE_UNAVAILABLE",
+                "تعذّر التحقق من بيانات المستخدم مؤقتاً.",
+                { retryable: true }
+            );
+        }
+
+        if (reason === "identity_conflict") {
+            return structuredErrorResponse(
+                requestId,
+                409,
+                "IDENTITY_CONFLICT",
+                "تعذّر ربط حساب المستخدم تلقائياً.",
+                { retryable: false }
+            );
+        }
+
+        if (reason === "guest_needs_approval") {
+            return structuredErrorResponse(
+                requestId,
+                403,
+                "AUTH_FORBIDDEN",
+                "لا يملك المستخدم صلاحية إكمال العملية.",
+                { retryable: false }
+            );
+        }
+
+        return structuredErrorResponse(
+            requestId,
+            401,
+            "AUTH_REQUIRED",
+            "يلزم تسجيل الدخول لإكمال العملية.",
+            { retryable: false }
+        );
+    };
+}
+
 export async function POST(request: NextRequest) {
     const traceId = resolveDtfTraceId(request);
     const routeStartedAt = Date.now();
-    logDtfTrace("dtf.generate-mockup", traceId, "request_started", {
+    logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "request_started", {
         method: "POST",
+        route: GENERATE_MOCKUP_ROUTE,
     });
 
-    const accessStartedAt = Date.now();
-    const accessResult = await requireDtfRouteAccess({ allowPublicGeneration: true });
-    logDtfTrace("dtf.generate-mockup", traceId, "access_resolved", {
-        duration_ms: Date.now() - accessStartedAt,
-        allowed: Boolean(accessResult.access?.allowed),
-        role: accessResult.access?.role ?? null,
-        reason: accessResult.access?.reason ?? null,
-    });
-    if (accessResult.response) {
-        return attachDtfTraceId(accessResult.response, traceId);
-    }
-    const access = accessResult.access;
-
-    const unexpectedGuestResponse = rejectUnexpectedGuestAccess(request, access);
-    if (unexpectedGuestResponse) {
-        logDtfTrace("dtf.generate-mockup", traceId, "authenticated_session_unavailable", {
-            total_duration_ms: Date.now() - routeStartedAt,
+    try {
+        const validationStartedAt = Date.now();
+        const bodyResult = await parseAndValidateDtfJson(request, generateMockupSchema, {
+            invalidJsonMessage: "طلب غير صالح (JSON غير مقروء)",
+            fallbackValidationMessage: "بيانات الطلب غير صالحة",
+            errorResponder: (message) => structuredErrorResponse(
+                traceId,
+                400,
+                "INVALID_REQUEST",
+                message,
+                { retryable: false }
+            ),
         });
-        return attachDtfTraceId(unexpectedGuestResponse, traceId);
-    }
-
-    const rateLimitStartedAt = Date.now();
-    const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
-        keyPrefix: "gen",
-        limit: 6,
-        windowMs: 60_000,
-        message: "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً.",
-    });
-    logDtfTrace("dtf.generate-mockup", traceId, "rate_limit_checked", {
-        duration_ms: Date.now() - rateLimitStartedAt,
-        blocked: Boolean(rateLimitResponse),
-    });
-    if (rateLimitResponse) {
-        return attachDtfTraceId(rateLimitResponse, traceId);
-    }
-
-    const validationStartedAt = Date.now();
-    const bodyResult = await parseAndValidateDtfJson(request, generateMockupSchema, {
-        invalidJsonMessage: "طلب غير صالح (JSON غير مقروء)",
-        fallbackValidationMessage: "بيانات الطلب غير صالحة",
-    });
-    logDtfTrace("dtf.generate-mockup", traceId, "payload_validated", {
-        duration_ms: Date.now() - validationStartedAt,
-        valid: Boolean(bodyResult.data),
-    });
-    if (bodyResult.response) {
-        return attachDtfTraceId(bodyResult.response, traceId);
-    }
-
-    const { prompt, referenceImage, garmentReferenceImage } = bodyResult.data;
-    logDtfTrace("dtf.generate-mockup", traceId, "payload_ready", {
-        prompt_length: prompt.length,
-        has_reference_image: Boolean(referenceImage?.base64),
-        has_garment_reference_image: Boolean(garmentReferenceImage?.base64),
-        reference_mime_type: referenceImage?.mimeType ?? null,
-        garment_reference_mime_type: garmentReferenceImage?.mimeType ?? null,
-    });
-
-    const generationReadiness = getWashaDtfGenerationReadiness();
-    if (!generationReadiness.enabled) {
-        logDtfTrace("dtf.generate-mockup", traceId, "generation_unavailable", {
-            readiness_code: generationReadiness.code,
-            provider: generationReadiness.provider ?? null,
-            retry_after_seconds: generationReadiness.retryAfterSeconds ?? null,
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "payload_validated", {
+            durationMs: Date.now() - validationStartedAt,
+            valid: Boolean(bodyResult.data),
+            statusCode: bodyResult.data ? 200 : 400,
+            errorCode: bodyResult.data ? null : "INVALID_REQUEST",
         });
-        return attachDtfTraceId(NextResponse.json(
-            {
-                error: generationReadiness.message,
-                code: "generation_unavailable",
-                retryable: generationReadiness.code === "temporarily_unavailable",
-            },
-            {
-                status: 503,
-                headers: generationReadiness.retryAfterSeconds
-                    ? { "Retry-After": String(generationReadiness.retryAfterSeconds) }
-                    : undefined,
-            }
-        ), traceId);
-    }
+        if (bodyResult.response) {
+            return attachDtfTraceId(bodyResult.response, traceId);
+        }
 
-    const quotaStartedAt = Date.now();
-    const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
-        guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
-    });
-    logDtfTrace("dtf.generate-mockup", traceId, "quota_checked", {
-        duration_ms: Date.now() - quotaStartedAt,
-        allowed: quota.allowed,
-        tracked: quota.tracked,
-        remaining: quota.remaining,
-        used: quota.used,
-    });
-    if (!quota.allowed) {
+        const { prompt, referenceImage, garmentReferenceImage } = bodyResult.data;
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "payload_ready", {
+            promptLength: prompt.length,
+            hasReferenceImage: Boolean(referenceImage?.base64),
+            hasGarmentReferenceImage: Boolean(garmentReferenceImage?.base64),
+        });
+
+        const accessStartedAt = Date.now();
+        const accessResult = await requireDtfRouteAccess({
+            allowPublicGeneration: false,
+            errorResponder: accessErrorResponder(traceId),
+        });
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "access_resolved", {
+            durationMs: Date.now() - accessStartedAt,
+            authState: accessResult.access?.allowed ? "authenticated" : "denied",
+            userIdPresent: Boolean(accessResult.access?.clerkId),
+            role: accessResult.access?.role ?? null,
+            reason: accessResult.access?.reason ?? null,
+            statusCode: accessResult.response?.status ?? 200,
+            errorCode: accessResult.response?.headers.get("X-Washa-Error-Code") ?? null,
+        });
+        if (accessResult.response) {
+            return attachDtfTraceId(accessResult.response, traceId);
+        }
+        const access = accessResult.access;
+
+        const suppliedRequestId = request.headers.get("x-request-id")?.trim();
+        if (suppliedRequestId && suppliedRequestId !== traceId) {
+            return structuredErrorResponse(
+                traceId,
+                400,
+                "INVALID_REQUEST",
+                "معرّف الطلب غير صالح.",
+                { retryable: false }
+            );
+        }
+
+        if (
+            suppliedRequestId
+            && access.profileId
+            && !await claimDtfGenerationRequest(access.profileId, traceId)
+        ) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "duplicate_request_blocked", {
+                authState: "authenticated",
+                userIdPresent: true,
+                statusCode: 409,
+                errorCode: "DUPLICATE_REQUEST",
+                durationMs: Date.now() - routeStartedAt,
+            });
+            return structuredErrorResponse(
+                traceId,
+                409,
+                "DUPLICATE_REQUEST",
+                "هذا الطلب قيد التنفيذ أو تم استلامه مسبقاً.",
+                { retryable: false }
+            );
+        }
+
+        const rateLimitStartedAt = Date.now();
+        const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
+            keyPrefix: "gen",
+            limit: 6,
+            windowMs: 60_000,
+            message: "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً.",
+        });
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "rate_limit_checked", {
+            durationMs: Date.now() - rateLimitStartedAt,
+            blocked: Boolean(rateLimitResponse),
+            statusCode: rateLimitResponse?.status ?? 200,
+            errorCode: rateLimitResponse ? "RATE_LIMITED" : null,
+        });
+        if (rateLimitResponse) {
+            return attachDtfTraceId(rateLimitResponse, traceId);
+        }
+
+        const generationReadiness = getWashaDtfGenerationReadiness();
+        if (!generationReadiness.enabled) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_unavailable", {
+                provider: generationReadiness.provider ?? null,
+                statusCode: 503,
+                errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
+            });
+            return structuredErrorResponse(
+                traceId,
+                503,
+                "IMAGE_PROVIDER_UNAVAILABLE",
+                generationReadiness.message,
+                {
+                    retryable: generationReadiness.code === "temporarily_unavailable",
+                    headers: generationReadiness.retryAfterSeconds
+                        ? { "Retry-After": String(generationReadiness.retryAfterSeconds) }
+                        : undefined,
+                }
+            );
+        }
+
+        const quotaStartedAt = Date.now();
+        const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
+            guestIdentifier: null,
+        });
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_checked", {
+            durationMs: Date.now() - quotaStartedAt,
+            allowed: quota.allowed,
+            tracked: quota.tracked,
+            remaining: quota.remaining,
+            used: quota.used,
+            statusCode: quota.allowed ? 200 : quota.reason === "quota_unavailable" ? 503 : 403,
+            errorCode: quota.allowed ? null : quota.reason ?? "quota_exceeded",
+        });
+        if (!quota.allowed) {
         const telemetryStartedAt = Date.now();
         const quotaUnavailable = quota.reason === "quota_unavailable";
         await DtfTelemetryService.logActivity({
@@ -144,7 +274,7 @@ export async function POST(request: NextRequest) {
                 quotaReason: quota.reason ?? null,
             },
         });
-        logDtfTrace("dtf.generate-mockup", traceId, "quota_exceeded_logged", {
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_exceeded_logged", {
             duration_ms: Date.now() - telemetryStartedAt,
             total_duration_ms: Date.now() - routeStartedAt,
         });
@@ -184,10 +314,10 @@ export async function POST(request: NextRequest) {
             },
             { status: 403 }
         ), traceId);
-    }
+        }
 
-    let imageUrl: string;
-    try {
+        let imageUrl: string;
+        try {
         const providerStartedAt = Date.now();
         imageUrl = await AiStudioService.generateMockup(prompt, referenceImage, {
             traceId,
@@ -195,30 +325,35 @@ export async function POST(request: NextRequest) {
             garmentReferenceImage,
         });
         recordWashaDtfGenerationSuccess();
-        logDtfTrace("dtf.generate-mockup", traceId, "provider_completed", {
-            duration_ms: Date.now() - providerStartedAt,
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {
+            provider: generationReadiness.provider ?? "configured",
+            durationMs: Date.now() - providerStartedAt,
+            statusCode: 200,
+            errorCode: null,
         });
 
-    } catch (error) {
-        console.error("[washa-dtf-studio.generate-mockup]", { traceId, error });
+        } catch (error) {
         const handled = getWashaDtfErrorDetails(error);
         if (handled.status === 429 || handled.status >= 500) {
             recordWashaDtfGenerationFailure(error);
         }
-        logDtfTrace("dtf.generate-mockup", traceId, "provider_failed", {
-            handled_status: handled.status,
-            handled_message: handled.message,
-            total_duration_ms: Date.now() - routeStartedAt,
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_failed", {
+            provider: generationReadiness.provider ?? "configured",
+            statusCode: handled.status,
+            errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
+            durationMs: Date.now() - routeStartedAt,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+            errorMessage: handled.message.slice(0, 300),
         });
 
         let quotaReleased = !quota.tracked;
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
             quotaReleased = await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
-                guestIdentifier: access.role === "guest" ? getRequestClientIdentifier(request) : null,
+                guestIdentifier: null,
             });
-            logDtfTrace("dtf.generate-mockup", traceId, "quota_released", {
-                duration_ms: Date.now() - releaseStartedAt,
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_released", {
+                durationMs: Date.now() - releaseStartedAt,
                 source: quota.source,
                 released: quotaReleased,
             });
@@ -236,26 +371,34 @@ export async function POST(request: NextRequest) {
                 quotaDate: quota.quotaDate,
             },
         });
-        logDtfTrace("dtf.generate-mockup", traceId, "failure_logged", {
-            duration_ms: Date.now() - telemetryStartedAt,
-            total_duration_ms: Date.now() - routeStartedAt,
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "failure_logged", {
+            durationMs: Date.now() - telemetryStartedAt,
+            totalDurationMs: Date.now() - routeStartedAt,
         });
 
         const quotaReleaseFailed = quota.tracked && !quotaReleased;
-        return attachDtfTraceId(NextResponse.json(
-            quotaReleaseFailed
-                ? {
-                    error: "تعذر إنشاء التصميم الآن. لم نتمكن من تأكيد استرجاع الحصة؛ أعد المحاولة يدويًا بعد التحقق من رصيدك.",
-                    code: "quota_release_failed",
-                    retryable: false,
-                }
-                : { error: DTF_PUBLIC_GENERATION_ERROR },
-            { status: handled.status }
-        ), traceId);
-    }
+        if (quotaReleaseFailed) {
+            return structuredErrorResponse(
+                traceId,
+                500,
+                "INTERNAL_ERROR",
+                "تعذر إنشاء التصميم ولم نتمكن من تأكيد استرجاع الحصة. راجع رصيدك قبل إعادة المحاولة.",
+                { retryable: false }
+            );
+        }
 
-    const telemetryStartedAt = Date.now();
-    try {
+        const providerStatus = handled.status === 429 || handled.status >= 500 ? 503 : 502;
+        return structuredErrorResponse(
+            traceId,
+            providerStatus,
+            "IMAGE_PROVIDER_UNAVAILABLE",
+            DTF_PUBLIC_GENERATION_ERROR,
+            { retryable: providerStatus === 503 }
+        );
+        }
+
+        const telemetryStartedAt = Date.now();
+        try {
         await DtfTelemetryService.logActivity({
             profileId: access.profileId,
             clerkId: access.clerkId,
@@ -271,24 +414,46 @@ export async function POST(request: NextRequest) {
                 quotaDate: quota.quotaDate,
             },
         });
-        logDtfTrace("dtf.generate-mockup", traceId, "success_logged", {
-            duration_ms: Date.now() - telemetryStartedAt,
-            total_duration_ms: Date.now() - routeStartedAt,
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "success_logged", {
+            durationMs: Date.now() - telemetryStartedAt,
+            totalDurationMs: Date.now() - routeStartedAt,
         });
-    } catch (error) {
-        console.error("[washa-dtf-studio.generate-mockup] success telemetry failed", { traceId, error });
-        logDtfTrace("dtf.generate-mockup", traceId, "success_telemetry_failed", {
-            duration_ms: Date.now() - telemetryStartedAt,
-            total_duration_ms: Date.now() - routeStartedAt,
+        } catch (error) {
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "success_telemetry_failed", {
+            durationMs: Date.now() - telemetryStartedAt,
+            totalDurationMs: Date.now() - routeStartedAt,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+            errorMessage: error instanceof Error ? error.message.slice(0, 300) : "Unknown telemetry error",
         });
-    }
+        }
 
-    return attachDtfTraceId(NextResponse.json({
-        imageUrl,
-        remainingPoints: quota.tracked ? quota.remaining : null,
-        freeRemaining: quota.tracked ? quota.freeRemaining : null,
-        paidBalance: quota.tracked ? quota.paidBalance : null,
-        consumedSource: quota.tracked ? quota.source : null,
-        guest: access.role === "guest",
-    }), traceId);
+        return attachDtfTraceId(NextResponse.json({
+            ok: true,
+            requestId: traceId,
+            imageUrl,
+            remainingPoints: quota.tracked ? quota.remaining : null,
+            freeRemaining: quota.tracked ? quota.freeRemaining : null,
+            paidBalance: quota.tracked ? quota.paidBalance : null,
+            consumedSource: quota.tracked ? quota.source : null,
+            guest: false,
+        }), traceId);
+    } catch (error) {
+        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "internal_error", {
+            authState: "unknown",
+            userIdPresent: false,
+            provider: null,
+            statusCode: 500,
+            errorCode: "INTERNAL_ERROR",
+            durationMs: Date.now() - routeStartedAt,
+            errorName: error instanceof Error ? error.name : "UnknownError",
+            errorMessage: error instanceof Error ? error.message.slice(0, 300) : "Unknown server error",
+        });
+        return structuredErrorResponse(
+            traceId,
+            500,
+            "INTERNAL_ERROR",
+            "حدث خطأ داخلي غير متوقع. حاول مرة أخرى لاحقاً.",
+            { retryable: false }
+        );
+    }
 }

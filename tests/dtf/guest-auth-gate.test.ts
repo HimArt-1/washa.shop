@@ -104,21 +104,21 @@ describe("WASHA AI guest authentication gate", () => {
 describe("WASHA AI session resolution", () => {
     afterEach(() => vi.unstubAllGlobals());
 
-    it("rechecks one transient signed-out response before treating the user as a guest", async () => {
-        const fetchMock = vi.fn(async () => new Response(JSON.stringify(
-            fetchMock.mock.calls.length === 1
-                ? { authenticated: false, canGenerate: false, reason: "not_signed_in" }
-                : { authenticated: true, canGenerate: true, role: "subscriber" }
-        ), {
+    it("does not repeat a signed-out session check", async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+            authenticated: false,
+            canGenerate: false,
+            reason: "not_signed_in",
+        }), {
             status: 200,
             headers: { "content-type": "application/json" },
         }));
         vi.stubGlobal("fetch", fetchMock);
 
         await expect(fetchWashaAiSession()).resolves.toMatchObject({
-            authenticated: true,
-            canGenerate: true,
+            authenticated: false,
+            canGenerate: false,
         });
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });

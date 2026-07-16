@@ -1,12 +1,21 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import {defineConfig, loadEnv} from 'vite';
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  const rootEnv = loadEnv(mode, path.resolve(__dirname, '..'), '');
+  const clerkPublishableKey =
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    rootEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+    '';
+
   return {
     base: '/design/washa-ai/app/',
     plugins: [react(), tailwindcss()],
+    define: {
+      'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
+    },
     build: {
       rollupOptions: {
         output: {
