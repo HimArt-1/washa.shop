@@ -114,7 +114,10 @@ html {
   /* Prevent iOS auto-zoom on inputs */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
+  min-height: 100%;
+  overflow-x: clip;
+  scroll-padding-top: 5.5rem;
+  scroll-padding-bottom: calc(var(--wizard-navigation-height, 6rem) + 1.5rem);
 }
 
 h1 {
@@ -148,20 +151,21 @@ h5, h6 {
 
 body {
   margin: 0;
+  min-height: 100dvh;
   background-color: var(--color-washa-bg);
   color: var(--color-washa-text);
   font-family: var(--font-sans);
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-  /* Prevent elastic bounce scrolling on iOS that disrupts fixed overlays */
-  overscroll-behavior-y: none;
+  overflow-x: clip;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y pinch-zoom;
 }
 
 #root {
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -564,15 +568,15 @@ a {
   align-items: flex-start;
   justify-content: center;
   padding: 1.35rem 0.75rem;
-  /* Keep long cards fully scrollable above the fixed wizard navigation. */
-  padding-bottom: max(9.5rem, calc(env(safe-area-inset-bottom, 0px) + 8.75rem));
+  /* ResizeObserver keeps this clearance equal to the real fixed navigation height. */
+  padding-bottom: calc(var(--wizard-navigation-height, 6rem) + 1.5rem);
   position: relative;
 }
 
 @media (min-width: 640px) {
   .wizard-step-container {
     padding: 1.75rem 1rem;
-    padding-bottom: max(7.75rem, calc(env(safe-area-inset-bottom, 0px) + 6.75rem));
+    padding-bottom: calc(var(--wizard-navigation-height, 6rem) + 1.5rem);
   }
 }
 

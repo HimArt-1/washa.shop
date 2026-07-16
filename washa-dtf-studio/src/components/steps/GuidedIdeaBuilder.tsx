@@ -1,5 +1,6 @@
 import { AlertCircle, Ban, CheckCircle2, Heart, MessageSquareText, Sparkles, Target, Wand2 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useEffect, useRef } from 'react';
 import type { GuidedIdeaBrief } from '../../types';
 import { assessGuidedIdea, buildCreativeDirections, buildGuidedIdeaPrompt } from '../../lib/ideaBuilder';
 import { cn } from '../../lib/utils';
@@ -9,6 +10,21 @@ import { Textarea } from '../ui/Textarea';
 
 const MOOD_OPTIONS = ['جريء وواثق', 'هادئ وفاخر', 'مرح وحيوي', 'غامض وعميق', 'حماسي وسريع', 'شاعري وحالم'];
 const SUBJECT_STARTERS = ['صقر عربي', 'نخلة هندسية', 'موجة تجريدية', 'زخرفة نجدية'];
+
+function revealAfterLayout(getElement: () => HTMLElement | null) {
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      const element = getElement();
+      if (!element) return;
+
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      element.scrollIntoView({
+        behavior: reduceMotion ? 'auto' : 'smooth',
+        block: 'center',
+      });
+    });
+  });
+}
 
 type GuidedIdeaBuilderProps = {
   brief: GuidedIdeaBrief;
@@ -31,6 +47,9 @@ export default function GuidedIdeaBuilder({
   onCompose,
   onEnhance,
 }: GuidedIdeaBuilderProps) {
+  const composeActionRef = useRef<HTMLDivElement | null>(null);
+  const finalPromptRef = useRef<HTMLDivElement | null>(null);
+  const revealPromptAfterComposeRef = useRef(false);
   const quality = assessGuidedIdea(brief);
   const creativeDirections = buildCreativeDirections(brief);
   const hasSubject = brief.subject.trim().length >= 3;
@@ -42,8 +61,23 @@ export default function GuidedIdeaBuilder({
 
   const composePrompt = () => {
     const composed = buildGuidedIdeaPrompt(brief);
-    if (composed) onCompose(composed);
+    if (!composed) return;
+
+    revealPromptAfterComposeRef.current = true;
+    onCompose(composed);
+
+    if (prompt === composed) {
+      revealPromptAfterComposeRef.current = false;
+      revealAfterLayout(() => finalPromptRef.current);
+    }
   };
+
+  useEffect(() => {
+    if (!prompt || !revealPromptAfterComposeRef.current) return;
+
+    revealPromptAfterComposeRef.current = false;
+    revealAfterLayout(() => finalPromptRef.current);
+  }, [prompt]);
 
   return (
     <div className="space-y-5">
@@ -183,7 +217,10 @@ export default function GuidedIdeaBuilder({
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.06, duration: 0.28 }}
-                      onClick={() => updateField('direction', direction.id)}
+                      onClick={() => {
+                        updateField('direction', direction.id);
+                        revealAfterLayout(() => composeActionRef.current);
+                      }}
                       className={cn(
                         'group min-h-[9.5rem] rounded-2xl border p-4 text-right transition-[border-color,background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-washa-gold/40 active:scale-[0.985]',
                         selected
@@ -233,19 +270,22 @@ export default function GuidedIdeaBuilder({
         </div>
       </div>
 
-      <Button
-        type="button"
-        variant="gold"
-        onClick={composePrompt}
-        disabled={!canCompose}
-        className="h-12 w-full gap-2 rounded-xl text-sm"
-      >
-        <Wand2 className="h-4 w-4" aria-hidden="true" />
-        {isStale && prompt ? 'تحديث الوصف الاحترافي' : 'صياغة الوصف الاحترافي'}
-      </Button>
+      <div ref={composeActionRef}>
+        <Button
+          type="button"
+          variant="gold"
+          onClick={composePrompt}
+          disabled={!canCompose}
+          className="h-12 w-full gap-2 rounded-xl text-sm"
+        >
+          <Wand2 className="h-4 w-4" aria-hidden="true" />
+          {isStale && prompt ? 'تحديث الوصف الاحترافي' : 'صياغة الوصف الاحترافي'}
+        </Button>
+      </div>
 
       {prompt ? (
         <motion.div
+          ref={finalPromptRef}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 160, damping: 22 }}
