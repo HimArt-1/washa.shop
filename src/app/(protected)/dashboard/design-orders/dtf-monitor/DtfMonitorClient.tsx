@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactElement } from "react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 import Image from "next/image";
@@ -31,7 +31,7 @@ type StatusTone = "success" | "error" | "warning" | "neutral";
 function getStatusMeta(status: string): {
     label: string;
     tone: StatusTone;
-    icon: JSX.Element;
+    icon: ReactElement;
     chipClass: string;
     softClass: string;
 } {

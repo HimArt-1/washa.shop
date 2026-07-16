@@ -31,7 +31,7 @@ describe('WASHA AI generation placement instructions', () => {
   });
 
   it('sends the Clerk session token once for an authenticated generation', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
       imageUrl: 'data:image/png;base64,AAAA',
     }), {
       status: 200,
