@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 const {
     mockRequireDtfRouteAccess,
     mockClaimDtfGenerationRequest,
+    mockCompleteDtfGenerationRequest,
+    mockFailDtfGenerationRequest,
     mockEnforceDtfRouteRateLimit,
     mockParseAndValidateDtfJson,
     mockGenerateMockup,
@@ -19,6 +21,8 @@ const {
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
+    mockCompleteDtfGenerationRequest: vi.fn(),
+    mockFailDtfGenerationRequest: vi.fn(),
     mockEnforceDtfRouteRateLimit: vi.fn(),
     mockParseAndValidateDtfJson: vi.fn(),
     mockGenerateMockup: vi.fn(),
@@ -36,6 +40,8 @@ vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal)
     ...await importOriginal<typeof import("@/app/api/washa-dtf-studio/utils/route-runtime")>(),
     requireDtfRouteAccess: mockRequireDtfRouteAccess,
     claimDtfGenerationRequest: mockClaimDtfGenerationRequest,
+    completeDtfGenerationRequest: mockCompleteDtfGenerationRequest,
+    failDtfGenerationRequest: mockFailDtfGenerationRequest,
     enforceDtfRouteRateLimit: mockEnforceDtfRouteRateLimit,
     parseAndValidateDtfJson: mockParseAndValidateDtfJson,
 }));
@@ -74,6 +80,8 @@ describe("generate-mockup route", () => {
     beforeEach(() => {
         mockRequireDtfRouteAccess.mockReset();
         mockClaimDtfGenerationRequest.mockReset();
+        mockCompleteDtfGenerationRequest.mockReset();
+        mockFailDtfGenerationRequest.mockReset();
         mockEnforceDtfRouteRateLimit.mockReset();
         mockParseAndValidateDtfJson.mockReset();
         mockGenerateMockup.mockReset();
@@ -94,7 +102,13 @@ describe("generate-mockup route", () => {
                 role: "subscriber",
             },
         });
-        mockClaimDtfGenerationRequest.mockResolvedValue(true);
+        mockClaimDtfGenerationRequest.mockResolvedValue({
+            claimed: true,
+            state: "claimed",
+            retryAfterSeconds: 0,
+        });
+        mockCompleteDtfGenerationRequest.mockResolvedValue(true);
+        mockFailDtfGenerationRequest.mockResolvedValue(true);
         mockEnforceDtfRouteRateLimit.mockResolvedValue(null);
         mockParseAndValidateDtfJson.mockResolvedValue({
             data: {
@@ -338,6 +352,40 @@ describe("generate-mockup route", () => {
         );
     });
 
+    it("blocks retry when the quota reservation outcome cannot be reconciled", async () => {
+        mockReserveDailyQuota.mockResolvedValue({
+            allowed: false,
+            remaining: 0,
+            used: 0,
+            tracked: false,
+            source: "none",
+            freeRemaining: 0,
+            paidBalance: 0,
+            reason: "quota_unavailable",
+            reservationState: "ambiguous",
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate", {
+            headers: { "x-request-id": "generation-request-quota-ambiguous" },
+        }) as NextRequest);
+
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "QUOTA_STATE_UNCERTAIN",
+            retryable: false,
+        });
+        expect(mockFailDtfGenerationRequest).toHaveBeenCalledWith(
+            "profile_1",
+            "generation-request-quota-ambiguous",
+            {
+                operation: "generate-mockup",
+                blockRetry: true,
+            }
+        );
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+    });
+
     it("returns the current success payload shape", async () => {
         const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
@@ -361,6 +409,11 @@ describe("generate-mockup route", () => {
                 timeoutMs: 90_000,
             })
         );
+        expect(mockReserveDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", {
+            guestIdentifier: null,
+            requestId: expect.any(String),
+            operation: "generate-mockup",
+        });
         expect(mockRecordGenerationSuccess).toHaveBeenCalledTimes(1);
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -404,8 +457,16 @@ describe("generate-mockup route", () => {
 
     it("blocks a repeated idempotency key before a second quota reservation", async () => {
         mockClaimDtfGenerationRequest
-            .mockResolvedValueOnce(true)
-            .mockResolvedValueOnce(false);
+            .mockResolvedValueOnce({
+                claimed: true,
+                state: "claimed",
+                retryAfterSeconds: 0,
+            })
+            .mockResolvedValueOnce({
+                claimed: false,
+                state: "processing",
+                retryAfterSeconds: 120,
+            });
         const request = () => new Request("http://localhost/api/dtf/generate", {
             headers: { "x-request-id": "generation-request-duplicate" },
         }) as NextRequest;
@@ -418,10 +479,64 @@ describe("generate-mockup route", () => {
         await expect(repeated.json()).resolves.toMatchObject({
             ok: false,
             code: "DUPLICATE_REQUEST",
+            message: "طلب التوليد نفسه ما زال قيد التنفيذ. انتظر اكتماله قبل المحاولة مجدداً.",
             retryable: false,
         });
+        expect(repeated.headers.get("Retry-After")).toBe("120");
         expect(mockReserveDailyQuota).toHaveBeenCalledTimes(1);
         expect(mockGenerateMockup).toHaveBeenCalledTimes(1);
+    });
+
+    it("allows the same idempotency key to retry after a failed attempt was released", async () => {
+        mockClaimDtfGenerationRequest
+            .mockResolvedValueOnce({
+                claimed: true,
+                state: "claimed",
+                retryAfterSeconds: 0,
+            })
+            .mockResolvedValueOnce({
+                claimed: true,
+                state: "claimed",
+                retryAfterSeconds: 0,
+            });
+        mockGenerateMockup
+            .mockRejectedValueOnce(new Error("provider timeout"))
+            .mockResolvedValueOnce("data:image/png;base64,RETRY");
+        mockGetWashaDtfErrorDetails.mockReturnValue({
+            message: "انتهت مهلة التوليد من المزود الخارجي.",
+            status: 504,
+        });
+        const request = () => new Request("http://localhost/api/dtf/generate", {
+            headers: { "x-request-id": "generation-request-retryable" },
+        }) as NextRequest;
+
+        const first = await POST(request());
+        const retried = await POST(request());
+
+        expect(first.status).toBe(503);
+        expect(retried.status).toBe(200);
+        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+        expect(mockReserveDailyQuota).toHaveBeenCalledTimes(2);
+        expect(mockGenerateMockup).toHaveBeenCalledTimes(2);
+    });
+
+    it("fails closed when distributed idempotency is unavailable", async () => {
+        mockClaimDtfGenerationRequest.mockResolvedValueOnce({
+            claimed: false,
+            state: "unavailable",
+            retryAfterSeconds: 0,
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "IDEMPOTENCY_UNAVAILABLE",
+            retryable: false,
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
 
     it("returns a successful generation even when success telemetry fails", async () => {
@@ -473,6 +588,9 @@ describe("generate-mockup route", () => {
         });
         expect(mockReleaseDailyQuota).toHaveBeenCalledWith("profile_1", "subscriber", "free", {
             guestIdentifier: null,
+            requestId: expect.any(String),
+            operation: "generate-mockup",
+            quotaDate: "2026-03-30",
         });
         expect(mockRecordGenerationFailure).toHaveBeenCalledWith(expect.any(Error));
         expect(mockLogActivity).toHaveBeenCalledWith(

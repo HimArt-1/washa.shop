@@ -1265,6 +1265,65 @@ export type Database = {
                 Args: { p_profile_id: string; p_source: string; p_daily_limit?: number };
                 Returns: Record<string, unknown>;
             };
+            claim_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_lease_seconds?: number;
+                    p_retention_seconds?: number;
+                };
+                Returns: Record<string, unknown>;
+            };
+            reserve_dtf_generation_quota_for_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_daily_limit: number;
+                    p_credits_enabled: boolean;
+                };
+                Returns: Record<string, unknown>;
+            };
+            get_dtf_generation_request_quota_state: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                };
+                Returns: Record<string, unknown>;
+            };
+            complete_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_retention_seconds?: number;
+                };
+                Returns: boolean;
+            };
+            fail_dtf_generation_request: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_block_retry?: boolean;
+                    p_retention_seconds?: number;
+                };
+                Returns: boolean;
+            };
+            refund_washa_ai_generation_once: {
+                Args: {
+                    p_profile_id: string;
+                    p_operation: string;
+                    p_request_id: string;
+                    p_source: string;
+                    p_quota_date: string | null;
+                    p_daily_limit?: number;
+                    p_retention_seconds?: number;
+                };
+                Returns: Record<string, unknown>;
+            };
             admin_adjust_washa_ai_wallet: {
                 Args: { p_profile_id: string; p_delta: number; p_reason?: string | null; p_created_by?: string | null };
                 Returns: Record<string, unknown>;

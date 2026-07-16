@@ -242,6 +242,119 @@ describe("DtfTelemetryService quota reservation", () => {
         expect(second).toMatchObject({ used: 2, freeRemaining: 3, remaining: 3 });
     });
 
+    it("reserves quota and records its request id in one database transaction", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: {
+                granted: true,
+                source: "paid",
+                free_used: 5,
+                free_remaining: 0,
+                free_limit: 5,
+                paid_balance: 8,
+                quota_date: "2026-07-16",
+            },
+            error: null,
+        });
+
+        const result = await DtfTelemetryService.reserveDailyQuota(
+            "profile_1",
+            "subscriber",
+            {
+                requestId: "generation_request_123",
+                operation: "generate-mockup",
+            }
+        );
+
+        expect(mockRpc).toHaveBeenCalledWith("reserve_dtf_generation_quota_for_request", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "generation_request_123",
+            p_daily_limit: 5,
+            p_credits_enabled: true,
+        });
+        expect(result).toMatchObject({
+            allowed: true,
+            tracked: true,
+            source: "paid",
+            paidBalance: 8,
+            quotaDate: "2026-07-16",
+        });
+    });
+
+    it("reconciles a committed quota reservation when the RPC response is lost", async () => {
+        const committedPayload = {
+            granted: true,
+            source: "free",
+            free_used: 1,
+            free_remaining: 4,
+            free_limit: 5,
+            paid_balance: 0,
+            quota_date: "2026-07-16",
+        };
+        mockRpc
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: "response timeout" },
+            })
+            .mockResolvedValueOnce({
+                data: {
+                    found: true,
+                    quota_payload: committedPayload,
+                },
+                error: null,
+            });
+
+        const result = await DtfTelemetryService.reserveDailyQuota(
+            "profile_1",
+            "subscriber",
+            {
+                requestId: "generation_request_reconciled",
+                operation: "generate-mockup",
+            }
+        );
+
+        expect(mockRpc).toHaveBeenNthCalledWith(2, "get_dtf_generation_request_quota_state", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "generation_request_reconciled",
+        });
+        expect(result).toMatchObject({
+            allowed: true,
+            tracked: true,
+            source: "free",
+            reservationState: "confirmed",
+        });
+    });
+
+    it("marks a quota reservation ambiguous when both the write response and reconciliation fail", async () => {
+        process.env.WASHA_AI_QUOTA_FAIL_OPEN = "true";
+        mockRpc
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: "response timeout" },
+            })
+            .mockResolvedValueOnce({
+                data: null,
+                error: { message: "reconciliation timeout" },
+            });
+
+        const result = await DtfTelemetryService.reserveDailyQuota(
+            "profile_1",
+            "subscriber",
+            {
+                requestId: "generation_request_ambiguous",
+                operation: "generate-mockup",
+            }
+        );
+
+        expect(result).toMatchObject({
+            allowed: false,
+            tracked: false,
+            reason: "quota_unavailable",
+            reservationState: "ambiguous",
+        });
+    });
+
     it("blocks generation when neither free quota nor paid balance is available", async () => {
         mockRpc.mockResolvedValueOnce({
             data: {
@@ -332,6 +445,35 @@ describe("DtfTelemetryService quota reservation", () => {
             p_profile_id: "profile_1",
             p_source: "paid",
             p_daily_limit: 12,
+        });
+        expect(released).toBe(true);
+    });
+
+    it("uses the idempotent refund RPC when a generation request id is available", async () => {
+        mockRpc.mockResolvedValueOnce({
+            data: { released: true, duplicate: true, source: "paid", paid_balance: 9 },
+            error: null,
+        });
+
+        const released = await DtfTelemetryService.releaseDailyQuota(
+            "profile_1",
+            "booth",
+            "paid",
+            {
+                requestId: "generation_request_123",
+                operation: "generate-mockup",
+                quotaDate: "2026-07-16",
+            }
+        );
+
+        expect(mockRpc).toHaveBeenCalledWith("refund_washa_ai_generation_once", {
+            p_profile_id: "profile_1",
+            p_operation: "generate-mockup",
+            p_request_id: "generation_request_123",
+            p_source: "paid",
+            p_quota_date: "2026-07-16",
+            p_daily_limit: 12,
+            p_retention_seconds: 86400,
         });
         expect(released).toBe(true);
     });

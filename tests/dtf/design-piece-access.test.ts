@@ -87,6 +87,7 @@ describe("design-piece access", () => {
     it("denies signed-out users when public access is disabled", async () => {
         const result = await resolveDesignPieceAccess();
 
+        expect(mockAuth).toHaveBeenCalledWith({ acceptsToken: "session_token" });
         expect(result).toEqual({
             allowed: false,
             reason: "not_signed_in",

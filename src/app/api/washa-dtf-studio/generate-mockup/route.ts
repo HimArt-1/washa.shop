@@ -5,7 +5,9 @@ import { AiStudioService } from "../services/ai-studio.service";
 import { DtfTelemetryService } from "../services/dtf-telemetry.service";
 import {
     claimDtfGenerationRequest,
+    completeDtfGenerationRequest,
     enforceDtfRouteRateLimit,
+    failDtfGenerationRequest,
     parseAndValidateDtfJson,
     requireDtfRouteAccess,
 } from "../utils/route-runtime";
@@ -21,6 +23,7 @@ import {
     recordWashaDtfGenerationSuccess,
 } from "@/lib/washa-dtf-generation-readiness";
 import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
+import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,6 +34,7 @@ const GENERATE_MOCKUP_TIMEOUT_MS = (() => {
 })();
 
 const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
+const GENERATE_MOCKUP_OPERATION = "generate-mockup";
 
 function structuredErrorResponse(
     requestId: string,
@@ -186,27 +190,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (
-            suppliedRequestId
-            && access.profileId
-            && !await claimDtfGenerationRequest(access.profileId, traceId)
-        ) {
-            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "duplicate_request_blocked", {
-                authState: "authenticated",
-                userIdPresent: true,
-                statusCode: 409,
-                errorCode: "DUPLICATE_REQUEST",
-                durationMs: Date.now() - routeStartedAt,
-            });
-            return structuredErrorResponse(
-                traceId,
-                409,
-                "DUPLICATE_REQUEST",
-                "هذا الطلب قيد التنفيذ أو تم استلامه مسبقاً.",
-                { retryable: false }
-            );
-        }
-
         const rateLimitStartedAt = Date.now();
         const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
             keyPrefix: "gen",
@@ -245,75 +228,156 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (!access.profileId) {
+            return structuredErrorResponse(
+                traceId,
+                500,
+                "INTERNAL_ERROR",
+                "تعذّر ربط عملية التوليد بحساب المستخدم.",
+                { retryable: false }
+            );
+        }
+
+        const generationClaim = await claimDtfGenerationRequest(
+            access.profileId,
+            traceId,
+            GENERATE_MOCKUP_OPERATION
+        );
+        if (!generationClaim.claimed) {
+            const isUnavailable = generationClaim.state === "unavailable";
+            const isProcessing = generationClaim.state === "processing";
+            const isSucceeded = generationClaim.state === "succeeded";
+            const message = isUnavailable
+                ? "تعذّر تثبيت معرّف عملية التوليد مؤقتاً."
+                : isProcessing
+                    ? "طلب التوليد نفسه ما زال قيد التنفيذ. انتظر اكتماله قبل المحاولة مجدداً."
+                    : isSucceeded
+                        ? "اكتمل طلب التوليد هذا مسبقاً، لكن نتيجته غير محفوظة في سجل الطلب. ابدأ محاولة جديدة فقط إذا لم تظهر النتيجة لديك."
+                        : "تعذّر إعادة محاولة هذا الطلب لأن حالة الحصة غير محسومة. تحقق من رصيدك قبل بدء محاولة جديدة.";
+            const statusCode = isUnavailable ? 503 : 409;
+            const errorCode = isUnavailable ? "IDEMPOTENCY_UNAVAILABLE" : "DUPLICATE_REQUEST";
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "duplicate_request_blocked", {
+                authState: "authenticated",
+                userIdPresent: true,
+                requestState: generationClaim.state,
+                statusCode,
+                errorCode,
+                durationMs: Date.now() - routeStartedAt,
+            });
+            return structuredErrorResponse(
+                traceId,
+                statusCode,
+                errorCode,
+                message,
+                {
+                    retryable: false,
+                    headers: isProcessing && generationClaim.retryAfterSeconds > 0
+                        ? { "Retry-After": String(generationClaim.retryAfterSeconds) }
+                        : undefined,
+                }
+            );
+        }
+
         const quotaStartedAt = Date.now();
         const quota = await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
             guestIdentifier: null,
+            requestId: traceId,
+            operation: GENERATE_MOCKUP_OPERATION,
         });
+        const quotaStateAmbiguous =
+            quota.reason === "quota_unavailable"
+            && quota.reservationState === "ambiguous";
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_checked", {
             durationMs: Date.now() - quotaStartedAt,
             allowed: quota.allowed,
             tracked: quota.tracked,
             remaining: quota.remaining,
             used: quota.used,
-            statusCode: quota.allowed ? 200 : quota.reason === "quota_unavailable" ? 503 : 403,
-            errorCode: quota.allowed ? null : quota.reason ?? "quota_exceeded",
+            reservationState: quota.reservationState ?? null,
+            statusCode: quota.allowed
+                ? 200
+                : quotaStateAmbiguous
+                    ? 500
+                    : quota.reason === "quota_unavailable"
+                        ? 503
+                        : 403,
+            errorCode: quota.allowed
+                ? null
+                : quotaStateAmbiguous
+                    ? "QUOTA_STATE_UNCERTAIN"
+                    : quota.reason ?? "quota_exceeded",
         });
         if (!quota.allowed) {
-        const telemetryStartedAt = Date.now();
-        const quotaUnavailable = quota.reason === "quota_unavailable";
-        await DtfTelemetryService.logActivity({
-            profileId: access.profileId,
-            clerkId: access.clerkId,
-            action: "generate-mockup",
-            status: quotaUnavailable ? "error" : "quota_exceeded",
-            errorMessage: quotaUnavailable ? "تعذّر التحقق من رصيد WASHA AI قبل التوليد." : undefined,
-            metadata: {
-                remainingPoints: quota.remaining,
-                usedPoints: quota.used,
-                quotaDate: quota.quotaDate,
-                quotaReason: quota.reason ?? null,
-            },
-        });
-        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_exceeded_logged", {
-            duration_ms: Date.now() - telemetryStartedAt,
-            total_duration_ms: Date.now() - routeStartedAt,
-        });
+            await failDtfGenerationRequest(access.profileId, traceId, {
+                operation: GENERATE_MOCKUP_OPERATION,
+                blockRetry: quotaStateAmbiguous,
+            });
+            const telemetryStartedAt = Date.now();
+            const quotaUnavailable = quota.reason === "quota_unavailable";
+            await DtfTelemetryService.logActivity({
+                profileId: access.profileId,
+                clerkId: access.clerkId,
+                action: "generate-mockup",
+                status: quotaUnavailable ? "error" : "quota_exceeded",
+                errorMessage: quotaUnavailable ? "تعذّر التحقق من رصيد WASHA AI قبل التوليد." : undefined,
+                metadata: {
+                    remainingPoints: quota.remaining,
+                    usedPoints: quota.used,
+                    quotaDate: quota.quotaDate,
+                    quotaReason: quota.reason ?? null,
+                    reservationState: quota.reservationState ?? null,
+                },
+            });
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_exceeded_logged", {
+                duration_ms: Date.now() - telemetryStartedAt,
+                total_duration_ms: Date.now() - routeStartedAt,
+            });
 
-        if (quota.reason === "audience_disabled") {
+            if (quotaStateAmbiguous) {
+                return structuredErrorResponse(
+                    traceId,
+                    500,
+                    "QUOTA_STATE_UNCERTAIN",
+                    "تعذّر تأكيد حالة حجز الحصة. تحقق من رصيدك قبل بدء محاولة جديدة.",
+                    { retryable: false }
+                );
+            }
+
+            if (quota.reason === "audience_disabled") {
+                return attachDtfTraceId(NextResponse.json(
+                    {
+                        error: "توليد وشّى AI غير متاح لحسابك حالياً.",
+                        code: "audience_disabled",
+                        canPurchase: false,
+                        guest: access.role === "guest",
+                    },
+                    { status: 403 }
+                ), traceId);
+            }
+
+            if (quota.reason === "quota_unavailable") {
+                return attachDtfTraceId(NextResponse.json(
+                    {
+                        error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
+                        code: "quota_unavailable",
+                        canPurchase: false,
+                        guest: access.role === "guest",
+                    },
+                    { status: 503 }
+                ), traceId);
+            }
+
             return attachDtfTraceId(NextResponse.json(
                 {
-                    error: "توليد وشّى AI غير متاح لحسابك حالياً.",
-                    code: "audience_disabled",
-                    canPurchase: false,
+                    error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
+                    code: "quota_exceeded",
+                    freeRemaining: quota.freeRemaining,
+                    paidBalance: quota.paidBalance,
+                    canPurchase: quota.canPurchase === true,
                     guest: access.role === "guest",
                 },
                 { status: 403 }
             ), traceId);
-        }
-
-        if (quota.reason === "quota_unavailable") {
-            return attachDtfTraceId(NextResponse.json(
-                {
-                    error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
-                    code: "quota_unavailable",
-                    canPurchase: false,
-                    guest: access.role === "guest",
-                },
-                { status: 503 }
-            ), traceId);
-        }
-
-        return attachDtfTraceId(NextResponse.json(
-            {
-                error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
-                code: "quota_exceeded",
-                freeRemaining: quota.freeRemaining,
-                paidBalance: quota.paidBalance,
-                canPurchase: quota.canPurchase === true,
-                guest: access.role === "guest",
-            },
-            { status: 403 }
-        ), traceId);
         }
 
         let imageUrl: string;
@@ -351,6 +415,9 @@ export async function POST(request: NextRequest) {
             const releaseStartedAt = Date.now();
             quotaReleased = await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
                 guestIdentifier: null,
+                requestId: traceId,
+                operation: GENERATE_MOCKUP_OPERATION,
+                quotaDate: quota.quotaDate ?? null,
             });
             logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_released", {
                 durationMs: Date.now() - releaseStartedAt,
@@ -378,6 +445,10 @@ export async function POST(request: NextRequest) {
 
         const quotaReleaseFailed = quota.tracked && !quotaReleased;
         if (quotaReleaseFailed) {
+            await failDtfGenerationRequest(access.profileId, traceId, {
+                operation: GENERATE_MOCKUP_OPERATION,
+                blockRetry: true,
+            });
             return structuredErrorResponse(
                 traceId,
                 500,
@@ -385,6 +456,12 @@ export async function POST(request: NextRequest) {
                 "تعذر إنشاء التصميم ولم نتمكن من تأكيد استرجاع الحصة. راجع رصيدك قبل إعادة المحاولة.",
                 { retryable: false }
             );
+        }
+        if (!quota.tracked) {
+            await failDtfGenerationRequest(access.profileId, traceId, {
+                operation: GENERATE_MOCKUP_OPERATION,
+                blockRetry: false,
+            });
         }
 
         const providerStatus = handled.status === 429 || handled.status >= 500 ? 503 : 502;
@@ -427,6 +504,18 @@ export async function POST(request: NextRequest) {
         });
         }
 
+        const requestCompleted = await completeDtfGenerationRequest(
+            access.profileId,
+            traceId,
+            GENERATE_MOCKUP_OPERATION
+        );
+        if (!requestCompleted) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "idempotency_completion_failed", {
+                statusCode: 200,
+                errorCode: "IDEMPOTENCY_COMPLETION_FAILED",
+            });
+        }
+
         return attachDtfTraceId(NextResponse.json({
             ok: true,
             requestId: traceId,
@@ -438,6 +527,7 @@ export async function POST(request: NextRequest) {
             guest: false,
         }), traceId);
     } catch (error) {
+        unstable_rethrow(error);
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "internal_error", {
             authState: "unknown",
             userIdPresent: false,
