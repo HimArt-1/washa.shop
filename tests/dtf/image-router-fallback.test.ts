@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
     mockGenerateContent,
+    mockExtractGeneratedImageDataUrl,
     mockIsOpenAIKeyConfigured,
     mockRunOpenAIGenerateDataUrl,
     mockRunOpenAIEditDataUrl,
@@ -9,6 +10,7 @@ const {
     mockRunReplicatePredictions,
 } = vi.hoisted(() => ({
     mockGenerateContent: vi.fn(),
+    mockExtractGeneratedImageDataUrl: vi.fn(),
     mockIsOpenAIKeyConfigured: vi.fn(),
     mockRunOpenAIGenerateDataUrl: vi.fn(),
     mockRunOpenAIEditDataUrl: vi.fn(),
@@ -21,7 +23,7 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
         models: { generateContent: mockGenerateContent },
     }),
     WASHA_DTF_MODEL: "gemini-test-model",
-    extractGeneratedImageDataUrl: vi.fn(() => null),
+    extractGeneratedImageDataUrl: mockExtractGeneratedImageDataUrl,
 }));
 
 vi.mock("@/lib/openai-image", () => ({
@@ -60,6 +62,8 @@ describe("WASHA DTF image provider routing", () => {
         vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
 
         mockGenerateContent.mockReset();
+        mockExtractGeneratedImageDataUrl.mockReset();
+        mockExtractGeneratedImageDataUrl.mockReturnValue(null);
         mockIsOpenAIKeyConfigured.mockReset();
         mockRunOpenAIGenerateDataUrl.mockReset();
         mockRunOpenAIEditDataUrl.mockReset();
@@ -110,5 +114,32 @@ describe("WASHA DTF image provider routing", () => {
         );
         expect(mockIsReplicateTokenConfigured).not.toHaveBeenCalled();
         expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
+    });
+
+    it("falls back from OpenAI extraction to GenAI when OpenAI billing rejects the request", async () => {
+        vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "openai");
+        mockIsOpenAIKeyConfigured.mockReturnValue(true);
+        mockRunOpenAIEditDataUrl.mockRejectedValue(new Error(JSON.stringify({
+            error: {
+                message: "Billing hard limit has been reached.",
+                code: "billing_hard_limit_reached",
+            },
+        })));
+        mockGenerateContent.mockResolvedValue({ candidates: [{ content: { parts: [] } }] });
+        mockExtractGeneratedImageDataUrl.mockReturnValue("data:image/png;base64,GEMINI_EXTRACT");
+
+        await expect(washDtfRoutedExtractDesign(
+            "استخرج التصميم",
+            "SOURCE_IMAGE",
+            "image/jpeg",
+            { traceId: "trace_openai_billing_fallback", timeoutMs: 5_000 }
+        )).resolves.toBe("data:image/png;base64,GEMINI_EXTRACT");
+
+        expect(mockRunOpenAIEditDataUrl).toHaveBeenCalledWith(
+            "استخرج التصميم",
+            "data:image/jpeg;base64,SOURCE_IMAGE",
+            { throwOnError: true }
+        );
+        expect(mockGenerateContent).toHaveBeenCalledOnce();
     });
 });

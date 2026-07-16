@@ -61,4 +61,21 @@ describe("getWashaDtfErrorDetails", () => {
             status: 429,
         });
     });
+
+    it("normalizes an OpenAI billing hard limit to a retryable provider failure", () => {
+        const error = new Error(JSON.stringify({
+            error: {
+                message: "Billing hard limit has been reached.",
+                type: "billing_limit_user_error",
+                code: "billing_hard_limit_reached",
+            },
+        }));
+
+        const result = getWashaDtfErrorDetails(error);
+
+        expect(result).toEqual({
+            message: "توقفت خدمة مزوّد الصور الأساسي بسبب حد الفوترة. سيحاول Washa AI استخدام مزوّد بديل تلقائياً.",
+            status: 503,
+        });
+    });
 });

@@ -100,6 +100,16 @@ export function getWashaDtfErrorDetails(error: unknown): {
     }
 
     if (
+        normalizedProviderMessage.includes("billing hard limit") ||
+        normalizedProviderMessage.includes("billing_hard_limit_reached")
+    ) {
+        return {
+            message: "توقفت خدمة مزوّد الصور الأساسي بسبب حد الفوترة. سيحاول Washa AI استخدام مزوّد بديل تلقائياً.",
+            status: 503,
+        };
+    }
+
+    if (
         providerCode === 429 ||
         providerStatus === "RESOURCE_EXHAUSTED" ||
         /quota/i.test(providerMessage) ||
