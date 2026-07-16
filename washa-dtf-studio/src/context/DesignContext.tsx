@@ -50,14 +50,9 @@ import {
 import {
   clearStudioDraft,
   getHighestReachableStep,
-  hasMeaningfulStudioDraft,
   isStudioAppPath,
-  loadStudioDraft,
   readStudioStepFromUrl,
   reconcileAuthDraftState,
-  reconcileStudioDraftState,
-  resolveStudioRestoreStep,
-  saveStudioDraft,
   syncStudioStepInUrl,
 } from '../lib/studioDraft';
 import { createEmptyGuidedIdeaBrief } from '../lib/ideaBuilder';
@@ -268,9 +263,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [pendingGenerateAfterAuth, setPendingGenerateAfterAuth] = useState(false);
   const [authGateIntent, setAuthGateIntent] = useState<WashaAiAuthIntent | null>(null);
   const [authGateNotice, setAuthGateNotice] = useState<string | null>(null);
-  const [studioDraftReady, setStudioDraftReady] = useState(false);
+  const [studioReady, setStudioReady] = useState(false);
   const restoredAuthDraftRef = useRef(false);
-  const studioDraftReferenceOmittedRef = useRef(false);
   const generationInFlightRef = useRef(false);
   const generationRetryRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
   const isMockupCurrent = Boolean(
@@ -771,40 +765,20 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (!authLoaded || restoredAuthDraftRef.current || configLoading || !config) return;
     restoredAuthDraftRef.current = true;
 
+    clearStudioDraft();
     const draft = consumeWashaAiAuthDraft();
     if (!draft) {
-      const studioDraft = loadStudioDraft();
       const initialState = buildInitialState(config);
 
-      if (studioDraft) {
-        studioDraftReferenceOmittedRef.current = studioDraft.referenceImageOmitted;
-        const restoredState = reconcileStudioDraftState(studioDraft.state, config, initialState);
-        const highestStep = getHighestReachableStep(restoredState);
-        const requestedStep = readStudioStepFromUrl() ?? studioDraft.step;
-        const restoredStep = resolveStudioRestoreStep(requestedStep, studioDraft.step, highestStep);
-
-        setState(restoredState);
-        setStep(restoredStep);
-
-        const hasMeaningfulDraft = hasMeaningfulStudioDraft(restoredState, studioDraft.step);
-        if (hasMeaningfulDraft) {
-          const imageNote = studioDraft.referenceImageOmitted
-            ? ' أعد رفع الصورة المرجعية لحماية خصوصيتك.'
-            : '';
-          showToast(`استعدنا مسودة تصميمك من حيث توقفت.${imageNote}`, 'info');
-        }
-      } else {
-        const requestedStep = readStudioStepFromUrl();
-        if (requestedStep) {
-          setStep(Math.min(requestedStep, getHighestReachableStep(initialState)));
-        }
+      const requestedStep = readStudioStepFromUrl();
+      if (requestedStep) {
+        setStep(Math.min(requestedStep, getHighestReachableStep(initialState)));
       }
 
-      setStudioDraftReady(true);
+      setStudioReady(true);
       return;
     }
     let cancelled = false;
-    studioDraftReferenceOmittedRef.current = draft.referenceImageOmitted;
     const restoredAuthState = reconcileAuthDraftState(
       draft.state,
       config,
@@ -823,7 +797,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     if (draft.intent === 'generate') {
       if (draft.referenceImageOmitted && restoredAuthState.designMethod === 'image' && !restoredAuthState.prompt.trim()) {
         setStep(2);
-        setStudioDraftReady(true);
+        setStudioReady(true);
         showToast('استرجعنا اختياراتك، لكن أعد رفع الصورة المرجعية قبل التوليد.', 'info');
         return () => {
           cancelled = true;
@@ -836,7 +810,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     } else {
       setStep(5);
     }
-    setStudioDraftReady(true);
+    setStudioReady(true);
 
     const restoredMessage = draft.intent === 'generate'
       ? 'استرجعنا اختياراتك. يمكنك متابعة التصميم كزائر.'
@@ -877,41 +851,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [authLoaded, config, configLoading, getToken, isSignedIn, showToast]);
 
   useEffect(() => {
-    if (!studioDraftReady || configLoading || !config || isGenerating || isSubmittingOrder) return;
-
-    if (state.designMethod !== 'image') {
-      studioDraftReferenceOmittedRef.current = false;
-    } else if (state.referenceImage) {
-      studioDraftReferenceOmittedRef.current = true;
-    }
-
-    const persistDraft = () => {
-      if (hasMeaningfulStudioDraft(state, step)) {
-        saveStudioDraft(state, step, studioDraftReferenceOmittedRef.current);
-      } else {
-        clearStudioDraft();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') persistDraft();
-    };
-
-    const timer = window.setTimeout(persistDraft, 450);
-    window.addEventListener('pagehide', persistDraft);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('pagehide', persistDraft);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [config, configLoading, isGenerating, isSubmittingOrder, state, step, studioDraftReady]);
-
-  useEffect(() => {
-    if (!studioDraftReady || !isStudioAppPath(window.location.pathname)) return;
+    if (!studioReady || !isStudioAppPath(window.location.pathname)) return;
     syncStudioStepInUrl(step);
-  }, [step, studioDraftReady]);
+  }, [step, studioReady]);
 
   useEffect(() => {
     if (!pendingGenerateAfterAuth) return;
