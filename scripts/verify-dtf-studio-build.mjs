@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const distRoot = path.resolve("washa-dtf-studio/dist");
@@ -29,6 +29,54 @@ function normalizeJwks(payload) {
       key.crv,
     ].filter(Boolean).join(":"))
     .sort();
+}
+
+async function verifyNoCircularChunkImports() {
+  const assetRoot = path.join(distRoot, "assets");
+  const assetEntries = await readdir(assetRoot, { recursive: true });
+  const scriptPaths = assetEntries
+    .filter((entry) => entry.endsWith(".js"))
+    .map((entry) => path.resolve(assetRoot, entry));
+  const scriptSet = new Set(scriptPaths);
+  const graph = new Map();
+
+  for (const scriptPath of scriptPaths) {
+    const source = await readFile(scriptPath, "utf8");
+    const dependencies = [
+      ...source.matchAll(/\b(?:import|export)(?:[^"']*?\bfrom)?["'](\.[^"']+\.js)["']/g),
+    ]
+      .map((match) => path.resolve(path.dirname(scriptPath), match[1]))
+      .filter((dependencyPath) => scriptSet.has(dependencyPath));
+
+    graph.set(scriptPath, dependencies);
+  }
+
+  const visited = new Set();
+  const visiting = new Set();
+  const stack = [];
+
+  function visit(scriptPath) {
+    if (visited.has(scriptPath)) return;
+    if (visiting.has(scriptPath)) {
+      const cycleStart = stack.indexOf(scriptPath);
+      const cycle = [...stack.slice(cycleStart), scriptPath]
+        .map((entry) => path.relative(distRoot, entry));
+      throw new Error(`WASHA AI build contains a circular chunk import:\n${cycle.join(" -> ")}`);
+    }
+
+    visiting.add(scriptPath);
+    stack.push(scriptPath);
+    for (const dependencyPath of graph.get(scriptPath) || []) {
+      visit(dependencyPath);
+    }
+    stack.pop();
+    visiting.delete(scriptPath);
+    visited.add(scriptPath);
+  }
+
+  for (const scriptPath of scriptPaths) {
+    visit(scriptPath);
+  }
 }
 
 async function verifyProductionClerkInstance() {
@@ -71,6 +119,8 @@ async function verifyProductionClerkInstance() {
 }
 
 async function main() {
+  await verifyNoCircularChunkImports();
+
   const html = await readFile(indexPath, "utf8");
   const references = [
     ...html.matchAll(/(?:src|href)=["']([^"']+)["']/g),

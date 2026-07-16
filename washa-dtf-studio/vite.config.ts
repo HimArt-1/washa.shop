@@ -49,39 +49,11 @@ export default defineConfig(({mode}) => {
     define: {
       'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(clerkPublishableKey),
     },
-    build: {
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (!id.includes('node_modules')) {
-              return;
-            }
-
-            if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
-              return 'vendor-react';
-            }
-
-            if (id.includes('/lucide-react/') || id.includes('/lucide/')) {
-              return 'vendor-icons';
-            }
-
-            if (id.includes('/motion/') || id.includes('/framer-motion/')) {
-              return 'vendor-motion';
-            }
-
-            if (id.includes('/@google/genai/')) {
-              return 'vendor-ai';
-            }
-
-            return 'vendor';
-          },
-        },
-      },
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
+      dedupe: ['react', 'react-dom'],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
