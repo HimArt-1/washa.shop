@@ -480,14 +480,26 @@ export async function washDtfRoutedExtractDesign(
     // ─── OpenAI extract ──────────────────────────────────────
     if ((p === "openai" || p === "dall-e" || p === "dalle" || p === "gpt-image") && isOpenAIKeyConfigured()) {
         const dataUrl = `data:${mimeType};base64,${mockupImage}`;
-        const result = await runOpenAIEditDataUrl(prompt, dataUrl, { throwOnError: true });
-        if (result) return result;
-        // تراجع
-        if (isGeminiKeyConfigured()) {
-            logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai", {});
-            return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        try {
+            const result = await runOpenAIEditDataUrl(prompt, dataUrl, { throwOnError: true });
+            if (result) return result;
+            throw new Error("لم يرجع مزود OpenAI صورة صالحة.");
+        } catch (error) {
+            if (isDtfProviderFallbackEnabled() && isGeminiKeyConfigured()) {
+                logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai", {});
+                try {
+                    return await runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+                } catch (fallbackError) {
+                    logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai_failed", {
+                        error_message: fallbackError instanceof Error
+                            ? fallbackError.message
+                            : String(fallbackError ?? ""),
+                    });
+                }
+            }
+
+            throw error;
         }
-        throw new Error("فشل استخراج التصميم عبر OpenAI ولا يوجد مزوّد بديل.");
     }
 
     if (p === "replicate") {
