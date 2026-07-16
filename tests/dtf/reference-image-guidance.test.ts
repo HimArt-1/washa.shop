@@ -49,7 +49,10 @@ describe('WASHA AI reference image guidance', () => {
       'AAAA',
       'image/webp',
       undefined,
-      { referenceImageMode: 'preserve_subject' },
+      {
+        referenceImageMode: 'preserve_subject',
+        sessionToken: 'session-token',
+      },
     );
 
     expect(prompt).toContain('REFERENCE MODE — PRESERVE SUBJECT');

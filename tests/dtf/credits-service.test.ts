@@ -5,17 +5,10 @@ import { fetchQuotaStatus } from "../../washa-dtf-studio/src/services/creditsSer
 describe("WASHA AI quota client", () => {
     afterEach(() => vi.unstubAllGlobals());
 
-    it("retries one transient authenticated-session downgrade without showing guest state", async () => {
+    it("sends one authenticated quota request with a Clerk bearer token", async () => {
         const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-            expect(new Headers(init?.headers).get("x-washa-auth-state")).toBe("authenticated");
-            expect(init?.credentials).toBe("same-origin");
-
-            if (fetchMock.mock.calls.length === 1) {
-                return new Response(JSON.stringify({ code: "session_unavailable", retryable: true }), {
-                    status: 503,
-                    headers: { "content-type": "application/json" },
-                });
-            }
+            expect(new Headers(init?.headers).get("authorization")).toBe("Bearer session-token");
+            expect(init?.credentials).toBe("omit");
 
             return new Response(JSON.stringify({
                 audience: "subscriber",
@@ -33,10 +26,10 @@ describe("WASHA AI quota client", () => {
         });
         vi.stubGlobal("fetch", fetchMock);
 
-        await expect(fetchQuotaStatus(undefined, true)).resolves.toMatchObject({
+        await expect(fetchQuotaStatus(undefined, "session-token")).resolves.toMatchObject({
             audience: "subscriber",
             freeRemaining: 4,
         });
-        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 });
