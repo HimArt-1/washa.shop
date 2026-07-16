@@ -6,6 +6,7 @@ import {
     shouldSendUserPush,
 } from "@/lib/notification-preferences";
 import { mergePushScopes, removePushScope } from "@/lib/push-subscription-scope";
+import { requireAdminNotificationDelivery } from "@/lib/notifications";
 import type { NotificationPreferences } from "@/types/database";
 
 const preferences: NotificationPreferences = {
@@ -73,5 +74,22 @@ describe("one browser subscription can serve user and admin channels", () => {
     it("removes one scope while retaining the other", () => {
         expect(removePushScope("both", "admin")).toBe("user");
         expect(removePushScope("both", "user")).toBe("admin");
+    });
+});
+
+describe("admin webhook delivery result", () => {
+    it("fails the tracked dispatch when every configured channel fails", () => {
+        expect(() => requireAdminNotificationDelivery([
+            { channel: "telegram", ok: false, status: 401, statusText: "Unauthorized" },
+            { channel: "discord", ok: false, status: 500, statusText: "Server Error" },
+        ])).toThrow("All configured admin notification channels failed");
+    });
+
+    it("accepts partial delivery and does not require an optional channel", () => {
+        expect(() => requireAdminNotificationDelivery([
+            { channel: "telegram", ok: true, status: 200 },
+            { channel: "discord", ok: false, status: 500 },
+        ])).not.toThrow();
+        expect(() => requireAdminNotificationDelivery([])).not.toThrow();
     });
 });

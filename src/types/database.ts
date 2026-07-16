@@ -237,7 +237,7 @@ export type EventDispatch = {
     channel: string;
     resource_type: string | null;
     resource_id: string | null;
-    status: "processing" | "sent" | "failed";
+    status: "processing" | "sent" | "failed" | "abandoned" | "delivery_unknown";
     attempt_count: number;
     metadata: Record<string, unknown>;
     last_error: string | null;

@@ -10,7 +10,8 @@ import { sendAdminNewUserNotificationEmail, sendAdminUserLoginNotificationEmail,
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 import { ensureIdentityProfile, findProfileForIdentity } from "@/lib/identity-sync";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { runRecoverableAdminWebhookDispatch } from "@/lib/admin-notification-delivery";
+import { escapeAdminNotificationHtml } from "@/lib/notifications";
 
 const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
 
@@ -187,11 +188,10 @@ export async function POST(req: NextRequest) {
                 );
 
                 userCreatedSideEffects.push(
-                    runIdempotentDispatch(
+                    runRecoverableAdminWebhookDispatch(
                         {
                             dispatchKey: `clerk_user:${id}:webhook_admin:user_created`,
                             eventType: "user_created",
-                            channel: "webhook_admin",
                             resourceType: "user",
                             resourceId: ensured.profile?.id ?? id,
                             metadata: {
@@ -201,17 +201,13 @@ export async function POST(req: NextRequest) {
                                 action: ensured.action,
                             },
                         },
-                        async () => {
-                            await sendAdminNotification(
-                                [
-                                    "👤 <b>تسجيل اشتراك جديد</b>",
-                                    `الاسم: ${escapeAdminNotificationHtml(displayName)}`,
-                                    `البريد: ${escapeAdminNotificationHtml(email)}`,
-                                    `الجوال: ${escapeAdminNotificationHtml(phone)}`,
-                                    `الحالة: ${escapeAdminNotificationHtml(ensured.action === "created" ? "مستخدم جديد" : "تحديث ربط موجود")}`,
-                                ].join("\n")
-                            );
-                        }
+                        [
+                            "👤 <b>تسجيل اشتراك جديد</b>",
+                            `الاسم: ${escapeAdminNotificationHtml(displayName)}`,
+                            `البريد: ${escapeAdminNotificationHtml(email)}`,
+                            `الجوال: ${escapeAdminNotificationHtml(phone)}`,
+                            `الحالة: ${escapeAdminNotificationHtml(ensured.action === "created" ? "مستخدم جديد" : "تحديث ربط موجود")}`,
+                        ].join("\n")
                     )
                 );
 
@@ -291,11 +287,10 @@ export async function POST(req: NextRequest) {
                             }
                         }
                     ),
-                    runIdempotentDispatch(
+                    runRecoverableAdminWebhookDispatch(
                         {
                             dispatchKey: `clerk_session:${id}:webhook_admin:session_created`,
                             eventType: "session_created",
-                            channel: "webhook_admin",
                             resourceType: "session",
                             resourceId: id,
                             metadata: {
@@ -309,19 +304,15 @@ export async function POST(req: NextRequest) {
                                 browser_name: latest_activity?.browser_name ?? null,
                             },
                         },
-                        async () => {
-                            await sendAdminNotification(
-                                [
-                                    "🔐 <b>تسجيل دخول جديد</b>",
-                                    `المستخدم: ${escapeAdminNotificationHtml(displayName)}`,
-                                    `البريد: ${escapeAdminNotificationHtml(email)}`,
-                                    `الدولة/المدينة: ${escapeAdminNotificationHtml([latest_activity?.country, latest_activity?.city].filter(Boolean).join(" / ") || null)}`,
-                                    `الجهاز: ${escapeAdminNotificationHtml(latest_activity?.device_type || null)}`,
-                                    `المتصفح: ${escapeAdminNotificationHtml(latest_activity?.browser_name || null)}`,
-                                    `IP: ${escapeAdminNotificationHtml(ipAddress)}`,
-                                ].join("\n")
-                            );
-                        }
+                        [
+                            "🔐 <b>تسجيل دخول جديد</b>",
+                            `المستخدم: ${escapeAdminNotificationHtml(displayName)}`,
+                            `البريد: ${escapeAdminNotificationHtml(email)}`,
+                            `الدولة/المدينة: ${escapeAdminNotificationHtml([latest_activity?.country, latest_activity?.city].filter(Boolean).join(" / ") || null)}`,
+                            `الجهاز: ${escapeAdminNotificationHtml(latest_activity?.device_type || null)}`,
+                            `المتصفح: ${escapeAdminNotificationHtml(latest_activity?.browser_name || null)}`,
+                            `IP: ${escapeAdminNotificationHtml(ipAddress)}`,
+                        ].join("\n")
                     ),
                 ];
 

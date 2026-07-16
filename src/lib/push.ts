@@ -42,27 +42,9 @@ async function sendPush(
     title: string,
     body: string,
     url?: string,
-    userId?: string
+    userId?: string,
+    targetEndpoints?: string[]
 ) {
-    if (!isPushEnabled()) {
-        await reportAdminOperationalAlert({
-            dispatchKey: "push:vapid_config_missing",
-            bucketMs: 6 * 60 * 60 * 1000,
-            category: "system",
-            severity: "warning",
-            title: "تنبيهات البوش غير مهيأة",
-            message: "مفاتيح VAPID غير مكتملة، لذلك لن يتم إرسال إشعارات البوش حتى تصحيح الإعدادات.",
-            link: "/dashboard/settings",
-            source: "push.config",
-            metadata: {
-                has_vapid_public: !!VAPID_PUBLIC,
-                has_vapid_private: !!VAPID_PRIVATE,
-                scope,
-            },
-        });
-        return { sent: 0, failed: 0 };
-    }
-
     const sanitizedTitle = sanitizePushText(title, MAX_PUSH_TITLE_LENGTH);
     const sanitizedBody = sanitizePushText(body, MAX_PUSH_BODY_LENGTH);
     const sanitizedUrl = sanitizePushUrl(url);
@@ -73,12 +55,6 @@ async function sendPush(
 
     try {
         const supabase = getPushAdminClient();
-        webpush.setVapidDetails(
-            "mailto:support@washa.shop",
-            VAPID_PUBLIC!,
-            VAPID_PRIVATE!
-        );
-
         let subscriptions: Array<{ endpoint: string; p256dh: string; auth: string }> = [];
 
         if (scope === "admins") {
@@ -118,7 +94,41 @@ async function sendPush(
             subscriptions = (subs || []) as Array<{ endpoint: string; p256dh: string; auth: string }>;
         }
 
-        if (!subscriptions.length) return { sent: 0, failed: 0 };
+        if (targetEndpoints?.length) {
+            const allowedEndpoints = new Set(targetEndpoints);
+            subscriptions = subscriptions.filter((subscription) => allowedEndpoints.has(subscription.endpoint));
+        }
+
+        if (!subscriptions.length) return { sent: 0, failed: 0, failedEndpoints: [] as string[] };
+
+        if (!isPushEnabled()) {
+            await reportAdminOperationalAlert({
+                dispatchKey: "push:vapid_config_missing",
+                bucketMs: 6 * 60 * 60 * 1000,
+                category: "system",
+                severity: "warning",
+                title: "تنبيهات البوش غير مهيأة",
+                message: "مفاتيح VAPID غير مكتملة، لذلك لن يتم إرسال إشعارات البوش حتى تصحيح الإعدادات.",
+                link: "/dashboard/settings",
+                source: "push.config",
+                metadata: {
+                    has_vapid_public: !!VAPID_PUBLIC,
+                    has_vapid_private: !!VAPID_PRIVATE,
+                    scope,
+                },
+            });
+            return {
+                sent: 0,
+                failed: subscriptions.length,
+                failedEndpoints: subscriptions.map((subscription) => subscription.endpoint),
+            };
+        }
+
+        webpush.setVapidDetails(
+            "mailto:support@washa.shop",
+            VAPID_PUBLIC!,
+            VAPID_PRIVATE!
+        );
 
         const uniqueSubscriptions = Array.from(
             new Map(subscriptions.map((item) => [item.endpoint, item])).values()
@@ -126,6 +136,7 @@ async function sendPush(
 
         let sent = 0;
         let failed = 0;
+        const failedEndpoints: string[] = [];
         const payload = JSON.stringify({
             title: sanitizedTitle,
             body: sanitizedBody,
@@ -149,10 +160,11 @@ async function sendPush(
                     await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
                 } else {
                     failed++;
+                    failedEndpoints.push(sub.endpoint);
                 }
             }
         }
-        return { sent, failed };
+        return { sent, failed, failedEndpoints };
     } catch (e) {
         console.error("[Push] sendToAll error:", e);
         await reportAdminOperationalAlert({
@@ -170,18 +182,42 @@ async function sendPush(
             },
             stack: e instanceof Error ? e.stack ?? null : null,
         });
-        return { sent: 0, failed: 1 };
+        return { sent: 0, failed: 1, failedEndpoints: targetEndpoints || [] };
     }
 }
 
-export async function sendPushToAdmins(title: string, body: string, url?: string) {
-    return sendPush("admins", title, body, url);
+export async function sendPushToAdmins(
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    return sendPush("admins", title, body, url, undefined, targetEndpoints);
+}
+
+export async function sendPushToAdminsReliably(
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    const delivery = await sendPushToAdmins(title, body, url, targetEndpoints);
+    if (delivery.failed > 0) {
+        throw new Error(`Admin push delivery failed for ${delivery.failed} subscription(s)`);
+    }
+    return delivery;
 }
 
 export async function sendPushToAll(title: string, body: string, url?: string) {
     return sendPush("all", title, body, url);
 }
 
-export async function sendPushToUser(userId: string, title: string, body: string, url?: string) {
-    return sendPush("user", title, body, url, userId);
+export async function sendPushToUser(
+    userId: string,
+    title: string,
+    body: string,
+    url?: string,
+    targetEndpoints?: string[]
+) {
+    return sendPush("user", title, body, url, userId, targetEndpoints);
 }

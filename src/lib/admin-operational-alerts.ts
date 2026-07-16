@@ -1,8 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import {
+    runRecoverableAdminPushDispatch,
+    runRecoverableAdminWebhookDispatch,
+} from "@/lib/admin-notification-delivery";
+import {
     escapeAdminNotificationHtml,
-    sendAdminNotification,
     type AdminNotificationSendResult,
 } from "@/lib/notifications";
 import type {
@@ -17,7 +20,7 @@ type DispatchResult = Awaited<ReturnType<typeof runIdempotentDispatch>>;
 export type AdminOperationalAlertResult = {
     logged: boolean;
     notification?: DispatchResult;
-    webhook?: DispatchResult;
+    webhook?: DispatchResult[];
     webhookChannels: AdminNotificationSendResult[];
     push?: DispatchResult;
 };
@@ -207,11 +210,18 @@ export async function reportAdminOperationalAlert(params: {
         );
 
         try {
-            result.webhook = await runIdempotentDispatch(
+            const webhookMessage = [
+                `🚨 <b>تنبيه تشغيلي ${escapeAdminNotificationHtml(getSeverityLabel(params.severity))}</b>`,
+                `القسم: ${escapeAdminNotificationHtml(getCategoryLabel(params.category))}`,
+                `العنوان: ${escapeAdminNotificationHtml(title)}`,
+                `التفاصيل: ${escapeAdminNotificationHtml(message)}`,
+                `المصدر: ${escapeAdminNotificationHtml(source)}`,
+                link ? `الرابط: ${escapeAdminNotificationHtml(link)}` : null,
+            ].filter(Boolean).join("\n");
+            const webhookDelivery = await runRecoverableAdminWebhookDispatch(
                 {
                     dispatchKey: `${notificationDispatchKey}:webhook`,
                     eventType: `admin_alert_webhook_${params.category}_${params.severity}`,
-                    channel: "webhook_admin",
                     resourceType: params.resourceType ?? params.category,
                     resourceId: params.resourceId ?? null,
                     metadata: {
@@ -219,19 +229,10 @@ export async function reportAdminOperationalAlert(params: {
                         escalation: "admin_webhook",
                     },
                 },
-                async () => {
-                    result.webhookChannels = await sendAdminNotification(
-                        [
-                            `🚨 <b>تنبيه تشغيلي ${escapeAdminNotificationHtml(getSeverityLabel(params.severity))}</b>`,
-                            `القسم: ${escapeAdminNotificationHtml(getCategoryLabel(params.category))}`,
-                            `العنوان: ${escapeAdminNotificationHtml(title)}`,
-                            `التفاصيل: ${escapeAdminNotificationHtml(message)}`,
-                            `المصدر: ${escapeAdminNotificationHtml(source)}`,
-                            link ? `الرابط: ${escapeAdminNotificationHtml(link)}` : null,
-                        ].filter(Boolean).join("\n")
-                    );
-                }
+                webhookMessage
             );
+            result.webhook = webhookDelivery.dispatches;
+            result.webhookChannels = webhookDelivery.channelResults;
         } catch (error) {
             console.error("[admin-operational-alerts.webhook]", error);
             result.webhookChannels = [{
@@ -242,11 +243,10 @@ export async function reportAdminOperationalAlert(params: {
         }
 
         if (params.severity === "critical") {
-            result.push = await runIdempotentDispatch(
+            result.push = await runRecoverableAdminPushDispatch(
                 {
                     dispatchKey: `${notificationDispatchKey}:push`,
                     eventType: `admin_alert_push_${params.category}_${params.severity}`,
-                    channel: "push",
                     resourceType: params.resourceType ?? params.category,
                     resourceId: params.resourceId ?? null,
                     metadata: {
@@ -254,13 +254,10 @@ export async function reportAdminOperationalAlert(params: {
                         escalation: "admin_push",
                     },
                 },
-                async () => {
-                    const { sendPushToAdmins } = await import("@/lib/push");
-                    await sendPushToAdmins(
-                        title,
-                        message,
-                        link ?? "/dashboard/notifications"
-                    );
+                {
+                    title,
+                    body: message,
+                    url: link ?? "/dashboard/notifications",
                 }
             );
         }

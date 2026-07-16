@@ -609,7 +609,10 @@ export async function sendAdminAlertTest(): Promise<AdminAlertTestResult> {
     const channelResults = alertResult?.webhookChannels ?? [];
     const failedChannels = channelResults.filter((channel) => !channel.ok);
     const notificationSkipped = alertResult?.notification?.skipped === true;
-    const webhookSkipped = alertResult?.webhook?.skipped === true;
+    const webhookSkipped = Boolean(
+        alertResult?.webhook?.length
+        && alertResult.webhook.every((dispatch) => dispatch.skipped === true)
+    );
 
     if (configuredChannels.length === 0) {
         return {

@@ -33,6 +33,7 @@ import {
     DTF_STUDIO_TECHNIQUE_CATALOG,
 } from "@/lib/dtf-studio-catalog";
 import { sendAdminDesignOrderNotificationEmail } from "@/lib/email";
+import { runRecoverableAdminWebhookDispatch } from "@/lib/admin-notification-delivery";
 import { getDesignOrderAccess } from "@/lib/design-order-access";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import {
@@ -95,7 +96,7 @@ import {
     reserveSmartStoreSizeStock,
 } from "@/lib/smart-store-inventory";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import { escapeAdminNotificationHtml } from "@/lib/notifications";
 
 
 function getSmartStoreSb() {
@@ -1391,11 +1392,10 @@ export async function submitDesignOrder(orderData: {
         data.id
     ).catch(err => console.error("Failed to send design order email async", err));
 
-    await runIdempotentDispatch(
+    await runRecoverableAdminWebhookDispatch(
         {
             dispatchKey: `design_order:${data.id}:webhook_admin:new_order`,
             eventType: "design_order_created",
-            channel: "webhook_admin",
             resourceType: "design_order",
             resourceId: data.id,
             metadata: {
@@ -1408,19 +1408,15 @@ export async function submitDesignOrder(orderData: {
                 source: "smart_store",
             },
         },
-        async () => {
-            await sendAdminNotification(
-                [
-                    "🎨 <b>طلب تصميم جديد</b>",
-                    `الطلب: #${escapeAdminNotificationHtml(data.order_number)}`,
-                    `العميل: ${escapeAdminNotificationHtml(finalCustomerName || "عميل")}`,
-                    `البريد: ${escapeAdminNotificationHtml(finalCustomerEmail)}`,
-                    `الجوال: ${escapeAdminNotificationHtml(finalCustomerPhone)}`,
-                    `المنتج: ${escapeAdminNotificationHtml(garmentName)} (${escapeAdminNotificationHtml(colorName)})`,
-                    `المصدر: المتجر الذكي`,
-                ].join("\n")
-            );
-        }
+        [
+            "🎨 <b>طلب تصميم جديد</b>",
+            `الطلب: #${escapeAdminNotificationHtml(data.order_number)}`,
+            `العميل: ${escapeAdminNotificationHtml(finalCustomerName || "عميل")}`,
+            `البريد: ${escapeAdminNotificationHtml(finalCustomerEmail)}`,
+            `الجوال: ${escapeAdminNotificationHtml(finalCustomerPhone)}`,
+            `المنتج: ${escapeAdminNotificationHtml(garmentName)} (${escapeAdminNotificationHtml(colorName)})`,
+            `المصدر: المتجر الذكي`,
+        ].join("\n")
     ).catch(console.error);
 
     return {

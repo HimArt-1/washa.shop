@@ -2071,27 +2071,65 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         return { success: false, error: currentOrderError?.message || "الطلب غير موجود" };
     }
 
-    const statusChanged = Boolean(currentOrder && newStatus !== currentOrder.status);
-    const statusTransitionVersion = statusChanged
+    const currentMetadata = currentOrder.metadata && typeof currentOrder.metadata === "object"
+        ? currentOrder.metadata as Record<string, unknown>
+        : {};
+    const activeReleaseStartedAt = typeof currentMetadata.reservation_release_started_at === "string"
+        ? new Date(currentMetadata.reservation_release_started_at).getTime()
+        : Number.NaN;
+    const reservationReleaseIsProcessing = currentMetadata.reservation_release_status === "processing";
+    const reservationReleaseIsActive = reservationReleaseIsProcessing
+        && Number.isFinite(activeReleaseStartedAt)
+        && Date.now() - activeReleaseStartedAt < 10 * 60 * 1000;
+    const resumesSameRelease = reservationReleaseIsProcessing
+        && newStatus === currentOrder.status
+        && (newStatus === "cancelled" || newStatus === "refunded");
+    if (reservationReleaseIsProcessing && (reservationReleaseIsActive || !resumesSameRelease)) {
+        return { success: false, error: "تحرير مخزون الطلب قيد المعالجة من جلسة أخرى؛ انتظر قليلًا ثم حدّث الصفحة." };
+    }
+
+    const statusChanged = newStatus !== currentOrder.status;
+    const pendingNotificationVersion = typeof currentMetadata.status_notification_version === "string"
+        ? currentMetadata.status_notification_version
+        : null;
+    const requestedTransitionVersion = statusChanged
         ? new Date().toISOString()
-        : currentOrder?.updated_at || new Date().toISOString();
-    const updateData: Record<string, unknown> = {
-        status: newStatus,
-        ...(statusChanged ? { updated_at: statusTransitionVersion } : {}),
-    };
+        : pendingNotificationVersion || currentOrder.updated_at || new Date().toISOString();
+    let statusTransitionVersion = requestedTransitionVersion;
+    const statusNotificationPending = statusChanged || currentMetadata.status_notification_pending === true;
+    let updateData: Record<string, unknown> = statusChanged
+        ? { status: newStatus, updated_at: requestedTransitionVersion }
+        : {};
+    let statusAlreadyPersisted = false;
 
     if (newStatus === "confirmed" && currentOrder?.status === "pending") {
         return { success: false, error: "أكد استلام الدفعة أولًا من إجراء تأكيد التحويل البنكي." };
     }
-    if (newStatus === "refunded") updateData.payment_status = "refunded";
+    if (newStatus === "refunded" && currentOrder.payment_status !== "refunded") {
+        updateData.payment_status = "refunded";
+    }
 
-    const currentMetadata = currentOrder?.metadata && typeof currentOrder.metadata === "object"
-        ? currentOrder.metadata as Record<string, unknown>
-        : {};
     const hadStockDeducted = currentMetadata.inventory_reserved === true
         || ((currentOrder?.payment_status === "paid" || currentMetadata.payment_method === "cod")
             && ["confirmed", "processing", "shipped"].includes(currentOrder?.status || ""));
     if ((newStatus === "cancelled" || newStatus === "refunded") && hadStockDeducted) {
+        const releaseStartedAt = typeof currentMetadata.reservation_release_started_at === "string"
+            ? new Date(currentMetadata.reservation_release_started_at).getTime()
+            : Number.NaN;
+        const releaseIsActive = currentMetadata.reservation_release_status === "processing"
+            && Number.isFinite(releaseStartedAt)
+            && Date.now() - releaseStartedAt < 10 * 60 * 1000;
+        if (!statusChanged && releaseIsActive) {
+            return { success: false, error: "إلغاء الطلب قيد المعالجة من جلسة أخرى؛ انتظر قليلًا ثم حدّث الصفحة." };
+        }
+
+        let releaseClaimMetadata: Record<string, unknown> = {
+            ...currentMetadata,
+            reservation_release_status: "processing",
+            reservation_release_started_at: new Date().toISOString(),
+            status_notification_pending: true,
+            status_notification_version: requestedTransitionVersion,
+        };
         if (currentMetadata.payment_method === "bank_transfer" && currentOrder?.status === "pending") {
             const { data: cancellationClaimed, error: cancellationClaimError } = await supabase.rpc(
                 "claim_bank_transfer_cancellation" as never,
@@ -2100,6 +2138,61 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
             if (cancellationClaimError || cancellationClaimed !== true) {
                 return { success: false, error: "جرى التعامل مع الطلب من جلسة أخرى؛ حدّث الصفحة." };
             }
+            const { data: claimedOrder, error: claimedOrderError } = await supabase
+                .from("orders")
+                .select("updated_at, metadata")
+                .eq("id", orderId)
+                .single();
+            if (claimedOrderError || !claimedOrder) {
+                return { success: false, error: "تم حجز الإلغاء لكن تعذر قراءة حالة الطلب؛ راجعه يدويًا." };
+            }
+            statusAlreadyPersisted = true;
+            releaseClaimMetadata = {
+                ...(claimedOrder.metadata && typeof claimedOrder.metadata === "object"
+                    ? claimedOrder.metadata as Record<string, unknown>
+                    : releaseClaimMetadata),
+                reservation_release_status: "processing",
+                reservation_release_started_at: new Date().toISOString(),
+                status_notification_pending: true,
+                status_notification_version: requestedTransitionVersion,
+            };
+            const { data: releaseClaim, error: releaseClaimError } = await supabase
+                .from("orders")
+                .update({
+                    metadata: releaseClaimMetadata,
+                    updated_at: requestedTransitionVersion,
+                })
+                .eq("id", orderId)
+                .eq("updated_at", claimedOrder.updated_at)
+                .select("updated_at")
+                .maybeSingle();
+            if (releaseClaimError || !releaseClaim) {
+                return { success: false, error: "جرى التعامل مع الإلغاء من جلسة أخرى؛ حدّث الصفحة." };
+            }
+            statusTransitionVersion = releaseClaim.updated_at || requestedTransitionVersion;
+        } else {
+            const claimUpdate: Record<string, unknown> = {
+                status: newStatus,
+                updated_at: requestedTransitionVersion,
+                metadata: releaseClaimMetadata,
+            };
+            if (newStatus === "refunded" && currentOrder.payment_status !== "refunded") {
+                claimUpdate.payment_status = "refunded";
+            }
+            const { data: claimedOrder, error: claimError } = await supabase
+                .from("orders")
+                .update(claimUpdate)
+                .eq("id", orderId)
+                .eq("status", currentOrder.status)
+                .eq("updated_at", currentOrder.updated_at)
+                .select("updated_at")
+                .maybeSingle();
+            if (claimError) return { success: false, error: claimError.message };
+            if (!claimedOrder) {
+                return { success: false, error: "جرى تحديث الطلب من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+            }
+            statusAlreadyPersisted = true;
+            statusTransitionVersion = claimedOrder.updated_at || requestedTransitionVersion;
         }
         if (currentMetadata.coupon_reserved === true && currentOrder?.coupon_id) {
             const { error: couponReleaseError } = await supabase.rpc(
@@ -2107,7 +2200,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
                 { p_order_id: orderId } as never
             );
             if (couponReleaseError) {
-                return { success: false, error: "أُعيد المخزون لكن تعذر تحرير حجز الكوبون. راجع الطلب يدويًا." };
+                return { success: false, error: "تم حجز الإلغاء، لكن تعذر تحرير حجز الكوبون. أعد المحاولة أو راجع الطلب يدويًا." };
             }
         }
         const { restoreStockForOrder } = await import("@/lib/inventory");
@@ -2115,35 +2208,51 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
         if (!restoration.success) {
             if (currentMetadata.coupon_reserved === true) {
                 await supabase.from("orders").update({
-                    metadata: { ...currentMetadata, coupon_reserved: false },
+                    metadata: { ...releaseClaimMetadata, coupon_reserved: false },
                 }).eq("id", orderId);
             }
-            return { success: false, error: restoration.error || "تعذر إعادة المخزون؛ لم تتغير حالة الطلب." };
+            return { success: false, error: restoration.error || "تم حجز الإلغاء لكن تعذر إعادة المخزون؛ أعد المحاولة." };
         }
         const releasedMetadata: Record<string, unknown> = {
-            ...currentMetadata,
+            ...releaseClaimMetadata,
             inventory_reserved: false,
             coupon_reserved: false,
             bank_transfer_status: "cancelled",
+            reservation_release_status: "completed",
             reservation_released_at: new Date().toISOString(),
+            status_notification_pending: true,
+            status_notification_version: statusTransitionVersion,
         };
-        updateData.metadata = releasedMetadata;
-        const { error: releaseMetadataError } = await supabase
+        updateData = { metadata: releasedMetadata };
+    }
+
+    let orderUpdateError: { message: string } | null = null;
+    if (Object.keys(updateData).length > 0) {
+        let updateQuery = supabase
             .from("orders")
-            .update({ metadata: releasedMetadata })
+            .update(updateData)
             .eq("id", orderId);
-        if (releaseMetadataError) {
-            return { success: false, error: "تحرر المخزون، لكن تعذر تثبيت حالة التحرير. راجع الطلب يدويًا." };
+        if (statusChanged && !statusAlreadyPersisted) {
+            updateQuery = updateQuery.eq("status", currentOrder.status);
+        } else if (statusAlreadyPersisted) {
+            updateQuery = updateQuery
+                .eq("status", newStatus as typeof currentOrder.status)
+                .eq("updated_at", statusTransitionVersion);
+        }
+        const { data: persistedOrder, error } = await updateQuery
+            .select("updated_at")
+            .maybeSingle();
+        orderUpdateError = error;
+        if (!error && !persistedOrder) {
+            return { success: false, error: "جرى تحديث الطلب من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+        }
+        if (statusChanged && !statusAlreadyPersisted && persistedOrder?.updated_at) {
+            statusTransitionVersion = persistedOrder.updated_at;
         }
     }
 
-    const { error } = await supabase
-        .from("orders")
-        .update(updateData)
-        .eq("id", orderId);
-
-    if (error) {
-        console.error("Update order status error:", error);
+    if (orderUpdateError) {
+        console.error("Update order status error:", orderUpdateError);
         await reportAdminActionAlert({
             dispatchKey: `admin:update_order_status_failed:${orderId}:${newStatus}`,
             bucketMs: 30 * 60 * 1000,
@@ -2158,15 +2267,15 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
             metadata: {
                 order_id: orderId,
                 new_status: newStatus,
-                error: error.message,
+                error: orderUpdateError.message,
             },
         });
-        return { success: false, error: error.message };
+        return { success: false, error: orderUpdateError.message };
     }
 
     const orderNotificationDispatchKey = `order:${orderId}:user_notification:status:${statusTransitionVersion}`;
-    let shouldNotifyBuyer = statusChanged;
-    if (currentOrder?.buyer_id && !statusChanged) {
+    let shouldNotifyBuyer = statusChanged || statusNotificationPending;
+    if (currentOrder?.buyer_id && !shouldNotifyBuyer) {
         const { data: failedDispatch } = await supabase
             .from("event_dispatches")
             .select("id")
@@ -2189,7 +2298,7 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
 
         if (statusAr) {
             try {
-                await runIdempotentDispatch(
+                const notificationDispatch = await runIdempotentDispatch(
                     {
                         dispatchKey: orderNotificationDispatchKey,
                         eventType: "order_status_changed",
@@ -2210,6 +2319,24 @@ export async function updateOrderStatus(orderId: string, newStatus: string) {
                         if (!result.success) throw new Error(result.error || "Failed to notify buyer of order status");
                     }
                 );
+                const notificationConfirmed = !notificationDispatch.skipped
+                    || notificationDispatch.reason === "sent";
+                if (
+                    notificationConfirmed
+                    && (newStatus === "cancelled" || newStatus === "refunded")
+                ) {
+                    const { error: clearIntentError } = await supabase.rpc(
+                        "mark_order_status_notification_sent" as never,
+                        {
+                            p_order_id: orderId,
+                            p_status: newStatus,
+                            p_version: statusTransitionVersion,
+                        } as never
+                    );
+                    if (clearIntentError) {
+                        console.error("[updateOrderStatus:clear_notification_intent]", clearIntentError);
+                    }
+                }
             } catch (notificationError) {
                 console.error("[updateOrderStatus:notification]", notificationError);
                 await reportAdminActionAlert({
@@ -3937,11 +4064,14 @@ export async function updateArtworkStatus(
             .update({ status: newStatus, updated_at: transitionVersion })
             .eq("id", id)
             .eq("status", artwork.status)
-            .select("id")
+            .select("id, updated_at")
             .maybeSingle();
         error = updateResult.error;
         if (!error && !updateResult.data) {
             return { success: false, error: "تغيرت حالة العمل من جلسة أخرى؛ حدّث الصفحة وحاول مجددًا." };
+        }
+        if (!error && updateResult.data?.updated_at) {
+            transitionVersion = updateResult.data.updated_at;
         }
     }
 

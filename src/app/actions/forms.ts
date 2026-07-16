@@ -7,10 +7,12 @@ import { revalidatePath } from "next/cache";
 import { applicationSchema, newsletterSchema } from "@/lib/validations";
 import { createAdminNotification } from "@/app/actions/notifications";
 import { sendAdminApplicationNotificationEmail } from "@/lib/email";
-import { sendPushToAdmins } from "@/lib/push";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
-import { escapeAdminNotificationHtml, sendAdminNotification } from "@/lib/notifications";
+import {
+    runRecoverableAdminPushDispatch,
+    runRecoverableAdminWebhookDispatch,
+} from "@/lib/admin-notification-delivery";
+import { escapeAdminNotificationHtml } from "@/lib/notifications";
 import type { Application } from "@/types/database";
 
 // Rate limiting لنماذج الانضمام:
@@ -192,12 +194,24 @@ async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<
         data.art_style
     ).catch(console.error);
 
-    sendPushToAdmins("طلب انضمام جديد", `${data.full_name} — ${data.art_style}`, "/dashboard/applications").catch(() => {});
-    await runIdempotentDispatch(
+    runRecoverableAdminPushDispatch(
+        {
+            dispatchKey: `application:${normalizedEmail}:push_admin:created:${new Date().toISOString().slice(0, 10)}`,
+            eventType: "application_created",
+            resourceType: "application",
+            resourceId: normalizedEmail,
+            metadata: { email: normalizedEmail, join_type: data.join_type ?? null },
+        },
+        {
+            title: "طلب انضمام جديد",
+            body: `${data.full_name} — ${data.art_style}`,
+            url: "/dashboard/applications",
+        }
+    ).catch(() => {});
+    await runRecoverableAdminWebhookDispatch(
         {
             dispatchKey: `application:${normalizedEmail}:webhook_admin:created:${new Date().toISOString().slice(0, 10)}`,
             eventType: "application_created",
-            channel: "webhook_admin",
             resourceType: "application",
             resourceId: normalizedEmail,
             metadata: {
@@ -206,18 +220,14 @@ async function submitApplicationRecord(data: ApplicationInsertPayload): Promise<
                 art_style: data.art_style,
             },
         },
-        async () => {
-            await sendAdminNotification(
-                [
-                    "📝 <b>طلب انضمام جديد</b>",
-                    `الاسم: ${escapeAdminNotificationHtml(data.full_name)}`,
-                    `البريد: ${escapeAdminNotificationHtml(normalizedEmail)}`,
-                    `الجوال: ${escapeAdminNotificationHtml(data.phone)}`,
-                    `المجال: ${escapeAdminNotificationHtml(data.art_style)}`,
-                    `النوع: ${escapeAdminNotificationHtml(data.join_type)}`,
-                ].join("\n")
-            );
-        }
+        [
+            "📝 <b>طلب انضمام جديد</b>",
+            `الاسم: ${escapeAdminNotificationHtml(data.full_name)}`,
+            `البريد: ${escapeAdminNotificationHtml(normalizedEmail)}`,
+            `الجوال: ${escapeAdminNotificationHtml(data.phone)}`,
+            `المجال: ${escapeAdminNotificationHtml(data.art_style)}`,
+            `النوع: ${escapeAdminNotificationHtml(data.join_type)}`,
+        ].join("\n")
     ).catch(console.error);
 
     revalidatePath("/");
@@ -381,11 +391,10 @@ export async function subscribeNewsletter(formData: FormData): Promise<ActionRes
         };
     }
 
-    await runIdempotentDispatch(
+    await runRecoverableAdminWebhookDispatch(
         {
             dispatchKey: `newsletter:${email}:webhook_admin:subscribed:${new Date().toISOString().slice(0, 10)}`,
             eventType: "newsletter_subscribed",
-            channel: "webhook_admin",
             resourceType: "newsletter_subscriber",
             resourceId: email,
             metadata: {
@@ -393,15 +402,11 @@ export async function subscribeNewsletter(formData: FormData): Promise<ActionRes
                 reactivated: Boolean(existing?.id),
             },
         },
-        async () => {
-            await sendAdminNotification(
-                [
-                    "📬 <b>اشتراك جديد في النشرة</b>",
-                    `البريد: ${escapeAdminNotificationHtml(email)}`,
-                    `الحالة: ${existing?.id ? "إعادة تفعيل" : "اشتراك جديد"}`,
-                ].join("\n")
-            );
-        }
+        [
+            "📬 <b>اشتراك جديد في النشرة</b>",
+            `البريد: ${escapeAdminNotificationHtml(email)}`,
+            `الحالة: ${existing?.id ? "إعادة تفعيل" : "اشتراك جديد"}`,
+        ].join("\n")
     ).catch(console.error);
 
     return { success: true, message: "تم الاشتراك بنجاح!" };

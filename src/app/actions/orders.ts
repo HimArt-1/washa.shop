@@ -7,7 +7,7 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { sendOrderConfirmationEmail, sendAdminOrderNotificationEmail, type OrderEmailItem } from "@/lib/email";
-import { sendPushToAdmins } from "@/lib/push";
+import { runRecoverableAdminPushDispatch } from "@/lib/admin-notification-delivery";
 import { checkStockAvailability, decrementStockForOrder } from "@/lib/inventory";
 import { createUserNotification } from "@/lib/user-notifications";
 import { getSupabaseAdminClient } from "@/lib/supabase";
@@ -572,21 +572,18 @@ async function dispatchOrderCreatedSideEffects(params: {
                 assertSuccessfulDispatch(result, "Failed to send admin order email");
             }
         ),
-        runIdempotentDispatch(
+        runRecoverableAdminPushDispatch(
             {
                 dispatchKey: `order:${orderId}:admin_push:new_order`,
                 eventType: "order_created",
-                channel: "push_admin",
                 resourceType: "order",
                 resourceId: orderId,
                 metadata,
             },
-            async () => {
-                await sendPushToAdmins(
-                    "طلب جديد",
-                    `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
-                    "/dashboard/orders"
-                );
+            {
+                title: "طلب جديد",
+                body: `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
+                url: "/dashboard/orders",
             }
         ),
     ];
@@ -807,21 +804,18 @@ async function dispatchOrderPaymentSideEffects(params: {
                 assertSuccessfulDispatch(result, "Failed to send payment admin email");
             }
         ),
-        runIdempotentDispatch(
+        runRecoverableAdminPushDispatch(
             {
                 dispatchKey: `order:${orderId}:admin_push:payment_received`,
                 eventType: "order_payment_received",
-                channel: "push_admin",
                 resourceType: "order",
                 resourceId: orderId,
                 metadata,
             },
-            async () => {
-                await sendPushToAdmins(
-                    "تم استلام الدفع",
-                    `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
-                    "/dashboard/orders"
-                );
+            {
+                title: "تم استلام الدفع",
+                body: `طلب #${orderNumber} — ${total.toLocaleString()} ر.س`,
+                url: "/dashboard/orders",
             }
         ),
     ];
