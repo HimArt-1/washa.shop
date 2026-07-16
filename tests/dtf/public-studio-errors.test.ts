@@ -26,7 +26,16 @@ describe("public studio error messages", () => {
     });
 
     it("preserves intentional user messages", () => {
-        const message = "الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.";
-        expect(getPublicStudioErrorMessage(message, "generation")).toBe(message);
+        const messages = [
+            "الصورة المرجعية كبيرة جدًا. استخدم صورة أخف أو بدقة أقل.",
+            "طلب التوليد نفسه ما زال قيد التنفيذ. انتظر اكتماله قبل المحاولة مجدداً.",
+            "اكتمل طلب التوليد هذا مسبقاً، لكن نتيجته غير محفوظة في سجل الطلب. ابدأ محاولة جديدة فقط إذا لم تظهر النتيجة لديك.",
+            "تعذّر إعادة محاولة هذا الطلب لأن حالة الحصة غير محسومة. تحقق من رصيدك قبل بدء محاولة جديدة.",
+            "تعذّر تأكيد حالة حجز الحصة. تحقق من رصيدك قبل بدء محاولة جديدة.",
+        ];
+
+        for (const message of messages) {
+            expect(getPublicStudioErrorMessage(message, "generation")).toBe(message);
+        }
     });
 });

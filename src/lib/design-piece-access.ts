@@ -99,12 +99,11 @@ export async function resolveDesignPieceAccess(
     // This is the recommended pattern for Route Handlers in Clerk v6.
     let authState: Awaited<ReturnType<typeof auth>>;
     try {
-        authState = await auth();
+        authState = await auth({ acceptsToken: "session_token" });
     } catch (error) {
         unstable_rethrow(error);
         console.error("[design-piece-access] Clerk session verification failed", {
             errorName: error instanceof Error ? error.name : "UnknownError",
-            errorMessage: error instanceof Error ? error.message.slice(0, 300) : "Unknown Clerk error",
         });
         return { allowed: false, reason: "auth_unavailable" };
     }

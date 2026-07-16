@@ -5,6 +5,7 @@ import {
     resolveDesignPieceAccess,
     type DesignPieceAccessResult,
 } from "@/lib/design-piece-access";
+import { getSupabaseAdminClient } from "@/lib/supabase";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getRequestClientIdentifier } from "@/lib/request-client";
 
@@ -25,6 +26,18 @@ type AccessResolution =
 type ParsedJsonResolution<TData> =
     | { data: TData; response?: undefined }
     | { data?: undefined; response: NextResponse };
+
+type DtfGenerationClaimPayload = {
+    claimed?: unknown;
+    state?: unknown;
+    retry_after_seconds?: unknown;
+};
+
+export type DtfGenerationClaimResult = {
+    claimed: boolean;
+    state: "claimed" | "processing" | "succeeded" | "blocked" | "unavailable";
+    retryAfterSeconds: number;
+};
 
 function jsonError(message: string, status: number) {
     return NextResponse.json({ error: message }, { status });
@@ -147,12 +160,109 @@ export async function enforceDtfRouteRateLimit(
 export async function claimDtfGenerationRequest(
     profileId: string,
     requestId: string,
-    windowMs = 5 * 60_000
+    operation = "generate-mockup",
+    leaseSeconds = 5 * 60
+): Promise<DtfGenerationClaimResult> {
+    try {
+        const supabase = getSupabaseAdminClient();
+        const { data, error } = await supabase.rpc("claim_dtf_generation_request", {
+            p_profile_id: profileId,
+            p_operation: operation,
+            p_request_id: requestId,
+            p_lease_seconds: leaseSeconds,
+            p_retention_seconds: 24 * 60 * 60,
+        });
+
+        if (error) {
+            console.error("[dtf-generation-idempotency] claim failed", {
+                errorCode: error.code ?? null,
+            });
+            return { claimed: false, state: "unavailable", retryAfterSeconds: 0 };
+        }
+
+        const payload = data as DtfGenerationClaimPayload | null;
+        const state = payload?.state;
+        if (
+            typeof payload?.claimed !== "boolean"
+            || (state !== "claimed" && state !== "processing" && state !== "succeeded" && state !== "blocked")
+        ) {
+            console.error("[dtf-generation-idempotency] invalid claim payload");
+            return { claimed: false, state: "unavailable", retryAfterSeconds: 0 };
+        }
+
+        return {
+            claimed: payload.claimed,
+            state,
+            retryAfterSeconds: typeof payload.retry_after_seconds === "number"
+                ? Math.max(Math.round(payload.retry_after_seconds), 0)
+                : 0,
+        };
+    } catch (error) {
+        console.error("[dtf-generation-idempotency] unexpected claim failure", {
+            errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+        return { claimed: false, state: "unavailable", retryAfterSeconds: 0 };
+    }
+}
+
+export async function completeDtfGenerationRequest(
+    profileId: string,
+    requestId: string,
+    operation = "generate-mockup"
 ) {
-    const result = await checkRateLimit(
-        `dtf-generation-idempotency-${profileId}-${requestId}`,
-        1,
-        windowMs
-    );
-    return result.success;
+    try {
+        const supabase = getSupabaseAdminClient();
+        const { data, error } = await supabase.rpc("complete_dtf_generation_request", {
+            p_profile_id: profileId,
+            p_operation: operation,
+            p_request_id: requestId,
+            p_retention_seconds: 24 * 60 * 60,
+        });
+
+        if (error) {
+            console.error("[dtf-generation-idempotency] completion failed", {
+                errorCode: error.code ?? null,
+            });
+            return false;
+        }
+        return data === true;
+    } catch (error) {
+        console.error("[dtf-generation-idempotency] unexpected completion failure", {
+            errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+        return false;
+    }
+}
+
+export async function failDtfGenerationRequest(
+    profileId: string,
+    requestId: string,
+    options: {
+        operation?: string;
+        blockRetry?: boolean;
+    } = {}
+) {
+    try {
+        const supabase = getSupabaseAdminClient();
+        const { data, error } = await supabase.rpc("fail_dtf_generation_request", {
+            p_profile_id: profileId,
+            p_operation: options.operation ?? "generate-mockup",
+            p_request_id: requestId,
+            p_block_retry: options.blockRetry === true,
+            p_retention_seconds: 24 * 60 * 60,
+        });
+
+        if (error) {
+            console.error("[dtf-generation-idempotency] failure state update failed", {
+                errorCode: error.code ?? null,
+            });
+            return false;
+        }
+        return data === true;
+    } catch (error) {
+        console.error("[dtf-generation-idempotency] unexpected failure state update", {
+            errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+        return false;
+    }
 }
