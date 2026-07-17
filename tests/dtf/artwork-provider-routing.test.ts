@@ -159,7 +159,7 @@ describe("isolated artwork provider routing", () => {
                 responseModalities: ["IMAGE", "TEXT"],
                 imageConfig: {
                     aspectRatio: "1:1",
-                    imageSize: "1K",
+                    imageSize: "2K",
                 },
                 httpOptions: {
                     timeout: 120_000,

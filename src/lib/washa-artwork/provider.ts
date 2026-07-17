@@ -116,7 +116,7 @@ async function generateIsolatedWithGenAi(params: {
         parts.push({ inlineData: reference });
     }
     parts.push({ text: params.prompt });
-    const imageSize = (process.env.WASHA_ARTWORK_GENAI_IMAGE_SIZE || "1K").trim() || "1K";
+    const imageSize = (process.env.WASHA_ARTWORK_GENAI_IMAGE_SIZE || "2K").trim() || "2K";
     const response = await withProviderTimeout(
         (abortSignal) => client.models.generateContent({
             model: params.model,
