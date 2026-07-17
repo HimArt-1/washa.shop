@@ -28,12 +28,15 @@ import {
     getWashaDtfProviderAttempts,
     sanitizeWashaDtfProviderMessage,
 } from "@/lib/washa-dtf-provider-config";
+import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
 const GENERATE_MOCKUP_OPERATION = "generate-mockup";
+const ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR =
+    "تعذر تجهيز التصميم كملف طباعة شفاف وآمن. عدّل الوصف وجرّب مرة أخرى.";
 
 function structuredErrorResponse(
     requestId: string,
@@ -463,30 +466,55 @@ export async function POST(request: NextRequest) {
         });
 
         } catch (error) {
-        const handled = getWashaDtfErrorDetails(error);
-        if (handled.status === 429 || handled.status >= 500) {
-            recordWashaDtfGenerationFailure(error);
+        const artworkValidationFailure = isArtworkPrintValidationError(error);
+        const handled = artworkValidationFailure
+            ? {
+                message: ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
+                status: 422,
+            }
+            : getWashaDtfErrorDetails(error);
+        if (artworkValidationFailure) {
+            logDtfTrace(
+                GENERATE_MOCKUP_ROUTE,
+                traceId,
+                "artwork_print_validation_failed",
+                {
+                    resolvedProvider: generationReadiness.provider ?? "configured",
+                    resolvedModel: generationReadiness.model ?? null,
+                    fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
+                    statusCode: 422,
+                    errorCode: error.code,
+                    errorStage: error.stage,
+                    durationMs: Date.now() - routeStartedAt,
+                    diagnostics: error.diagnostics,
+                    validationErrors: error.validationErrors,
+                }
+            );
+        } else {
+            if (handled.status === 429 || handled.status >= 500) {
+                recordWashaDtfGenerationFailure(error);
+            }
+            const providerAttempts = getWashaDtfProviderAttempts(error);
+            const lastProviderAttempt = providerAttempts.at(-1);
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_failed", {
+                resolvedProvider: generationReadiness.provider ?? "configured",
+                resolvedModel: generationReadiness.model ?? null,
+                fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
+                attemptedProvider: lastProviderAttempt?.provider
+                    ?? generationReadiness.provider
+                    ?? "configured",
+                attemptedModel: lastProviderAttempt?.model
+                    ?? generationReadiness.model
+                    ?? null,
+                providerAttempt: lastProviderAttempt?.attempt ?? 1,
+                providerAttempts,
+                statusCode: handled.status,
+                errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
+                durationMs: Date.now() - routeStartedAt,
+                errorName: error instanceof Error ? error.name : "UnknownError",
+                errorMessage: sanitizeWashaDtfProviderMessage(error),
+            });
         }
-        const providerAttempts = getWashaDtfProviderAttempts(error);
-        const lastProviderAttempt = providerAttempts.at(-1);
-        logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_failed", {
-            resolvedProvider: generationReadiness.provider ?? "configured",
-            resolvedModel: generationReadiness.model ?? null,
-            fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
-            attemptedProvider: lastProviderAttempt?.provider
-                ?? generationReadiness.provider
-                ?? "configured",
-            attemptedModel: lastProviderAttempt?.model
-                ?? generationReadiness.model
-                ?? null,
-            providerAttempt: lastProviderAttempt?.attempt ?? 1,
-            providerAttempts,
-            statusCode: handled.status,
-            errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
-            durationMs: Date.now() - routeStartedAt,
-            errorName: error instanceof Error ? error.name : "UnknownError",
-            errorMessage: sanitizeWashaDtfProviderMessage(error),
-        });
 
         let quotaReleased = !quota.tracked;
         if (quota.tracked) {
@@ -514,6 +542,12 @@ export async function POST(request: NextRequest) {
             metadata: {
                 quotaReleased,
                 quotaDate: quota.quotaDate,
+                ...(artworkValidationFailure
+                    ? {
+                        errorCode: error.code,
+                        errorStage: error.stage,
+                    }
+                    : {}),
             },
         });
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "failure_logged", {
@@ -542,6 +576,15 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        if (artworkValidationFailure) {
+            return structuredErrorResponse(
+                traceId,
+                422,
+                error.code,
+                ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
+                { retryable: false }
+            );
+        }
         const providerStatus = handled.status === 429 || handled.status >= 500 ? 503 : 502;
         return structuredErrorResponse(
             traceId,

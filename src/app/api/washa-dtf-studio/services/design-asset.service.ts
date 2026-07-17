@@ -16,6 +16,12 @@ import {
     validateArtworkPng,
 } from "@/lib/washa-artwork/validation";
 import {
+    ArtworkPrintValidationError,
+    isArtworkPrintValidationError,
+    normalizeGeneratedArtworkForPrint,
+    type ArtworkNormalizationDiagnostics,
+} from "@/lib/washa-artwork/normalization";
+import {
     buildPlacementTransform,
     getDefaultPrintArea,
     normalizePrintArea,
@@ -35,6 +41,9 @@ import type {
     PlacementTransform,
 } from "@/lib/washa-artwork/types";
 import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.service";
+import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
+
+const ARTWORK_NORMALIZATION_SCOPE = "dtf.artwork.normalization";
 
 type GenerationSelection = {
     garmentId: string | null;
@@ -370,17 +379,66 @@ export class DesignAssetService {
         generationParameters: Record<string, unknown>;
         printWidthCm: number;
         printHeightCm: number;
+        normalization: ArtworkNormalizationDiagnostics;
     }): Promise<{ master: MasterAssetDescriptor; buffer: Buffer }> {
         const validation = await validateArtworkPng(params.buffer);
         if (!validation.valid) {
-            throw new Error(`Generated artwork failed print validation: ${validation.errors.join(" ")}`);
+            throw new ArtworkPrintValidationError({
+                message: `Generated artwork failed print validation: ${validation.errors.join(" ")}`,
+                stage: "validation",
+                diagnostics: {
+                    validation,
+                    normalization: params.normalization,
+                },
+                validationErrors: validation.errors,
+            });
         }
-        const effectiveDpi = assertMinimumEffectivePrintDpi({
-            width: validation.width,
-            height: validation.height,
-            printWidthCm: params.printWidthCm,
-            printHeightCm: params.printHeightCm,
-        });
+        let effectiveDpi: number;
+        const sourceEquivalentWidth = Math.max(
+            1,
+            Math.floor(
+                validation.width
+                / Math.max(1, params.normalization.outputScaleFactor)
+            )
+        );
+        const sourceEquivalentHeight = Math.max(
+            1,
+            Math.floor(
+                validation.height
+                / Math.max(1, params.normalization.outputScaleFactor)
+            )
+        );
+        try {
+            effectiveDpi = assertMinimumEffectivePrintDpi({
+                width: sourceEquivalentWidth,
+                height: sourceEquivalentHeight,
+                printWidthCm: params.printWidthCm,
+                printHeightCm: params.printHeightCm,
+            });
+        } catch (error) {
+            throw new ArtworkPrintValidationError({
+                message: error instanceof Error
+                    ? error.message
+                    : "Artwork effective print resolution validation failed.",
+                stage: "validation",
+                diagnostics: {
+                    width: validation.width,
+                    height: validation.height,
+                    sourceEquivalentWidth,
+                    sourceEquivalentHeight,
+                    outputScaleFactor: params.normalization.outputScaleFactor,
+                    printWidthCm: params.printWidthCm,
+                    printHeightCm: params.printHeightCm,
+                    normalization: params.normalization,
+                },
+                validationErrors: [
+                    error instanceof Error
+                        ? error.message
+                        : "Artwork effective print resolution validation failed.",
+                ],
+                cause: error,
+            });
+        }
 
         const checksum = sha256Hex(params.buffer);
         const sb = DesignAssetService.db();
@@ -431,7 +489,9 @@ export class DesignAssetService {
             width: validation.width,
             height: validation.height,
             mime_type: "image/png",
-            alpha_channel_status: "verified",
+            alpha_channel_status: params.normalization.backgroundRemovalApplied
+                ? "fallback_processed"
+                : "verified",
             transparent_pixel_ratio: validation.transparentPixelRatio,
             generation_model: params.model,
             provider: params.provider,
@@ -439,6 +499,8 @@ export class DesignAssetService {
             generation_parameters: {
                 ...params.generationParameters,
                 effectivePrintDpi: effectiveDpi,
+                sourceEquivalentWidth,
+                sourceEquivalentHeight,
                 validatedPrintWidthCm: params.printWidthCm,
                 validatedPrintHeightCm: params.printHeightCm,
             },
@@ -452,7 +514,9 @@ export class DesignAssetService {
                 storage_bucket: uploaded.bucket,
                 safe_padding_ratio: storedValidation.safePaddingRatio,
                 validation_report: storedValidation,
-                fallback_processing: null,
+                fallback_processing: params.normalization.backgroundRemovalApplied
+                    ? params.normalization
+                    : null,
             });
         if (insertError) throw insertError;
 
@@ -1092,23 +1156,118 @@ export class DesignAssetService {
                     traceId: input.generationRequestId,
                 });
                 const materialized = await materializeImageSource(providerResult.imageUrl);
+                const normalizationStartedAt = Date.now();
+                logDtfTrace(
+                    ARTWORK_NORMALIZATION_SCOPE,
+                    input.generationRequestId,
+                    "artwork_normalization_started",
+                    {
+                        attemptedProvider: providerResult.provider,
+                        attemptedModel: providerResult.model,
+                        declaredMimeType: materialized.mimeType,
+                        byteLength: materialized.buffer.byteLength,
+                    }
+                );
+                let normalizedArtwork: Awaited<
+                    ReturnType<typeof normalizeGeneratedArtworkForPrint>
+                >;
+                try {
+                    normalizedArtwork = await normalizeGeneratedArtworkForPrint({
+                        buffer: materialized.buffer,
+                        declaredMimeType: materialized.mimeType,
+                        safePaddingRatio: 0.1,
+                    });
+                    logDtfTrace(
+                        ARTWORK_NORMALIZATION_SCOPE,
+                        input.generationRequestId,
+                        "artwork_normalization_completed",
+                        {
+                            attemptedProvider: providerResult.provider,
+                            attemptedModel: providerResult.model,
+                            durationMs: Date.now() - normalizationStartedAt,
+                            input: normalizedArtwork.input,
+                            output: normalizedArtwork.output,
+                            normalization: normalizedArtwork.normalization,
+                            printValidation: normalizedArtwork.validation,
+                        }
+                    );
+                } catch (error) {
+                    const artworkError = isArtworkPrintValidationError(error)
+                        ? error
+                        : new ArtworkPrintValidationError({
+                            message: "Generated artwork normalization failed.",
+                            stage: "normalization",
+                            diagnostics: {
+                                attemptedProvider: providerResult.provider,
+                                attemptedModel: providerResult.model,
+                                declaredMimeType: materialized.mimeType,
+                                byteLength: materialized.buffer.byteLength,
+                            },
+                            cause: error,
+                        });
+                    logDtfTrace(
+                        ARTWORK_NORMALIZATION_SCOPE,
+                        input.generationRequestId,
+                        "artwork_print_validation_failed",
+                        {
+                            attemptedProvider: providerResult.provider,
+                            attemptedModel: providerResult.model,
+                            durationMs: Date.now() - normalizationStartedAt,
+                            errorCode: artworkError.code,
+                            errorStage: artworkError.stage,
+                            diagnostics: artworkError.diagnostics,
+                            validationErrors: artworkError.validationErrors,
+                        }
+                    );
+                    throw artworkError;
+                }
                 const arabicTextVerification = await verifyExactArabicText({
-                    artworkPng: materialized.buffer,
+                    artworkPng: normalizedArtwork.buffer,
                     expectedText: input.context.calligraphyText,
                 });
-                const persisted = await DesignAssetService.persistMasterAsset({
-                    profileId: input.profileId,
-                    buffer: materialized.buffer,
-                    provider: providerResult.provider,
-                    model: providerResult.model,
-                    prompt,
-                    generationParameters: {
-                        ...providerResult.parameters,
-                        arabicTextVerification,
-                    },
-                    printWidthCm: provisionalPlacement.printWidthCm,
-                    printHeightCm: provisionalPlacement.printHeightCm,
-                });
+                let persisted: Awaited<
+                    ReturnType<typeof DesignAssetService.persistMasterAsset>
+                >;
+                try {
+                    persisted = await DesignAssetService.persistMasterAsset({
+                        profileId: input.profileId,
+                        buffer: normalizedArtwork.buffer,
+                        provider: providerResult.provider,
+                        model: providerResult.model,
+                        prompt,
+                        generationParameters: {
+                            ...providerResult.parameters,
+                            arabicTextVerification,
+                            artworkNormalization: {
+                                input: normalizedArtwork.input,
+                                output: normalizedArtwork.output,
+                                normalization: normalizedArtwork.normalization,
+                                validation: normalizedArtwork.validation,
+                            },
+                        },
+                        printWidthCm: provisionalPlacement.printWidthCm,
+                        printHeightCm: provisionalPlacement.printHeightCm,
+                        normalization: normalizedArtwork.normalization,
+                    });
+                } catch (error) {
+                    if (isArtworkPrintValidationError(error)) {
+                        logDtfTrace(
+                            ARTWORK_NORMALIZATION_SCOPE,
+                            input.generationRequestId,
+                            "artwork_print_validation_failed",
+                            {
+                                attemptedProvider: providerResult.provider,
+                                attemptedModel: providerResult.model,
+                                durationMs: Date.now() - normalizationStartedAt,
+                                errorCode: error.code,
+                                errorStage: error.stage,
+                                diagnostics: error.diagnostics,
+                                validationErrors: error.validationErrors,
+                            }
+                        );
+                    }
+                    throw error;
+                }
                 master = persisted.master;
                 masterBuffer = persisted.buffer;
                 designRequestId = crypto.randomUUID();
