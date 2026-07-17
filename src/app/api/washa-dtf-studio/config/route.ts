@@ -18,15 +18,20 @@ export async function GET() {
         const artworkProvider = getIsolatedArtworkProviderReadiness();
         const generation = baseGeneration.enabled && !artworkProvider.ready
             ? {
+                ...baseGeneration,
                 enabled: false,
                 code: "provider_not_configured" as const,
                 message: artworkProvider.message,
-                provider: "openai",
+                provider: artworkProvider.provider,
+                model: artworkProvider.model,
+                fallbackEnabled: artworkProvider.fallbackEnabled,
             }
             : baseGeneration.enabled && artworkProvider.ready
                 ? {
                     ...baseGeneration,
-                    provider: `${artworkProvider.provider}:${artworkProvider.model}`,
+                    provider: artworkProvider.provider,
+                    model: artworkProvider.model,
+                    fallbackEnabled: artworkProvider.fallbackEnabled,
                 }
                 : baseGeneration;
         return NextResponse.json({ ...config, generation }, {

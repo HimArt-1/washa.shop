@@ -6,7 +6,6 @@
 
 import {
     getWashaDtfGenAiClient,
-    WASHA_DTF_MODEL,
     extractGeneratedImageDataUrl,
 } from "@/lib/washa-dtf-studio";
 import {
@@ -15,14 +14,20 @@ import {
     isReplicateTokenConfigured,
     runReplicatePredictions,
 } from "@/lib/replicate-predictions";
-import { isGeminiKeyConfigured, runGeminiImagenDataUrl, runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
+import { isGeminiKeyConfigured, runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
 import { isOpenAIKeyConfigured, runOpenAIGenerateDataUrl, runOpenAIEditDataUrl } from "@/lib/openai-image";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
+import {
+    createWashaDtfProviderAttempt,
+    resolveWashaDtfProviderConfiguration,
+    sanitizeWashaDtfProviderMessage,
+    WashaDtfProviderChainError,
+} from "@/lib/washa-dtf-provider-config";
 
 type DtfImageReference = { base64: string; mimeType: string };
 
 export function getWashaDtfResolvedImageProvider(): string {
-    return (process.env.WASHA_DTF_IMAGE_PROVIDER || process.env.IMAGE_PROVIDER || "genai").toLowerCase().trim();
+    return resolveWashaDtfProviderConfiguration().provider;
 }
 
 function buildProviderTimeoutError(timeoutMs: number) {
@@ -50,15 +55,6 @@ async function withDtfProviderTimeout<T>(operation: (signal: AbortSignal) => Pro
     }
 }
 
-/**
- * نماذج احتياطية — كل نموذج عنده حصة مستقلة في الطبقة المجانية.
- * يُجرَّب النموذج الأساسي أولاً ثم البدائل عند فشل الحصة.
- */
-const GENAI_FALLBACK_MODELS = [
-    "gemini-2.5-flash-image",
-    "gemini-3-pro-image-preview",
-];
-
 function isQuotaOrUnavailableError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
     const msg = error.message.toLowerCase();
@@ -79,7 +75,8 @@ async function runGenaiSdkMockup(
     referenceImage: DtfImageReference | null | undefined,
     garmentReferenceImage: DtfImageReference | null | undefined,
     timeoutMs: number,
-    traceId: string
+    traceId: string,
+    primaryModel = resolveWashaDtfProviderConfiguration().model
 ) {
     const client = getWashaDtfGenAiClient();
     const parts: any[] = [];
@@ -109,45 +106,52 @@ async function runGenaiSdkMockup(
         httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } },
     } as any;
 
-    // جرّب النموذج الأساسي أولاً
-    const modelsToTry = [WASHA_DTF_MODEL, ...GENAI_FALLBACK_MODELS];
-    let lastError: unknown = null;
-
-    for (const model of modelsToTry) {
-        try {
-            logDtfTrace("dtf.ai.router", traceId, "genai_trying_model", { model });
-            const response = await withDtfProviderTimeout(
-                (abortSignal) =>
-                    client.models.generateContent({
-                        model,
-                        contents: { role: "user", parts },
-                        config: { ...config, abortSignal },
-                    }),
-                timeoutMs
-            );
-            const imageUrl = extractGeneratedImageDataUrl(response);
-            if (imageUrl) {
-                logDtfTrace("dtf.ai.router", traceId, "genai_model_success", { model });
-                return imageUrl;
-            }
-        } catch (error) {
-            lastError = error;
-            logDtfTrace("dtf.ai.router", traceId, "genai_model_failed", {
-                model,
-                is_quota: isQuotaOrUnavailableError(error),
-                error_message: error instanceof Error ? error.message.slice(0, 200) : String(error),
-            });
-            // إذا كان الخطأ حصة — جرّب النموذج التالي
-            if (isQuotaOrUnavailableError(error)) continue;
-            // أخطاء أخرى (مفتاح خاطئ، شبكة) — لا فائدة من المحاولة مع نموذج آخر
-            throw error;
-        }
+    const attemptStartedAt = Date.now();
+    logDtfTrace("dtf.ai.router", traceId, "genai_trying_model", {
+        resolvedProvider: "genai",
+        attemptedProvider: "genai",
+        attemptedModel: primaryModel,
+        providerAttempt: 1,
+    });
+    try {
+        const response = await withDtfProviderTimeout(
+            (abortSignal) =>
+                client.models.generateContent({
+                    model: primaryModel,
+                    contents: { role: "user", parts },
+                    config: { ...config, abortSignal },
+                }),
+            timeoutMs
+        );
+        const imageUrl = extractGeneratedImageDataUrl(response);
+        if (!imageUrl) throw new Error("لم يتم توليد صورة من Washa AI");
+        logDtfTrace("dtf.ai.router", traceId, "genai_model_success", {
+            attemptedProvider: "genai",
+            attemptedModel: primaryModel,
+            providerAttempt: 1,
+            durationMs: Date.now() - attemptStartedAt,
+        });
+        return imageUrl;
+    } catch (error) {
+        const diagnostic = createWashaDtfProviderAttempt({
+            provider: "genai",
+            model: primaryModel,
+            attempt: 1,
+            durationMs: Date.now() - attemptStartedAt,
+            error,
+        });
+        logDtfTrace("dtf.ai.router", traceId, "genai_model_failed", {
+            attemptedProvider: diagnostic.provider,
+            attemptedModel: diagnostic.model,
+            providerAttempt: diagnostic.attempt,
+            durationMs: diagnostic.durationMs,
+            providerStatus: diagnostic.status,
+            providerCode: diagnostic.code,
+            providerMessage: diagnostic.message,
+            is_quota: isQuotaOrUnavailableError(error),
+        });
+        throw error;
     }
-
-    // كل النماذج فشلت
-    if (lastError) throw lastError;
-    logDtfTrace("dtf.ai.router", traceId, "genai_empty_image", {});
-    throw new Error("لم يتم توليد صورة من Washa AI");
 }
 
 async function runGenaiSdkExtract(
@@ -155,7 +159,8 @@ async function runGenaiSdkExtract(
     mockupImage: string,
     mimeType: string,
     timeoutMs: number,
-    traceId: string
+    traceId: string,
+    model = resolveWashaDtfProviderConfiguration().model
 ) {
     const client = getWashaDtfGenAiClient();
     const config = {
@@ -167,7 +172,7 @@ async function runGenaiSdkExtract(
     const response = await withDtfProviderTimeout(
         (abortSignal) =>
             client.models.generateContent({
-                model: WASHA_DTF_MODEL,
+                model,
                 contents: {
                     role: "user",
                     parts: [
@@ -198,8 +203,8 @@ function resolvePrimaryMockupReference(
     return garmentReferenceImage?.base64 ? garmentReferenceImage : referenceImage;
 }
 
-function isDtfProviderFallbackEnabled() {
-    return process.env.WASHA_DTF_PROVIDER_FALLBACK !== "false";
+export function isDtfProviderFallbackEnabled() {
+    return resolveWashaDtfProviderConfiguration().fallbackEnabled;
 }
 
 async function runReplicateMockup(
@@ -243,7 +248,7 @@ async function runReplicateMockupFallback(
 
     logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate", {
         from: fromProvider,
-        reason: errMsg,
+        reason: sanitizeWashaDtfProviderMessage(originalError),
     });
 
     try {
@@ -253,7 +258,7 @@ async function runReplicateMockupFallback(
     } catch (fallbackError) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_replicate_failed", {
             from: fromProvider,
-            error_message: fallbackError instanceof Error ? fallbackError.message : String(fallbackError ?? ""),
+            error_message: sanitizeWashaDtfProviderMessage(fallbackError),
         });
         throw originalError;
     }
@@ -270,10 +275,17 @@ async function runOpenAIMockupFallback(
         throw originalError;
     }
 
+    const primaryConfiguration = resolveWashaDtfProviderConfiguration();
     logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai", {
         from: fromProvider,
+        fromModel: primaryConfiguration.model,
+        attemptedProvider: "openai",
+        attemptedModel: process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1",
+        fallbackEnabled: true,
+        reasonMessage: sanitizeWashaDtfProviderMessage(originalError),
     });
 
+    const fallbackStartedAt = Date.now();
     try {
         let result: string | null = null;
         if (referenceImage?.base64 && referenceImage.mimeType) {
@@ -288,12 +300,38 @@ async function runOpenAIMockupFallback(
         }
         if (result) return result;
     } catch (fallbackError) {
-        logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai_failed", {
-            from: fromProvider,
-            error_message: fallbackError instanceof Error
-                ? fallbackError.message
-                : String(fallbackError ?? ""),
+        const primaryAttempt = createWashaDtfProviderAttempt({
+            provider: fromProvider,
+            model: primaryConfiguration.model,
+            attempt: 1,
+            durationMs: 0,
+            error: originalError,
         });
+        const fallbackAttempt = createWashaDtfProviderAttempt({
+            provider: "openai",
+            model: process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1",
+            attempt: 2,
+            durationMs: Date.now() - fallbackStartedAt,
+            error: fallbackError,
+        });
+        logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai_failed", {
+            originalProvider: primaryAttempt.provider,
+            originalModel: primaryAttempt.model,
+            originalStatus: primaryAttempt.status,
+            originalCode: primaryAttempt.code,
+            originalMessage: primaryAttempt.message,
+            attemptedProvider: fallbackAttempt.provider,
+            attemptedModel: fallbackAttempt.model,
+            providerAttempt: fallbackAttempt.attempt,
+            durationMs: fallbackAttempt.durationMs,
+            providerStatus: fallbackAttempt.status,
+            providerCode: fallbackAttempt.code,
+            providerMessage: fallbackAttempt.message,
+        });
+        throw new WashaDtfProviderChainError(
+            [primaryAttempt, fallbackAttempt],
+            originalError
+        );
     }
 
     throw originalError;
@@ -310,31 +348,35 @@ export async function washDtfRoutedGenerateMockup(
     const { traceId, timeoutMs } = options;
     const garmentReferenceImage = options.garmentReferenceImage ?? null;
     const primaryReferenceImage = resolvePrimaryMockupReference(referenceImage, garmentReferenceImage);
-    const p = getWashaDtfResolvedImageProvider();
+    const providerConfiguration = resolveWashaDtfProviderConfiguration();
+    const p = providerConfiguration.provider;
     logDtfTrace("dtf.ai.generate-mockup", traceId, "router_provider", {
-        resolved: p,
+        configuredProvider: providerConfiguration.configuredProvider,
+        resolvedProvider: p,
+        resolvedModel: providerConfiguration.model,
+        fallbackEnabled: providerConfiguration.fallbackEnabled,
+        credentialConfigured: providerConfiguration.credentialConfigured,
         has_reference_image: Boolean(referenceImage?.base64),
         has_garment_reference_image: Boolean(garmentReferenceImage?.base64),
     });
 
-    if (
-        p === "genai" ||
-        p === "google_genai" ||
-        p === "gemini_flash" ||
-        p === "flash_image" ||
-        p === "gemini-2.5-flash-image" ||
-        p === "gemini-2.5-flash-image-preview" ||
-        p === "gemini-3.1-flash-image-preview"
-    ) {
+    if (p === "genai") {
         try {
-            return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
+            return await runGenaiSdkMockup(
+                prompt,
+                referenceImage,
+                garmentReferenceImage,
+                timeoutMs,
+                traceId,
+                providerConfiguration.model
+            );
         } catch (error) {
             return runOpenAIMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
         }
     }
 
     // ─── OpenAI (gpt-image-1 / dall-e-3) ─────────────────────
-    if ((p === "openai" || p === "dall-e" || p === "dalle" || p === "gpt-image") && isOpenAIKeyConfigured()) {
+    if (p === "openai" && isOpenAIKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_start", { model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1" });
         try {
             let result: string | null = null;
@@ -354,11 +396,22 @@ export async function washDtfRoutedGenerateMockup(
             throw new Error("لم يرجع مزود OpenAI صورة صالحة.");
         } catch (error) {
             // تراجع إلى Gemini أو Replicate
-            if (isDtfProviderFallbackEnabled()) {
+            if (providerConfiguration.fallbackEnabled) {
                 if (isGeminiKeyConfigured()) {
                     logDtfTrace("dtf.ai.generate-mockup", traceId, "openai_fallback_genai", {});
                     try {
-                        return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
+                        const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+                            ...process.env,
+                            WASHA_DTF_IMAGE_PROVIDER: "genai",
+                        });
+                        return await runGenaiSdkMockup(
+                            prompt,
+                            referenceImage,
+                            garmentReferenceImage,
+                            timeoutMs,
+                            traceId,
+                            genaiConfiguration.model
+                        );
                     } catch { /* تجاهل — سنرمي الخطأ الأصلي */ }
                 }
                 return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
@@ -374,9 +427,22 @@ export async function washDtfRoutedGenerateMockup(
             // Replicate فشل — نحاول Gemini
         }
         // توكن Replicate غير مضبوط أو فشل — تراجع تلقائي إلى Gemini
-        logDtfTrace("dtf.ai.generate-mockup", traceId, "replicate_no_token_fallback_genai", {});
-        if (isGeminiKeyConfigured()) {
-            return runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
+        if (providerConfiguration.fallbackEnabled) {
+            logDtfTrace("dtf.ai.generate-mockup", traceId, "replicate_no_token_fallback_genai", {});
+        }
+        if (providerConfiguration.fallbackEnabled && isGeminiKeyConfigured()) {
+            const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+                ...process.env,
+                WASHA_DTF_IMAGE_PROVIDER: "genai",
+            });
+            return runGenaiSdkMockup(
+                prompt,
+                referenceImage,
+                garmentReferenceImage,
+                timeoutMs,
+                traceId,
+                genaiConfiguration.model
+            );
         }
     }
 
@@ -392,23 +458,8 @@ export async function washDtfRoutedGenerateMockup(
         }
     }
 
-    if (p === "gemini" && isGeminiKeyConfigured()) {
-        const refUrl = primaryReferenceImage ? referenceToDataUrl(primaryReferenceImage) : null;
-        try {
-            const n = await runNanoBananaDataUrl(prompt, refUrl, { throwOnError: true });
-            if (n) return n;
-            if (!primaryReferenceImage) {
-                const im = await runGeminiImagenDataUrl(prompt);
-                if (im) return im;
-            }
-            throw new Error("لم يرجع مزود Gemini صورة صالحة.");
-        } catch (error) {
-            return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, p);
-        }
-    }
-
     // غير مُعرَّف أو فشل المسارات أعلاه — جرّب OpenAI ثم Google GenAI الافتراضي
-    if (isOpenAIKeyConfigured()) {
+    if (providerConfiguration.fallbackEnabled && isOpenAIKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_openai", { from: p });
         try {
             const result = await runOpenAIGenerateDataUrl(prompt, { throwOnError: true });
@@ -416,10 +467,21 @@ export async function washDtfRoutedGenerateMockup(
         } catch { /* تراجع إلى الخيار التالي */ }
     }
 
-    if (isGeminiKeyConfigured()) {
+    if (providerConfiguration.fallbackEnabled && isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.generate-mockup", traceId, "router_fallback_genai", { from: p });
         try {
-            return await runGenaiSdkMockup(prompt, referenceImage, garmentReferenceImage, timeoutMs, traceId);
+            const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+                ...process.env,
+                WASHA_DTF_IMAGE_PROVIDER: "genai",
+            });
+            return await runGenaiSdkMockup(
+                prompt,
+                referenceImage,
+                garmentReferenceImage,
+                timeoutMs,
+                traceId,
+                genaiConfiguration.model
+            );
         } catch (error) {
             return runReplicateMockupFallback(error, prompt, primaryReferenceImage, traceId, "genai");
         }
@@ -438,20 +500,26 @@ export async function washDtfRoutedExtractDesign(
     options: { traceId: string; timeoutMs: number }
 ): Promise<string> {
     const { traceId, timeoutMs } = options;
-    const p = getWashaDtfResolvedImageProvider();
-    logDtfTrace("dtf.ai.extract-design", traceId, "router_provider", { resolved: p });
+    const providerConfiguration = resolveWashaDtfProviderConfiguration();
+    const p = providerConfiguration.provider;
+    logDtfTrace("dtf.ai.extract-design", traceId, "router_provider", {
+        configuredProvider: providerConfiguration.configuredProvider,
+        resolvedProvider: p,
+        resolvedModel: providerConfiguration.model,
+        fallbackEnabled: providerConfiguration.fallbackEnabled,
+        credentialConfigured: providerConfiguration.credentialConfigured,
+    });
 
-    if (
-        p === "genai" ||
-        p === "google_genai" ||
-        p === "gemini_flash" ||
-        p === "flash_image" ||
-        p === "gemini-2.5-flash-image" ||
-        p === "gemini-2.5-flash-image-preview" ||
-        p === "gemini-3.1-flash-image-preview"
-    ) {
+    if (p === "genai") {
         try {
-            return await runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+            return await runGenaiSdkExtract(
+                prompt,
+                mockupImage,
+                mimeType,
+                timeoutMs,
+                traceId,
+                providerConfiguration.model
+            );
         } catch (error) {
             if (!isDtfProviderFallbackEnabled() || !isOpenAIKeyConfigured()) {
                 throw error;
@@ -467,9 +535,7 @@ export async function washDtfRoutedExtractDesign(
                 if (result) return result;
             } catch (fallbackError) {
                 logDtfTrace("dtf.ai.extract-design", traceId, "genai_fallback_openai_failed", {
-                    error_message: fallbackError instanceof Error
-                        ? fallbackError.message
-                        : String(fallbackError ?? ""),
+                    error_message: sanitizeWashaDtfProviderMessage(fallbackError),
                 });
             }
 
@@ -478,7 +544,7 @@ export async function washDtfRoutedExtractDesign(
     }
 
     // ─── OpenAI extract ──────────────────────────────────────
-    if ((p === "openai" || p === "dall-e" || p === "dalle" || p === "gpt-image") && isOpenAIKeyConfigured()) {
+    if (p === "openai" && isOpenAIKeyConfigured()) {
         const dataUrl = `data:${mimeType};base64,${mockupImage}`;
         try {
             const result = await runOpenAIEditDataUrl(prompt, dataUrl, { throwOnError: true });
@@ -488,12 +554,21 @@ export async function washDtfRoutedExtractDesign(
             if (isDtfProviderFallbackEnabled() && isGeminiKeyConfigured()) {
                 logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai", {});
                 try {
-                    return await runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+                    const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+                        ...process.env,
+                        WASHA_DTF_IMAGE_PROVIDER: "genai",
+                    });
+                    return await runGenaiSdkExtract(
+                        prompt,
+                        mockupImage,
+                        mimeType,
+                        timeoutMs,
+                        traceId,
+                        genaiConfiguration.model
+                    );
                 } catch (fallbackError) {
                     logDtfTrace("dtf.ai.extract-design", traceId, "openai_fallback_genai_failed", {
-                        error_message: fallbackError instanceof Error
-                            ? fallbackError.message
-                            : String(fallbackError ?? ""),
+                        error_message: sanitizeWashaDtfProviderMessage(fallbackError),
                     });
                 }
             }
@@ -513,28 +588,52 @@ export async function washDtfRoutedExtractDesign(
             throw new Error("فشل استخراج التصميم عبر Replicate");
         }
         // توكن Replicate غير مضبوط — تراجع تلقائي إلى Gemini
-        logDtfTrace("dtf.ai.extract-design", traceId, "replicate_no_token_fallback_genai", {});
-        if (isGeminiKeyConfigured()) {
-            return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        if (providerConfiguration.fallbackEnabled) {
+            logDtfTrace("dtf.ai.extract-design", traceId, "replicate_no_token_fallback_genai", {});
+        }
+        if (providerConfiguration.fallbackEnabled && isGeminiKeyConfigured()) {
+            const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+                ...process.env,
+                WASHA_DTF_IMAGE_PROVIDER: "genai",
+            });
+            return runGenaiSdkExtract(
+                prompt,
+                mockupImage,
+                mimeType,
+                timeoutMs,
+                traceId,
+                genaiConfiguration.model
+            );
         }
     }
 
-    if ((p === "nanobanana" || p === "gemini") && isGeminiKeyConfigured()) {
+    if (p === "nanobanana" && isGeminiKeyConfigured()) {
         const n = await runNanoBananaDataUrl(prompt, `data:${mimeType};base64,${mockupImage}`);
         if (n) return n;
     }
 
     // تراجع عام — OpenAI ثم GenAI
-    if (isOpenAIKeyConfigured()) {
+    if (providerConfiguration.fallbackEnabled && isOpenAIKeyConfigured()) {
         logDtfTrace("dtf.ai.extract-design", traceId, "router_fallback_openai", { from: p });
         const dataUrl = `data:${mimeType};base64,${mockupImage}`;
         const result = await runOpenAIEditDataUrl(prompt, dataUrl);
         if (result) return result;
     }
 
-    if (isGeminiKeyConfigured()) {
+    if (providerConfiguration.fallbackEnabled && isGeminiKeyConfigured()) {
         logDtfTrace("dtf.ai.extract-design", traceId, "router_fallback_genai", { from: p });
-        return runGenaiSdkExtract(prompt, mockupImage, mimeType, timeoutMs, traceId);
+        const genaiConfiguration = resolveWashaDtfProviderConfiguration({
+            ...process.env,
+            WASHA_DTF_IMAGE_PROVIDER: "genai",
+        });
+        return runGenaiSdkExtract(
+            prompt,
+            mockupImage,
+            mimeType,
+            timeoutMs,
+            traceId,
+            genaiConfiguration.model
+        );
     }
 
     throw new Error("لم يُهيأ مزوّد مناسب لاستخراج التصميم. استخدم openai أو genai أو أضف مفاتيح OpenAI / Google / Replicate.");

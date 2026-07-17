@@ -54,6 +54,7 @@ describe("dtf config route", () => {
             ready: true,
             provider: "openai",
             model: "gpt-image-1",
+            fallbackEnabled: true,
         });
     });
 
@@ -85,6 +86,34 @@ describe("dtf config route", () => {
                 enabled: false,
                 code: "disabled",
                 message: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
+            },
+        });
+    });
+
+    it("reports the same resolved provider and model used by artwork generation", async () => {
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: true,
+            code: "ready",
+            message: "خدمة التوليد جاهزة.",
+            provider: "genai",
+            model: "gemini-3-pro-image",
+            fallbackEnabled: false,
+        });
+        mockGetArtworkProviderReadiness.mockReturnValue({
+            ready: true,
+            provider: "genai",
+            model: "gemini-3-pro-image",
+            fallbackEnabled: false,
+        });
+
+        const response = await GET();
+
+        await expect(response.json()).resolves.toMatchObject({
+            generation: {
+                enabled: true,
+                provider: "genai",
+                model: "gemini-3-pro-image",
+                fallbackEnabled: false,
             },
         });
     });

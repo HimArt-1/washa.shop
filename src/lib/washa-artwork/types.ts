@@ -83,4 +83,6 @@ export type GeneratedArtworkResponse = {
     placement: PlacementTransform;
     transparencyVerificationStatus: "verified" | "fallback_processed";
     productionReadinessStatus: "ready";
+    provider: string;
+    model: string;
 };

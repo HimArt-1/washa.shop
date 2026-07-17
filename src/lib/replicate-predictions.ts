@@ -3,7 +3,7 @@
  * لا يرتبط بـ "use server" — يستدعى من API routes و server actions.
  */
 
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN?.trim();
 export const REPLICATE_WAIT_SECONDS = 60;
 
 export const FLUX_SCHNELL = "black-forest-labs/flux-schnell";

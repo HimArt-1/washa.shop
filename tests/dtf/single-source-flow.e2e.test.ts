@@ -35,6 +35,8 @@ function response(previewUrl: string, scale: number) {
         },
         transparencyVerificationStatus: "verified",
         productionReadinessStatus: "ready",
+        provider: "genai",
+        model: "gemini-3-pro-image",
     };
 }
 
