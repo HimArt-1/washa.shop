@@ -1,3 +1,8 @@
+import {
+    resolveWashaDtfVerificationProvider,
+    runWashaDtfGeminiImageVerification,
+} from "@/lib/washa-artwork/gemini-verification";
+
 function extractAssistantText(payload: any) {
     const value = payload?.choices?.[0]?.message?.content;
     return typeof value === "string" ? value.trim() : "";
@@ -10,6 +15,46 @@ export async function verifyExactArabicText(params: {
     const expectedText = params.expectedText?.trim();
     if (!expectedText) {
         return { required: false, verified: true, observedText: null, model: null };
+    }
+    const prompt = [
+        "Act only as a strict Arabic OCR verifier.",
+        `Expected exact text: ${JSON.stringify(expectedText)}`,
+        "Read every Arabic character visible in the artwork.",
+        "Return JSON only: {\"matches\":boolean,\"observedText\":string}.",
+        "matches may be true only when observedText is character-for-character identical to expected text.",
+    ].join("\n");
+    const verificationProvider = resolveWashaDtfVerificationProvider();
+    if (verificationProvider === "genai") {
+        const result = await runWashaDtfGeminiImageVerification<{
+            matches?: boolean;
+            observedText?: string;
+        }>({
+            imagePng: params.artworkPng,
+            prompt,
+            responseJsonSchema: {
+                type: "object",
+                properties: {
+                    matches: { type: "boolean" },
+                    observedText: { type: "string" },
+                },
+                required: ["matches", "observedText"],
+            },
+        });
+        const observedText = typeof result.parsed.observedText === "string"
+            ? result.parsed.observedText
+            : "";
+        if (result.parsed.matches !== true || observedText !== expectedText) {
+            throw new Error("Generated artwork does not preserve the supplied Arabic text exactly.");
+        }
+        return {
+            required: true,
+            verified: true,
+            observedText,
+            model: result.model,
+        };
+    }
+    if (verificationProvider === "unavailable") {
+        throw new Error("Arabic artwork verification provider is unavailable.");
     }
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) throw new Error("Arabic artwork verification requires OPENAI_API_KEY.");
@@ -36,13 +81,7 @@ export async function verifyExactArabicText(params: {
                     content: [
                         {
                             type: "text",
-                            text: [
-                                "Act only as a strict Arabic OCR verifier.",
-                                `Expected exact text: ${JSON.stringify(expectedText)}`,
-                                "Read every Arabic character visible in the artwork.",
-                                "Return JSON only: {\"matches\":boolean,\"observedText\":string}.",
-                                "matches may be true only when observedText is character-for-character identical to expected text.",
-                            ].join("\n"),
+                            text: prompt,
                         },
                         {
                             type: "image_url",

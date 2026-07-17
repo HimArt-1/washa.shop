@@ -285,6 +285,13 @@ describe("DesignAssetService", () => {
         );
         expect(masterUploads).toHaveLength(1);
         expect(result.masterAssetUrl).toContain("/assets/master/");
+        expect(result).toMatchObject({
+            provider: "openai",
+            model: "gpt-image-1",
+        });
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledWith(
+            expect.objectContaining({ traceId: "generation_1" })
+        );
         expect(result.previewUrl).toContain("/assets/derivative/");
         expect(result.previewUrl).not.toBe(mockGenerateIsolatedArtwork.mock.results[0]?.value?.imageUrl);
         expect(result.mockupSourceType).toBe("reference");

@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { resolveWashaDtfProviderConfiguration } from "@/lib/washa-dtf-provider-config";
 
 /**
  * WASHA AI (DTF) — توليد/تحرير صور عبر @google/genai.
@@ -7,10 +8,19 @@ import { GoogleGenAI } from "@google/genai";
  * اختياري: WASHA_DTF_GENAI_MODEL=... في .env
  */
 export const WASHA_DTF_MODEL =
-    (process.env.WASHA_DTF_GENAI_MODEL || "gemini-3.1-flash-image-preview").trim() || "gemini-3.1-flash-image-preview";
+    resolveWashaDtfProviderConfiguration({
+        WASHA_DTF_IMAGE_PROVIDER: "genai",
+        WASHA_DTF_GENAI_MODEL: process.env.WASHA_DTF_GENAI_MODEL,
+        GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+        GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    }).model;
 
 export function getWashaDtfGenAiClient() {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = (
+        process.env.GEMINI_API_KEY
+        || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+        || ""
+    ).trim();
     if (!apiKey) {
         throw new Error("GEMINI_API_KEY is not configured");
     }

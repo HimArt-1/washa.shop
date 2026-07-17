@@ -1,3 +1,8 @@
+import {
+    cleanWashaDtfEnvValue,
+    resolveWashaDtfProviderConfiguration,
+} from "@/lib/washa-dtf-provider-config";
+
 export type WashaDtfGenerationReadinessCode =
     | "ready"
     | "disabled"
@@ -9,6 +14,8 @@ export type WashaDtfGenerationReadiness = {
     code: WashaDtfGenerationReadinessCode;
     message: string;
     provider?: string;
+    model?: string;
+    fallbackEnabled?: boolean;
     retryAfterSeconds?: number;
 };
 
@@ -20,61 +27,38 @@ const GENERATION_COOLDOWN_MS = 5 * 60 * 1000;
 let consecutiveProviderFailures = 0;
 let circuitOpenUntil = 0;
 
-function clean(value: string | undefined) {
-    const trimmed = value?.trim();
-    return trimmed && !trimmed.startsWith("#") ? trimmed : undefined;
-}
-
-function resolveProvider(environment: GenerationEnvironment) {
-    return (clean(environment.WASHA_DTF_IMAGE_PROVIDER) || clean(environment.IMAGE_PROVIDER) || "genai")
-        .toLowerCase();
-}
-
-function providerCredentialIsConfigured(provider: string, environment: GenerationEnvironment) {
-    if (["openai", "dall-e", "dalle", "gpt-image"].includes(provider)) {
-        return Boolean(clean(environment.OPENAI_API_KEY));
-    }
-    if (provider === "replicate") {
-        return Boolean(clean(environment.REPLICATE_API_TOKEN));
-    }
-    if ([
-        "genai",
-        "google_genai",
-        "gemini",
-        "gemini_flash",
-        "flash_image",
-        "nanobanana",
-        "gemini-2.5-flash-image",
-        "gemini-2.5-flash-image-preview",
-        "gemini-3.1-flash-image-preview",
-    ].includes(provider)) {
-        return Boolean(clean(environment.GEMINI_API_KEY) || clean(environment.GOOGLE_GENERATIVE_AI_API_KEY));
-    }
-    return false;
-}
-
 export function resolveWashaDtfGenerationConfiguration(
     environment: GenerationEnvironment
 ): WashaDtfGenerationReadiness {
-    const provider = resolveProvider(environment);
-    const enabledFlag = clean(environment.WASHA_DTF_GENERATION_ENABLED)?.toLowerCase();
+    const providerConfiguration = resolveWashaDtfProviderConfiguration(environment);
+    const enabledFlag = cleanWashaDtfEnvValue(
+        environment.WASHA_DTF_GENERATION_ENABLED
+    )?.toLowerCase();
     const requiresExplicitProductionEnable = environment.NODE_ENV === "production" && enabledFlag !== "true";
+    const providerDetails = {
+        provider: providerConfiguration.provider,
+        model: providerConfiguration.model,
+        fallbackEnabled: providerConfiguration.fallbackEnabled,
+    };
 
     if (enabledFlag === "false" || requiresExplicitProductionEnable) {
         return {
             enabled: false,
             code: "disabled",
             message: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
-            provider,
+            ...providerDetails,
         };
     }
 
-    if (!providerCredentialIsConfigured(provider, environment)) {
+    if (
+        providerConfiguration.provider === "unsupported"
+        || !providerConfiguration.credentialConfigured
+    ) {
         return {
             enabled: false,
             code: "provider_not_configured",
             message: "خدمة توليد WASHA AI غير مهيأة حالياً.",
-            provider,
+            ...providerDetails,
         };
     }
 
@@ -82,7 +66,7 @@ export function resolveWashaDtfGenerationConfiguration(
         enabled: true,
         code: "ready",
         message: "خدمة التوليد جاهزة.",
-        provider,
+        ...providerDetails,
     };
 }
 
@@ -97,6 +81,8 @@ export function getWashaDtfGenerationReadiness(): WashaDtfGenerationReadiness {
             code: "temporarily_unavailable",
             message: "خدمة التوليد تحت المراجعة مؤقتاً بعد تعذر الاتصال بالمزوّد.",
             provider: configured.provider,
+            model: configured.model,
+            fallbackEnabled: configured.fallbackEnabled,
             retryAfterSeconds: Math.max(1, Math.ceil((circuitOpenUntil - now) / 1000)),
         };
     }

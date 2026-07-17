@@ -3,6 +3,7 @@ import {
     washDtfRoutedExtractDesign,
     washDtfRoutedGenerateMockup,
 } from "@/lib/washa-dtf-image-router";
+import { sanitizeWashaDtfProviderMessage } from "@/lib/washa-dtf-provider-config";
 import { getWashaDtfGenAiClient } from "@/lib/washa-dtf-studio";
 import { logDtfTrace } from "../utils/trace";
 
@@ -193,7 +194,7 @@ export class AiStudioService {
                 provider: shouldTryOpenAi ? "openai" : "gemini",
             };
         } catch (primaryError) {
-            const primaryMessage = primaryError instanceof Error ? primaryError.message : String(primaryError ?? "");
+            const primaryMessage = sanitizeWashaDtfProviderMessage(primaryError);
             const canFallbackToGemini = provider !== "genai" && provider !== "gemini" && provider !== "google_genai";
 
             if (canFallbackToGemini) {
@@ -209,7 +210,7 @@ export class AiStudioService {
                     logDtfTrace("dtf.ai.enhance-idea", traceId, "provider_fallback_failed", {
                         from: provider,
                         primary_error: primaryMessage.slice(0, 220),
-                        fallback_error: fallbackError instanceof Error ? fallbackError.message.slice(0, 220) : String(fallbackError ?? ""),
+                        fallback_error: sanitizeWashaDtfProviderMessage(fallbackError).slice(0, 220),
                     });
                 }
             }
@@ -256,7 +257,7 @@ export class AiStudioService {
         } catch (error) {
             logDtfTrace("dtf.ai.generate-mockup", traceId, "provider_failed", {
                 duration_ms: Date.now() - providerStartedAt,
-                error_message: error instanceof Error ? error.message : String(error ?? ""),
+                error_message: sanitizeWashaDtfProviderMessage(error),
             });
             throw error;
         }
@@ -292,7 +293,7 @@ export class AiStudioService {
         } catch (error) {
             logDtfTrace("dtf.ai.extract-design", traceId, "provider_failed", {
                 duration_ms: Date.now() - providerStartedAt,
-                error_message: error instanceof Error ? error.message : String(error ?? ""),
+                error_message: sanitizeWashaDtfProviderMessage(error),
             });
             throw error;
         }

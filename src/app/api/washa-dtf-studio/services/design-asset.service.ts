@@ -243,6 +243,8 @@ export class DesignAssetService {
             placement: request.placement_data,
             transparencyVerificationStatus: request.transparency_verification_status,
             productionReadinessStatus: "ready",
+            provider: master.provider,
+            model: master.generation_model,
         };
     }
 
@@ -1025,6 +1027,8 @@ export class DesignAssetService {
             placement,
             transparencyVerificationStatus: params.master.alphaChannelStatus,
             productionReadinessStatus: "ready",
+            provider: params.master.provider,
+            model: params.master.model,
         };
     }
 
@@ -1085,6 +1089,7 @@ export class DesignAssetService {
                 const providerResult = await generateIsolatedArtwork({
                     prompt,
                     referenceImageDataUrl,
+                    traceId: input.generationRequestId,
                 });
                 const materialized = await materializeImageSource(providerResult.imageUrl);
                 const arabicTextVerification = await verifyExactArabicText({

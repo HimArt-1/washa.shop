@@ -18,6 +18,7 @@ import {
 } from "@/lib/telegram-bot";
 import { getTelegramCommandList } from "@/lib/telegram-command-center";
 import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
+import { resolveWashaDtfProviderConfiguration } from "@/lib/washa-dtf-provider-config";
 import { getPaymentReadiness } from "@/lib/payment-readiness";
 
 export type IntegrationHealthStatus = "ready" | "warning" | "missing";
@@ -238,18 +239,9 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
         supabaseLatencyDetail = error instanceof Error ? error.message : "تعذر اختبار الاتصال";
     }
 
-    const aiProvider = (
-        cleanEnvValue("WASHA_DTF_IMAGE_PROVIDER")
-        || cleanEnvValue("IMAGE_PROVIDER")
-        || "genai"
-    ).toLowerCase();
-    const aiProviderKeyReady = aiProvider === "openai"
-        ? hasEnv("OPENAI_API_KEY")
-        : aiProvider === "replicate"
-            ? hasEnv("REPLICATE_API_TOKEN")
-            : ["genai", "gemini", "nanobanana"].includes(aiProvider)
-                ? hasEnv("GEMINI_API_KEY") || hasEnv("GOOGLE_GENERATIVE_AI_API_KEY")
-                : false;
+    const aiProviderConfiguration = resolveWashaDtfProviderConfiguration();
+    const aiProvider = aiProviderConfiguration.provider;
+    const aiProviderKeyReady = aiProviderConfiguration.credentialConfigured;
     const aiGenerationReadiness = getWashaDtfGenerationReadiness();
     const paymentReadiness = getPaymentReadiness();
     const telegramCommands = getTelegramCommandList();
@@ -354,7 +346,7 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
             name: "WASHA AI",
             category: "التصميم والذكاء",
             summary: aiGenerationReadiness.enabled
-                ? `المزوّد الحالي جاهز إعدادياً: ${aiProvider}`
+                ? `المزوّد الحالي جاهز إعدادياً: ${aiProvider}:${aiProviderConfiguration.model}`
                 : aiGenerationReadiness.message,
             checks: [
                 {
@@ -365,15 +357,21 @@ export async function getIntegrationHealthReport(): Promise<IntegrationHealthRep
                 },
                 {
                     label: "مزوّد الصور",
-                    ok: ["openai", "replicate", "genai", "gemini", "nanobanana"].includes(aiProvider),
+                    ok: aiProvider !== "unsupported",
                     required: true,
-                    detail: aiProvider,
+                    detail: `${aiProvider}:${aiProviderConfiguration.model}`,
                 },
                 {
                     label: "مفتاح المزوّد الحالي",
                     ok: aiProviderKeyReady,
                     required: true,
                     detail: aiProviderKeyReady ? "مضبوط" : "مفتاح المزوّد غير مكتمل",
+                },
+                {
+                    label: "الانتقال الاحتياطي",
+                    ok: true,
+                    required: false,
+                    detail: aiProviderConfiguration.fallbackEnabled ? "مفعّل" : "متوقف",
                 },
                 check("OpenAI", "OPENAI_API_KEY", false),
                 check("Gemini", "GEMINI_API_KEY", false),

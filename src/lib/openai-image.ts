@@ -13,7 +13,7 @@
 
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim();
 const OPENAI_IMAGE_MODEL =
     (process.env.OPENAI_IMAGE_MODEL || "gpt-image-1").trim() || "gpt-image-1";
 const OPENAI_IMAGE_SIZE =

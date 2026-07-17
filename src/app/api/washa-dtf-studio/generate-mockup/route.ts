@@ -24,6 +24,10 @@ import {
 } from "@/lib/washa-dtf-generation-readiness";
 import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
 import { getIsolatedArtworkProviderReadiness } from "@/lib/washa-artwork/provider";
+import {
+    getWashaDtfProviderAttempts,
+    sanitizeWashaDtfProviderMessage,
+} from "@/lib/washa-dtf-provider-config";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
@@ -450,7 +454,9 @@ export async function POST(request: NextRequest) {
         });
         recordWashaDtfGenerationSuccess();
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {
-            provider: generationReadiness.provider ?? "configured",
+            resolvedProvider: generationReadiness.provider ?? "configured",
+            attemptedProvider: generationResult.provider,
+            attemptedModel: generationResult.model,
             durationMs: Date.now() - providerStartedAt,
             statusCode: 200,
             errorCode: null,
@@ -461,13 +467,25 @@ export async function POST(request: NextRequest) {
         if (handled.status === 429 || handled.status >= 500) {
             recordWashaDtfGenerationFailure(error);
         }
+        const providerAttempts = getWashaDtfProviderAttempts(error);
+        const lastProviderAttempt = providerAttempts.at(-1);
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_failed", {
-            provider: generationReadiness.provider ?? "configured",
+            resolvedProvider: generationReadiness.provider ?? "configured",
+            resolvedModel: generationReadiness.model ?? null,
+            fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
+            attemptedProvider: lastProviderAttempt?.provider
+                ?? generationReadiness.provider
+                ?? "configured",
+            attemptedModel: lastProviderAttempt?.model
+                ?? generationReadiness.model
+                ?? null,
+            providerAttempt: lastProviderAttempt?.attempt ?? 1,
+            providerAttempts,
             statusCode: handled.status,
             errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
             durationMs: Date.now() - routeStartedAt,
             errorName: error instanceof Error ? error.name : "UnknownError",
-            errorMessage: handled.message.slice(0, 300),
+            errorMessage: sanitizeWashaDtfProviderMessage(error),
         });
 
         let quotaReleased = !quota.tracked;
@@ -599,7 +617,7 @@ export async function POST(request: NextRequest) {
             errorCode: "INTERNAL_ERROR",
             durationMs: Date.now() - routeStartedAt,
             errorName: error instanceof Error ? error.name : "UnknownError",
-            errorMessage: error instanceof Error ? error.message.slice(0, 300) : "Unknown server error",
+            errorMessage: sanitizeWashaDtfProviderMessage(error),
         });
         return structuredErrorResponse(
             traceId,

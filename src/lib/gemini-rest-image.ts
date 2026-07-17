@@ -4,7 +4,11 @@
 
 import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+const GEMINI_API_KEY = (
+    process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_GENERATIVE_AI_API_KEY
+    || ""
+).trim();
 const IMAGEN_MODEL = "imagen-4.0-ultra-generate-001";
 /** واجهة :predict (مُختلفة عن مسار DTF) — NANO_BANANA_PREDICT_MODEL للتجربة/الرجوع */
 const NANO_BANANA_MODEL =

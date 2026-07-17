@@ -30,6 +30,8 @@ describe("WASHA AI generation configuration", () => {
             code: "ready",
             message: "خدمة التوليد جاهزة.",
             provider: "replicate",
+            model: "black-forest-labs/flux-schnell",
+            fallbackEnabled: true,
         });
     });
 
@@ -47,6 +49,8 @@ describe("WASHA AI generation configuration", () => {
             code: "ready",
             message: "خدمة التوليد جاهزة.",
             provider: "genai",
+            model: "gemini-3.1-flash-image-preview",
+            fallbackEnabled: true,
         });
         expect(JSON.stringify(result)).not.toContain("test-gemini-key");
     });

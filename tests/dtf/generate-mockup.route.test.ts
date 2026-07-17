@@ -21,6 +21,7 @@ const {
     mockRecordGenerationFailure,
     mockRecordGenerationSuccess,
     mockGetArtworkProviderReadiness,
+    mockLogDtfTrace,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
@@ -40,6 +41,7 @@ const {
     mockRecordGenerationFailure: vi.fn(),
     mockRecordGenerationSuccess: vi.fn(),
     mockGetArtworkProviderReadiness: vi.fn(),
+    mockLogDtfTrace: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -86,7 +88,13 @@ vi.mock("@/lib/washa-dtf-generation-readiness", () => ({
     recordWashaDtfGenerationSuccess: mockRecordGenerationSuccess,
 }));
 
+vi.mock("@/app/api/washa-dtf-studio/utils/trace", async (importOriginal) => ({
+    ...await importOriginal<typeof import("@/app/api/washa-dtf-studio/utils/trace")>(),
+    logDtfTrace: mockLogDtfTrace,
+}));
+
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
+import { WashaDtfProviderChainError } from "@/lib/washa-dtf-provider-config";
 
 function generationResult(preview = "https://cdn.example/mockup-front.webp") {
     return {
@@ -115,6 +123,8 @@ function generationResult(preview = "https://cdn.example/mockup-front.webp") {
         },
         transparencyVerificationStatus: "verified",
         productionReadinessStatus: "ready",
+        provider: "genai",
+        model: "gemini-3-pro-image",
     };
 }
 
@@ -138,6 +148,7 @@ describe("generate-mockup route", () => {
         mockRecordGenerationFailure.mockReset();
         mockRecordGenerationSuccess.mockReset();
         mockGetArtworkProviderReadiness.mockReset();
+        mockLogDtfTrace.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -203,11 +214,15 @@ describe("generate-mockup route", () => {
             enabled: true,
             code: "ready",
             message: "خدمة التوليد جاهزة.",
+            provider: "genai",
+            model: "gemini-3-pro-image",
+            fallbackEnabled: false,
         });
         mockGetArtworkProviderReadiness.mockReturnValue({
             ready: true,
-            provider: "openai",
-            model: "gpt-image-1",
+            provider: "genai",
+            model: "gemini-3-pro-image",
+            fallbackEnabled: false,
         });
     });
 
@@ -510,6 +525,16 @@ describe("generate-mockup route", () => {
             operation: "generate-mockup",
         });
         expect(mockRecordGenerationSuccess).toHaveBeenCalledTimes(1);
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "/api/washa-dtf-studio/generate-mockup",
+            expect.any(String),
+            "provider_completed",
+            expect.objectContaining({
+                resolvedProvider: "genai",
+                attemptedProvider: "genai",
+                attemptedModel: "gemini-3-pro-image",
+            })
+        );
         expect(mockLogActivity).toHaveBeenCalledWith(
             expect.objectContaining({
                 action: "generate-mockup",
@@ -695,6 +720,61 @@ describe("generate-mockup route", () => {
                 errorMessage: "انتهت مهلة التوليد من المزود الخارجي.",
             })
         );
+    });
+
+    it("keeps the public error safe while server diagnostics retain both provider failures", async () => {
+        const secret = "gemini-secret-that-must-never-appear";
+        const originalError = new Error(`Gemini failed api_key=${secret}`);
+        const providerError = new WashaDtfProviderChainError([
+            {
+                provider: "genai",
+                model: "gemini-3-pro-image",
+                attempt: 1,
+                durationMs: 100,
+                status: "RESOURCE_EXHAUSTED",
+                code: 429,
+                message: "Gemini quota failed [credential-omitted]",
+            },
+            {
+                provider: "openai",
+                model: "gpt-image-1",
+                attempt: 2,
+                durationMs: 20,
+                status: 400,
+                code: "billing_hard_limit_reached",
+                message: "Billing hard limit has been reached.",
+            },
+        ], originalError);
+        mockGenerateMockup.mockRejectedValue(providerError);
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+        const payload = await response.json();
+
+        expect(payload).toMatchObject({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            message: "تعذر إنشاء التصميم الآن. عدّل الوصف قليلًا أو جرّب مرة أخرى بعد لحظات.",
+        });
+        expect(JSON.stringify(payload)).not.toContain("Gemini quota");
+        expect(JSON.stringify(payload)).not.toContain("Billing hard limit");
+
+        const failureLog = mockLogDtfTrace.mock.calls.find(
+            (call) => call[2] === "provider_failed"
+        );
+        expect(failureLog?.[3]).toMatchObject({
+            resolvedProvider: "genai",
+            attemptedProvider: "openai",
+            attemptedModel: "gpt-image-1",
+            providerAttempt: 2,
+            providerAttempts: [
+                expect.objectContaining({ provider: "genai", code: 429 }),
+                expect.objectContaining({
+                    provider: "openai",
+                    code: "billing_hard_limit_reached",
+                }),
+            ],
+        });
+        expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain(secret);
     });
 
     it("blocks an automatic retry when a failed generation quota could not be restored", async () => {
