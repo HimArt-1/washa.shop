@@ -431,6 +431,170 @@ describe("DesignAssetService", () => {
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
     });
 
+    it("recovers one untrusted Gemini background without changing the accepted master lineage", async () => {
+        const ambiguousJpeg = await sharp(Buffer.from(`
+            <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="96" height="96" fill="#ff0000"/>
+                <rect x="96" y="0" width="96" height="96" fill="#00ff00"/>
+                <rect x="0" y="96" width="96" height="96" fill="#0000ff"/>
+                <rect x="96" y="96" width="96" height="96" fill="#ffff00"/>
+                <circle cx="96" cy="96" r="34" fill="#111111"/>
+            </svg>
+        `))
+            .removeAlpha()
+            .jpeg({ quality: 94 })
+            .toBuffer();
+        const recoveredJpeg = await sharp(Buffer.from(`
+            <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+                <rect width="192" height="192" fill="#f2f2f2"/>
+                <circle cx="96" cy="96" r="34" fill="#111111"/>
+                <circle cx="96" cy="96" r="10" fill="#ffffff"/>
+            </svg>
+        `))
+            .removeAlpha()
+            .jpeg({ quality: 94 })
+            .toBuffer();
+        mockGenerateIsolatedArtwork
+            .mockResolvedValueOnce({
+                imageUrl: `data:image/jpeg;base64,${ambiguousJpeg.toString("base64")}`,
+                provider: "genai",
+                model: "gemini-3-pro-image",
+                parameters: { responseModalities: ["IMAGE"] },
+            })
+            .mockResolvedValueOnce({
+                imageUrl: `data:image/jpeg;base64,${recoveredJpeg.toString("base64")}`,
+                provider: "genai",
+                model: "gemini-3-pro-image",
+                parameters: { responseModalities: ["IMAGE"] },
+            });
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_gemini_background_recovery",
+            userIdea: "شارة دائرية سوداء بعنصر أبيض داخلي",
+            referenceImage: null,
+            context: {
+                designMethod: "text",
+                style: "هندسي",
+                technique: "رقمي",
+                palette: "أسود وأبيض",
+            },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(2);
+        expect(mockGenerateIsolatedArtwork.mock.calls[1][0]).toMatchObject({
+            prompt: expect.stringMatching(
+                /do not create a new design[\s\S]*perfectly uniform solid/i
+            ),
+            referenceImageDataUrl: expect.stringMatching(/^data:image\/jpeg;base64,/),
+            traceId: "generation_gemini_background_recovery",
+            requiredProvider: "genai",
+            requiredModel: "gemini-3-pro-image",
+            attemptPurpose: "background_recovery",
+        });
+        const masterUploads = mockUploadImmutableBuffer.mock.calls.filter(([, path]) =>
+            String(path).endsWith("/design-master.png")
+        );
+        expect(masterUploads).toHaveLength(1);
+        const recoveredMaster = masterUploads[0][0] as Buffer;
+        expect(sha256Hex(recoveredMaster)).toBe(result.masterChecksum);
+        const recoveredRaw = await sharp(recoveredMaster)
+            .ensureAlpha()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+        const centerOffset = (
+            Math.floor(recoveredRaw.info.height / 2) * recoveredRaw.info.width
+            + Math.floor(recoveredRaw.info.width / 2)
+        ) * 4;
+        expect(recoveredRaw.data[centerOffset]).toBeGreaterThan(240);
+        expect(recoveredRaw.data[centerOffset + 1]).toBeGreaterThan(240);
+        expect(recoveredRaw.data[centerOffset + 2]).toBeGreaterThan(240);
+        expect(recoveredRaw.data[centerOffset + 3]).toBeGreaterThan(245);
+        expect(rows.washa_design_asset_derivatives[0]).toMatchObject({
+            source_master_asset_id: result.masterAssetId,
+            source_checksum: result.masterChecksum,
+        });
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "dtf.artwork.normalization",
+            "generation_gemini_background_recovery",
+            "artwork_background_recovery_started",
+            expect.objectContaining({
+                attemptedProvider: "genai",
+                attemptedModel: "gemini-3-pro-image",
+                normalizationAttempt: 1,
+            })
+        );
+        expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("base64");
+        expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
+    });
+
+    it("fails safely after one background recovery when the second Gemini image is still untrusted", async () => {
+        const ambiguousJpeg = await sharp(Buffer.from(`
+            <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="96" height="96" fill="#ff0000"/>
+                <rect x="96" y="0" width="96" height="96" fill="#00ff00"/>
+                <rect x="0" y="96" width="96" height="96" fill="#0000ff"/>
+                <rect x="96" y="96" width="96" height="96" fill="#ffff00"/>
+                <circle cx="96" cy="96" r="34" fill="#111111"/>
+            </svg>
+        `))
+            .removeAlpha()
+            .jpeg({ quality: 94 })
+            .toBuffer();
+        mockGenerateIsolatedArtwork.mockResolvedValue({
+            imageUrl: `data:image/jpeg;base64,${ambiguousJpeg.toString("base64")}`,
+            provider: "genai",
+            model: "gemini-3-pro-image",
+            parameters: { responseModalities: ["IMAGE"] },
+        });
+
+        await expect(DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_gemini_background_recovery_failed",
+            userIdea: "شارة دائرية",
+            referenceImage: null,
+            context: { designMethod: "text" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        })).rejects.toMatchObject({
+            code: "ARTWORK_PRINT_VALIDATION_FAILED",
+            stage: "normalization",
+        });
+
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(2);
+        expect(mockUploadImmutableBuffer).not.toHaveBeenCalled();
+        const events = mockLogDtfTrace.mock.calls.map((call) => call[2]);
+        expect(events).toContain("artwork_background_recovery_started");
+        expect(events).toContain("artwork_print_validation_failed");
+        expect(events).not.toContain("provider_failed");
+        expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("base64");
+        expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
+    });
+
     it("does not substitute a front reference for a requested back view and generates only a blank garment fallback", async () => {
         mode = "back-fallback";
         const result = await DesignAssetService.generate({

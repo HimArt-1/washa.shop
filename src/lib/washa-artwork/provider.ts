@@ -19,6 +19,7 @@ import {
     extractGeneratedImageDataUrl,
     getWashaDtfGenAiClient,
 } from "@/lib/washa-dtf-studio";
+import { buildGenAiArtworkTransportPrompt } from "@/lib/washa-artwork/prompt";
 import {
     createWashaDtfProviderAttempt,
     resolveWashaDtfProviderConfiguration,
@@ -115,7 +116,7 @@ async function generateIsolatedWithGenAi(params: {
         });
         parts.push({ inlineData: reference });
     }
-    parts.push({ text: params.prompt });
+    parts.push({ text: buildGenAiArtworkTransportPrompt(params.prompt) });
     const imageSize = (process.env.WASHA_ARTWORK_GENAI_IMAGE_SIZE || "2K").trim() || "2K";
     const response = await withProviderTimeout(
         (abortSignal) => client.models.generateContent({
@@ -292,15 +293,27 @@ export async function generateIsolatedArtwork(params: {
     prompt: string;
     referenceImageDataUrl?: string | null;
     traceId?: string;
+    requiredProvider?: string;
+    requiredModel?: string;
+    attemptPurpose?: "generation" | "background_recovery";
 }) : Promise<ProviderImageResult> {
     const traceId = params.traceId || crypto.randomUUID();
     const timeoutMs = resolveProviderTimeoutMs();
     const primary = resolveWashaDtfProviderConfiguration();
+    const providerLocked = Boolean(params.requiredProvider || params.requiredModel);
+    if (
+        (params.requiredProvider && primary.provider !== params.requiredProvider)
+        || (params.requiredModel && primary.model !== params.requiredModel)
+    ) {
+        throw new Error("Configured artwork provider changed during the locked generation attempt.");
+    }
+    const fallbackEnabled = primary.fallbackEnabled && !providerLocked;
     logDtfTrace("dtf.artwork.provider", traceId, "provider_resolved", {
         configuredProvider: primary.configuredProvider,
         resolvedProvider: primary.provider,
         resolvedModel: primary.model,
-        fallbackEnabled: primary.fallbackEnabled,
+        fallbackEnabled,
+        attemptPurpose: params.attemptPurpose || "generation",
         credentialConfigured: primary.credentialConfigured,
         hasReferenceImage: Boolean(params.referenceImageDataUrl),
         timeoutMs,
@@ -319,7 +332,8 @@ export async function generateIsolatedArtwork(params: {
         attemptedProvider: primary.provider,
         attemptedModel: primary.model,
         providerAttempt: 1,
-        fallbackEnabled: primary.fallbackEnabled,
+        fallbackEnabled,
+        attemptPurpose: params.attemptPurpose || "generation",
     });
     try {
         const result = await attemptIsolatedArtworkGeneration({
@@ -353,7 +367,9 @@ export async function generateIsolatedArtwork(params: {
             providerMessage: primaryAttempt.message,
         });
 
-        const fallback = resolveFallbackConfiguration(primary);
+        const fallback = providerLocked
+            ? null
+            : resolveFallbackConfiguration(primary);
         if (!fallback) {
             throw new WashaDtfProviderChainError(attempts, originalError);
         }

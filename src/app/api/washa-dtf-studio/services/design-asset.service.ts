@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import {
+    buildArtworkBackgroundRecoveryPrompt,
     buildBlankGarmentPrompt,
     buildIsolatedArtworkPrompt,
 } from "@/lib/washa-artwork/prompt";
@@ -18,6 +19,7 @@ import {
 import {
     ArtworkPrintValidationError,
     isArtworkPrintValidationError,
+    isRecoverableArtworkBackgroundError,
     normalizeGeneratedArtworkForPrint,
     type ArtworkNormalizationDiagnostics,
 } from "@/lib/washa-artwork/normalization";
@@ -44,6 +46,37 @@ import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.serv
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
 
 const ARTWORK_NORMALIZATION_SCOPE = "dtf.artwork.normalization";
+
+function summarizeArtworkError(error: ArtworkPrintValidationError) {
+    return {
+        message: error.message,
+        stage: error.stage,
+        diagnostics: error.diagnostics,
+        validationErrors: error.validationErrors,
+    };
+}
+
+function asArtworkNormalizationError(params: {
+    error: unknown;
+    provider: string;
+    model: string;
+    declaredMimeType: string;
+    byteLength: number;
+}) {
+    return isArtworkPrintValidationError(params.error)
+        ? params.error
+        : new ArtworkPrintValidationError({
+            message: "Generated artwork normalization failed.",
+            stage: "normalization",
+            diagnostics: {
+                attemptedProvider: params.provider,
+                attemptedModel: params.model,
+                declaredMimeType: params.declaredMimeType,
+                byteLength: params.byteLength,
+            },
+            cause: params.error,
+        });
+}
 
 type GenerationSelection = {
     garmentId: string | null;
@@ -1150,76 +1183,214 @@ export class DesignAssetService {
                 const referenceImageDataUrl = input.referenceImage
                     ? `data:${input.referenceImage.mimeType};base64,${input.referenceImage.base64}`
                     : null;
-                const providerResult = await generateIsolatedArtwork({
+                let providerResult = await generateIsolatedArtwork({
                     prompt,
                     referenceImageDataUrl,
                     traceId: input.generationRequestId,
                 });
-                const materialized = await materializeImageSource(providerResult.imageUrl);
-                const normalizationStartedAt = Date.now();
-                logDtfTrace(
-                    ARTWORK_NORMALIZATION_SCOPE,
-                    input.generationRequestId,
-                    "artwork_normalization_started",
-                    {
-                        attemptedProvider: providerResult.provider,
-                        attemptedModel: providerResult.model,
-                        declaredMimeType: materialized.mimeType,
-                        byteLength: materialized.buffer.byteLength,
-                    }
-                );
-                let normalizedArtwork: Awaited<
+                const initialProviderResult = providerResult;
+                let materialized = await materializeImageSource(providerResult.imageUrl);
+                const normalizationWorkflowStartedAt = Date.now();
+                let normalizationAttempt = 1;
+                let backgroundRecoveryApplied = false;
+                let backgroundRecoveryStartedAt: number | null = null;
+                let initialNormalizationFailure: ArtworkPrintValidationError | null = null;
+                let normalizedArtwork!: Awaited<
                     ReturnType<typeof normalizeGeneratedArtworkForPrint>
                 >;
-                try {
-                    normalizedArtwork = await normalizeGeneratedArtworkForPrint({
-                        buffer: materialized.buffer,
-                        declaredMimeType: materialized.mimeType,
-                        safePaddingRatio: 0.1,
-                    });
+                while (true) {
+                    const normalizationAttemptStartedAt = Date.now();
                     logDtfTrace(
                         ARTWORK_NORMALIZATION_SCOPE,
                         input.generationRequestId,
-                        "artwork_normalization_completed",
+                        "artwork_normalization_started",
                         {
                             attemptedProvider: providerResult.provider,
                             attemptedModel: providerResult.model,
-                            durationMs: Date.now() - normalizationStartedAt,
-                            input: normalizedArtwork.input,
-                            output: normalizedArtwork.output,
-                            normalization: normalizedArtwork.normalization,
-                            printValidation: normalizedArtwork.validation,
+                            normalizationAttempt,
+                            declaredMimeType: materialized.mimeType,
+                            byteLength: materialized.buffer.byteLength,
                         }
                     );
-                } catch (error) {
-                    const artworkError = isArtworkPrintValidationError(error)
-                        ? error
-                        : new ArtworkPrintValidationError({
-                            message: "Generated artwork normalization failed.",
-                            stage: "normalization",
-                            diagnostics: {
+                    try {
+                        normalizedArtwork = await normalizeGeneratedArtworkForPrint({
+                            buffer: materialized.buffer,
+                            declaredMimeType: materialized.mimeType,
+                            safePaddingRatio: 0.1,
+                        });
+                        logDtfTrace(
+                            ARTWORK_NORMALIZATION_SCOPE,
+                            input.generationRequestId,
+                            "artwork_normalization_completed",
+                            {
                                 attemptedProvider: providerResult.provider,
                                 attemptedModel: providerResult.model,
-                                declaredMimeType: materialized.mimeType,
-                                byteLength: materialized.buffer.byteLength,
-                            },
-                            cause: error,
-                        });
-                    logDtfTrace(
-                        ARTWORK_NORMALIZATION_SCOPE,
-                        input.generationRequestId,
-                        "artwork_print_validation_failed",
-                        {
-                            attemptedProvider: providerResult.provider,
-                            attemptedModel: providerResult.model,
-                            durationMs: Date.now() - normalizationStartedAt,
-                            errorCode: artworkError.code,
-                            errorStage: artworkError.stage,
-                            diagnostics: artworkError.diagnostics,
-                            validationErrors: artworkError.validationErrors,
+                                normalizationAttempt,
+                                durationMs: Date.now() - normalizationAttemptStartedAt,
+                                input: normalizedArtwork.input,
+                                output: normalizedArtwork.output,
+                                normalization: normalizedArtwork.normalization,
+                                printValidation: normalizedArtwork.validation,
+                            }
+                        );
+                        if (backgroundRecoveryApplied && backgroundRecoveryStartedAt) {
+                            logDtfTrace(
+                                ARTWORK_NORMALIZATION_SCOPE,
+                                input.generationRequestId,
+                                "artwork_background_recovery_completed",
+                                {
+                                    attemptedProvider: providerResult.provider,
+                                    attemptedModel: providerResult.model,
+                                    normalizationAttempt,
+                                    durationMs: Date.now() - backgroundRecoveryStartedAt,
+                                    printValidationValid: normalizedArtwork.validation.valid,
+                                }
+                            );
                         }
-                    );
-                    throw artworkError;
+                        break;
+                    } catch (error) {
+                        const artworkError = asArtworkNormalizationError({
+                            error,
+                            provider: providerResult.provider,
+                            model: providerResult.model,
+                            declaredMimeType: materialized.mimeType,
+                            byteLength: materialized.buffer.byteLength,
+                        });
+                        if (
+                            normalizationAttempt === 1
+                            && providerResult.provider === "genai"
+                            && isRecoverableArtworkBackgroundError(artworkError)
+                        ) {
+                            initialNormalizationFailure = artworkError;
+                            backgroundRecoveryStartedAt = Date.now();
+                            logDtfTrace(
+                                ARTWORK_NORMALIZATION_SCOPE,
+                                input.generationRequestId,
+                                "artwork_background_recovery_started",
+                                {
+                                    attemptedProvider: providerResult.provider,
+                                    attemptedModel: providerResult.model,
+                                    normalizationAttempt,
+                                    reason: artworkError.diagnostics.reason,
+                                    diagnostics: artworkError.diagnostics,
+                                }
+                            );
+                            try {
+                                const recoveredProviderResult = await generateIsolatedArtwork({
+                                    prompt: buildArtworkBackgroundRecoveryPrompt(),
+                                    referenceImageDataUrl:
+                                        `data:${materialized.mimeType};base64,${materialized.buffer.toString("base64")}`,
+                                    traceId: input.generationRequestId,
+                                    requiredProvider: providerResult.provider,
+                                    requiredModel: providerResult.model,
+                                    attemptPurpose: "background_recovery",
+                                });
+                                if (
+                                    recoveredProviderResult.provider !== providerResult.provider
+                                    || recoveredProviderResult.model !== providerResult.model
+                                ) {
+                                    throw new ArtworkPrintValidationError({
+                                        message: "Artwork background recovery changed provider or model and was rejected.",
+                                        stage: "normalization",
+                                        diagnostics: {
+                                            reason: "background_recovery_provider_mismatch",
+                                            attemptedProvider: providerResult.provider,
+                                            attemptedModel: providerResult.model,
+                                            recoveredProvider: recoveredProviderResult.provider,
+                                            recoveredModel: recoveredProviderResult.model,
+                                            originalFailure: summarizeArtworkError(artworkError),
+                                        },
+                                        cause: artworkError,
+                                    });
+                                }
+                                providerResult = recoveredProviderResult;
+                                materialized = await materializeImageSource(
+                                    recoveredProviderResult.imageUrl
+                                );
+                                backgroundRecoveryApplied = true;
+                                normalizationAttempt = 2;
+                                continue;
+                            } catch (recoveryCause) {
+                                const recoveryError = isArtworkPrintValidationError(recoveryCause)
+                                    ? recoveryCause
+                                    : new ArtworkPrintValidationError({
+                                        message: "Generated artwork background could not be recovered safely.",
+                                        stage: "normalization",
+                                        diagnostics: {
+                                            reason: "background_recovery_generation_failed",
+                                            attemptedProvider: providerResult.provider,
+                                            attemptedModel: providerResult.model,
+                                            originalFailure: summarizeArtworkError(artworkError),
+                                        },
+                                        cause: recoveryCause,
+                                    });
+                                logDtfTrace(
+                                    ARTWORK_NORMALIZATION_SCOPE,
+                                    input.generationRequestId,
+                                    "artwork_background_recovery_failed",
+                                    {
+                                        attemptedProvider: providerResult.provider,
+                                        attemptedModel: providerResult.model,
+                                        normalizationAttempt,
+                                        durationMs: backgroundRecoveryStartedAt
+                                            ? Date.now() - backgroundRecoveryStartedAt
+                                            : 0,
+                                        errorCode: recoveryError.code,
+                                        errorStage: recoveryError.stage,
+                                        diagnostics: recoveryError.diagnostics,
+                                    }
+                                );
+                                logDtfTrace(
+                                    ARTWORK_NORMALIZATION_SCOPE,
+                                    input.generationRequestId,
+                                    "artwork_print_validation_failed",
+                                    {
+                                        attemptedProvider: providerResult.provider,
+                                        attemptedModel: providerResult.model,
+                                        normalizationAttempt,
+                                        durationMs: Date.now() - normalizationWorkflowStartedAt,
+                                        errorCode: recoveryError.code,
+                                        errorStage: recoveryError.stage,
+                                        diagnostics: recoveryError.diagnostics,
+                                        validationErrors: recoveryError.validationErrors,
+                                    }
+                                );
+                                throw recoveryError;
+                            }
+                        }
+                        const finalArtworkError = initialNormalizationFailure
+                            ? new ArtworkPrintValidationError({
+                                message: artworkError.message,
+                                stage: artworkError.stage,
+                                diagnostics: {
+                                    ...artworkError.diagnostics,
+                                    backgroundRecovery: {
+                                        attempted: true,
+                                        originalFailure:
+                                            summarizeArtworkError(initialNormalizationFailure),
+                                    },
+                                },
+                                validationErrors: artworkError.validationErrors,
+                                cause: artworkError,
+                            })
+                            : artworkError;
+                        logDtfTrace(
+                            ARTWORK_NORMALIZATION_SCOPE,
+                            input.generationRequestId,
+                            "artwork_print_validation_failed",
+                            {
+                                attemptedProvider: providerResult.provider,
+                                attemptedModel: providerResult.model,
+                                normalizationAttempt,
+                                durationMs: Date.now() - normalizationWorkflowStartedAt,
+                                errorCode: finalArtworkError.code,
+                                errorStage: finalArtworkError.stage,
+                                diagnostics: finalArtworkError.diagnostics,
+                                validationErrors: finalArtworkError.validationErrors,
+                            }
+                        );
+                        throw finalArtworkError;
+                    }
                 }
                 const arabicTextVerification = await verifyExactArabicText({
                     artworkPng: normalizedArtwork.buffer,
@@ -1238,6 +1409,17 @@ export class DesignAssetService {
                         generationParameters: {
                             ...providerResult.parameters,
                             arabicTextVerification,
+                            ...(backgroundRecoveryApplied
+                                ? {
+                                    artworkBackgroundRecovery: {
+                                        applied: true,
+                                        sourceProvider: initialProviderResult.provider,
+                                        sourceModel: initialProviderResult.model,
+                                        recoveredProvider: providerResult.provider,
+                                        recoveredModel: providerResult.model,
+                                    },
+                                }
+                                : {}),
                             artworkNormalization: {
                                 input: normalizedArtwork.input,
                                 output: normalizedArtwork.output,
@@ -1258,7 +1440,7 @@ export class DesignAssetService {
                             {
                                 attemptedProvider: providerResult.provider,
                                 attemptedModel: providerResult.model,
-                                durationMs: Date.now() - normalizationStartedAt,
+                                durationMs: Date.now() - normalizationWorkflowStartedAt,
                                 errorCode: error.code,
                                 errorStage: error.stage,
                                 diagnostics: error.diagnostics,

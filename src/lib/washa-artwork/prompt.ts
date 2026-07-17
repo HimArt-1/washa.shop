@@ -11,8 +11,36 @@ export const WASHA_ISOLATED_ARTWORK_SYSTEM_INSTRUCTIONS = [
     "Return exactly one isolated print-ready design.",
 ].join("\n");
 
+export const WASHA_GENAI_TRANSPORT_MATTE_INSTRUCTIONS = [
+    "Gemini image transport compatibility:",
+    "If the response encoder cannot return a real alpha channel, use one perfectly uniform solid #F2F2F2 transport matte across the entire edge-connected canvas background.",
+    "This transport matte is the only allowed non-transparent fallback and will be removed after generation.",
+    "Do not add gradients, textures, shadows, lighting variation, vignettes, floors, scenery, frames, or objects to the transport matte.",
+    "Keep the complete artwork separated from every canvas edge, and do not use #F2F2F2 as a color inside the artwork.",
+].join("\n");
+
 function compact(value: string | null | undefined) {
     return typeof value === "string" ? value.trim() : "";
+}
+
+export function buildGenAiArtworkTransportPrompt(prompt: string) {
+    return [
+        prompt.trim(),
+        WASHA_GENAI_TRANSPORT_MATTE_INSTRUCTIONS,
+    ].filter(Boolean).join("\n\n");
+}
+
+export function buildArtworkBackgroundRecoveryPrompt() {
+    return [
+        "Edit the supplied image; do not create a new design.",
+        "Treat every visible artwork element, composition, typography, color, proportion, and internal white detail as immutable.",
+        "Change only the canvas background and preserve the artwork exactly.",
+        "Return the same complete artwork centered, uncropped, and separated from every canvas edge.",
+        "Use true transparency if the response supports alpha.",
+        "If the response encoder cannot return alpha, use one perfectly uniform solid #F2F2F2 transport matte across the entire edge-connected background.",
+        "Do not add gradients, textures, shadows, lighting variation, vignettes, floors, scenery, frames, or presentation surfaces.",
+        "Return exactly one image.",
+    ].join("\n");
 }
 
 export function extractCustomerConceptFromLegacyPrompt(value: string) {

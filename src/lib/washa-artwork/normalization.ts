@@ -79,6 +79,15 @@ export function isArtworkPrintValidationError(
         );
 }
 
+export function isRecoverableArtworkBackgroundError(error: unknown) {
+    if (!isArtworkPrintValidationError(error) || error.stage !== "normalization") {
+        return false;
+    }
+    const reason = error.diagnostics.reason;
+    return reason === "edge_background_not_uniform"
+        || reason === "background_separation_confidence_low";
+}
+
 function detectMagicBytesFormat(buffer: Buffer) {
     if (
         buffer.length >= 8
@@ -582,6 +591,7 @@ export async function normalizeGeneratedArtworkForPrint(params: {
                 message: "Generated artwork edge background is not uniform enough to remove safely.",
                 stage: "normalization",
                 diagnostics: {
+                    reason: "edge_background_not_uniform",
                     ...input,
                     borderBackgroundCoherence,
                     borderSeedRatio,
@@ -609,6 +619,7 @@ export async function normalizeGeneratedArtworkForPrint(params: {
                 message: "Generated artwork background separation confidence is too low.",
                 stage: "normalization",
                 diagnostics: {
+                    reason: "background_separation_confidence_low",
                     ...input,
                     borderBackgroundCoherence,
                     borderSeedRatio,

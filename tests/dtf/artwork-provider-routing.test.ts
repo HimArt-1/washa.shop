@@ -152,7 +152,11 @@ describe("isolated artwork provider routing", () => {
                             mimeType: "image/png",
                         },
                     },
-                    { text: "isolated falcon artwork" },
+                    {
+                        text: expect.stringMatching(
+                            /isolated falcon artwork[\s\S]*perfectly uniform solid[\s\S]*transport matte/i
+                        ),
+                    },
                 ],
             },
             config: expect.objectContaining({
@@ -194,6 +198,33 @@ describe("isolated artwork provider routing", () => {
             expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
         }
     );
+
+    it("keeps a background-recovery attempt locked to the original provider and model", async () => {
+        vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
+        mockGenerateContent.mockRejectedValue(new Error("Gemini recovery failure"));
+
+        await expect(generateIsolatedArtwork({
+            prompt: "preserve the supplied artwork",
+            referenceImageDataUrl: "data:image/jpeg;base64,AAAA",
+            traceId: "trace_locked_recovery",
+            requiredProvider: "genai",
+            requiredModel: "gemini-test-model",
+            attemptPurpose: "background_recovery",
+        })).rejects.toBeInstanceOf(WashaDtfProviderChainError);
+
+        expect(mockRunOpenAIGenerateDataUrl).not.toHaveBeenCalled();
+        expect(mockRunOpenAIEditDataUrl).not.toHaveBeenCalled();
+        expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
+        const resolvedLog = mockLogDtfTrace.mock.calls.find(
+            (call) => call[2] === "provider_resolved"
+        );
+        expect(resolvedLog?.[3]).toMatchObject({
+            resolvedProvider: "genai",
+            resolvedModel: "gemini-test-model",
+            fallbackEnabled: false,
+            attemptPurpose: "background_recovery",
+        });
+    });
 
     it("retains both Gemini and OpenAI errors when the fallback also fails", async () => {
         vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
