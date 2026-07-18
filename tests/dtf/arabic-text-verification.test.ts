@@ -10,7 +10,10 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
     }),
 }));
 
-import { verifyExactArabicText } from "@/lib/washa-artwork/arabic-text-verification";
+import {
+    verifyArtworkTextPolicy,
+    verifyExactArabicText,
+} from "@/lib/washa-artwork/arabic-text-verification";
 
 describe("Arabic artwork text verification", () => {
     beforeEach(() => {
@@ -66,6 +69,55 @@ describe("Arabic artwork text verification", () => {
             artworkPng: Buffer.from("png"),
             expectedText: "وشّى كما هي",
         })).rejects.toThrow("does not preserve");
+    });
+
+    it("accepts text-free artwork when the dedicated text field is empty", async () => {
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: false,
+                        observedText: "",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).resolves.toMatchObject({
+            mode: "forbidden",
+            verified: true,
+            hasVisibleText: false,
+            observedText: null,
+        });
+    });
+
+    it("rejects any visible writing when the dedicated text field is empty", async () => {
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "في قلب غابة ساحرة",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: "   ",
+        })).rejects.toThrow("unexpected visible text");
     });
 
     it("uses Gemini and never calls OpenAI when Gemini is selected and fallback is false", async () => {

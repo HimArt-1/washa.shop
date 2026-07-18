@@ -35,7 +35,7 @@ import {
     resolveDtfMockupTemplate,
     type DtfMockupTemplate,
 } from "@/lib/dtf-mockup-templates";
-import { verifyExactArabicText } from "@/lib/washa-artwork/arabic-text-verification";
+import { verifyArtworkTextPolicy } from "@/lib/washa-artwork/arabic-text-verification";
 import { verifyBlankGarmentSemantics } from "@/lib/washa-artwork/garment-semantic-verification";
 import type {
     ArtworkGenerationContext,
@@ -1509,10 +1509,50 @@ export class DesignAssetService {
                         throw finalArtworkError;
                     }
                 }
-                const arabicTextVerification = await verifyExactArabicText({
-                    artworkPng: normalizedArtwork.buffer,
-                    expectedText: input.context.calligraphyText,
-                });
+                const textPolicyVerificationStartedAt = Date.now();
+                const textRenderingAllowed =
+                    input.context.designMethod === "calligraphy"
+                    && Boolean(input.context.calligraphyText?.trim());
+                logDtfTrace(
+                    ARTWORK_NORMALIZATION_SCOPE,
+                    input.generationRequestId,
+                    "artwork_text_policy_verification_started",
+                    { textRenderingAllowed }
+                );
+                let textPolicyVerification: Awaited<
+                    ReturnType<typeof verifyArtworkTextPolicy>
+                >;
+                try {
+                    textPolicyVerification = await verifyArtworkTextPolicy({
+                        artworkPng: normalizedArtwork.buffer,
+                        expectedText: textRenderingAllowed
+                            ? input.context.calligraphyText
+                            : null,
+                    });
+                    logDtfTrace(
+                        ARTWORK_NORMALIZATION_SCOPE,
+                        input.generationRequestId,
+                        "artwork_text_policy_verification_succeeded",
+                        {
+                            textRenderingAllowed,
+                            verificationMode: textPolicyVerification.mode,
+                            verificationModel: textPolicyVerification.model,
+                            durationMs: Date.now() - textPolicyVerificationStartedAt,
+                        }
+                    );
+                } catch (error) {
+                    logDtfTrace(
+                        ARTWORK_NORMALIZATION_SCOPE,
+                        input.generationRequestId,
+                        "artwork_text_policy_verification_failed",
+                        {
+                            textRenderingAllowed,
+                            durationMs: Date.now() - textPolicyVerificationStartedAt,
+                            error: error instanceof Error ? error.message : String(error),
+                        }
+                    );
+                    throw error;
+                }
                 let persisted: Awaited<
                     ReturnType<typeof DesignAssetService.persistMasterAsset>
                 >;
@@ -1525,7 +1565,7 @@ export class DesignAssetService {
                         prompt,
                         generationParameters: {
                             ...providerResult.parameters,
-                            arabicTextVerification,
+                            textPolicyVerification,
                             ...(backgroundRecoveryApplied
                                 ? {
                                     artworkBackgroundRecovery: {

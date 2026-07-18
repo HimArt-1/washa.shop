@@ -95,6 +95,7 @@ vi.mock("@/app/api/washa-dtf-studio/utils/trace", async (importOriginal) => ({
 
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
 import { WashaDtfProviderChainError } from "@/lib/washa-dtf-provider-config";
+import { ArtworkTextPolicyError } from "@/lib/washa-artwork/arabic-text-verification";
 import { ArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { ArtworkPlacementError } from "@/lib/washa-artwork/placement";
 
@@ -722,6 +723,40 @@ describe("generate-mockup route", () => {
                 errorMessage: "انتهت مهلة التوليد من المزود الخارجي.",
             })
         );
+    });
+
+    it("rejects unexpected generated writing without exposing it or charging quota", async () => {
+        mockGenerateMockup.mockRejectedValue(
+            new ArtworkTextPolicyError(
+                "Generated artwork contains unexpected visible text: private prompt."
+            )
+        );
+
+        const response = await POST(
+            new Request("http://localhost/api/dtf/generate") as NextRequest
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(422);
+        expect(payload).toMatchObject({
+            ok: false,
+            code: "ARTWORK_TEXT_POLICY_FAILED",
+            retryable: true,
+        });
+        expect(JSON.stringify(payload)).not.toContain("private prompt");
+        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockGetWashaDtfErrorDetails).not.toHaveBeenCalled();
+        expect(
+            mockLogDtfTrace.mock.calls.some(
+                (call) => call[2] === "provider_failed"
+            )
+        ).toBe(false);
+        expect(
+            mockLogDtfTrace.mock.calls.some(
+                (call) => call[2] === "artwork_text_policy_failed"
+            )
+        ).toBe(true);
     });
 
     it("classifies post-provider print validation independently from provider failure", async () => {

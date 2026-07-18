@@ -27,9 +27,11 @@ vi.mock("@/lib/washa-artwork/provider", () => ({
 }));
 
 vi.mock("@/lib/washa-artwork/arabic-text-verification", () => ({
-    verifyExactArabicText: vi.fn(async ({ expectedText }: { expectedText?: string | null }) => ({
-        required: Boolean(expectedText),
+    verifyArtworkTextPolicy: vi.fn(async ({ expectedText }: { expectedText?: string | null }) => ({
+        mode: expectedText ? "exact" : "forbidden",
+        required: true,
         verified: true,
+        hasVisibleText: Boolean(expectedText),
         observedText: expectedText || null,
         model: expectedText ? "gpt-4o-mini" : null,
     })),

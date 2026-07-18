@@ -103,6 +103,34 @@ describe('WASHA AI output preferences', () => {
     })).toContain('true transparent background with a real alpha channel');
   });
 
+  it('treats an Arabic visual brief as instructions and forbids rendering it when the text field is empty', () => {
+    const prompt = buildIsolatedArtworkPrompt(
+      'في قلب غابة ساحرة تظهر بطة براقة ترقص تحت أشعة الشمس',
+      {
+        designMethod: 'text',
+        calligraphyText: '   ',
+      },
+    );
+
+    expect(prompt).toContain('TEXT_RENDERING_ALLOWED: NO');
+    expect(prompt).toContain('Treat the customer artwork idea as visual instructions only');
+    expect(prompt).toContain(
+      'Do not copy, quote, paraphrase, summarize, translate, transliterate, or render any part of the customer artwork idea',
+    );
+    expect(prompt).not.toContain('Preserve all Arabic text exactly as supplied');
+  });
+
+  it('ignores stale hidden text unless the customer selected the dedicated calligraphy mode', () => {
+    const prompt = buildIsolatedArtworkPrompt('بطة هندسية', {
+      designMethod: 'text',
+      calligraphyText: 'نص قديم مخفي',
+    });
+
+    expect(prompt).toContain('TEXT_RENDERING_ALLOWED: NO');
+    expect(prompt).not.toContain('نص قديم مخفي');
+    expect(prompt).not.toContain('<exact_customer_text>');
+  });
+
   it('defaults to clean output when service preferences are omitted', async () => {
     expect(buildIsolatedArtworkPrompt(await capturePrompt(), {}))
       .toContain('true transparent background with a real alpha channel');

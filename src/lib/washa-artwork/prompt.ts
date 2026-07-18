@@ -6,7 +6,6 @@ export const WASHA_ISOLATED_ARTWORK_SYSTEM_INSTRUCTIONS = [
     "Do not generate a shirt, hoodie, garment, person, mannequin, model, mockup, wall, paper, canvas, frame, room, product scene, background color, floor, environment, or presentation surface.",
     "Do not generate a white, black, colored, checkerboard, or simulated transparent background.",
     "The complete artwork must be centered, fully visible, uncropped, and surrounded by safe transparent padding.",
-    "Preserve all Arabic text exactly as supplied. Do not rewrite, translate, correct, replace, rearrange, or invent Arabic characters.",
     "Generate crisp, clean, high-resolution edges suitable for professional DTF printing.",
     "Return exactly one isolated print-ready design.",
 ].join("\n");
@@ -21,6 +20,45 @@ export const WASHA_ARTWORK_TRANSPORT_MATTE_INSTRUCTIONS = [
 
 function compact(value: string | null | undefined) {
     return typeof value === "string" ? value.trim() : "";
+}
+
+function buildArtworkTextPolicy(exactText: string) {
+    if (exactText) {
+        return [
+            "TEXT RENDERING POLICY — HIGHEST PRIORITY:",
+            "TEXT_RENDERING_ALLOWED: YES",
+            "The customer explicitly supplied text in the dedicated text field.",
+            "The only text allowed anywhere in the image is the exact content in the Exact customer text section below.",
+            "Preserve all Arabic text exactly as supplied. Do not rewrite, translate, correct, replace, rearrange, paraphrase, extend, or invent characters.",
+            "Never render the visual brief, style notes, technique notes, palette notes, headings, labels, or any prompt instruction as visible text.",
+        ].join("\n");
+    }
+
+    return [
+        "TEXT RENDERING POLICY — HIGHEST PRIORITY:",
+        "TEXT_RENDERING_ALLOWED: NO",
+        "The customer's dedicated text field is empty. Therefore the final image must contain absolutely no visible text.",
+        "Treat the customer artwork idea as visual instructions only, never as content to print.",
+        "Do not copy, quote, paraphrase, summarize, translate, transliterate, or render any part of the customer artwork idea.",
+        "Do not generate typography, letters, characters, glyphs, words, sentences, numbers, captions, labels, signatures, logos, watermarks, pseudo-text, or text-like marks in any language.",
+        "If the visual brief is written in Arabic or another language, interpret only its semantic meaning to create imagery; never reproduce its wording.",
+    ].join("\n");
+}
+
+function buildArtworkTextFinalCheck(exactText: string) {
+    if (exactText) {
+        return [
+            "FINAL TEXT CHECK:",
+            "Render only the exact customer-supplied text.",
+            "No additional letters, words, captions, signatures, logos, watermarks, or prompt wording may appear.",
+        ].join("\n");
+    }
+
+    return [
+        "FINAL TEXT CHECK:",
+        "Before returning the image, verify that it contains zero visible text, zero letters, zero words, zero numbers, and zero text-like marks.",
+        "If any prompt wording or writing appears, remove it completely and return only the requested visual artwork.",
+    ].join("\n");
 }
 
 export function buildArtworkTransportPrompt(prompt: string) {
@@ -63,6 +101,9 @@ export function extractCustomerConceptFromLegacyPrompt(value: string) {
     const calligraphyMatch = prompt.match(/Render ONLY this phrase as artistic calligraphy:\s*"([^"]+)"/i);
     if (calligraphyMatch?.[1]?.trim()) return calligraphyMatch[1].trim();
 
+    const visualBriefMatch = prompt.match(/<visual_brief>\s*([\s\S]*?)\s*<\/visual_brief>/i);
+    if (visualBriefMatch?.[1]?.trim()) return visualBriefMatch[1].trim();
+
     return prompt;
 }
 
@@ -70,8 +111,9 @@ export function buildIsolatedArtworkPrompt(
     userIdea: string,
     context: ArtworkGenerationContext = {}
 ) {
-    const calligraphyText = compact(context.calligraphyText);
-    const exactIdea = calligraphyText || extractCustomerConceptFromLegacyPrompt(userIdea);
+    const suppliedText = compact(context.calligraphyText);
+    const calligraphyText = context.designMethod === "calligraphy" ? suppliedText : "";
+    const visualIdea = calligraphyText ? "" : extractCustomerConceptFromLegacyPrompt(userIdea);
     const referenceDirective = context.referenceImageMode === "preserve_subject"
         ? "Use the supplied customer reference to preserve the identity and recognizable structure of its main subject, while producing a clean isolated print artwork."
         : context.referenceImageMode === "style_inspiration"
@@ -80,16 +122,22 @@ export function buildIsolatedArtworkPrompt(
                 ? "Creatively reinterpret the supplied customer reference as an isolated print artwork; do not paste or reproduce its background."
                 : null;
     const sections = [
+        buildArtworkTextPolicy(calligraphyText),
         WASHA_ISOLATED_ARTWORK_SYSTEM_INSTRUCTIONS,
-        exactIdea ? `Customer artwork idea:\n${exactIdea}` : null,
-        calligraphyText ? `Exact text that must appear unchanged:\n${calligraphyText}` : null,
+        visualIdea
+            ? `Customer artwork idea — visual instructions only:\n<visual_brief>\n${visualIdea}\n</visual_brief>`
+            : null,
+        calligraphyText
+            ? `Exact customer text — the only text allowed in the image:\n<exact_customer_text>\n${calligraphyText}\n</exact_customer_text>`
+            : null,
         compact(context.style) ? `Selected visual style:\n${compact(context.style)}` : null,
         compact(context.technique) ? `Selected technique:\n${compact(context.technique)}` : null,
         compact(context.palette) ? `Selected color palette:\n${compact(context.palette)}` : null,
         referenceDirective,
         context.designMethod === "calligraphy"
             ? "This is a calligraphy artwork request. Render only the exact supplied text and its requested artistic treatment."
-            : "Do not add any text, letters, symbols, or words unless the customer explicitly supplied them.",
+            : null,
+        buildArtworkTextFinalCheck(calligraphyText),
     ].filter(Boolean);
 
     return sections.join("\n\n");

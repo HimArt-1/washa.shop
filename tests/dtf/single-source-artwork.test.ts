@@ -363,6 +363,8 @@ describe("WASHA AI single-source artwork", () => {
         });
 
         expect(prompt).toContain("وشّى كما هي");
+        expect(prompt).toContain("TEXT_RENDERING_ALLOWED: YES");
+        expect(prompt).toContain("<exact_customer_text>");
         expect(prompt).toContain("Preserve all Arabic text exactly as supplied");
         expect(prompt).not.toContain("place that artwork on the selected garment");
         expect(prompt).not.toContain("Studio mockup");

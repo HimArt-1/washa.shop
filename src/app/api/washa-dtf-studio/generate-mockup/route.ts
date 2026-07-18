@@ -28,6 +28,7 @@ import {
     getWashaDtfProviderAttempts,
     sanitizeWashaDtfProviderMessage,
 } from "@/lib/washa-dtf-provider-config";
+import { isArtworkTextPolicyError } from "@/lib/washa-artwork/arabic-text-verification";
 import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
 import { unstable_rethrow } from "next/navigation";
@@ -43,6 +44,8 @@ const ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR =
     "تعذر تجهيز التصميم كملف طباعة شفاف وآمن. عدّل الوصف وجرّب مرة أخرى.";
 const ARTWORK_PLACEMENT_PUBLIC_ERROR =
     "تعذر وضع التصميم داخل مساحة الطباعة الآمنة. صغّر الحجم أو أعد تمركزه ثم جرّب مرة أخرى.";
+const ARTWORK_TEXT_POLICY_PUBLIC_ERROR =
+    "تم اكتشاف كتابة غير مطلوبة في التصميم، لذلك رُفضت النتيجة حفاظاً على طلبك. أعد المحاولة وسيُنشأ التصميم دون نص.";
 
 function structuredErrorResponse(
     requestId: string,
@@ -472,6 +475,7 @@ export async function POST(request: NextRequest) {
         });
 
         } catch (error) {
+        const textPolicyError = isArtworkTextPolicyError(error) ? error : null;
         const artworkError =
             isArtworkPrintValidationError(error) || isArtworkPlacementError(error)
                 ? error
@@ -479,7 +483,12 @@ export async function POST(request: NextRequest) {
         const artworkPlacementFailure = artworkError
             ? isArtworkPlacementError(artworkError)
             : false;
-        const handled = artworkError
+        const handled = textPolicyError
+            ? {
+                message: ARTWORK_TEXT_POLICY_PUBLIC_ERROR,
+                status: 422,
+            }
+            : artworkError
             ? {
                 message: artworkPlacementFailure
                     ? ARTWORK_PLACEMENT_PUBLIC_ERROR
@@ -487,7 +496,20 @@ export async function POST(request: NextRequest) {
                 status: 422,
             }
             : getWashaDtfErrorDetails(error);
-        if (artworkError) {
+        if (textPolicyError) {
+            logDtfTrace(
+                GENERATE_MOCKUP_ROUTE,
+                traceId,
+                "artwork_text_policy_failed",
+                {
+                    resolvedProvider: generationReadiness.provider ?? "configured",
+                    resolvedModel: generationReadiness.model ?? null,
+                    statusCode: 422,
+                    errorCode: textPolicyError.code,
+                    durationMs: Date.now() - routeStartedAt,
+                }
+            );
+        } else if (artworkError) {
             logDtfTrace(
                 GENERATE_MOCKUP_ROUTE,
                 traceId,
@@ -558,6 +580,12 @@ export async function POST(request: NextRequest) {
             metadata: {
                 quotaReleased,
                 quotaDate: quota.quotaDate,
+                ...(textPolicyError
+                    ? {
+                        errorCode: textPolicyError.code,
+                        errorStage: "text_policy_verification",
+                    }
+                    : {}),
                 ...(artworkError
                     ? {
                         errorCode: artworkError.code,
@@ -592,6 +620,15 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        if (textPolicyError) {
+            return structuredErrorResponse(
+                traceId,
+                422,
+                textPolicyError.code,
+                ARTWORK_TEXT_POLICY_PUBLIC_ERROR,
+                { retryable: true }
+            );
+        }
         if (artworkError) {
             return structuredErrorResponse(
                 traceId,
