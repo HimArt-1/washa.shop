@@ -27,7 +27,7 @@ type ProviderEnvironment = Record<string, string | undefined>;
 
 const DEFAULT_GENAI_MODEL = "gemini-3.1-flash-image-preview";
 const DEFAULT_NANO_BANANA_MODEL = "imagen-4.0-ultra-generate-001";
-const DEFAULT_OPENAI_MODEL = "gpt-image-1";
+const DEFAULT_OPENAI_MODEL = "gpt-image-2";
 const DEFAULT_REPLICATE_MODEL = "black-forest-labs/flux-schnell";
 
 const GENAI_ALIASES = new Set([

@@ -15,7 +15,7 @@ import { reportAdminOperationalAlert } from "@/lib/admin-operational-alerts";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim();
 const OPENAI_IMAGE_MODEL =
-    (process.env.OPENAI_IMAGE_MODEL || "gpt-image-1").trim() || "gpt-image-1";
+    (process.env.OPENAI_IMAGE_MODEL || "gpt-image-2").trim() || "gpt-image-2";
 const OPENAI_IMAGE_SIZE =
     (process.env.OPENAI_IMAGE_SIZE || "1024x1024").trim() || "1024x1024";
 const OPENAI_IMAGE_QUALITY =
@@ -37,6 +37,34 @@ const OPENAI_MODEL_SUPPORTED_SIZES: Record<string, readonly string[]> = {
     "dall-e-2": ["256x256", "512x512", "1024x1024"],
 };
 
+// gpt-image-2: أحجام حرّة WxH بشرط أن يقبل كل بُعد القسمة على 16، ونسبة الأبعاد بين 1:3 و3:1،
+// والحد الأقصى الرسمي 3840×2160 (فوق 2560×1440 تجريبي). نتحقّق بالقواعد بدل قائمة ثابتة،
+// فيبقى 2048×2048 صالحاً دون تخفيض.
+const GPT_IMAGE_2_DEFAULT_SIZE = "2048x2048";
+const GPT_IMAGE_2_MAX_DIMENSION = 3840;
+const GPT_IMAGE_2_MIN_DIMENSION = 256;
+
+export function isGptImage2Model(model: string): boolean {
+    return /^gpt-image-2(?:-|$)/i.test(model.trim());
+}
+
+function isValidGptImage2Size(size: string): boolean {
+    if (size === "auto") return true;
+    const match = size.match(/^(\d+)x(\d+)$/);
+    if (!match) return false;
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    if (width % 16 !== 0 || height % 16 !== 0) return false;
+    if (
+        width < GPT_IMAGE_2_MIN_DIMENSION
+        || height < GPT_IMAGE_2_MIN_DIMENSION
+        || width > GPT_IMAGE_2_MAX_DIMENSION
+        || height > GPT_IMAGE_2_MAX_DIMENSION
+    ) return false;
+    const aspect = width / height;
+    return aspect >= 1 / 3 && aspect <= 3;
+}
+
 /**
  * تُعيد مقاساً صالحاً للنموذج المطلوب. النماذج غير المعروفة (مثل الأحدث) تمرّ كما هي
  * حتى لا نحجب مقاسات صحيحة لم تُدرَج بعد.
@@ -47,10 +75,35 @@ export function normalizeOpenAiImageSize(
     fallback = "1024x1024"
 ): string {
     const size = (requestedSize || "").trim().toLowerCase();
-    const supported = OPENAI_MODEL_SUPPORTED_SIZES[model.trim().toLowerCase()];
+    const normalizedModel = model.trim().toLowerCase();
+    if (isGptImage2Model(normalizedModel)) {
+        if (size && isValidGptImage2Size(size)) return size;
+        const normalizedFallback = (fallback || "").trim().toLowerCase();
+        return normalizedFallback && isValidGptImage2Size(normalizedFallback)
+            ? normalizedFallback
+            : GPT_IMAGE_2_DEFAULT_SIZE;
+    }
+    const supported = OPENAI_MODEL_SUPPORTED_SIZES[normalizedModel];
     if (!supported) return size || fallback;
     if (size && supported.includes(size)) return size;
     return supported.includes(fallback) ? fallback : supported[0];
+}
+
+// gpt-image-2 لا يدعم background="transparent". نُنتج بدلاً منه مخرجاً معتماً بمات نقل
+// (transport matte) ثم تُزيله normalizeGeneratedArtworkForPrint لإنتاج PNG RGBA شفاف.
+export function openAiModelSupportsTransparentBackground(model: string): boolean {
+    return !isGptImage2Model(model);
+}
+
+function resolveOpenAiBackground(
+    model: string,
+    requested: "transparent" | "opaque" | "auto" | undefined
+): "transparent" | "opaque" | "auto" {
+    const background = requested || "auto";
+    if (background === "transparent" && !openAiModelSupportsTransparentBackground(model)) {
+        return "opaque";
+    }
+    return background;
 }
 
 function getProviderErrorMessage(rawBody: string): string {
@@ -108,11 +161,12 @@ export async function runOpenAIGenerateDataUrl(
         ),
     };
 
-    // gpt-image-1 يدعم quality و output_format
+    // نماذج gpt-image-* تدعم quality و output_format و background.
+    // background يُطبَّع حتى لا نرسل "transparent" لنموذج لا يدعمها (gpt-image-2).
     if (OPENAI_IMAGE_MODEL.startsWith("gpt-image-")) {
         body.quality = options.quality || OPENAI_IMAGE_QUALITY;
         body.output_format = options.outputFormat || "png";
-        body.background = options.background || "auto";
+        body.background = resolveOpenAiBackground(OPENAI_IMAGE_MODEL, options.background);
     } else if (OPENAI_IMAGE_MODEL === "dall-e-3") {
         body.quality = OPENAI_IMAGE_QUALITY === "auto" ? "standard" : "hd";
         body.response_format = "b64_json";
@@ -207,7 +261,10 @@ export async function runOpenAIEditDataUrl(
     if (OPENAI_IMAGE_MODEL.startsWith("gpt-image-")) {
         formData.append("quality", options.quality || OPENAI_IMAGE_QUALITY);
         formData.append("output_format", options.outputFormat || "png");
-        formData.append("background", options.background || "auto");
+        formData.append(
+            "background",
+            resolveOpenAiBackground(OPENAI_IMAGE_MODEL, options.background)
+        );
     }
 
     const res = await fetch("https://api.openai.com/v1/images/edits", {
