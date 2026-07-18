@@ -96,6 +96,7 @@ vi.mock("@/app/api/washa-dtf-studio/utils/trace", async (importOriginal) => ({
 import { POST } from "@/app/api/washa-dtf-studio/generate-mockup/route";
 import { WashaDtfProviderChainError } from "@/lib/washa-dtf-provider-config";
 import { ArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
+import { ArtworkPlacementError } from "@/lib/washa-artwork/placement";
 
 function generationResult(preview = "https://cdn.example/mockup-front.webp") {
     return {
@@ -784,6 +785,52 @@ describe("generate-mockup route", () => {
                 errorCode: "ARTWORK_PRINT_VALIDATION_FAILED",
             }),
         }));
+    });
+
+    it("classifies invalid artwork placement independently from provider failure", async () => {
+        mockGenerateMockup.mockRejectedValue(new ArtworkPlacementError({
+            message: "Artwork placement is clipped by the printable safe area.",
+            diagnostics: {
+                reason: "pixel_placement_outside_safe_area",
+                printAreaPixels: { left: 369, top: 246, width: 1311, height: 1556 },
+                artworkPixels: { left: 370, top: 328, width: 1311, height: 1391 },
+            },
+        }));
+
+        const response = await POST(
+            new Request("http://localhost/api/dtf/generate") as NextRequest
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(422);
+        expect(payload).toMatchObject({
+            ok: false,
+            code: "ARTWORK_PLACEMENT_INVALID",
+            retryable: false,
+        });
+        expect(JSON.stringify(payload)).not.toContain("1311");
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockRecordGenerationSuccess).not.toHaveBeenCalled();
+        expect(mockGetWashaDtfErrorDetails).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+        expect(
+            mockLogDtfTrace.mock.calls.some(
+                (call) => call[2] === "provider_failed"
+            )
+        ).toBe(false);
+        const placementLog = mockLogDtfTrace.mock.calls.find(
+            (call) => call[2] === "artwork_placement_failed"
+        );
+        expect(placementLog?.[3]).toMatchObject({
+            resolvedProvider: "genai",
+            resolvedModel: "gemini-3-pro-image",
+            statusCode: 422,
+            errorCode: "ARTWORK_PLACEMENT_INVALID",
+            errorStage: "placement",
+            diagnostics: expect.objectContaining({
+                reason: "pixel_placement_outside_safe_area",
+            }),
+        });
     });
 
     it("keeps the public error safe while server diagnostics retain both provider failures", async () => {

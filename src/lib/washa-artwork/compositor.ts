@@ -3,7 +3,10 @@ import type {
     NormalizedPrintArea,
     PlacementTransform,
 } from "@/lib/washa-artwork/types";
-import { placementFitsPrintArea } from "@/lib/washa-artwork/placement";
+import {
+    ArtworkPlacementError,
+    placementFitsPrintArea,
+} from "@/lib/washa-artwork/placement";
 
 type PreviewEffects = {
     garmentMask?: Buffer | null;
@@ -85,7 +88,14 @@ export async function compositeArtworkPreview(params: {
 
     const artworkAspectRatio = artworkWidth / artworkHeight;
     if (!placementFitsPrintArea(params.placement, artworkAspectRatio)) {
-        throw new Error("Artwork placement extends outside the printable safe area.");
+        throw new ArtworkPlacementError({
+            message: "Artwork placement extends outside the printable safe area.",
+            diagnostics: {
+                reason: "normalized_placement_outside_safe_area",
+                artworkAspectRatio,
+                placement: params.placement,
+            },
+        });
     }
 
     const areaLeft = Math.round(params.printArea.x * width);
@@ -125,17 +135,39 @@ export async function compositeArtworkPreview(params: {
     const placedMetadata = await sharp(artwork).metadata();
     const placedWidth = placedMetadata.width ?? maxWidth;
     const placedHeight = placedMetadata.height ?? maxHeight;
-    const centerX = areaLeft + Math.round(params.placement.x * areaWidth);
-    const centerY = areaTop + Math.round(params.placement.y * areaHeight);
-    const left = Math.round(centerX - placedWidth * params.placement.anchorX);
-    const top = Math.round(centerY - placedHeight * params.placement.anchorY);
+    const left = areaLeft + Math.round(
+        params.placement.x * areaWidth
+        - placedWidth * params.placement.anchorX
+    );
+    const top = areaTop + Math.round(
+        params.placement.y * areaHeight
+        - placedHeight * params.placement.anchorY
+    );
     if (
         left < areaLeft
         || top < areaTop
         || left + placedWidth > areaLeft + areaWidth
         || top + placedHeight > areaTop + areaHeight
     ) {
-        throw new Error("Artwork placement is clipped by the printable safe area.");
+        throw new ArtworkPlacementError({
+            message: "Artwork placement is clipped by the printable safe area.",
+            diagnostics: {
+                reason: "pixel_placement_outside_safe_area",
+                printAreaPixels: {
+                    left: areaLeft,
+                    top: areaTop,
+                    width: areaWidth,
+                    height: areaHeight,
+                },
+                artworkPixels: {
+                    left,
+                    top,
+                    width: placedWidth,
+                    height: placedHeight,
+                },
+                placement: params.placement,
+            },
+        });
     }
 
     let overlay = await sharp({

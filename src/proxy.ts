@@ -21,6 +21,14 @@ const isAuthAwareApiRoute = createRouteMatcher([
     '/api/washa-dtf-studio(.*)',
 ]);
 
+// These catch-all routes serve an auth-aware HTML shell as well as PWA files.
+// Static extensions must still run through Clerk so currentUser() is safe in
+// the route-level access guard.
+const isAuthAwareWashaAiDevRoute = createRouteMatcher([
+    '/design/washa-ai/dev(.*)',
+    '/design/washa-ai/dev-v2(.*)',
+]);
+
 function nextWithPathname(req: NextRequest) {
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-washa-pathname", req.nextUrl.pathname);
@@ -60,7 +68,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
         }
 
         return nextWithPathname(req);
-    } else if (isAuthAwareApiRoute(req)) {
+    } else if (isAuthAwareApiRoute(req) || isAuthAwareWashaAiDevRoute(req)) {
         // Hydrate auth state so currentUser() works in these route handlers.
         // Clerk v6 uses lazy evaluation — auth() must be called in the proxy
         // for the session to be available downstream. No redirect on unauthenticated;
@@ -71,6 +79,10 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
 export const config = {
     matcher: [
+        // The WASHA AI dev catch-all serves auth-aware PWA files whose static
+        // extensions would otherwise be excluded by the generic matcher.
+        '/design/washa-ai/dev/:path*',
+        '/design/washa-ai/dev-v2/:path*',
         // Skip Next.js internals and all static files
         '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
         // Always run for API routes

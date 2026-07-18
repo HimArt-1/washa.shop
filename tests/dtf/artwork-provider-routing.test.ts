@@ -33,6 +33,11 @@ vi.mock("@/lib/openai-image", () => ({
     isOpenAIKeyConfigured: mockIsOpenAIKeyConfigured,
     runOpenAIGenerateDataUrl: mockRunOpenAIGenerateDataUrl,
     runOpenAIEditDataUrl: mockRunOpenAIEditDataUrl,
+    normalizeOpenAiImageSize: (
+        _model: string,
+        size?: string | null,
+        fallback = "1024x1024"
+    ) => (typeof size === "string" && size.trim() ? size.trim() : fallback),
 }));
 
 vi.mock("@/lib/replicate-predictions", () => ({
@@ -128,6 +133,99 @@ describe("isolated artwork provider routing", () => {
             expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
         }
     );
+
+    it("builds a supported opaque 2K transport request for gpt-image-2", async () => {
+        vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "openai");
+        vi.stubEnv("OPENAI_IMAGE_MODEL", "gpt-image-2");
+        vi.stubEnv("WASHA_ARTWORK_OPENAI_SIZE", "");
+
+        await expect(generateIsolatedArtwork({
+            prompt: "isolated falcon artwork",
+            traceId: "trace_openai_gpt_image_2",
+        })).resolves.toMatchObject({
+            provider: "openai",
+            model: "gpt-image-2",
+            parameters: {
+                size: "2048x2048",
+                output_format: "png",
+                background: "opaque",
+            },
+        });
+
+        expect(mockRunOpenAIGenerateDataUrl).toHaveBeenCalledWith(
+            expect.stringMatching(
+                /isolated falcon artwork[\s\S]*perfectly uniform solid[\s\S]*transport matte/i
+            ),
+            expect.objectContaining({
+                size: "2048x2048",
+                outputFormat: "png",
+                background: "opaque",
+            })
+        );
+        expect(mockRunOpenAIEditDataUrl).not.toHaveBeenCalled();
+        expect(mockGenerateContent).not.toHaveBeenCalled();
+        expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
+    });
+
+    it("keeps transparent PNG output for OpenAI models that support it", async () => {
+        vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "openai");
+        vi.stubEnv("OPENAI_IMAGE_MODEL", "gpt-image-1");
+        vi.stubEnv("WASHA_ARTWORK_OPENAI_SIZE", "");
+
+        await expect(generateIsolatedArtwork({
+            prompt: "isolated falcon artwork",
+            traceId: "trace_openai_gpt_image_1",
+        })).resolves.toMatchObject({
+            provider: "openai",
+            model: "gpt-image-1",
+            parameters: {
+                size: "1024x1536",
+                output_format: "png",
+                background: "transparent",
+            },
+        });
+
+        expect(mockRunOpenAIGenerateDataUrl).toHaveBeenCalledWith(
+            "isolated falcon artwork",
+            expect.objectContaining({
+                size: "1024x1536",
+                outputFormat: "png",
+                background: "transparent",
+            })
+        );
+    });
+
+    it("falls back from the OpenAI primary to Gemini without losing the actual provider result", async () => {
+        vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "openai");
+        vi.stubEnv("OPENAI_IMAGE_MODEL", "gpt-image-2");
+        vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
+        mockRunOpenAIGenerateDataUrl.mockRejectedValue(
+            new Error("OpenAI primary unavailable")
+        );
+
+        await expect(generateIsolatedArtwork({
+            prompt: "isolated falcon artwork",
+            traceId: "trace_openai_to_gemini_fallback",
+        })).resolves.toMatchObject({
+            imageUrl: "data:image/png;base64,GEMINI",
+            provider: "genai",
+            model: "gemini-test-model",
+        });
+
+        expect(mockRunOpenAIGenerateDataUrl).toHaveBeenCalledOnce();
+        expect(mockGenerateContent).toHaveBeenCalledOnce();
+        expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "dtf.artwork.provider",
+            "trace_openai_to_gemini_fallback",
+            "provider_fallback_succeeded",
+            expect.objectContaining({
+                attemptedProvider: "genai",
+                attemptedModel: "gemini-test-model",
+                providerAttempt: 2,
+            })
+        );
+    });
 
     it("builds the proven @google/genai request shape without logging image bytes", async () => {
         const referenceBytes = "R".repeat(256);

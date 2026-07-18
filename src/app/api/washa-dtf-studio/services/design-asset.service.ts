@@ -1258,7 +1258,10 @@ export class DesignAssetService {
                         });
                         if (
                             normalizationAttempt === 1
-                            && providerResult.provider === "genai"
+                            && (
+                                providerResult.provider === "genai"
+                                || providerResult.provider === "openai"
+                            )
                             && isRecoverableArtworkBackgroundError(artworkError)
                         ) {
                             initialNormalizationFailure = artworkError;

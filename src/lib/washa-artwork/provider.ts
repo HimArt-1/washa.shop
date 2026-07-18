@@ -1,6 +1,7 @@
 import {
     getOpenAIImageModel,
     isOpenAIKeyConfigured,
+    normalizeOpenAiImageSize,
     runOpenAIEditDataUrl,
     runOpenAIGenerateDataUrl,
 } from "@/lib/openai-image";
@@ -19,7 +20,7 @@ import {
     extractGeneratedImageDataUrl,
     getWashaDtfGenAiClient,
 } from "@/lib/washa-dtf-studio";
-import { buildGenAiArtworkTransportPrompt } from "@/lib/washa-artwork/prompt";
+import { buildArtworkTransportPrompt } from "@/lib/washa-artwork/prompt";
 import {
     createWashaDtfProviderAttempt,
     resolveWashaDtfProviderConfiguration,
@@ -116,7 +117,7 @@ async function generateIsolatedWithGenAi(params: {
         });
         parts.push({ inlineData: reference });
     }
-    parts.push({ text: buildGenAiArtworkTransportPrompt(params.prompt) });
+    parts.push({ text: buildArtworkTransportPrompt(params.prompt) });
     const imageSize = (process.env.WASHA_ARTWORK_GENAI_IMAGE_SIZE || "2K").trim() || "2K";
     const response = await withProviderTimeout(
         (abortSignal) => client.models.generateContent({
@@ -154,17 +155,27 @@ async function generateIsolatedWithOpenAi(params: {
     referenceImageDataUrl?: string | null;
     model: string;
 }) {
-    const size = (process.env.WASHA_ARTWORK_OPENAI_SIZE || "1024x1536").trim();
+    const requiresOpaqueTransport = /^gpt-image-2(?:-|$)/i.test(params.model.trim());
+    const defaultSize = requiresOpaqueTransport ? "2048x2048" : "1024x1536";
+    const size = normalizeOpenAiImageSize(
+        params.model,
+        (process.env.WASHA_ARTWORK_OPENAI_SIZE || defaultSize).trim() || defaultSize,
+        defaultSize
+    );
+    const background = requiresOpaqueTransport ? "opaque" as const : "transparent" as const;
+    const prompt = requiresOpaqueTransport
+        ? buildArtworkTransportPrompt(params.prompt)
+        : params.prompt;
     const options = {
         throwOnError: true,
         size,
         quality: "high" as const,
         outputFormat: "png" as const,
-        background: "transparent" as const,
+        background,
     };
     const imageUrl = params.referenceImageDataUrl
-        ? await runOpenAIEditDataUrl(params.prompt, params.referenceImageDataUrl, options)
-        : await runOpenAIGenerateDataUrl(params.prompt, options);
+        ? await runOpenAIEditDataUrl(prompt, params.referenceImageDataUrl, options)
+        : await runOpenAIGenerateDataUrl(prompt, options);
     if (!imageUrl) throw new Error("OpenAI returned no image output.");
     return {
         imageUrl,
@@ -174,7 +185,7 @@ async function generateIsolatedWithOpenAi(params: {
             size,
             quality: "high",
             output_format: "png",
-            background: "transparent",
+            background,
             n: 1,
         },
     };
