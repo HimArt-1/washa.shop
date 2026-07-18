@@ -33,7 +33,10 @@ import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+// gpt-image-2 عند 2048×2048 أبطأ من النماذج الأصغر. الميزانية الزمنية للطلب يجب أن تتّسع
+// للمحاولة الأساسية + تطبيع الخلفية (RGBA) + محاولة Gemini fallback عند الحاجة.
+// مهلة المزوّد الافتراضية 120s لكل محاولة (provider.ts) ⇒ 2×120 + تطبيع < 300s.
+export const maxDuration = 300;
 const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
 const GENERATE_MOCKUP_OPERATION = "generate-mockup";
 const ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR =

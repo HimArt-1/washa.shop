@@ -61,6 +61,8 @@ export function getIsolatedArtworkProviderReadiness() {
 }
 
 function resolveProviderTimeoutMs() {
+    // مهلة كل محاولة مزوّد. تُحسَب ضمن ميزانية route (maxDuration=300s): محاولة أساسية
+    // + محاولة fallback + تطبيع الخلفية. الافتراضي 120s ⇒ 2×120 + تطبيع < 300s.
     const parsed = Number.parseInt(process.env.WASHA_DTF_PROVIDER_TIMEOUT_MS || "", 10);
     if (!Number.isFinite(parsed)) return 120_000;
     return Math.min(Math.max(parsed, 15_000), 180_000);
