@@ -27,6 +27,7 @@ import type {
     Database,
     GarmentStudioMockup,
 } from "@/types/database";
+import type { DtfMockupTemplate } from "@/lib/dtf-mockup-templates";
 import {
     DTF_STUDIO_PALETTE_CATALOG,
     DTF_STUDIO_STYLE_CATALOG,
@@ -84,6 +85,7 @@ import {
     smartStoreUpsertColorPackageSchema,
     smartStoreUpsertColorSchema,
     smartStoreUpsertDesignPresetSchema,
+    smartStoreUpsertDtfMockupTemplateSchema,
     smartStoreUpsertGarmentSchema,
     smartStoreUpsertPositionSchema,
     smartStoreUpsertSizeSchema,
@@ -1065,6 +1067,26 @@ export async function getAllGarmentStudioMockups(): Promise<GarmentStudioMockup[
     return (data as GarmentStudioMockup[]) ?? [];
 }
 
+export async function getAllDtfMockupTemplates(): Promise<DtfMockupTemplate[]> {
+    const { sb } = await requireSmartStoreAdmin();
+    const { data, error } = await sb
+        .from("garment_mockup_templates")
+        .select("*")
+        .order("sort_order")
+        .order("updated_at", { ascending: false });
+
+    if (error) {
+        if (error.code === "42P01" || error.code === "PGRST205") {
+            console.warn("[getAllDtfMockupTemplates] Migration is not applied yet.");
+            return [];
+        }
+        console.error("[getAllDtfMockupTemplates]", error);
+        return [];
+    }
+
+    return (data as DtfMockupTemplate[]) ?? [];
+}
+
 export async function getStudioMockupForGarment(
     garmentId: string,
     studioItemId: string
@@ -1117,6 +1139,189 @@ export async function deleteGarmentStudioMockup(id: string) {
     const { error } = await sb.from("garment_studio_mockups").delete().eq("id", id);
     if (error) return { error: error.message };
     return { success: true };
+}
+
+type DtfMockupTemplateAssetPaths = Pick<
+    DtfMockupTemplate,
+    "base_image_path" | "mask_image_path" | "overlay_image_path"
+>;
+
+function getDtfMockupTemplateAssetPaths(template: DtfMockupTemplateAssetPaths | null | undefined) {
+    return [
+        template?.base_image_path,
+        template?.mask_image_path,
+        template?.overlay_image_path,
+    ].filter((path): path is string => Boolean(path));
+}
+
+async function removeDtfMockupTemplateAssets(
+    sb: ReturnType<typeof getSmartStoreSb>,
+    paths: string[]
+) {
+    const uniquePaths = [...new Set(paths)];
+    if (uniquePaths.length === 0) return;
+    const { error } = await sb.storage.from("smart-store").remove(uniquePaths);
+    if (error) {
+        console.error("[removeDtfMockupTemplateAssets]", {
+            paths: uniquePaths,
+            error: error.message,
+        });
+    }
+}
+
+export async function cleanupDtfMockupDraftAssets(paths: string[]) {
+    const { sb } = await requireSmartStoreAdmin();
+    const allowedPrefixes = [
+        "washa-ai-mockup-templates/",
+        "washa-ai-mockup-masks/",
+        "washa-ai-mockup-overlays/",
+    ];
+    const candidates = [...new Set(paths)]
+        .filter((path) => (
+            typeof path === "string"
+            && path.length <= 500
+            && !path.includes("..")
+            && allowedPrefixes.some((prefix) => path.startsWith(prefix))
+        ))
+        .slice(0, 20);
+    if (candidates.length === 0) return { success: true as const, removed: 0 };
+
+    const { data: templates, error } = await sb
+        .from("garment_mockup_templates")
+        .select("base_image_path, mask_image_path, overlay_image_path");
+    if (error) return { error: error.message };
+
+    const referencedPaths = new Set(
+        ((templates as DtfMockupTemplateAssetPaths[] | null) ?? [])
+            .flatMap((template) => getDtfMockupTemplateAssetPaths(template))
+    );
+    const removablePaths = candidates.filter((path) => !referencedPaths.has(path));
+    await removeDtfMockupTemplateAssets(sb, removablePaths);
+    return { success: true as const, removed: removablePaths.length };
+}
+
+export async function upsertDtfMockupTemplate(formData: FormData) {
+    const { sb } = await requireSmartStoreAdmin();
+    const validated = smartStoreUpsertDtfMockupTemplateSchema.safeParse({
+        id: formData.get("id"),
+        garment_id: formData.get("garment_id"),
+        color_id: formData.get("color_id"),
+        side: formData.get("side"),
+        base_image_url: formData.get("base_image_url"),
+        base_image_path: formData.get("base_image_path"),
+        mask_image_url: formData.get("mask_image_url"),
+        mask_image_path: formData.get("mask_image_path"),
+        overlay_image_url: formData.get("overlay_image_url"),
+        overlay_image_path: formData.get("overlay_image_path"),
+        print_areas: formData.get("print_areas"),
+        version: formData.get("version"),
+        sort_order: formData.get("sort_order"),
+        is_active: formData.get("is_active"),
+    });
+
+    if (!validated.success) {
+        return { error: getFirstValidationError(validated.error) };
+    }
+
+    const data = validated.data;
+    let previousTemplate: DtfMockupTemplateAssetPaths | null = null;
+    if (data.id) {
+        const { data: existingTemplate, error: existingTemplateError } = await sb
+            .from("garment_mockup_templates")
+            .select("base_image_path, mask_image_path, overlay_image_path")
+            .eq("id", data.id)
+            .maybeSingle();
+        if (existingTemplateError) return { error: existingTemplateError.message };
+        previousTemplate = existingTemplate as DtfMockupTemplateAssetPaths | null;
+    }
+
+    if (data.color_id) {
+        const { data: color, error: colorError } = await sb
+            .from("custom_design_colors")
+            .select("garment_id")
+            .eq("id", data.color_id)
+            .maybeSingle();
+        if (colorError) return { error: colorError.message };
+        if (!color || color.garment_id !== data.garment_id) {
+            return { error: "اللون المحدد لا يتبع القطعة المختارة." };
+        }
+    }
+
+    const payload = {
+        garment_id: data.garment_id,
+        color_id: data.color_id ?? null,
+        side: data.side,
+        base_image_url: data.base_image_url,
+        base_image_path: data.base_image_path ?? null,
+        mask_image_url: data.mask_image_url ?? null,
+        mask_image_path: data.mask_image_path ?? null,
+        overlay_image_url: data.overlay_image_url ?? null,
+        overlay_image_path: data.overlay_image_path ?? null,
+        print_areas: data.print_areas,
+        version: data.version,
+        sort_order: data.sort_order,
+        is_active: data.is_active,
+    };
+
+    const query = data.id
+        ? sb
+            .from("garment_mockup_templates")
+            .update(payload)
+            .eq("id", data.id)
+            .select("*")
+            .single()
+        : sb
+            .from("garment_mockup_templates")
+            .insert(payload)
+            .select("*")
+            .single();
+    const { data: row, error } = await query;
+
+    if (error) {
+        if (error.code === "42P01" || error.code === "PGRST205") {
+            return { error: "لم يتم تطبيق ترحيل قوالب موكاب WASHA AI على قاعدة البيانات بعد." };
+        }
+        if (error.code === "23505") {
+            return { error: "يوجد قالب مسبق لهذه القطعة واللون والجهة. عدّله بدلاً من إضافة قالب جديد." };
+        }
+        return { error: error.message };
+    }
+
+    const currentPaths = new Set(getDtfMockupTemplateAssetPaths(payload));
+    await removeDtfMockupTemplateAssets(
+        sb,
+        getDtfMockupTemplateAssetPaths(previousTemplate).filter((path) => !currentPaths.has(path))
+    );
+    revalidatePath("/dashboard/smart-store");
+    return { success: true as const, row: row as DtfMockupTemplate };
+}
+
+export async function deleteDtfMockupTemplate(id: string) {
+    const { sb } = await requireSmartStoreAdmin();
+    const validatedId = smartStoreUpsertDtfMockupTemplateSchema.shape.id.safeParse(id);
+    if (!validatedId.success || !validatedId.data) {
+        return { error: "معرّف قالب الموكاب غير صالح." };
+    }
+
+    const { data: existingTemplate, error: existingTemplateError } = await sb
+        .from("garment_mockup_templates")
+        .select("base_image_path, mask_image_path, overlay_image_path")
+        .eq("id", validatedId.data)
+        .maybeSingle();
+    if (existingTemplateError) return { error: existingTemplateError.message };
+
+    const { error } = await sb
+        .from("garment_mockup_templates")
+        .delete()
+        .eq("id", validatedId.data);
+    if (error) return { error: error.message };
+
+    await removeDtfMockupTemplateAssets(
+        sb,
+        getDtfMockupTemplateAssetPaths(existingTemplate as DtfMockupTemplateAssetPaths | null)
+    );
+    revalidatePath("/dashboard/smart-store");
+    return { success: true as const };
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -1,7 +1,15 @@
 import { z } from "zod";
 
+const MAX_IMAGE_BASE64_LENGTH = 12_000_000;
+const imageBase64Schema = z
+    .string()
+    .trim()
+    .min(1, "بيانات الصورة مطلوبة")
+    .max(MAX_IMAGE_BASE64_LENGTH, "حجم الصورة يتجاوز الحد المسموح")
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/, "ترميز الصورة غير صالح");
+
 const aiImageReferenceSchema = z.object({
-    base64: z.string().trim().min(1, "بيانات الصورة مطلوبة"),
+    base64: imageBase64Schema,
     mimeType: z
         .string()
         .trim()
@@ -30,7 +38,7 @@ export const generationContextSchema = z.object({
 });
 
 export const generateMockupSchema = z.object({
-    prompt: z.string().trim().min(1, "الوصف مطلوب"),
+    prompt: z.string().trim().min(1, "الوصف مطلوب").max(12_000, "الوصف طويل جداً"),
     referenceImage: aiImageReferenceSchema.optional().nullable(),
     generationContext: generationContextSchema.optional().nullable(),
     // Legacy clients supplied a garment reference so the image model could draw

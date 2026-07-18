@@ -6,6 +6,7 @@ import type {
     PrintPosition,
     PrintSize,
 } from "@/lib/design-intelligence";
+import type { DtfMockupTemplate } from "@/lib/dtf-mockup-templates";
 
 // ═══════════════════════════════════════════════════════════
 //  وشّى | WASHA — Database Types
@@ -896,6 +897,19 @@ export type Database = {
                 Row: GarmentStudioMockup;
                 Insert: Omit<GarmentStudioMockup, "id" | "created_at" | "updated_at" | "sort_order"> & { sort_order?: number };
                 Update: Partial<Omit<GarmentStudioMockup, "id" | "created_at">>;
+                Relationships: any[];
+            };
+            garment_mockup_templates: {
+                Row: DtfMockupTemplate;
+                Insert: Omit<DtfMockupTemplate, "id" | "created_at" | "updated_at" | "version" | "sort_order" | "is_active"> & {
+                    id?: string;
+                    version?: number;
+                    sort_order?: number;
+                    is_active?: boolean;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: Partial<Omit<DtfMockupTemplate, "id" | "created_at">>;
                 Relationships: any[];
             };
             custom_design_presets: {

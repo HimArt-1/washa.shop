@@ -9,6 +9,7 @@ import {
     getAllColorPackages,
     getAllStudioItems,
     getAllGarmentStudioMockups,
+    getAllDtfMockupTemplates,
     getAllDesignPresets,
     getAllDesignCompatibilities,
 } from "@/app/actions/smart-store";
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SmartStorePage() {
-    const [garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities] = await Promise.all([
+    const [garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, dtfMockupTemplates, presets, compatibilities] = await Promise.all([
         getAllGarments(),
         getAllColors(),
         getAllSizes(),
@@ -29,6 +30,7 @@ export default async function SmartStorePage() {
         getAllColorPackages(),
         getAllStudioItems(),
         getAllGarmentStudioMockups(),
+        getAllDtfMockupTemplates(),
         getAllDesignPresets(),
         getAllDesignCompatibilities(),
     ]);
@@ -49,6 +51,7 @@ export default async function SmartStorePage() {
                 colorPackages={colorPackages}
                 studioItems={studioItems}
                 garmentStudioMockups={garmentStudioMockups}
+                dtfMockupTemplates={dtfMockupTemplates}
                 presets={presets}
                 compatibilities={compatibilities}
             />

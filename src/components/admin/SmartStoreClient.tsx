@@ -78,6 +78,11 @@ import {
     getSmartStoreStockStatus,
 } from "@/lib/smart-store-inventory";
 import { DTF_STUDIO_CATALOG_COUNTS } from "@/lib/dtf-studio-catalog";
+import type { DtfMockupTemplate } from "@/lib/dtf-mockup-templates";
+import { DtfMockupTemplatesTab } from "@/components/admin/smart-store/DtfMockupTemplatesTab";
+import type {
+    SmartStoreImageUploaderProps,
+} from "@/components/admin/smart-store/image-uploader.types";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -94,6 +99,7 @@ interface Props {
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
+    dtfMockupTemplates: DtfMockupTemplate[];
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
 }
@@ -119,7 +125,7 @@ const DTF_STUDIO_TABS: { id: TabId; label: string; icon: any }[] = [
     { id: "artStyles", label: "تقنيات الإخراج", icon: Paintbrush },
     { id: "positions", label: "أماكن الطباعة", icon: LayoutDashboard },
     { id: "colorPackages", label: "لوحات الألوان", icon: SwatchBook },
-    { id: "mockups", label: "موكبات المقاسات", icon: ImagePlus },
+    { id: "mockups", label: "قوالب الموكاب", icon: ImagePlus },
 ];
 
 const DEFAULT_TAB_BY_WORKSPACE: Record<WorkspaceId, TabId> = {
@@ -144,7 +150,7 @@ function getGarmentAiReferenceMode(value: CustomDesignGarment["ai_reference_mode
 
 // ─── Component ──────────────────────────────────────────
 
-export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, presets, compatibilities }: Props) {
+export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, positions, colorPackages, studioItems, garmentStudioMockups, dtfMockupTemplates, presets, compatibilities }: Props) {
     const [workspace, setWorkspace] = useState<WorkspaceId>("dtfStudio");
     const [designPieceTab, setDesignPieceTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.designPieceLab);
     const [dtfStudioTab, setDtfStudioTab] = useState<TabId>(DEFAULT_TAB_BY_WORKSPACE.dtfStudio);
@@ -208,6 +214,17 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, p
             return <StudioItemsTab items={studioItems} onRefresh={() => router.refresh()} />;
         }
         if (tab === "mockups") {
+            if (workspace === "dtfStudio") {
+                return (
+                    <DtfMockupTemplatesTab
+                        items={dtfMockupTemplates}
+                        garments={garmentsState}
+                        colors={colorsState}
+                        onRefresh={() => router.refresh()}
+                        ImageUploaderComponent={ImageUploader}
+                    />
+                );
+            }
             return <MockupsTab items={garmentStudioMockups} garments={garmentsState} studioItems={studioItems} onRefresh={() => router.refresh()} />;
         }
         if (tab === "presets") {
@@ -225,7 +242,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, p
                 onRefresh={() => router.refresh()}
             />
         );
-    }, [compatibilities, designPieceArtStyles, designPieceColorPackages, designPieceStyles, dtfArtStyles, dtfColorPackages, dtfStyles, colorsState, garmentStudioMockups, garmentsState, presets, router, sizes, studioItems, workspace]);
+    }, [compatibilities, designPieceArtStyles, designPieceColorPackages, designPieceStyles, dtfArtStyles, dtfColorPackages, dtfMockupTemplates, dtfStyles, colorsState, garmentStudioMockups, garmentsState, presets, router, sizes, studioItems, workspace]);
 
     const handleRestoreDtfCatalog = useCallback(async () => {
         setRestoreLoading(true);
@@ -273,6 +290,7 @@ export function SmartStoreClient({ garments, colors, sizes, styles, artStyles, p
                 colorPackages={workspace === "designPieceLab" ? designPieceColorPackages : dtfColorPackages}
                 studioItems={studioItems}
                 garmentStudioMockups={garmentStudioMockups}
+                dtfMockupTemplates={dtfMockupTemplates}
                 presets={presets}
                 compatibilities={compatibilities}
             />
@@ -369,6 +387,7 @@ function WorkspaceOverview({
     colorPackages,
     studioItems,
     garmentStudioMockups,
+    dtfMockupTemplates,
     presets,
     compatibilities,
 }: {
@@ -382,6 +401,7 @@ function WorkspaceOverview({
     colorPackages: CustomDesignColorPackage[];
     studioItems: CustomDesignStudioItem[];
     garmentStudioMockups: GarmentStudioMockup[];
+    dtfMockupTemplates: DtfMockupTemplate[];
     presets: CustomDesignPreset[];
     compatibilities: CustomDesignOptionCompatibility[];
 }) {
@@ -404,7 +424,7 @@ function WorkspaceOverview({
             { label: "القطع النشطة", value: garments.length, note: "تظهر مباشرة في واجهة /design/washa-ai" },
             { label: "مخزون متاح", value: availableUnits, note: trackedSizes.length > 0 ? `${reservedUnits} محجوز / ${lowOrOutCount} منخفض أو نافد` : "فعّل تتبع المخزون من تبويب المقاسات" },
             { label: "خيارات الإبداع", value: styles.length + artStyles.length + colorPackages.length, note: "ستايلات وتقنيات وباليت للتوليد" },
-            { label: "موكبات التشغيل", value: garmentStudioMockups.length, note: "مرجع العرض البصري للمقاسات والمنتجات" },
+            { label: "قوالب الموكاب", value: dtfMockupTemplates.length, note: "قوالب القطع والألوان ذات مناطق الطباعة المعايرة" },
         ];
 
     return (
@@ -743,19 +763,6 @@ function ConfirmDialog({
 
 // ─── Image Uploader ─────────────────────────────────────
 
-type SmartStoreImageFieldName =
-    | "image_url"
-    | "image_front_url"
-    | "image_back_url"
-    | "ai_reference_front_url"
-    | "ai_reference_back_url"
-    | "mockup_front_url"
-    | "mockup_back_url"
-    | "mockup_model_url"
-    | "main_image_url"
-    | "mockup_image_url"
-    | "model_image_url";
-
 type SmartStoreUploadResult = {
     url: string;
     path?: string | null;
@@ -772,15 +779,16 @@ function getSmartStoreCardImage(item: ThumbnailBackedSmartStoreItem) {
     return item.thumbnail_url || item.image_url || "";
 }
 
-function ImageUploader({ value, onChange, folder, label, fieldName = "image_url", thumbnailUrl, thumbnailPath }: {
-    value: string;
-    onChange: (url: string) => void;
-    folder: string;
-    label?: string;
-    fieldName?: SmartStoreImageFieldName;
-    thumbnailUrl?: string | null;
-    thumbnailPath?: string | null;
-}) {
+function ImageUploader({
+    value,
+    onChange,
+    onAssetChange,
+    folder,
+    label,
+    fieldName = "image_url",
+    thumbnailUrl,
+    thumbnailPath,
+}: SmartStoreImageUploaderProps) {
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState(value);
     const [currentThumbnailUrl, setCurrentThumbnailUrl] = useState(thumbnailUrl ?? "");
@@ -834,6 +842,7 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
                 const upload = result as SmartStoreUploadResult;
                 setPreview(result.url);
                 onChange(result.url);
+                onAssetChange?.({ url: result.url, path: upload.path ?? null });
                 setCurrentThumbnailUrl(upload.thumbnailUrl ?? "");
                 setCurrentThumbnailPath(upload.thumbnailPath ?? "");
             } else {
@@ -873,6 +882,7 @@ function ImageUploader({ value, onChange, folder, label, fieldName = "image_url"
                             onClick={() => {
                                 setPreview("");
                                 onChange("");
+                                onAssetChange?.({ url: "", path: null });
                                 setCurrentThumbnailUrl("");
                                 setCurrentThumbnailPath("");
                             }}

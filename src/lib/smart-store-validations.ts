@@ -11,6 +11,7 @@ const COMPLEXITY_LEVELS = ["minimal", "balanced", "bold"] as const;
 const LUXURY_TIERS = ["core", "signature", "editorial"] as const;
 const CATALOG_SCOPES = ["design_piece", "dtf_studio", "shared"] as const;
 const GARMENT_AI_REFERENCE_MODES = ["match_reference", "prompt_realistic"] as const;
+const DTF_MOCKUP_SIDES = ["front", "back"] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const SAFE_RECORD_ID_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,119}$/;
 
@@ -82,6 +83,15 @@ const optionalSafeUrl = (label: string) =>
             .string()
             .refine(isSafeHttpUrlLike, `${label} غير صالح`)
             .optional()
+    );
+
+const requiredSafeUrl = (label: string) =>
+    z.preprocess(
+        (value) => (typeof value === "string" ? value.trim() : value),
+        z
+            .string()
+            .min(1, `${label} مطلوب`)
+            .refine(isSafeHttpUrlLike, `${label} غير صالح`)
     );
 
 const optionalStoragePath = (label: string) =>
@@ -367,6 +377,87 @@ export const smartStoreUpsertGarmentSchema = z.object({
     price_back_small: numberFromUnknown("سعر الظهر الصغير", { min: 0, defaultValue: 0 }),
     price_shoulder_large: numberFromUnknown("سعر الكتف الكبير", { min: 0, defaultValue: 0 }),
     price_shoulder_small: numberFromUnknown("سعر الكتف الصغير", { min: 0, defaultValue: 0 }),
+});
+
+const dtfMockupPrintAreaSchema = z.object({
+    print_position: z.enum(PRINT_POSITIONS, { error: "موضع الطباعة غير صالح" }),
+    print_size: z.enum(PRINT_SIZES, { error: "حجم الطباعة غير صالح" }),
+    x: z.number().min(0).max(0.99),
+    y: z.number().min(0).max(0.99),
+    width: z.number().min(0.01).max(1),
+    height: z.number().min(0.01).max(1),
+    rotation: z.number().min(-180).max(180).default(0),
+    physical_width_cm: z.number().min(1).max(200).nullable().default(null),
+    physical_height_cm: z.number().min(1).max(200).nullable().default(null),
+}).superRefine((area, ctx) => {
+    if (area.x + area.width > 1) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["width"],
+            message: "منطقة الطباعة تتجاوز عرض الموكاب",
+        });
+    }
+    if (area.y + area.height > 1) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["height"],
+            message: "منطقة الطباعة تتجاوز ارتفاع الموكاب",
+        });
+    }
+});
+
+const dtfMockupPrintAreasSchema = z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    try {
+        return JSON.parse(value);
+    } catch {
+        return value;
+    }
+}, z.array(dtfMockupPrintAreaSchema).min(1, "أضف منطقة طباعة واحدة على الأقل").max(8))
+    .superRefine((areas, ctx) => {
+        const seen = new Set<string>();
+        areas.forEach((area, index) => {
+            const key = `${area.print_position}:${area.print_size}`;
+            if (seen.has(key)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: [index, "print_position"],
+                    message: "لا يمكن تكرار موضع وحجم الطباعة داخل القالب",
+                });
+            }
+            seen.add(key);
+        });
+    });
+
+export const smartStoreUpsertDtfMockupTemplateSchema = z.object({
+    id: optionalUuid("معرّف قالب الموكاب"),
+    garment_id: requiredUuid("معرّف القطعة"),
+    color_id: optionalUuid("معرّف اللون"),
+    side: z.preprocess(trimToUndefined, z.enum(DTF_MOCKUP_SIDES, { error: "جهة الموكاب غير صالحة" })),
+    base_image_url: requiredSafeUrl("صورة الموكاب الأساسية"),
+    base_image_path: optionalStoragePath("مسار صورة الموكاب"),
+    mask_image_url: optionalSafeUrl("قناع الموكاب"),
+    mask_image_path: optionalStoragePath("مسار قناع الموكاب"),
+    overlay_image_url: optionalSafeUrl("طبقة ظلال الموكاب"),
+    overlay_image_path: optionalStoragePath("مسار طبقة ظلال الموكاب"),
+    print_areas: dtfMockupPrintAreasSchema,
+    version: numberFromUnknown("نسخة القالب", { integer: true, min: 1, max: 10000, defaultValue: 1 }),
+    sort_order: numberFromUnknown("ترتيب القالب", { integer: true, min: 0, defaultValue: 0 }),
+    is_active: booleanFromUnknown(true),
+}).superRefine((data, ctx) => {
+    const incompatibleIndex = data.print_areas.findIndex((area) => (
+        (data.side === "back" && area.print_position !== "back")
+        || (data.side === "front" && area.print_position === "back")
+    ));
+    if (incompatibleIndex >= 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["print_areas", incompatibleIndex, "print_position"],
+            message: data.side === "back"
+                ? "قالب الخلف يدعم موضع الظهر فقط"
+                : "موضع الظهر يحتاج قالب جهة خلفية",
+        });
+    }
 });
 
 export const smartStoreUpsertColorSchema = z.object({

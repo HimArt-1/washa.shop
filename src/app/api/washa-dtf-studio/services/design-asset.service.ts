@@ -31,6 +31,10 @@ import {
 import { compositeArtworkPreview } from "@/lib/washa-artwork/compositor";
 import { selectSideSpecificCatalogReference } from "@/lib/washa-artwork/mockup-manifest";
 import { validateGeneratedBlankGarment } from "@/lib/washa-artwork/mockup-validation";
+import {
+    resolveDtfMockupTemplate,
+    type DtfMockupTemplate,
+} from "@/lib/dtf-mockup-templates";
 import { verifyExactArabicText } from "@/lib/washa-artwork/arabic-text-verification";
 import { verifyBlankGarmentSemantics } from "@/lib/washa-artwork/garment-semantic-verification";
 import type {
@@ -127,6 +131,9 @@ type ResolvedMockupAsset = {
     shadingMapUrl: string | null;
     displacementMapUrl: string | null;
     perspectiveTransform: MockupAssetRow["perspective_transform"];
+    configuredRotation: number | null;
+    configuredPrintWidthCm: number | null;
+    configuredPrintHeightCm: number | null;
 };
 
 type GenerateDesignAssetInput = {
@@ -574,6 +581,9 @@ export class DesignAssetService {
             shadingMapUrl: row.shading_map_url,
             displacementMapUrl: row.displacement_map_url,
             perspectiveTransform: row.perspective_transform ?? null,
+            configuredRotation: null,
+            configuredPrintWidthCm: null,
+            configuredPrintHeightCm: null,
         };
     }
 
@@ -631,6 +641,72 @@ export class DesignAssetService {
             .maybeSingle();
         if (error) throw error;
         return data ? DesignAssetService.mapMockupAsset(data, selection.printPosition) : null;
+    }
+
+    private static async findAdminTemplateMockup(
+        selection: GenerationSelection,
+        side: ArtworkSide
+    ): Promise<ResolvedMockupAsset | null> {
+        if (!selection.garmentId) return null;
+
+        let query = DesignAssetService.db()
+            .from("garment_mockup_templates")
+            .select("*")
+            .eq("garment_id", selection.garmentId)
+            .eq("side", side)
+            .eq("is_active", true);
+        query = selection.colorId
+            ? query.or(`color_id.eq.${selection.colorId},color_id.is.null`)
+            : query.is("color_id", null);
+
+        const { data, error } = await query
+            .order("sort_order", { ascending: true })
+            .order("version", { ascending: false });
+        if (error) {
+            if (error.code === "42P01" || error.code === "PGRST205") return null;
+            throw error;
+        }
+
+        const resolved = resolveDtfMockupTemplate(
+            (data as DtfMockupTemplate[] | null) ?? [],
+            {
+                garmentId: selection.garmentId,
+                colorId: selection.colorId,
+                printPosition: selection.printPosition,
+                printSize: selection.printSize,
+            }
+        );
+        if (!resolved) return null;
+
+        const { template, area } = resolved;
+        return {
+            // This is intentionally null because reference_mockup_id points to
+            // washa_garment_mockup_assets. The immutable template identity and
+            // version are retained in printAreaId and revision placement data.
+            id: null,
+            sourceType: "reference",
+            storageBucket: template.base_image_path ? "smart-store" : null,
+            storagePath: template.base_image_path,
+            imageUrl: template.base_image_url,
+            printAreaId:
+                `admin-template:${template.id}:v${template.version}`
+                + `:${area.print_position}:${area.print_size}`,
+            printArea: {
+                x: area.x,
+                y: area.y,
+                width: area.width,
+                height: area.height,
+            },
+            anchorX: 0.5,
+            anchorY: 0.5,
+            garmentMaskUrl: template.mask_image_url,
+            shadingMapUrl: template.overlay_image_url,
+            displacementMapUrl: null,
+            perspectiveTransform: null,
+            configuredRotation: area.rotation,
+            configuredPrintWidthCm: area.physical_width_cm,
+            configuredPrintHeightCm: area.physical_height_cm,
+        };
     }
 
     private static async deactivateGeneratedMockup(assetId: string) {
@@ -777,6 +853,9 @@ export class DesignAssetService {
                 shadingMapUrl: null,
                 displacementMapUrl: null,
                 perspectiveTransform: null,
+                configuredRotation: null,
+                configuredPrintWidthCm: null,
+                configuredPrintHeightCm: null,
             };
         }
 
@@ -861,10 +940,22 @@ export class DesignAssetService {
                 shadingMapUrl: null,
                 displacementMapUrl: null,
                 perspectiveTransform: null,
+                configuredRotation: null,
+                configuredPrintWidthCm: null,
+                configuredPrintHeightCm: null,
             };
             if (await DesignAssetService.isMockupAssetUsable(legacyAsset)) return legacyAsset;
             if (!allowGeneratedFallback) return null;
         }
+        const adminTemplate = await DesignAssetService.findAdminTemplateMockup(
+            selection,
+            side
+        );
+        if (
+            adminTemplate
+            && await DesignAssetService.isMockupAssetUsable(adminTemplate)
+        ) return adminTemplate;
+
         const manifestReference = await DesignAssetService.findManifestMockup(
             selection,
             side,
@@ -1033,7 +1124,7 @@ export class DesignAssetService {
         );
         if (!selectedMockup) throw new Error("No suitable garment mockup could be resolved.");
 
-        const placement = buildPlacementTransform({
+        const defaultPlacement = buildPlacementTransform({
             side: selectedSide,
             printPosition: params.selection.printPosition,
             printSize: params.selection.printSize,
@@ -1045,6 +1136,18 @@ export class DesignAssetService {
             referenceMockupId: selectedMockup.id,
             printAreaId: selectedMockup.printAreaId,
         });
+        const placement: PlacementTransform = {
+            ...defaultPlacement,
+            rotation:
+                selectedMockup.configuredRotation
+                ?? defaultPlacement.rotation,
+            printWidthCm:
+                selectedMockup.configuredPrintWidthCm
+                ?? defaultPlacement.printWidthCm,
+            printHeightCm:
+                selectedMockup.configuredPrintHeightCm
+                ?? defaultPlacement.printHeightCm,
+        };
         assertMinimumEffectivePrintDpi({
             width: params.master.width,
             height: params.master.height,
