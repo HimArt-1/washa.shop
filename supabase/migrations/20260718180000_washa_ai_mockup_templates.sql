@@ -28,6 +28,11 @@ AS $$
     );
 $$;
 
+COMMENT ON FUNCTION public.current_clerk_subject()
+    IS 'Returns the Clerk JWT subject, falling back to the Supabase auth UUID.';
+COMMENT ON FUNCTION public.is_storage_admin()
+    IS 'Checks whether the current Clerk subject may manage protected storage-backed assets.';
+
 CREATE TABLE IF NOT EXISTS public.garment_mockup_templates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     garment_id UUID NOT NULL
