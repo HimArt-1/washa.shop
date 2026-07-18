@@ -649,26 +649,37 @@ export class DesignAssetService {
     ): Promise<ResolvedMockupAsset | null> {
         if (!selection.garmentId) return null;
 
-        let query = DesignAssetService.db()
-            .from("garment_mockup_templates")
-            .select("*")
-            .eq("garment_id", selection.garmentId)
-            .eq("side", side)
-            .eq("is_active", true);
-        query = selection.colorId
-            ? query.or(`color_id.eq.${selection.colorId},color_id.is.null`)
-            : query.is("color_id", null);
+        const loadTemplate = (colorId: string | null) => {
+            let query = DesignAssetService.db()
+                .from("garment_mockup_templates")
+                .select("*")
+                .eq("garment_id", selection.garmentId)
+                .eq("side", side)
+                .eq("is_active", true);
+            query = colorId
+                ? query.eq("color_id", colorId)
+                : query.is("color_id", null);
+            return query.limit(1).maybeSingle();
+        };
 
-        const { data, error } = await query
-            .order("sort_order", { ascending: true })
-            .order("version", { ascending: false });
-        if (error) {
-            if (error.code === "42P01" || error.code === "PGRST205") return null;
-            throw error;
+        const results = selection.colorId
+            ? await Promise.all([
+                loadTemplate(selection.colorId),
+                loadTemplate(null),
+            ])
+            : [await loadTemplate(null)];
+        for (const result of results) {
+            if (!result.error) continue;
+            if (result.error.code === "42P01" || result.error.code === "PGRST205") {
+                return null;
+            }
+            throw result.error;
         }
 
         const resolved = resolveDtfMockupTemplate(
-            (data as DtfMockupTemplate[] | null) ?? [],
+            results
+                .map((result) => result.data as DtfMockupTemplate | null)
+                .filter((template): template is DtfMockupTemplate => Boolean(template)),
             {
                 garmentId: selection.garmentId,
                 colorId: selection.colorId,
