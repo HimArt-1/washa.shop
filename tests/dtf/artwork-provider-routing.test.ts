@@ -226,6 +226,38 @@ describe("isolated artwork provider routing", () => {
         });
     });
 
+    it("reuses a successful Gemini fallback for background recovery when OpenAI remains configured", async () => {
+        vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "openai");
+        vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
+
+        await expect(generateIsolatedArtwork({
+            prompt: "preserve the supplied artwork",
+            referenceImageDataUrl: "data:image/jpeg;base64,AAAA",
+            traceId: "trace_locked_fallback_recovery",
+            requiredProvider: "genai",
+            requiredModel: "gemini-test-model",
+            attemptPurpose: "background_recovery",
+        })).resolves.toMatchObject({
+            provider: "genai",
+            model: "gemini-test-model",
+        });
+
+        expect(mockGenerateContent).toHaveBeenCalledOnce();
+        expect(mockRunOpenAIGenerateDataUrl).not.toHaveBeenCalled();
+        expect(mockRunOpenAIEditDataUrl).not.toHaveBeenCalled();
+        expect(mockRunReplicatePredictions).not.toHaveBeenCalled();
+        const resolvedLog = mockLogDtfTrace.mock.calls.find(
+            (call) => call[2] === "provider_resolved"
+        );
+        expect(resolvedLog?.[3]).toMatchObject({
+            configuredProvider: "openai",
+            resolvedProvider: "genai",
+            resolvedModel: "gemini-test-model",
+            fallbackEnabled: false,
+            attemptPurpose: "background_recovery",
+        });
+    });
+
     it("retains both Gemini and OpenAI errors when the fallback also fails", async () => {
         vi.stubEnv("WASHA_DTF_PROVIDER_FALLBACK", "true");
         const secret = "gemini-secret-that-must-never-appear";

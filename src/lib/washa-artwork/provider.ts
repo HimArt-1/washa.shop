@@ -289,6 +289,23 @@ function resolveFallbackConfiguration(
     return null;
 }
 
+function resolveLockedProviderConfiguration(params: {
+    requiredProvider?: string;
+    requiredModel?: string;
+}, configured: WashaDtfProviderConfiguration) {
+    const providerConfiguration = params.requiredProvider
+        ? resolveWashaDtfProviderConfiguration({
+            ...process.env,
+            WASHA_DTF_IMAGE_PROVIDER: params.requiredProvider,
+        })
+        : configured;
+    return {
+        ...providerConfiguration,
+        model: params.requiredModel?.trim() || providerConfiguration.model,
+        fallbackEnabled: false,
+    };
+}
+
 export async function generateIsolatedArtwork(params: {
     prompt: string;
     referenceImageDataUrl?: string | null;
@@ -299,20 +316,18 @@ export async function generateIsolatedArtwork(params: {
 }) : Promise<ProviderImageResult> {
     const traceId = params.traceId || crypto.randomUUID();
     const timeoutMs = resolveProviderTimeoutMs();
-    const primary = resolveWashaDtfProviderConfiguration();
+    const configured = resolveWashaDtfProviderConfiguration();
     const providerLocked = Boolean(params.requiredProvider || params.requiredModel);
-    if (
-        (params.requiredProvider && primary.provider !== params.requiredProvider)
-        || (params.requiredModel && primary.model !== params.requiredModel)
-    ) {
-        throw new Error("Configured artwork provider changed during the locked generation attempt.");
-    }
+    const primary = providerLocked
+        ? resolveLockedProviderConfiguration(params, configured)
+        : configured;
     const fallbackEnabled = primary.fallbackEnabled && !providerLocked;
     logDtfTrace("dtf.artwork.provider", traceId, "provider_resolved", {
-        configuredProvider: primary.configuredProvider,
+        configuredProvider: configured.configuredProvider,
         resolvedProvider: primary.provider,
         resolvedModel: primary.model,
         fallbackEnabled,
+        providerLocked,
         attemptPurpose: params.attemptPurpose || "generation",
         credentialConfigured: primary.credentialConfigured,
         hasReferenceImage: Boolean(params.referenceImageDataUrl),
