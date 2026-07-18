@@ -11,8 +11,8 @@ export const WASHA_ISOLATED_ARTWORK_SYSTEM_INSTRUCTIONS = [
     "Return exactly one isolated print-ready design.",
 ].join("\n");
 
-export const WASHA_GENAI_TRANSPORT_MATTE_INSTRUCTIONS = [
-    "Gemini image transport compatibility:",
+export const WASHA_ARTWORK_TRANSPORT_MATTE_INSTRUCTIONS = [
+    "Image transport compatibility:",
     "If the response encoder cannot return a real alpha channel, use one perfectly uniform solid #F2F2F2 transport matte across the entire edge-connected canvas background.",
     "This transport matte is the only allowed non-transparent fallback and will be removed after generation.",
     "Do not add gradients, textures, shadows, lighting variation, vignettes, floors, scenery, frames, or objects to the transport matte.",
@@ -23,10 +23,10 @@ function compact(value: string | null | undefined) {
     return typeof value === "string" ? value.trim() : "";
 }
 
-export function buildGenAiArtworkTransportPrompt(prompt: string) {
+export function buildArtworkTransportPrompt(prompt: string) {
     return [
         prompt.trim(),
-        WASHA_GENAI_TRANSPORT_MATTE_INSTRUCTIONS,
+        WASHA_ARTWORK_TRANSPORT_MATTE_INSTRUCTIONS,
     ].filter(Boolean).join("\n\n");
 }
 

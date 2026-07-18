@@ -431,7 +431,13 @@ describe("DesignAssetService", () => {
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
     });
 
-    it("recovers one untrusted Gemini background without changing the accepted master lineage", async () => {
+    it.each([
+        { provider: "genai", model: "gemini-3-pro-image" },
+        { provider: "openai", model: "gpt-image-2" },
+    ])(
+        "recovers one untrusted $provider background without changing the accepted master lineage",
+        async ({ provider, model }) => {
+        const generationRequestId = `generation_${provider}_background_recovery`;
         const ambiguousJpeg = await sharp(Buffer.from(`
             <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
                 <rect x="0" y="0" width="96" height="96" fill="#ff0000"/>
@@ -457,20 +463,20 @@ describe("DesignAssetService", () => {
         mockGenerateIsolatedArtwork
             .mockResolvedValueOnce({
                 imageUrl: `data:image/jpeg;base64,${ambiguousJpeg.toString("base64")}`,
-                provider: "genai",
-                model: "gemini-3-pro-image",
+                provider,
+                model,
                 parameters: { responseModalities: ["IMAGE"] },
             })
             .mockResolvedValueOnce({
                 imageUrl: `data:image/jpeg;base64,${recoveredJpeg.toString("base64")}`,
-                provider: "genai",
-                model: "gemini-3-pro-image",
+                provider,
+                model,
                 parameters: { responseModalities: ["IMAGE"] },
             });
 
         const result = await DesignAssetService.generate({
             profileId: "profile_1",
-            generationRequestId: "generation_gemini_background_recovery",
+            generationRequestId,
             userIdea: "شارة دائرية سوداء بعنصر أبيض داخلي",
             referenceImage: null,
             context: {
@@ -500,9 +506,9 @@ describe("DesignAssetService", () => {
                 /do not create a new design[\s\S]*perfectly uniform solid/i
             ),
             referenceImageDataUrl: expect.stringMatching(/^data:image\/jpeg;base64,/),
-            traceId: "generation_gemini_background_recovery",
-            requiredProvider: "genai",
-            requiredModel: "gemini-3-pro-image",
+            traceId: generationRequestId,
+            requiredProvider: provider,
+            requiredModel: model,
             attemptPurpose: "background_recovery",
         });
         const masterUploads = mockUploadImmutableBuffer.mock.calls.filter(([, path]) =>
@@ -529,11 +535,11 @@ describe("DesignAssetService", () => {
         });
         expect(mockLogDtfTrace).toHaveBeenCalledWith(
             "dtf.artwork.normalization",
-            "generation_gemini_background_recovery",
+            generationRequestId,
             "artwork_background_recovery_started",
             expect.objectContaining({
-                attemptedProvider: "genai",
-                attemptedModel: "gemini-3-pro-image",
+                attemptedProvider: provider,
+                attemptedModel: model,
                 normalizationAttempt: 1,
             })
         );

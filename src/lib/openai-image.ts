@@ -29,6 +29,30 @@ export function getOpenAIImageModel() {
     return OPENAI_IMAGE_MODEL;
 }
 
+// المقاسات المدعومة رسمياً لكل نموذج. أي مقاس خارجها يُرفَض من واجهة OpenAI بخطأ 400،
+// لذا نُطبّع القيمة القادمة من متغيرات البيئة إلى أقرب مقاس صالح بدل تعطّل التوليد.
+const OPENAI_MODEL_SUPPORTED_SIZES: Record<string, readonly string[]> = {
+    "gpt-image-1": ["1024x1024", "1024x1536", "1536x1024", "auto"],
+    "dall-e-3": ["1024x1024", "1792x1024", "1024x1792"],
+    "dall-e-2": ["256x256", "512x512", "1024x1024"],
+};
+
+/**
+ * تُعيد مقاساً صالحاً للنموذج المطلوب. النماذج غير المعروفة (مثل الأحدث) تمرّ كما هي
+ * حتى لا نحجب مقاسات صحيحة لم تُدرَج بعد.
+ */
+export function normalizeOpenAiImageSize(
+    model: string,
+    requestedSize: string | undefined | null,
+    fallback = "1024x1024"
+): string {
+    const size = (requestedSize || "").trim().toLowerCase();
+    const supported = OPENAI_MODEL_SUPPORTED_SIZES[model.trim().toLowerCase()];
+    if (!supported) return size || fallback;
+    if (size && supported.includes(size)) return size;
+    return supported.includes(fallback) ? fallback : supported[0];
+}
+
 function getProviderErrorMessage(rawBody: string): string {
     try {
         const parsed = JSON.parse(rawBody) as { error?: { message?: unknown } };
@@ -36,6 +60,26 @@ function getProviderErrorMessage(rawBody: string): string {
     } catch {
         return rawBody;
     }
+}
+
+// نُغلّف خطأ OpenAI في بنية JSON موحّدة تحمل رمز حالة HTTP، حتى يصنّفه المتلقّي
+// (getWashaDtfErrorDetails / createWashaDtfProviderAttempt) كـ 429/503/504 بدل السقوط إلى 500.
+function buildOpenAiProviderError(status: number, providerMessage: string, rawBody: string) {
+    const providerStatus =
+        status === 429
+            ? "RESOURCE_EXHAUSTED"
+            : status === 504
+                ? "DEADLINE_EXCEEDED"
+                : status >= 500
+                    ? "UNAVAILABLE"
+                    : undefined;
+    return new Error(JSON.stringify({
+        error: {
+            code: status,
+            status: providerStatus,
+            message: providerMessage || rawBody || `OpenAI Image API failed with status ${status}`,
+        },
+    }));
 }
 
 /**
@@ -58,7 +102,10 @@ export async function runOpenAIGenerateDataUrl(
         model: OPENAI_IMAGE_MODEL,
         prompt,
         n: 1,
-        size: options.size || OPENAI_IMAGE_SIZE,
+        size: normalizeOpenAiImageSize(
+            OPENAI_IMAGE_MODEL,
+            options.size || OPENAI_IMAGE_SIZE
+        ),
     };
 
     // gpt-image-1 يدعم quality و output_format
@@ -96,7 +143,7 @@ export async function runOpenAIGenerateDataUrl(
             metadata: { provider: "openai", model: OPENAI_IMAGE_MODEL, status: res.status, providerMessage },
         });
         if (options.throwOnError) {
-            throw new Error(err || `OpenAI Image API failed with status ${res.status}`);
+            throw buildOpenAiProviderError(res.status, providerMessage, err);
         }
         return null;
     }
@@ -104,11 +151,7 @@ export async function runOpenAIGenerateDataUrl(
     const data = await res.json();
     const imageData = data?.data?.[0];
 
-    // gpt-image-1 يعيد b64_json مباشرة
-    if (imageData?.b64_json) {
-        return `data:image/png;base64,${imageData.b64_json}`;
-    }
-    // dall-e-3 مع response_format=b64_json
+    // gpt-image-1 و dall-e-3 (response_format=b64_json) يعيدان الصورة مضمّنة base64
     if (imageData?.b64_json) {
         return `data:image/png;base64,${imageData.b64_json}`;
     }
@@ -157,7 +200,10 @@ export async function runOpenAIEditDataUrl(
     formData.append("image", blob, `reference.${ext === "jpeg" ? "png" : ext}`);
     formData.append("prompt", prompt);
     formData.append("n", "1");
-    formData.append("size", options.size || OPENAI_IMAGE_SIZE);
+    formData.append(
+        "size",
+        normalizeOpenAiImageSize(OPENAI_IMAGE_MODEL, options.size || OPENAI_IMAGE_SIZE)
+    );
     if (OPENAI_IMAGE_MODEL.startsWith("gpt-image-")) {
         formData.append("quality", options.quality || OPENAI_IMAGE_QUALITY);
         formData.append("output_format", options.outputFormat || "png");
@@ -188,7 +234,7 @@ export async function runOpenAIEditDataUrl(
             metadata: { provider: "openai", model: OPENAI_IMAGE_MODEL, status: res.status, providerMessage },
         });
         if (options.throwOnError) {
-            throw new Error(err || `OpenAI Image Edit failed with status ${res.status}`);
+            throw buildOpenAiProviderError(res.status, providerMessage, err);
         }
         return null;
     }

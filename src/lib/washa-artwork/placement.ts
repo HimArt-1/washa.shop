@@ -4,6 +4,35 @@ import type {
     PlacementTransform,
 } from "@/lib/washa-artwork/types";
 
+export class ArtworkPlacementError extends Error {
+    readonly code = "ARTWORK_PLACEMENT_INVALID";
+    readonly stage = "placement";
+    readonly diagnostics: Record<string, unknown>;
+    readonly validationErrors: string[] = [];
+
+    constructor(params: {
+        message: string;
+        diagnostics?: Record<string, unknown>;
+        cause?: unknown;
+    }) {
+        super(params.message);
+        this.name = "ArtworkPlacementError";
+        this.diagnostics = params.diagnostics ?? {};
+        this.cause = params.cause;
+    }
+}
+
+export function isArtworkPlacementError(
+    error: unknown
+): error is ArtworkPlacementError {
+    return error instanceof ArtworkPlacementError
+        || (
+            error instanceof Error
+            && "code" in error
+            && error.code === "ARTWORK_PLACEMENT_INVALID"
+        );
+}
+
 function clamp(value: number, min: number, max: number) {
     return Math.min(max, Math.max(min, value));
 }

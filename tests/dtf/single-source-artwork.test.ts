@@ -210,6 +210,49 @@ describe("WASHA AI single-source artwork", () => {
         expect((await sharp(printOne.buffer).metadata()).hasAlpha).toBe(true);
     });
 
+    it("keeps centered full-scale artwork inside an odd-width pixel print area", async () => {
+        const master = await transparentArtwork(128);
+        const garment = await sharp({
+            create: {
+                width: 320,
+                height: 320,
+                channels: 4,
+                background: { r: 42, g: 44, b: 48, alpha: 1 },
+            },
+        }).png().toBuffer();
+        const printArea = { x: 0.18, y: 0.12, width: 0.64, height: 0.76 };
+        const placement = buildPlacementTransform({
+            side: "back",
+            printPosition: "back",
+            printSize: "large",
+            scalePercent: 100,
+            offsetXPercent: 0,
+            offsetYPercent: 0,
+        });
+
+        const preview = await compositeArtworkPreview({
+            garmentBase: garment,
+            masterArtwork: master,
+            printArea,
+            placement,
+        });
+
+        const areaLeft = Math.round(printArea.x * 320);
+        const areaTop = Math.round(printArea.y * 320);
+        const areaWidth = Math.round(printArea.width * 320);
+        const areaHeight = Math.round(printArea.height * 320);
+        const pixelPlacement = preview.transformationMetadata.pixelPlacement;
+        expect(areaWidth % 2).toBe(1);
+        expect(pixelPlacement.left).toBeGreaterThanOrEqual(areaLeft);
+        expect(pixelPlacement.top).toBeGreaterThanOrEqual(areaTop);
+        expect(pixelPlacement.left + pixelPlacement.width).toBeLessThanOrEqual(
+            areaLeft + areaWidth
+        );
+        expect(pixelPlacement.top + pixelPlacement.height).toBeLessThanOrEqual(
+            areaTop + areaHeight
+        );
+    });
+
     it("changing placement changes only the preview transform, not the master or print file", async () => {
         const master = await transparentArtwork(128);
         const garment = await sharp({

@@ -29,6 +29,7 @@ import {
     sanitizeWashaDtfProviderMessage,
 } from "@/lib/washa-dtf-provider-config";
 import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
+import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
@@ -37,6 +38,8 @@ const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
 const GENERATE_MOCKUP_OPERATION = "generate-mockup";
 const ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR =
     "تعذر تجهيز التصميم كملف طباعة شفاف وآمن. عدّل الوصف وجرّب مرة أخرى.";
+const ARTWORK_PLACEMENT_PUBLIC_ERROR =
+    "تعذر وضع التصميم داخل مساحة الطباعة الآمنة. صغّر الحجم أو أعد تمركزه ثم جرّب مرة أخرى.";
 
 function structuredErrorResponse(
     requestId: string,
@@ -466,28 +469,38 @@ export async function POST(request: NextRequest) {
         });
 
         } catch (error) {
-        const artworkValidationFailure = isArtworkPrintValidationError(error);
-        const handled = artworkValidationFailure
+        const artworkError =
+            isArtworkPrintValidationError(error) || isArtworkPlacementError(error)
+                ? error
+                : null;
+        const artworkPlacementFailure = artworkError
+            ? isArtworkPlacementError(artworkError)
+            : false;
+        const handled = artworkError
             ? {
-                message: ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
+                message: artworkPlacementFailure
+                    ? ARTWORK_PLACEMENT_PUBLIC_ERROR
+                    : ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
                 status: 422,
             }
             : getWashaDtfErrorDetails(error);
-        if (artworkValidationFailure) {
+        if (artworkError) {
             logDtfTrace(
                 GENERATE_MOCKUP_ROUTE,
                 traceId,
-                "artwork_print_validation_failed",
+                artworkPlacementFailure
+                    ? "artwork_placement_failed"
+                    : "artwork_print_validation_failed",
                 {
                     resolvedProvider: generationReadiness.provider ?? "configured",
                     resolvedModel: generationReadiness.model ?? null,
                     fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
                     statusCode: 422,
-                    errorCode: error.code,
-                    errorStage: error.stage,
+                    errorCode: artworkError.code,
+                    errorStage: artworkError.stage,
                     durationMs: Date.now() - routeStartedAt,
-                    diagnostics: error.diagnostics,
-                    validationErrors: error.validationErrors,
+                    diagnostics: artworkError.diagnostics,
+                    validationErrors: artworkError.validationErrors,
                 }
             );
         } else {
@@ -542,10 +555,10 @@ export async function POST(request: NextRequest) {
             metadata: {
                 quotaReleased,
                 quotaDate: quota.quotaDate,
-                ...(artworkValidationFailure
+                ...(artworkError
                     ? {
-                        errorCode: error.code,
-                        errorStage: error.stage,
+                        errorCode: artworkError.code,
+                        errorStage: artworkError.stage,
                     }
                     : {}),
             },
@@ -576,12 +589,14 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        if (artworkValidationFailure) {
+        if (artworkError) {
             return structuredErrorResponse(
                 traceId,
                 422,
-                error.code,
-                ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
+                artworkError.code,
+                artworkPlacementFailure
+                    ? ARTWORK_PLACEMENT_PUBLIC_ERROR
+                    : ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR,
                 { retryable: false }
             );
         }
