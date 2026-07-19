@@ -759,6 +759,61 @@ describe("generate-mockup route", () => {
         ).toBe(true);
     });
 
+    it("classifies a verifier outage independently from image-provider failure", async () => {
+        mockGenerateMockup.mockRejectedValue(Object.assign(
+            new Error("OpenAI artwork verification failed."),
+            {
+                name: "ArtworkVerificationUnavailableError",
+                code: "ARTWORK_VERIFICATION_UNAVAILABLE",
+                stage: "text_policy_verification",
+                provider: "openai",
+                model: "gpt-4o-mini",
+                sourceProvider: "genai",
+                sourceModel: "gemini-3-pro-image",
+                statusCode: 429,
+                providerCode: "insufficient_quota",
+                requestId: "req_safe_verification_429",
+                retryable: true,
+            }
+        ));
+
+        const response = await POST(
+            new Request("http://localhost/api/dtf/generate") as NextRequest
+        );
+        const payload = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(payload).toMatchObject({
+            ok: false,
+            code: "ARTWORK_VERIFICATION_UNAVAILABLE",
+            retryable: true,
+        });
+        expect(JSON.stringify(payload)).not.toContain("OpenAI");
+        expect(JSON.stringify(payload)).not.toContain("insufficient_quota");
+        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockGetWashaDtfErrorDetails).not.toHaveBeenCalled();
+        expect(
+            mockLogDtfTrace.mock.calls.some(
+                (call) => call[2] === "provider_failed"
+            )
+        ).toBe(false);
+        const failureLog = mockLogDtfTrace.mock.calls.find(
+            (call) => call[2] === "artwork_verification_unavailable"
+        );
+        expect(failureLog?.[3]).toMatchObject({
+            verificationProvider: "openai",
+            verificationModel: "gpt-4o-mini",
+            sourceProvider: "genai",
+            sourceModel: "gemini-3-pro-image",
+            providerStatus: 429,
+            providerCode: "insufficient_quota",
+            providerRequestId: "req_safe_verification_429",
+            statusCode: 503,
+            errorCode: "ARTWORK_VERIFICATION_UNAVAILABLE",
+        });
+    });
+
     it("classifies post-provider print validation independently from provider failure", async () => {
         mockGenerateMockup.mockRejectedValue(new ArtworkPrintValidationError({
             message: "Normalized artwork failed print validation: unsafe internal detail.",

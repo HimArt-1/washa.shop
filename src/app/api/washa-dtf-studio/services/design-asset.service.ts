@@ -37,6 +37,7 @@ import {
 } from "@/lib/dtf-mockup-templates";
 import { verifyArtworkTextPolicy } from "@/lib/washa-artwork/arabic-text-verification";
 import { verifyBlankGarmentSemantics } from "@/lib/washa-artwork/garment-semantic-verification";
+import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 import type {
     ArtworkGenerationContext,
     ArtworkSide,
@@ -1517,7 +1518,11 @@ export class DesignAssetService {
                     ARTWORK_NORMALIZATION_SCOPE,
                     input.generationRequestId,
                     "artwork_text_policy_verification_started",
-                    { textRenderingAllowed }
+                    {
+                        textRenderingAllowed,
+                        sourceProvider: providerResult.provider,
+                        sourceModel: providerResult.model,
+                    }
                 );
                 let textPolicyVerification: Awaited<
                     ReturnType<typeof verifyArtworkTextPolicy>
@@ -1528,6 +1533,8 @@ export class DesignAssetService {
                         expectedText: textRenderingAllowed
                             ? input.context.calligraphyText
                             : null,
+                        preferredProvider: providerResult.provider,
+                        sourceModel: providerResult.model,
                     });
                     logDtfTrace(
                         ARTWORK_NORMALIZATION_SCOPE,
@@ -1536,11 +1543,17 @@ export class DesignAssetService {
                         {
                             textRenderingAllowed,
                             verificationMode: textPolicyVerification.mode,
+                            verificationProvider: textPolicyVerification.provider,
                             verificationModel: textPolicyVerification.model,
+                            sourceProvider: providerResult.provider,
+                            sourceModel: providerResult.model,
                             durationMs: Date.now() - textPolicyVerificationStartedAt,
                         }
                     );
                 } catch (error) {
+                    const verificationError = isArtworkVerificationUnavailableError(error)
+                        ? error
+                        : null;
                     logDtfTrace(
                         ARTWORK_NORMALIZATION_SCOPE,
                         input.generationRequestId,
@@ -1548,7 +1561,28 @@ export class DesignAssetService {
                         {
                             textRenderingAllowed,
                             durationMs: Date.now() - textPolicyVerificationStartedAt,
-                            error: error instanceof Error ? error.message : String(error),
+                            sourceProvider: providerResult.provider,
+                            sourceModel: providerResult.model,
+                            ...(verificationError
+                                ? {
+                                    errorCode: verificationError.code,
+                                    errorStage: verificationError.stage,
+                                    verificationProvider: verificationError.provider,
+                                    verificationModel: verificationError.model,
+                                    providerStatus: verificationError.statusCode,
+                                    providerCode: verificationError.providerCode,
+                                    providerRequestId: verificationError.requestId,
+                                    providerMessage: verificationError.providerMessage,
+                                    retryable: verificationError.retryable,
+                                }
+                                : {
+                                    errorName: error instanceof Error
+                                        ? error.name
+                                        : "UnknownError",
+                                    errorMessage: error instanceof Error
+                                        ? error.message
+                                        : String(error),
+                                }),
                         }
                     );
                     throw error;

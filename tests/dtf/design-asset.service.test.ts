@@ -8,6 +8,7 @@ const {
     mockUploadImmutableBuffer,
     mockDownloadStoredBuffer,
     mockLogDtfTrace,
+    mockVerifyArtworkTextPolicy,
 } = vi.hoisted(() => ({
     mockGetSupabaseAdminClient: vi.fn(),
     mockGenerateIsolatedArtwork: vi.fn(),
@@ -15,6 +16,7 @@ const {
     mockUploadImmutableBuffer: vi.fn(),
     mockDownloadStoredBuffer: vi.fn(),
     mockLogDtfTrace: vi.fn(),
+    mockVerifyArtworkTextPolicy: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -27,14 +29,7 @@ vi.mock("@/lib/washa-artwork/provider", () => ({
 }));
 
 vi.mock("@/lib/washa-artwork/arabic-text-verification", () => ({
-    verifyArtworkTextPolicy: vi.fn(async ({ expectedText }: { expectedText?: string | null }) => ({
-        mode: expectedText ? "exact" : "forbidden",
-        required: true,
-        verified: true,
-        hasVisibleText: Boolean(expectedText),
-        observedText: expectedText || null,
-        model: expectedText ? "gpt-4o-mini" : null,
-    })),
+    verifyArtworkTextPolicy: mockVerifyArtworkTextPolicy,
 }));
 
 vi.mock("@/lib/washa-artwork/garment-semantic-verification", () => ({
@@ -213,6 +208,18 @@ describe("DesignAssetService", () => {
         mockUploadImmutableBuffer.mockReset();
         mockDownloadStoredBuffer.mockReset();
         mockLogDtfTrace.mockReset();
+        mockVerifyArtworkTextPolicy.mockReset();
+        mockVerifyArtworkTextPolicy.mockImplementation(
+            async ({ expectedText }: { expectedText?: string | null }) => ({
+                mode: expectedText ? "exact" : "forbidden",
+                required: true,
+                verified: true,
+                hasVisibleText: Boolean(expectedText),
+                observedText: expectedText || null,
+                provider: "openai",
+                model: expectedText ? "gpt-4o-mini" : null,
+            })
+        );
 
         mockGenerateIsolatedArtwork.mockResolvedValue({
             imageUrl: `data:image/png;base64,${master.toString("base64")}`,
@@ -373,6 +380,12 @@ describe("DesignAssetService", () => {
         });
 
         expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(1);
+        expect(mockVerifyArtworkTextPolicy).toHaveBeenCalledWith({
+            artworkPng: expect.any(Buffer),
+            expectedText: null,
+            preferredProvider: "genai",
+            sourceModel: "gemini-3-pro-image",
+        });
         expect(metadata.format).toBe("png");
         expect(metadata.hasAlpha).toBe(true);
         expect(validation.valid).toBe(true);

@@ -32,6 +32,7 @@ export async function verifyBlankGarmentSemantics(params: {
         const result = await runWashaDtfGeminiImageVerification<any>({
             imagePng: params.garmentPng,
             prompt,
+            stage: "garment_semantic_verification",
             responseJsonSchema: {
                 type: "object",
                 properties: {

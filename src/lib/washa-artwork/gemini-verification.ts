@@ -3,6 +3,10 @@ import {
     cleanWashaDtfEnvValue,
     resolveWashaDtfProviderConfiguration,
 } from "@/lib/washa-dtf-provider-config";
+import {
+    createArtworkVerificationRuntimeError,
+    type ArtworkVerificationStage,
+} from "@/lib/washa-artwork/verification-error";
 
 export type WashaDtfVerificationProvider = "genai" | "openai" | "unavailable";
 
@@ -17,7 +21,16 @@ function hasOpenAiCredential() {
     return Boolean(cleanWashaDtfEnvValue(process.env.OPENAI_API_KEY));
 }
 
-export function resolveWashaDtfVerificationProvider(): WashaDtfVerificationProvider {
+export function resolveWashaDtfVerificationProvider(
+    preferredProvider?: string | null
+): WashaDtfVerificationProvider {
+    const preferred = cleanWashaDtfEnvValue(preferredProvider ?? undefined)?.toLowerCase();
+    if (preferred === "genai" || preferred === "gemini" || preferred === "nanobanana") {
+        return hasGeminiCredential() ? "genai" : "unavailable";
+    }
+    if (preferred === "openai") {
+        return hasOpenAiCredential() ? "openai" : "unavailable";
+    }
     const configuration = resolveWashaDtfProviderConfiguration();
     if (configuration.provider === "openai" && hasOpenAiCredential()) {
         return "openai";
@@ -41,7 +54,10 @@ export async function runWashaDtfGeminiImageVerification<T>(params: {
     imagePng: Buffer;
     prompt: string;
     responseJsonSchema: Record<string, unknown>;
-}): Promise<{ parsed: T; model: string }> {
+    sourceProvider?: string | null;
+    sourceModel?: string | null;
+    stage?: ArtworkVerificationStage;
+}): Promise<{ parsed: T; provider: "genai"; model: string }> {
     const configuration = resolveWashaDtfProviderConfiguration({
         ...process.env,
         WASHA_DTF_IMAGE_PROVIDER: "genai",
@@ -80,8 +96,19 @@ export async function runWashaDtfGeminiImageVerification<T>(params: {
         if (!text) throw new Error("Gemini verification returned no JSON response.");
         return {
             parsed: JSON.parse(text) as T,
+            provider: "genai",
             model: configuration.model,
         };
+    } catch (error) {
+        throw createArtworkVerificationRuntimeError({
+            error,
+            provider: "genai",
+            model: configuration.model,
+            sourceProvider: params.sourceProvider,
+            sourceModel: params.sourceModel,
+            stage: params.stage ?? "text_policy_verification",
+            fallbackCode: "invalid_verification_response",
+        });
     } finally {
         clearTimeout(timeout);
     }

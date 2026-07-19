@@ -31,6 +31,7 @@ import {
 import { isArtworkTextPolicyError } from "@/lib/washa-artwork/arabic-text-verification";
 import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
+import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 import { unstable_rethrow } from "next/navigation";
 
 export const runtime = "nodejs";
@@ -46,6 +47,8 @@ const ARTWORK_PLACEMENT_PUBLIC_ERROR =
     "تعذر وضع التصميم داخل مساحة الطباعة الآمنة. صغّر الحجم أو أعد تمركزه ثم جرّب مرة أخرى.";
 const ARTWORK_TEXT_POLICY_PUBLIC_ERROR =
     "تم اكتشاف كتابة غير مطلوبة في التصميم، لذلك رُفضت النتيجة حفاظاً على طلبك. أعد المحاولة وسيُنشأ التصميم دون نص.";
+const ARTWORK_VERIFICATION_UNAVAILABLE_PUBLIC_ERROR =
+    "اكتمل إنشاء التصميم، لكن تعذر التحقق من سلامة النص فيه الآن. جرّب مرة أخرى بعد لحظات.";
 
 function structuredErrorResponse(
     requestId: string,
@@ -476,6 +479,9 @@ export async function POST(request: NextRequest) {
 
         } catch (error) {
         const textPolicyError = isArtworkTextPolicyError(error) ? error : null;
+        const verificationError = isArtworkVerificationUnavailableError(error)
+            ? error
+            : null;
         const artworkError =
             isArtworkPrintValidationError(error) || isArtworkPlacementError(error)
                 ? error
@@ -487,6 +493,11 @@ export async function POST(request: NextRequest) {
             ? {
                 message: ARTWORK_TEXT_POLICY_PUBLIC_ERROR,
                 status: 422,
+            }
+            : verificationError
+            ? {
+                message: ARTWORK_VERIFICATION_UNAVAILABLE_PUBLIC_ERROR,
+                status: 503,
             }
             : artworkError
             ? {
@@ -506,6 +517,26 @@ export async function POST(request: NextRequest) {
                     resolvedModel: generationReadiness.model ?? null,
                     statusCode: 422,
                     errorCode: textPolicyError.code,
+                    durationMs: Date.now() - routeStartedAt,
+                }
+            );
+        } else if (verificationError) {
+            logDtfTrace(
+                GENERATE_MOCKUP_ROUTE,
+                traceId,
+                "artwork_verification_unavailable",
+                {
+                    verificationProvider: verificationError.provider,
+                    verificationModel: verificationError.model,
+                    sourceProvider: verificationError.sourceProvider,
+                    sourceModel: verificationError.sourceModel,
+                    providerStatus: verificationError.statusCode,
+                    providerCode: verificationError.providerCode,
+                    providerRequestId: verificationError.requestId,
+                    retryable: verificationError.retryable,
+                    statusCode: 503,
+                    errorCode: verificationError.code,
+                    errorStage: verificationError.stage,
                     durationMs: Date.now() - routeStartedAt,
                 }
             );
@@ -586,6 +617,19 @@ export async function POST(request: NextRequest) {
                         errorStage: "text_policy_verification",
                     }
                     : {}),
+                ...(verificationError
+                    ? {
+                        errorCode: verificationError.code,
+                        errorStage: verificationError.stage,
+                        verificationProvider: verificationError.provider,
+                        verificationModel: verificationError.model,
+                        sourceProvider: verificationError.sourceProvider,
+                        sourceModel: verificationError.sourceModel,
+                        providerStatus: verificationError.statusCode,
+                        providerCode: verificationError.providerCode,
+                        providerRequestId: verificationError.requestId,
+                    }
+                    : {}),
                 ...(artworkError
                     ? {
                         errorCode: artworkError.code,
@@ -627,6 +671,15 @@ export async function POST(request: NextRequest) {
                 textPolicyError.code,
                 ARTWORK_TEXT_POLICY_PUBLIC_ERROR,
                 { retryable: true }
+            );
+        }
+        if (verificationError) {
+            return structuredErrorResponse(
+                traceId,
+                503,
+                verificationError.code,
+                ARTWORK_VERIFICATION_UNAVAILABLE_PUBLIC_ERROR,
+                { retryable: verificationError.retryable }
             );
         }
         if (artworkError) {
