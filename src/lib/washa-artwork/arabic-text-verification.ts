@@ -9,6 +9,10 @@ import {
     createArtworkVerificationRuntimeError,
     isArtworkVerificationUnavailableError,
 } from "@/lib/washa-artwork/verification-error";
+import {
+    isArabicTextMatch,
+    normalizeArabicForCompare,
+} from "@/lib/washa-artwork/arabic-normalize";
 
 function extractAssistantText(payload: any) {
     const value = payload?.choices?.[0]?.message?.content;
@@ -160,6 +164,36 @@ export function isArtworkTextPolicyError(
         );
 }
 
+function assertArabicTextMatches(params: {
+    verifierMatches: boolean | undefined;
+    observedText: string;
+    expectedText: string;
+}) {
+    const tolerantMatch = isArabicTextMatch(
+        params.observedText,
+        params.expectedText
+    );
+    if (process.env.WASHA_ENABLE_TOLERANT_TEXT_MATCH === "true") {
+        if (!tolerantMatch.matches) {
+            throw new ArtworkTextPolicyError(
+                `Text mismatch: observed ${JSON.stringify(params.observedText)}, `
+                + `expected ${JSON.stringify(params.expectedText)}, `
+                + `distance ${tolerantMatch.distance} > tolerance ${tolerantMatch.tolerance}`
+            );
+        }
+        return;
+    }
+
+    const legacyMatch =
+        params.verifierMatches === true
+        && params.observedText === params.expectedText;
+    if (!legacyMatch) {
+        throw new ArtworkTextPolicyError(
+            "Generated artwork does not preserve the supplied Arabic text exactly."
+        );
+    }
+}
+
 export async function verifyExactArabicText(params: {
     artworkPng: Buffer;
     expectedText?: string | null;
@@ -212,11 +246,11 @@ export async function verifyExactArabicText(params: {
         const observedText = typeof result.parsed.observedText === "string"
             ? result.parsed.observedText
             : "";
-        if (result.parsed.matches !== true || observedText !== expectedText) {
-            throw new ArtworkTextPolicyError(
-                "Generated artwork does not preserve the supplied Arabic text exactly."
-            );
-        }
+        assertArabicTextMatches({
+            verifierMatches: result.parsed.matches,
+            observedText,
+            expectedText,
+        });
         return {
             required: true,
             verified: true,
@@ -244,11 +278,11 @@ export async function verifyExactArabicText(params: {
     const observedText = typeof result.parsed.observedText === "string"
         ? result.parsed.observedText
         : "";
-    if (result.parsed.matches !== true || observedText !== expectedText) {
-        throw new ArtworkTextPolicyError(
-            "Generated artwork does not preserve the supplied Arabic text exactly."
-        );
-    }
+    assertArabicTextMatches({
+        verifierMatches: result.parsed.matches,
+        observedText,
+        expectedText,
+    });
     return {
         required: true,
         verified: true,
@@ -333,7 +367,13 @@ async function verifyNoUnexpectedText(params: {
     const observedText = typeof parsed.observedText === "string"
         ? parsed.observedText.trim()
         : "";
-    if (parsed.hasVisibleText !== false || observedText) {
+    const normalizedLength = normalizeArabicForCompare(observedText).length;
+    const hasUnexpectedText =
+        process.env.WASHA_ENABLE_TOLERANT_TEXT_MATCH === "true"
+            ? normalizedLength >= 3
+                || (parsed.hasVisibleText === true && observedText.length > 5)
+            : parsed.hasVisibleText !== false || Boolean(observedText);
+    if (hasUnexpectedText) {
         throw new ArtworkTextPolicyError(
             "Generated artwork contains unexpected visible text."
         );

@@ -11,6 +11,7 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
 }));
 
 import {
+    ArtworkTextPolicyError,
     verifyArtworkTextPolicy,
     verifyExactArabicText,
 } from "@/lib/washa-artwork/arabic-text-verification";
@@ -71,6 +72,36 @@ describe("Arabic artwork text verification", () => {
         })).rejects.toThrow("does not preserve");
     });
 
+    it("accepts calligraphy when observed OpenAI text differs only by diacritics", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        matches: false,
+                        observedText: "الْحَمْدُ لِلّٰهِ",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: "الحمد لله",
+        })).resolves.toMatchObject({
+            mode: "exact",
+            required: true,
+            verified: true,
+            hasVisibleText: true,
+            observedText: "الْحَمْدُ لِلّٰهِ",
+            provider: "openai",
+        });
+    });
+
     it("accepts text-free artwork when the dedicated text field is empty", async () => {
         vi.stubEnv("OPENAI_API_KEY", "test-key");
         vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
@@ -120,6 +151,131 @@ describe("Arabic artwork text verification", () => {
         })).rejects.toThrow("unexpected visible text");
     });
 
+    it("accepts sub-three-character normalized text as detector noise", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "آَ",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).resolves.toMatchObject({
+            mode: "forbidden",
+            verified: true,
+            hasVisibleText: false,
+            observedText: null,
+        });
+    });
+
+    it("accepts confused verifier when hasVisibleText=true but observedText is empty (tolerant flag on)", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).resolves.toMatchObject({
+            mode: "forbidden",
+            verified: true,
+            hasVisibleText: false,
+            observedText: null,
+        });
+    });
+
+    it("rejects long observedText even when normalized length is small (tolerant flag on)", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "\u200Fآَـ\u200D\u200F\u2060",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).rejects.toBeInstanceOf(ArtworkTextPolicyError);
+    });
+
+    it("rejects forbidden text at the three-character normalized boundary", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "نصك",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).rejects.toThrow("unexpected visible text");
+    });
+
+    it("keeps rejecting short visible text when tolerant matching is disabled", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "false");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        hasVisibleText: true,
+                        observedText: "آَ",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+
+        await expect(verifyArtworkTextPolicy({
+            artworkPng: Buffer.from("png"),
+            expectedText: null,
+        })).rejects.toThrow("unexpected visible text");
+    });
+
     it("uses Gemini and never calls OpenAI when Gemini is selected and fallback is false", async () => {
         vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "gemini");
         vi.stubEnv("WASHA_DTF_GENAI_MODEL", "gemini-3-pro-image");
@@ -143,6 +299,57 @@ describe("Arabic artwork text verification", () => {
             verified: true,
             model: "gemini-3-pro-image",
         });
+
+        expect(mockGenerateContent).toHaveBeenCalledOnce();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("accepts normalized Gemini text when tolerant matching is enabled", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("GEMINI_API_KEY", "configured-gemini-key");
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        mockGenerateContent.mockResolvedValue({
+            text: JSON.stringify({
+                matches: false,
+                observedText: "الْحَمْدُ لِلّٰهِ",
+            }),
+        });
+
+        await expect(verifyExactArabicText({
+            artworkPng: Buffer.from("png"),
+            expectedText: "الحمد لله",
+            preferredProvider: "genai",
+            sourceModel: "gemini-3-pro-image",
+        })).resolves.toMatchObject({
+            required: true,
+            verified: true,
+            observedText: "الْحَمْدُ لِلّٰهِ",
+            provider: "genai",
+        });
+
+        expect(mockGenerateContent).toHaveBeenCalledOnce();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps exact Gemini matching when tolerant matching is disabled", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "false");
+        vi.stubEnv("GEMINI_API_KEY", "configured-gemini-key");
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+        mockGenerateContent.mockResolvedValue({
+            text: JSON.stringify({
+                matches: false,
+                observedText: "الْحَمْدُ لِلّٰهِ",
+            }),
+        });
+
+        await expect(verifyExactArabicText({
+            artworkPng: Buffer.from("png"),
+            expectedText: "الحمد لله",
+            preferredProvider: "genai",
+            sourceModel: "gemini-3-pro-image",
+        })).rejects.toThrow("does not preserve");
 
         expect(mockGenerateContent).toHaveBeenCalledOnce();
         expect(fetchMock).not.toHaveBeenCalled();

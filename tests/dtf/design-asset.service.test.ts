@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import sharp from "sharp";
 
 const {
@@ -269,6 +269,11 @@ describe("DesignAssetService", () => {
         }));
     });
 
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.unstubAllGlobals();
+    });
+
     it("stores the generated artwork once, prefers an exact reference, and derives the preview from that master", async () => {
         const result = await DesignAssetService.generate({
             profileId: "profile_1",
@@ -322,6 +327,66 @@ describe("DesignAssetService", () => {
             master_asset_id: result.masterAssetId,
             mockup_source_type: "reference",
             production_readiness_status: "ready",
+        });
+    });
+
+    it("accepts a calligraphy generation when observed text differs only by diacritics", async () => {
+        vi.stubEnv("WASHA_ENABLE_TOLERANT_TEXT_MATCH", "true");
+        vi.stubEnv("OPENAI_API_KEY", "test-key");
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        matches: false,
+                        observedText: "الْحَمْدُ لِلّٰهِ",
+                    }),
+                },
+            }],
+        }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+        })));
+        const textVerification = await vi.importActual<
+            typeof import("@/lib/washa-artwork/arabic-text-verification")
+        >("@/lib/washa-artwork/arabic-text-verification");
+        mockVerifyArtworkTextPolicy.mockImplementation(
+            textVerification.verifyArtworkTextPolicy
+        );
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_calligraphy_diacritics",
+            userIdea: "خط عربي لعبارة الحمد لله",
+            referenceImage: null,
+            context: {
+                designMethod: "calligraphy",
+                calligraphyText: "الحمد لله",
+                style: "ثلث",
+                technique: "حبر",
+                palette: "ذهبي",
+            },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result.productionReadinessStatus).toBe("ready");
+        expect(fetch).toHaveBeenCalledOnce();
+        expect(mockVerifyArtworkTextPolicy).toHaveBeenCalledWith({
+            artworkPng: expect.any(Buffer),
+            expectedText: "الحمد لله",
+            preferredProvider: "openai",
+            sourceModel: "gpt-image-1",
         });
     });
 

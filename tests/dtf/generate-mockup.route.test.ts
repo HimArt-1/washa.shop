@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
@@ -229,6 +229,10 @@ describe("generate-mockup route", () => {
         });
     });
 
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
     it("returns the access response unchanged when access is denied", async () => {
         mockRequireDtfRouteAccess.mockResolvedValue({
             response: NextResponse.json(
@@ -314,6 +318,117 @@ describe("generate-mockup route", () => {
         });
         expect(mockRequireDtfRouteAccess).not.toHaveBeenCalled();
         expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+    });
+
+    it("rejects a short prompt before authentication, quota, and provider work", async () => {
+        vi.stubEnv("WASHA_PROMPT_GUARD_ENABLED", "true");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "زهرة",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate", {
+            headers: { "x-request-id": "request-short-prompt" },
+        }) as NextRequest);
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("X-Washa-Error-Code")).toBe("PROMPT_TOO_SHORT");
+        await expect(response.json()).resolves.toEqual({
+            ok: false,
+            code: "PROMPT_TOO_SHORT",
+            message: "الوصف قصير جدًا. أضف تفاصيل أكثر عن التصميم الذي تريده.",
+            requestId: "request-short-prompt",
+            retryable: false,
+        });
+        expect(mockRequireDtfRouteAccess).not.toHaveBeenCalled();
+        expect(mockEnforceDtfRouteRateLimit).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "/api/washa-dtf-studio/generate-mockup",
+            "request-short-prompt",
+            "prompt_guard_evaluated",
+            expect.objectContaining({
+                accepted: false,
+                errorCode: "PROMPT_TOO_SHORT",
+                durationMs: expect.any(Number),
+            })
+        );
+    });
+
+    it("rejects a symbols-only prompt with a non-meaningful error", async () => {
+        vi.stubEnv("WASHA_PROMPT_GUARD_ENABLED", "true");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "!!!!!!!!",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/generate", {
+            headers: { "x-request-id": "request-symbol-prompt" },
+        }) as NextRequest);
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("X-Washa-Error-Code")).toBe(
+            "PROMPT_NON_MEANINGFUL"
+        );
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "PROMPT_NON_MEANINGFUL",
+            message: "الوصف يبدو غير واضح. اكتب جملة تصف التصميم.",
+            requestId: "request-symbol-prompt",
+            retryable: false,
+        });
+        expect(mockRequireDtfRouteAccess).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+    });
+
+    it("accepts a meaningful six-character prompt when the guard is enabled", async () => {
+        vi.stubEnv("WASHA_PROMPT_GUARD_ENABLED", "true");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "خط ثلث",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(
+            new Request("http://localhost/api/dtf/generate") as NextRequest
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockGenerateMockup).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the existing route flow when the prompt guard is disabled", async () => {
+        vi.stubEnv("WASHA_PROMPT_GUARD_ENABLED", "false");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "زهرة",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(
+            new Request("http://localhost/api/dtf/generate") as NextRequest
+        );
+
+        expect(response.status).toBe(200);
+        expect(mockRequireDtfRouteAccess).toHaveBeenCalledOnce();
+        expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
+        expect(mockGenerateMockup).toHaveBeenCalledOnce();
     });
 
     it("rejects generation before reserving quota when the provider is not ready", async () => {

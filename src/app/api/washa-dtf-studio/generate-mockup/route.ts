@@ -24,6 +24,7 @@ import {
 } from "@/lib/washa-dtf-generation-readiness";
 import type { DesignPieceAccessResult } from "@/lib/design-piece-access";
 import { getIsolatedArtworkProviderReadiness } from "@/lib/washa-artwork/provider";
+import { guardPrompt } from "@/lib/washa-artwork/prompt-guard";
 import {
     getWashaDtfProviderAttempts,
     sanitizeWashaDtfProviderMessage,
@@ -168,6 +169,24 @@ export async function POST(request: NextRequest) {
         }
 
         const { prompt, referenceImage, garmentReferenceImage, generationContext } = bodyResult.data;
+        if (process.env.WASHA_PROMPT_GUARD_ENABLED === "true") {
+            const promptGuardStartedAt = Date.now();
+            const promptCheck = guardPrompt(prompt);
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "prompt_guard_evaluated", {
+                durationMs: Date.now() - promptGuardStartedAt,
+                accepted: promptCheck.ok,
+                errorCode: promptCheck.ok ? null : promptCheck.code,
+            });
+            if (!promptCheck.ok) {
+                return structuredErrorResponse(
+                    traceId,
+                    400,
+                    promptCheck.code,
+                    promptCheck.message,
+                    { retryable: false }
+                );
+            }
+        }
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "payload_ready", {
             promptLength: prompt.length,
             hasReferenceImage: Boolean(referenceImage?.base64),
