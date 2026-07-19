@@ -60,3 +60,6 @@ washa-dtf-studio.zip
 # local scratch verification files
 test_*.ts
 test_*.js
+
+# external review bundle (may contain redacted project source)
+/review-bundle/
