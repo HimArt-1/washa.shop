@@ -191,6 +191,8 @@ describe("extract-design route", () => {
         expect(response.status).toBe(410);
         await expect(response.json()).resolves.toMatchObject({
             code: "LEGACY_EXTRACTION_DISABLED",
+            error:
+                "تعذّر تجهيز هذا التصميم للطباعة من النسخة الحالية. استخدم التصميم الأصلي المحفوظ أو حاول مرة أخرى.",
         });
         expect(mockExtractDesign).not.toHaveBeenCalled();
     });

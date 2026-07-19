@@ -29,6 +29,7 @@ function revealAfterLayout(getElement: () => HTMLElement | null) {
 type GuidedIdeaBuilderProps = {
   brief: GuidedIdeaBrief;
   prompt: string;
+  promptError?: boolean;
   isEnhancing: boolean;
   isStale: boolean;
   onBriefChange: (brief: GuidedIdeaBrief) => void;
@@ -40,6 +41,7 @@ type GuidedIdeaBuilderProps = {
 export default function GuidedIdeaBuilder({
   brief,
   prompt,
+  promptError = false,
   isEnhancing,
   isStale,
   onBriefChange,
@@ -303,10 +305,15 @@ export default function GuidedIdeaBuilder({
           <Textarea
             name="guided-design-idea"
             aria-label="الوصف النهائي للتصميم"
+            aria-invalid={promptError}
+            data-washa-prompt-input="true"
             autoComplete="off"
             value={prompt}
             onChange={(event) => onPromptChange(event.target.value)}
-            className="min-h-32 resize-none rounded-xl bg-washa-ivory text-sm leading-7"
+            className={cn(
+              'min-h-32 resize-none rounded-xl bg-washa-ivory text-sm leading-7',
+              promptError && 'border-red-500/70 ring-2 ring-red-500/20',
+            )}
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button

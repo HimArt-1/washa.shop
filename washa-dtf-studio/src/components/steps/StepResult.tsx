@@ -36,6 +36,29 @@ function hexToRgb(hex: string) {
   return `${r}, ${g}, ${b}`;
 }
 
+function SupportRequestId({
+  requestId,
+  onCopy,
+  className,
+}: {
+  requestId: string;
+  onCopy: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className={cn(
+        'text-xs text-washa-text-faint underline decoration-dotted underline-offset-4',
+        className,
+      )}
+    >
+      معرّف الطلب للدعم: <span dir="ltr" className="font-mono">{requestId}</span>
+    </button>
+  );
+}
+
 // ── Terms & Conditions Modal ──────────────────────────────────
 function TermsModal({
   onAccept,
@@ -246,6 +269,9 @@ export default function StepResult() {
     handleGenerate,
     state,
     generationResult,
+    structuredGenerationError,
+    isGenerationRetryBlocked,
+    showToast,
   } = useDesign();
 
   const [showTerms, setShowTerms] = useState(false);
@@ -255,6 +281,22 @@ export default function StepResult() {
   const resultState = mockupState ?? state;
   const cleanOutputEnabled = isCleanOutputEnabled(resultState);
   const displayPreviewImage = activePreviewImage || mockupImage;
+  const retrySeconds = structuredGenerationError
+    ? Math.ceil(structuredGenerationError.retryRemainingMs / 1_000)
+    : 0;
+  const retryLabel = retrySeconds > 0
+    ? `إعادة المحاولة خلال ${retrySeconds} ث`
+    : 'إعادة المحاولة';
+  const copySupportRequestId = async () => {
+    const requestId = structuredGenerationError?.requestId;
+    if (!requestId || !navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(requestId);
+      showToast('تم نسخ معرّف الطلب', 'success');
+    } catch {
+      showToast('تعذر نسخ معرّف الطلب', 'error');
+    }
+  };
 
   useEffect(() => {
     if (!generationResult) {
@@ -399,13 +441,28 @@ export default function StepResult() {
             <div className="space-y-3">
               <h3 className="text-xl font-serif text-red-400">حدث خطأ</h3>
               <p className="text-sm text-washa-text-sec max-w-md">{error}</p>
+              {structuredGenerationError?.userAction === 'contact_support'
+                && structuredGenerationError.requestId ? (
+                <SupportRequestId
+                  requestId={structuredGenerationError.requestId}
+                  onCopy={() => void copySupportRequestId()}
+                />
+              ) : null}
             </div>
             <div className="flex gap-3">
               <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl">
                 <ChevronRight className="w-4 h-4" /> تعديل الخيارات
               </Button>
-              <Button variant="gold" onClick={() => void handleGenerate()} className="gap-2 rounded-xl">
-                <RotateCcw className="w-4 h-4" /> إعادة المحاولة
+              <Button
+                variant="gold"
+                onClick={() => void handleGenerate()}
+                disabled={isGenerationRetryBlocked}
+                className="gap-2 rounded-xl"
+              >
+                {isGenerationRetryBlocked
+                  ? <Clock3 className="w-4 h-4" />
+                  : <RotateCcw className="w-4 h-4" />}
+                {retryLabel}
               </Button>
             </div>
           </motion.div>
@@ -451,8 +508,24 @@ export default function StepResult() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-bold text-washa-text">تعذر إنشاء نسخة جديدة</p>
                   <p className="mt-0.5 text-xs leading-5 text-washa-text-sec">{error}</p>
+                  {structuredGenerationError?.userAction === 'contact_support'
+                    && structuredGenerationError.requestId ? (
+                    <SupportRequestId
+                      requestId={structuredGenerationError.requestId}
+                      onCopy={() => void copySupportRequestId()}
+                      className="mt-1 text-[11px]"
+                    />
+                  ) : null}
                 </div>
-                <Button variant="outline" size="sm" onClick={() => void handleGenerate()} className="shrink-0 rounded-lg">إعادة المحاولة</Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleGenerate()}
+                  disabled={isGenerationRetryBlocked}
+                  className="shrink-0 rounded-lg"
+                >
+                  {retryLabel}
+                </Button>
               </div>
             ) : null}
 
@@ -588,7 +661,12 @@ export default function StepResult() {
                 <Button variant="ghost" onClick={handleEditOptions} className="gap-2 rounded-xl hover:bg-washa-gold/5">الألوان</Button>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => void handleGenerate()} className="gap-2 rounded-xl">
+                <Button
+                  variant="outline"
+                  onClick={() => void handleGenerate()}
+                  disabled={isGenerationRetryBlocked}
+                  className="gap-2 rounded-xl"
+                >
                   <Wand2 className="w-4 h-4" /> إعادة التوليد
                 </Button>
                 <Button variant="ghost" onClick={resetDesign} className="gap-2 rounded-xl">

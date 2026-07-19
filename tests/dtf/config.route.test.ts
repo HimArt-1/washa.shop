@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextResponse } from "next/server";
 
 const {
@@ -58,6 +58,10 @@ describe("dtf config route", () => {
         });
     });
 
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
     it("returns the access response unchanged when access is denied", async () => {
         mockRequireDtfRouteAccess.mockResolvedValue({
             response: NextResponse.json(
@@ -86,6 +90,44 @@ describe("dtf config route", () => {
                 enabled: false,
                 code: "disabled",
                 message: "توليد WASHA AI متوقف مؤقتاً حتى اكتمال إعداد الخدمة.",
+            },
+            features: {
+                structuredUserActionsEnabled: false,
+                autoRetryQuotaSafeEnabled: false,
+            },
+        });
+    });
+
+    it("exposes the server-side structured action flag through studio config", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+
+        const response = await GET();
+
+        await expect(response.json()).resolves.toMatchObject({
+            features: {
+                structuredUserActionsEnabled: true,
+            },
+        });
+    });
+
+    it("keeps automatic retry quota safety disabled by default", async () => {
+        const response = await GET();
+
+        await expect(response.json()).resolves.toMatchObject({
+            features: {
+                autoRetryQuotaSafeEnabled: false,
+            },
+        });
+    });
+
+    it("exposes the separate automatic retry quota-safety flag", async () => {
+        vi.stubEnv("WASHA_ENABLE_AUTO_RETRY_QUOTA_SAFE", "true");
+
+        const response = await GET();
+
+        await expect(response.json()).resolves.toMatchObject({
+            features: {
+                autoRetryQuotaSafeEnabled: true,
             },
         });
     });

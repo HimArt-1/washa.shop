@@ -15,6 +15,7 @@ import {
 } from "../utils/trace";
 import { DTF_PUBLIC_EXTRACTION_ERROR } from "../utils/public-error";
 import { DesignAssetService } from "../services/design-asset.service";
+import { ERROR_MAP } from "@/lib/washa-dtf-public-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         if (process.env.WASHA_DTF_LEGACY_EXTRACTION_ENABLED !== "true") {
             return attachDtfTraceId(NextResponse.json(
                 {
-                    error: "مسار استخراج التصميم من الموكب متوقف. أعد توليد التصميم ليُحفظ كأصل شفاف مباشر.",
+                    error: ERROR_MAP.LEGACY_EXTRACTION_DISABLED.userMessage,
                     code: "LEGACY_EXTRACTION_DISABLED",
                 },
                 { status: 410 }

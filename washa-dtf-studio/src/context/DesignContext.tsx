@@ -19,6 +19,7 @@ import {
 } from '../types';
 import {
   generateMockup,
+  getStructuredStudioError,
   recomposeMockup,
   type GeneratedArtworkResult,
 } from '../services/geminiService';
@@ -61,10 +62,25 @@ import {
   createGenerationFingerprint,
   validateGeneratedImage,
 } from '../lib/generationExperience';
+import {
+  StructuredRecoveryCoordinator,
+  canBypassDisabledReadiness,
+  resolveReadinessErrorDirective,
+  type GenerationRetryIdentity,
+  type StructuredRecoveryState,
+} from '../lib/structuredErrorActions';
 
 export interface OrderResult {
   itemTitle: string;
   price: number;
+}
+
+export type StructuredGenerationErrorState = StructuredRecoveryState;
+
+interface GenerateOptions {
+  promptOverride?: string;
+  automaticRetryAttempt?: number;
+  retryIdentity?: GenerationRetryIdentity;
 }
 
 interface DesignContextType {
@@ -82,11 +98,15 @@ interface DesignContextType {
   extractedImage: string | null;
   generationResult: GeneratedArtworkResult | null;
   error: string | null;
+  structuredGenerationError: StructuredGenerationErrorState | null;
+  isGenerationRetryBlocked: boolean;
+  promptFieldError: boolean;
+  promptFocusRequestId: number;
   isSubmittingOrder: boolean;
   orderResult: OrderResult | null;
   submitOrder: () => Promise<boolean>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleGenerate: (options?: { promptOverride?: string }) => Promise<void>;
+  handleGenerate: (options?: GenerateOptions) => Promise<void>;
   handleExtract: () => Promise<void>;
   handleDownload: (imageUrl: string, filename: string) => void;
   resetDesign: () => void;
@@ -257,6 +277,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [extractedImage, setExtractedImage] = useState<string | null>(null);
   const [generationResult, setGenerationResult] = useState<GeneratedArtworkResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [structuredGenerationError, setStructuredGenerationError] =
+    useState<StructuredGenerationErrorState | null>(null);
+  const [promptFieldError, setPromptFieldError] = useState(false);
+  const [promptFocusRequestId, setPromptFocusRequestId] = useState(0);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
@@ -267,6 +291,34 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const restoredAuthDraftRef = useRef(false);
   const generationInFlightRef = useRef(false);
   const generationRetryRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
+  const handleGenerateRef = useRef<(options?: GenerateOptions) => Promise<void>>(
+    async () => undefined
+  );
+  const structuredRecoveryRef = useRef<StructuredRecoveryCoordinator | null>(null);
+  if (structuredRecoveryRef.current === null) {
+    structuredRecoveryRef.current = new StructuredRecoveryCoordinator({
+      getCurrentIdentity: () => generationRetryRef.current,
+      isGenerationInFlight: () => generationInFlightRef.current,
+      clearRetryIdentity: () => {
+        generationRetryRef.current = null;
+      },
+      onPromptFocus: () => {
+        setPromptFieldError(true);
+        setPromptFocusRequestId((current) => current + 1);
+        setStep(2);
+      },
+      onRetry: (retry) => {
+        void handleGenerateRef.current({
+          promptOverride: retry.promptOverride,
+          automaticRetryAttempt: retry.automaticRetryAttempt,
+          retryIdentity: retry.retryIdentity,
+        });
+      },
+      onStateChange: setStructuredGenerationError,
+    });
+  }
+  const isGenerationRetryBlocked =
+    structuredRecoveryRef.current.isManualRetryBlocked();
   const isMockupCurrent = Boolean(
     mockupImage && mockupState && createGenerationFingerprint(mockupState) === createGenerationFingerprint(state)
   );
@@ -277,6 +329,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
   const clearToast = useCallback(() => {
     setToast(null);
+  }, []);
+
+  const cancelStructuredRecovery = useCallback(() => {
+    structuredRecoveryRef.current?.cancel();
+  }, []);
+
+  useEffect(() => () => {
+    structuredRecoveryRef.current?.dispose();
   }, []);
 
   useEffect(() => {
@@ -416,6 +476,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [selectedPalette]);
 
   const updateState = (updates: Partial<DesignState>) => {
+    structuredRecoveryRef.current?.invalidate();
+    if ('prompt' in updates || 'calligraphyText' in updates) {
+      setPromptFieldError(false);
+    }
     setState((prev) => ({
       ...prev,
       ...updates,
@@ -515,10 +579,51 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     window.location.assign(url);
   }, [authGateIntent, mockupImage, showToast, state]);
 
-  const handleGenerate = useCallback(async (options: { promptOverride?: string } = {}) => {
+  const handleGenerate = useCallback(async (options: GenerateOptions = {}) => {
+    const isAutomaticRetry = typeof options.automaticRetryAttempt === 'number';
+    const canRetryExpiredReadiness = canBypassDisabledReadiness({
+      isAutomaticRetry,
+      currentError: structuredGenerationError
+        ? {
+            code: structuredGenerationError.code,
+            retryRemainingMs: structuredGenerationError.retryRemainingMs,
+          }
+        : null,
+    });
+    if (
+      !isAutomaticRetry
+      && structuredGenerationError?.userAction === 'wait_and_retry'
+      && structuredGenerationError.retryRemainingMs > 0
+    ) {
+      return;
+    }
+    if (!isAutomaticRetry) {
+      cancelStructuredRecovery();
+    }
     if (generationInFlightRef.current || isGenerating) return;
-    if (config?.generation?.enabled === false) {
-      const message = config.generation.message || 'خدمة التوليد غير متاحة حالياً.';
+    if (
+      config?.generation?.enabled === false
+      && !canRetryExpiredReadiness
+    ) {
+      const legacyMessage =
+        config.generation.message || 'خدمة التوليد غير متاحة حالياً.';
+      if (config.features?.structuredUserActionsEnabled === true) {
+        const readiness = resolveReadinessErrorDirective({
+          code: config.generation.code,
+          message: legacyMessage,
+          retryAfterSeconds: config.generation.retryAfterSeconds,
+        });
+        structuredRecoveryRef.current?.showState({
+          code: readiness.code,
+          userAction: readiness.userAction,
+          requestId: null,
+          retryRemainingMs: readiness.retryAfterMs ?? 0,
+        });
+        setError(readiness.message);
+        showToast(readiness.message, 'error');
+        return;
+      }
+      const message = legacyMessage;
       setError(message);
       showToast(message, 'error');
       return;
@@ -695,7 +800,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
 
       const validation = await validateGeneratedImage(generated?.previewUrl ?? null);
       if (validation.valid) {
-        if (!canRecompose) generationRetryRef.current = null;
+        if (canRecompose) {
+          cancelStructuredRecovery();
+        } else {
+          structuredRecoveryRef.current?.complete();
+        }
+        setPromptFieldError(false);
         setGenerationResult(generated);
         setMockupImage(generated!.previewUrl);
         setMockupState({ ...state });
@@ -711,6 +821,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       const errorCode = (generationError as { data?: { code?: string } })?.data?.code;
       const guestFailure = (generationError as { data?: { guest?: boolean } })?.data?.guest === true;
       if (errorCode === 'quota_exceeded' || errorCode === 'audience_disabled') {
+        cancelStructuredRecovery();
         setStep(5);
         setExtractedImage(null);
         setError(null);
@@ -732,6 +843,41 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      const structuredError = getStructuredStudioError(generationError);
+      if (
+        config?.features?.structuredUserActionsEnabled === true
+        && structuredError
+      ) {
+        const automaticRetryAttempt = options.automaticRetryAttempt ?? 0;
+        const retryIdentity = options.retryIdentity ?? {
+          fingerprint: currentGenerationFingerprint,
+          requestId: generationRequestId,
+        };
+        const directive = structuredRecoveryRef.current?.apply({
+          payload: structuredError,
+          automaticRetryAttempt,
+          retryIdentity,
+          promptOverride: options.promptOverride,
+          autoRetryQuotaSafe:
+            config.features?.autoRetryQuotaSafeEnabled === true,
+        });
+        setError(structuredError.message);
+        showToast(structuredError.message, 'error');
+
+        if (directive?.showAuthentication) {
+          const draft = saveWashaAiAuthDraft(state, 'generate');
+          setAuthGateNotice(
+            draft.saved
+              ? 'انتهت جلسة الدخول. حفظنا اختياراتك لتتمكن من المتابعة بعد تسجيل الدخول.'
+              : 'انتهت جلسة الدخول. سجّل الدخول مجددًا، وأبقِ هذه الصفحة مفتوحة للحفاظ على اختياراتك.'
+          );
+          setAuthGateIntent('generate');
+          return;
+        }
+
+        return;
+      }
+
       const message = getReadableErrorMessage(generationError, PUBLIC_GENERATION_ERROR, 'generation');
 
       const timeoutHint = isLikelyGenerationTimeoutError(generationError, message)
@@ -746,6 +892,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     }
   }, [
     config?.generation,
+    config?.features?.autoRetryQuotaSafeEnabled,
+    config?.features?.structuredUserActionsEnabled,
+    cancelStructuredRecovery,
     generationResult,
     getToken,
     isGenerating,
@@ -759,7 +908,12 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     selectedTechnique,
     showToast,
     state,
+    structuredGenerationError,
   ]);
+
+  useEffect(() => {
+    handleGenerateRef.current = handleGenerate;
+  }, [handleGenerate]);
 
   useEffect(() => {
     if (!authLoaded || restoredAuthDraftRef.current || configLoading || !config) return;
@@ -1002,6 +1156,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetDesign = () => {
+    structuredRecoveryRef.current?.invalidate();
     clearStudioDraft();
     setStep(1);
     setState(config ? buildInitialState(config) : EMPTY_STATE);
@@ -1010,6 +1165,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setExtractedImage(null);
     setGenerationResult(null);
     setError(null);
+    setPromptFieldError(false);
     setOrderResult(null);
   };
 
@@ -1030,6 +1186,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         extractedImage,
         generationResult,
         error,
+        structuredGenerationError,
+        isGenerationRetryBlocked,
+        promptFieldError,
+        promptFocusRequestId,
         isSubmittingOrder,
         orderResult,
         submitOrder,

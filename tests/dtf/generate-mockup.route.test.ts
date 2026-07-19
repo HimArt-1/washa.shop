@@ -268,6 +268,28 @@ describe("generate-mockup route", () => {
         expect(mockGenerateMockup).toHaveBeenCalledOnce();
     });
 
+    it("returns a late successful result without retrying, charging, or creating another master", async () => {
+        mockGetExistingGeneration.mockResolvedValue(
+            generationResult("https://cdn.example/late-success.webp")
+        );
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "generation-request-late-success" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: true,
+            requestId: "generation-request-late-success",
+            reused: true,
+            masterAssetId: "22222222-2222-4222-8222-222222222222",
+        });
+        expect(mockClaimDtfGenerationRequest).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+    });
+
     it("returns the rate-limit response unchanged when the threshold is hit", async () => {
         mockEnforceDtfRouteRateLimit.mockResolvedValue(
             NextResponse.json(
@@ -287,6 +309,48 @@ describe("generate-mockup route", () => {
         expect(response.headers.get("X-RateLimit-Reset")).toBe("2026-03-30T10:00:00.000Z");
         await expect(response.json()).resolves.toEqual({
             error: "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً.",
+        });
+    });
+
+    it("returns a typed wait action for rate limits when Phase 3 is enabled", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+        mockEnforceDtfRouteRateLimit.mockResolvedValue(
+            NextResponse.json(
+                {
+                    error:
+                        "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً.",
+                },
+                {
+                    status: 429,
+                    headers: {
+                        "X-RateLimit-Reset": "2026-03-30T10:00:00.000Z",
+                    },
+                }
+            )
+        );
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-rate-limited" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(429);
+        expect(response.headers.get("X-Washa-Error-Code")).toBe("RATE_LIMITED");
+        expect(response.headers.get("X-Washa-User-Action")).toBe(
+            "wait_and_retry"
+        );
+        expect(response.headers.get("Retry-After")).toBe("60");
+        expect(response.headers.get("X-RateLimit-Reset")).toBe(
+            "2026-03-30T10:00:00.000Z"
+        );
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "RATE_LIMITED",
+            message: "تم تجاوز الحد المسموح. انتظر دقيقة قبل المحاولة.",
+            userAction: "wait_and_retry",
+            retryAfterMs: 60_000,
+            retryable: false,
+            requestId: "request-rate-limited",
         });
     });
 
@@ -358,6 +422,45 @@ describe("generate-mockup route", () => {
                 durationMs: expect.any(Number),
             })
         );
+    });
+
+    it("adds structured prompt actions only when the Phase 3 flag is enabled", async () => {
+        vi.stubEnv("WASHA_PROMPT_GUARD_ENABLED", "true");
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "زهرة",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-structured-prompt" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(400);
+        expect(response.headers.get("X-Washa-Error-Code")).toBe(
+            "PROMPT_TOO_SHORT"
+        );
+        expect(response.headers.get("X-Washa-User-Action")).toBe("edit_prompt");
+        expect(response.headers.get("Retry-After")).toBeNull();
+        expect(response.headers.get("X-Trace-Id")).toBe(
+            "request-structured-prompt"
+        );
+        await expect(response.json()).resolves.toEqual({
+            ok: false,
+            code: "PROMPT_TOO_SHORT",
+            message: "الوصف قصير جداً. أضف تفاصيل عن التصميم.",
+            userAction: "edit_prompt",
+            retryAfterMs: null,
+            retryable: false,
+            requestId: "request-structured-prompt",
+        });
+        expect(mockRequireDtfRouteAccess).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
     });
 
     it("rejects a symbols-only prompt with a non-meaningful error", async () => {
@@ -451,6 +554,79 @@ describe("generate-mockup route", () => {
         expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
 
+    it("uses provider Retry-After for a retryable structured action", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+        vi.stubEnv("WASHA_ENABLE_AUTO_RETRY_QUOTA_SAFE", "true");
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: false,
+            code: "temporarily_unavailable",
+            message: "provider sdk details must not be public",
+            retryAfterSeconds: 9,
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-provider-retry" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(response.headers.get("X-Washa-User-Action")).toBe("auto_retry");
+        expect(response.headers.get("Retry-After")).toBe("9");
+        await expect(response.json()).resolves.toEqual({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            message: "خدمة التوليد غير متوفرة مؤقتًا. سنعيد المحاولة تلقائيًا.",
+            userAction: "auto_retry",
+            retryAfterMs: 9_000,
+            retryable: true,
+            requestId: "request-provider-retry",
+        });
+    });
+
+    it("degrades auto_retry to wait_and_retry until quota safety is approved", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: false,
+            code: "temporarily_unavailable",
+            message: "provider sdk details must not be public",
+            retryAfterSeconds: 9,
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-provider-wait-only" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(response.headers.get("X-Washa-User-Action")).toBe(
+            "wait_and_retry"
+        );
+        await expect(response.json()).resolves.toMatchObject({
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            userAction: "wait_and_retry",
+            retryAfterMs: 9_000,
+            retryable: true,
+            requestId: "request-provider-wait-only",
+        });
+    });
+
+    it("preserves a permitted 503 Retry-After header when Phase 3 is disabled", async () => {
+        mockGetGenerationReadiness.mockReturnValue({
+            enabled: false,
+            code: "temporarily_unavailable",
+            message: "خدمة التوليد غير متاحة مؤقتاً.",
+            retryAfterSeconds: 9,
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate"
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(response.headers.get("Retry-After")).toBe("9");
+        expect(response.headers.get("X-Washa-User-Action")).toBeNull();
+    });
+
     it("requires authenticated access for generation", async () => {
         await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
 
@@ -541,6 +717,51 @@ describe("generate-mockup route", () => {
                 status: "quota_exceeded",
             })
         );
+    });
+
+    it("preserves quota details while adding an upgrade action behind Phase 3", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
+        mockReserveDailyQuota.mockResolvedValue({
+            allowed: false,
+            remaining: 0,
+            used: 5,
+            quotaDate: "2026-03-30",
+            tracked: false,
+            source: "none",
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: true,
+            guest: false,
+            reason: "quota_exceeded",
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-quota-upgrade" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(403);
+        expect(response.headers.get("X-Washa-Error-Code")).toBe(
+            "quota_exceeded"
+        );
+        expect(response.headers.get("X-Washa-User-Action")).toBe(
+            "upgrade_plan"
+        );
+        expect(response.headers.get("Retry-After")).toBeNull();
+        await expect(response.json()).resolves.toEqual({
+            error: "نفدت حصتك من التوليد. يمكنك إضافة رصيد للمتابعة.",
+            ok: false,
+            code: "quota_exceeded",
+            message: "نفدت حصتك من التوليد. يمكنك إضافة رصيد للمتابعة.",
+            userAction: "upgrade_plan",
+            retryAfterMs: null,
+            retryable: false,
+            requestId: "request-quota-upgrade",
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: true,
+            guest: false,
+        });
     });
 
     it("returns a service-unavailable response when quota verification is unavailable", async () => {
@@ -694,6 +915,7 @@ describe("generate-mockup route", () => {
     });
 
     it("blocks a repeated idempotency key before a second quota reservation", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
         mockClaimDtfGenerationRequest
             .mockResolvedValueOnce({
                 claimed: true,
@@ -717,10 +939,13 @@ describe("generate-mockup route", () => {
         await expect(repeated.json()).resolves.toMatchObject({
             ok: false,
             code: "DUPLICATE_REQUEST",
-            message: "طلب التوليد نفسه ما زال قيد التنفيذ. انتظر اكتماله قبل المحاولة مجدداً.",
+            message: "طلبك قيد التنفيذ حاليًا. انتظر ظهور النتيجة.",
+            userAction: "none",
+            retryAfterMs: null,
             retryable: false,
         });
-        expect(repeated.headers.get("Retry-After")).toBe("120");
+        expect(repeated.headers.get("X-Washa-User-Action")).toBe("none");
+        expect(repeated.headers.get("Retry-After")).toBeNull();
         expect(mockReserveDailyQuota).toHaveBeenCalledTimes(1);
         expect(mockGenerateMockup).toHaveBeenCalledTimes(1);
     });
@@ -755,6 +980,22 @@ describe("generate-mockup route", () => {
         expect(retried.status).toBe(200);
         expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
         expect(mockReserveDailyQuota).toHaveBeenCalledTimes(2);
+        expect(mockReserveDailyQuota).toHaveBeenNthCalledWith(
+            1,
+            "profile_1",
+            "subscriber",
+            expect.objectContaining({
+                requestId: "generation-request-retryable",
+            })
+        );
+        expect(mockReserveDailyQuota).toHaveBeenNthCalledWith(
+            2,
+            "profile_1",
+            "subscriber",
+            expect.objectContaining({
+                requestId: "generation-request-retryable",
+            })
+        );
         expect(mockGenerateMockup).toHaveBeenCalledTimes(2);
     });
 
@@ -840,7 +1081,8 @@ describe("generate-mockup route", () => {
         );
     });
 
-    it("rejects unexpected generated writing without exposing it or charging quota", async () => {
+    it("rejects unexpected writing and refunds quota while automatic retry is disabled", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
         mockGenerateMockup.mockRejectedValue(
             new ArtworkTextPolicyError(
                 "Generated artwork contains unexpected visible text: private prompt."
@@ -856,10 +1098,14 @@ describe("generate-mockup route", () => {
         expect(payload).toMatchObject({
             ok: false,
             code: "ARTWORK_TEXT_POLICY_FAILED",
+            userAction: "wait_and_retry",
+            retryAfterMs: 1_000,
             retryable: true,
         });
+        expect(response.headers.get("Retry-After")).toBeNull();
         expect(JSON.stringify(payload)).not.toContain("private prompt");
-        expect(mockReleaseDailyQuota).toHaveBeenCalledTimes(1);
+        expect(mockReleaseDailyQuota).toHaveBeenCalledOnce();
+        expect(mockFailDtfGenerationRequest).not.toHaveBeenCalled();
         expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
         expect(mockGetWashaDtfErrorDetails).not.toHaveBeenCalled();
         expect(
@@ -993,6 +1239,7 @@ describe("generate-mockup route", () => {
     });
 
     it("classifies invalid artwork placement independently from provider failure", async () => {
+        vi.stubEnv("WASHA_STRUCTURED_USER_ACTIONS_ENABLED", "true");
         mockGenerateMockup.mockRejectedValue(new ArtworkPlacementError({
             message: "Artwork placement is clipped by the printable safe area.",
             diagnostics: {
@@ -1011,8 +1258,12 @@ describe("generate-mockup route", () => {
         expect(payload).toMatchObject({
             ok: false,
             code: "ARTWORK_PLACEMENT_INVALID",
+            userAction: "none",
+            retryAfterMs: null,
             retryable: false,
         });
+        expect(response.headers.get("X-Washa-User-Action")).toBe("none");
+        expect(response.headers.get("Retry-After")).toBeNull();
         expect(JSON.stringify(payload)).not.toContain("1311");
         expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
         expect(mockRecordGenerationSuccess).not.toHaveBeenCalled();

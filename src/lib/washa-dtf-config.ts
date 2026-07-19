@@ -34,6 +34,9 @@ import type { WashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-rea
 
 export type WashaDtfStudioConfig = {
     generation?: WashaDtfGenerationReadiness;
+    features?: {
+        structuredUserActionsEnabled: boolean;
+    };
     garments: Array<{
         id: string;
         name: string;

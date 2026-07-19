@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, Focus, Image as ImageIcon, Loader2, Palette, PenLine, RefreshCw, Sparkles, Type, Wand2, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -12,6 +12,7 @@ import GuidedIdeaBuilder from './GuidedIdeaBuilder';
 import { buildGuidedIdeaPrompt, createEmptyGuidedIdeaBrief, isGuidedIdeaStale } from '../../lib/ideaBuilder';
 import { REFERENCE_IMAGE_MODES } from '../../lib/referenceImage';
 import type { ReferenceImageMode } from '../../types';
+import { focusStudioPromptInput } from '../../lib/structuredErrorActions';
 
 const SUGGESTIONS = [
   'ذئب هندسي',
@@ -38,7 +39,16 @@ const REFERENCE_MODE_ICONS = {
 } satisfies Record<ReferenceImageMode, typeof RefreshCw>;
 
 export default function StepIdea() {
-  const { state, updateState, nextStep, prevStep, handleImageUpload, showToast } = useDesign();
+  const {
+    state,
+    updateState,
+    nextStep,
+    prevStep,
+    handleImageUpload,
+    showToast,
+    promptFieldError,
+    promptFocusRequestId,
+  } = useDesign();
   const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
   const ideaEntryMode = state.ideaEntryMode ?? (state.prompt && !state.ideaBrief ? 'free' : 'guided');
   const ideaBrief = state.ideaBrief ?? createEmptyGuidedIdeaBrief();
@@ -60,6 +70,18 @@ export default function StepIdea() {
             ? 'حدّث الوصف ليعكس التعديلات الأخيرة'
             : 'أكمل الفكرة ثم اضغط «صياغة الوصف الاحترافي»'
           : 'اكتب وصفًا قصيرًا على الأقل للمتابعة';
+
+  useEffect(() => {
+    if (!promptFocusRequestId) return;
+    const frame = window.requestAnimationFrame(() => {
+      focusStudioPromptInput(
+        () => document.querySelector<HTMLTextAreaElement>(
+          '[data-washa-prompt-input="true"]',
+        ),
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [promptFocusRequestId]);
 
   const handleEnhanceIdea = async () => {
     const idea = state.prompt.trim();
@@ -218,6 +240,7 @@ export default function StepIdea() {
                     <GuidedIdeaBuilder
                       brief={ideaBrief}
                       prompt={state.prompt}
+                      promptError={promptFieldError}
                       isEnhancing={isEnhancingIdea}
                       isStale={guidedIdeaStale}
                       onBriefChange={(ideaBrief) => updateState({ ideaBrief })}
@@ -231,9 +254,14 @@ export default function StepIdea() {
                     <Textarea
                       name="design-idea"
                       aria-label="وصف فكرة التصميم"
+                      aria-invalid={promptFieldError}
+                      data-washa-prompt-input="true"
                       autoComplete="off"
                       placeholder="مثال: ذئب هندسي بخطوط حادة يرمز للقوة…"
-                      className="min-h-[150px] resize-none rounded-2xl border-washa-border/40 bg-washa-bg/50 p-4 text-base leading-7 transition-[border-color,box-shadow] focus:border-washa-gold/50"
+                      className={cn(
+                        'min-h-[150px] resize-none rounded-2xl border-washa-border/40 bg-washa-bg/50 p-4 text-base leading-7 transition-[border-color,box-shadow] focus:border-washa-gold/50',
+                        promptFieldError && 'border-red-500/70 ring-2 ring-red-500/20',
+                      )}
                       value={state.prompt}
                       onChange={(event) => updateState({ prompt: event.target.value })}
                     />
@@ -302,7 +330,12 @@ export default function StepIdea() {
 
               <Textarea
                 placeholder="مثال: لا غالب إلا الله، أو والفجر، أو اسمك…"
-                className="min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(64,48,40,0.08)]"
+                aria-invalid={promptFieldError}
+                data-washa-prompt-input="true"
+                className={cn(
+                  'min-h-[120px] resize-none rounded-xl border-washa-border/40 bg-washa-bg/50 text-center font-serif text-lg tracking-wide transition-shadow focus:border-washa-gold/50 focus:shadow-[0_0_30px_rgba(64,48,40,0.08)]',
+                  promptFieldError && 'border-red-500/70 ring-2 ring-red-500/20',
+                )}
                 value={state.calligraphyText}
                 onChange={e => updateState({ calligraphyText: e.target.value })}
                 dir="auto"
@@ -466,10 +499,15 @@ export default function StepIdea() {
                     <Textarea
                       id="reference-transformation"
                       aria-label="وصف تحويل الصورة المرجعية"
+                      aria-invalid={promptFieldError}
+                      data-washa-prompt-input="true"
                       placeholder="مثال: حوّل العنصر الرئيسي إلى رسم هندسي نظيف، واحتفظ بحركته، واستخدم لونين فقط دون خلفية…"
                       value={state.prompt}
                       onChange={(event) => updateState({ prompt: event.target.value })}
-                      className="min-h-28 resize-none rounded-xl border-washa-border/40 bg-washa-bg/45 p-4 leading-7 focus:border-washa-gold/50"
+                      className={cn(
+                        'min-h-28 resize-none rounded-xl border-washa-border/40 bg-washa-bg/45 p-4 leading-7 focus:border-washa-gold/50',
+                        promptFieldError && 'border-red-500/70 ring-2 ring-red-500/20',
+                      )}
                     />
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

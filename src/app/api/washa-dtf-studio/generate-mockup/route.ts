@@ -29,6 +29,11 @@ import {
     getWashaDtfProviderAttempts,
     sanitizeWashaDtfProviderMessage,
 } from "@/lib/washa-dtf-provider-config";
+import {
+    getPublicStudioErrorMessage,
+    mapPublicError,
+    parseRetryAfterValueMs,
+} from "@/lib/washa-dtf-public-errors";
 import { isArtworkTextPolicyError } from "@/lib/washa-artwork/arabic-text-verification";
 import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
@@ -51,6 +56,25 @@ const ARTWORK_TEXT_POLICY_PUBLIC_ERROR =
 const ARTWORK_VERIFICATION_UNAVAILABLE_PUBLIC_ERROR =
     "اكتمل إنشاء التصميم، لكن تعذر التحقق من سلامة النص فيه الآن. جرّب مرة أخرى بعد لحظات.";
 
+type StructuredErrorDetailValue = string | number | boolean | null;
+
+const AUTO_RETRY_WAIT_MESSAGES: Record<string, string> = {
+    ARTWORK_TEXT_POLICY_FAILED:
+        "التصميم يحتوي نصًا غير مطابق. انتظر انتهاء العداد ثم أعد المحاولة.",
+    ARTWORK_VERIFICATION_UNAVAILABLE:
+        "اكتمل التصميم لكن تعذّر التحقق من النص. انتظر انتهاء العداد ثم أعد المحاولة.",
+    IMAGE_PROVIDER_UNAVAILABLE:
+        "خدمة التوليد غير متوفرة مؤقتًا. انتظر انتهاء العداد ثم أعد المحاولة.",
+};
+
+function getHeaderRetryAfterMs(headers?: HeadersInit) {
+    if (!headers) return undefined;
+    const parsed = parseRetryAfterValueMs(
+        new Headers(headers).get("Retry-After")
+    );
+    return parsed !== null && parsed > 0 ? parsed : undefined;
+}
+
 function structuredErrorResponse(
     requestId: string,
     status: number,
@@ -59,23 +83,81 @@ function structuredErrorResponse(
     options: {
         retryable?: boolean;
         headers?: HeadersInit;
+        details?: Record<string, StructuredErrorDetailValue>;
+        includeLegacyError?: boolean;
     } = {}
 ) {
+    const structuredActionsEnabled =
+        process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true";
+    const retryable = options.retryable === true;
+    const safeFallbackMessage = getPublicStudioErrorMessage(
+        sanitizeWashaDtfProviderMessage(message),
+        "generation"
+    );
+    const mapping = mapPublicError(code, {
+        fallbackMessage: safeFallbackMessage,
+        scope: "generation",
+        retryable,
+        retryAfterMs: getHeaderRetryAfterMs(options.headers),
+    });
+    const autoRetryQuotaSafe =
+        process.env.WASHA_ENABLE_AUTO_RETRY_QUOTA_SAFE === "true";
+    const autoRetryWaiting =
+        mapping.userAction === "auto_retry" && !autoRetryQuotaSafe;
+    const effectiveMapping = autoRetryWaiting
+        ? {
+            ...mapping,
+            userMessage:
+                AUTO_RETRY_WAIT_MESSAGES[code]
+                ?? "تعذّرت العملية مؤقتًا. انتظر انتهاء العداد ثم أعد المحاولة.",
+            userAction: "wait_and_retry" as const,
+        }
+        : mapping;
+    const responseMessage = structuredActionsEnabled
+        ? effectiveMapping.userMessage
+        : message;
+    const retryAfterHeader = structuredActionsEnabled
+        && effectiveMapping.retryAfterMs !== null
+        ? String(Math.max(1, Math.ceil(effectiveMapping.retryAfterMs / 1_000)))
+        : null;
+    const responseHeaders = new Headers(options.headers);
+    responseHeaders.set("Cache-Control", "private, no-store");
+    responseHeaders.set("X-Washa-Error-Code", code);
+    if (structuredActionsEnabled) {
+        responseHeaders.set("X-Washa-User-Action", effectiveMapping.userAction);
+    }
+    if (status === 429 || status === 503) {
+        if (retryAfterHeader) {
+            responseHeaders.set("Retry-After", retryAfterHeader);
+        }
+    } else {
+        responseHeaders.delete("Retry-After");
+    }
+
     return attachDtfTraceId(NextResponse.json(
         {
+            ...(options.details || {}),
+            ...(options.includeLegacyError
+                ? { error: responseMessage }
+                : {}),
             ok: false,
             code,
-            message,
+            message: responseMessage,
+            ...(structuredActionsEnabled
+                ? {
+                    userAction: effectiveMapping.userAction,
+                    retryAfterMs: effectiveMapping.retryAfterMs,
+                    retryable,
+                }
+                : {}),
             requestId,
-            ...(options.retryable === undefined ? {} : { retryable: options.retryable }),
+            ...(!structuredActionsEnabled && options.retryable !== undefined
+                ? { retryable: options.retryable }
+                : {}),
         },
         {
             status,
-            headers: {
-                "Cache-Control": "private, no-store",
-                "X-Washa-Error-Code": code,
-                ...(options.headers || {}),
-            },
+            headers: responseHeaders,
         }
     ), requestId);
 }
@@ -238,6 +320,18 @@ export async function POST(request: NextRequest) {
             errorCode: rateLimitResponse ? "RATE_LIMITED" : null,
         });
         if (rateLimitResponse) {
+            if (process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true") {
+                return structuredErrorResponse(
+                    traceId,
+                    429,
+                    "RATE_LIMITED",
+                    "تم تجاوز الحد المسموح. يرجى الانتظار دقيقة والمحاولة مجدداً.",
+                    {
+                        retryable: false,
+                        headers: rateLimitResponse.headers,
+                    }
+                );
+            }
             return attachDtfTraceId(rateLimitResponse, traceId);
         }
 
@@ -315,7 +409,7 @@ export async function POST(request: NextRequest) {
             const message = isUnavailable
                 ? "تعذّر تثبيت معرّف عملية التوليد مؤقتاً."
                 : isProcessing
-                    ? "طلب التوليد نفسه ما زال قيد التنفيذ. انتظر اكتماله قبل المحاولة مجدداً."
+                    ? "طلبك قيد التنفيذ حاليًا. انتظر ظهور النتيجة."
                     : isSucceeded
                         ? "اكتمل طلب التوليد هذا مسبقاً، لكن نتيجته غير محفوظة في سجل الطلب. ابدأ محاولة جديدة فقط إذا لم تظهر النتيجة لديك."
                         : "تعذّر إعادة محاولة هذا الطلب لأن حالة الحصة غير محسومة. تحقق من رصيدك قبل بدء محاولة جديدة.";
@@ -336,9 +430,6 @@ export async function POST(request: NextRequest) {
                 message,
                 {
                     retryable: false,
-                    headers: isProcessing && generationClaim.retryAfterSeconds > 0
-                        ? { "Retry-After": String(generationClaim.retryAfterSeconds) }
-                        : undefined,
                 }
             );
         }
@@ -354,11 +445,15 @@ export async function POST(request: NextRequest) {
                 freeRemaining: 0,
                 paidBalance: 0,
             }
-            : await DtfTelemetryService.reserveDailyQuota(access.profileId, access.role, {
-                guestIdentifier: null,
-                requestId: traceId,
-                operation: GENERATE_MOCKUP_OPERATION,
-            });
+            : await DtfTelemetryService.reserveDailyQuota(
+                access.profileId,
+                access.role,
+                {
+                    guestIdentifier: null,
+                    requestId: traceId,
+                    operation: GENERATE_MOCKUP_OPERATION,
+                }
+            );
         const quotaStateAmbiguous =
             quota.reason === "quota_unavailable"
             && quota.reservationState === "ambiguous";
@@ -419,6 +514,24 @@ export async function POST(request: NextRequest) {
             }
 
             if (quota.reason === "audience_disabled") {
+                if (
+                    process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true"
+                ) {
+                    return structuredErrorResponse(
+                        traceId,
+                        403,
+                        "audience_disabled",
+                        "توليد وشّى AI غير متاح لحسابك حالياً.",
+                        {
+                            retryable: false,
+                            includeLegacyError: true,
+                            details: {
+                                canPurchase: false,
+                                guest: access.role === "guest",
+                            },
+                        }
+                    );
+                }
                 return attachDtfTraceId(NextResponse.json(
                     {
                         error: "توليد وشّى AI غير متاح لحسابك حالياً.",
@@ -431,6 +544,24 @@ export async function POST(request: NextRequest) {
             }
 
             if (quota.reason === "quota_unavailable") {
+                if (
+                    process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true"
+                ) {
+                    return structuredErrorResponse(
+                        traceId,
+                        503,
+                        "quota_unavailable",
+                        "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
+                        {
+                            retryable: true,
+                            includeLegacyError: true,
+                            details: {
+                                canPurchase: false,
+                                guest: access.role === "guest",
+                            },
+                        }
+                    );
+                }
                 return attachDtfTraceId(NextResponse.json(
                     {
                         error: "تعذّر التحقق من رصيد WASHA AI حالياً. حاول بعد قليل.",
@@ -442,6 +573,24 @@ export async function POST(request: NextRequest) {
                 ), traceId);
             }
 
+            if (process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true") {
+                return structuredErrorResponse(
+                    traceId,
+                    403,
+                    "quota_exceeded",
+                    "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
+                    {
+                        retryable: false,
+                        includeLegacyError: true,
+                        details: {
+                            freeRemaining: quota.freeRemaining,
+                            paidBalance: quota.paidBalance,
+                            canPurchase: quota.canPurchase === true,
+                            guest: access.role === "guest",
+                        },
+                    }
+                );
+            }
             return attachDtfTraceId(NextResponse.json(
                 {
                     error: "نفدت حصتك من التوليد في وشّى AI. اشترِ رصيداً إضافياً للمتابعة الآن، أو انتظر تجديد حصتك المجانية غدًا.",
@@ -607,12 +756,17 @@ export async function POST(request: NextRequest) {
         let quotaReleased = !quota.tracked;
         if (quota.tracked) {
             const releaseStartedAt = Date.now();
-            quotaReleased = await DtfTelemetryService.releaseDailyQuota(access.profileId, access.role, quota.source, {
-                guestIdentifier: null,
-                requestId: traceId,
-                operation: GENERATE_MOCKUP_OPERATION,
-                quotaDate: quota.quotaDate ?? null,
-            });
+            quotaReleased = await DtfTelemetryService.releaseDailyQuota(
+                access.profileId,
+                access.role,
+                quota.source,
+                {
+                    guestIdentifier: null,
+                    requestId: traceId,
+                    operation: GENERATE_MOCKUP_OPERATION,
+                    quotaDate: quota.quotaDate ?? null,
+                }
+            );
             logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_released", {
                 durationMs: Date.now() - releaseStartedAt,
                 source: quota.source,

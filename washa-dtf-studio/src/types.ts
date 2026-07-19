@@ -117,6 +117,10 @@ export interface DtfStudioConfig {
     provider?: string;
     retryAfterSeconds?: number;
   };
+  features?: {
+    structuredUserActionsEnabled: boolean;
+    autoRetryQuotaSafeEnabled: boolean;
+  };
   garments: DtfStudioGarmentOption[];
   positions: DtfStudioPositionOption[];
   styles: DtfStudioCreativeOption[];

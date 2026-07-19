@@ -16,6 +16,12 @@ export async function GET() {
         const config = await getWashaDtfStudioConfig();
         const baseGeneration = getWashaDtfGenerationReadiness();
         const artworkProvider = getIsolatedArtworkProviderReadiness();
+        const features = {
+            structuredUserActionsEnabled:
+                process.env.WASHA_STRUCTURED_USER_ACTIONS_ENABLED === "true",
+            autoRetryQuotaSafeEnabled:
+                process.env.WASHA_ENABLE_AUTO_RETRY_QUOTA_SAFE === "true",
+        };
         const generation = baseGeneration.enabled && !artworkProvider.ready
             ? {
                 ...baseGeneration,
@@ -34,7 +40,7 @@ export async function GET() {
                     fallbackEnabled: artworkProvider.fallbackEnabled,
                 }
                 : baseGeneration;
-        return NextResponse.json({ ...config, generation }, {
+        return NextResponse.json({ ...config, generation, features }, {
             headers: {
                 "Cache-Control": "no-store",
             },

@@ -3,9 +3,12 @@ import type { ReferenceImageMode } from '../types';
 // Use the integrated Next.js API instead of a separate local proxy server.
 import {
   getPublicStudioErrorMessage,
+  isStructuredPublicErrorPayload,
+  parseRetryAfterValueMs,
   PUBLIC_EXTRACTION_ERROR,
   PUBLIC_GENERATION_ERROR,
   type PublicStudioErrorScope,
+  type StructuredPublicErrorPayload,
 } from '../lib/publicErrors';
 
 const API_BASE_URL = '/api/washa-dtf-studio';
@@ -70,6 +73,20 @@ type GenerationApiResponse = Partial<GeneratedArtworkResult> & {
   guest?: unknown;
 };
 
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readString(value: unknown, key: string) {
+  if (!isRecord(value)) return null;
+  const candidate = value[key];
+  return typeof candidate === 'string' && candidate.trim()
+    ? candidate.trim()
+    : null;
+}
+
 // أحداث تحدّث واجهة الرصيد بعد كل توليد أو عند نفاد الحصة.
 export const QUOTA_CHANGED_EVENT = 'washa:quota-changed';
 export const QUOTA_EXCEEDED_EVENT = 'washa:quota-exceeded';
@@ -108,6 +125,36 @@ function dispatchQuotaExceeded(info: {
   );
 }
 
+export class StudioApiError extends Error {
+  readonly data: unknown;
+  readonly status: number | null;
+  readonly structured: StructuredPublicErrorPayload | null;
+
+  constructor(input: {
+    message: string;
+    data?: unknown;
+    status?: number | null;
+    structured?: StructuredPublicErrorPayload | null;
+  }) {
+    super(input.message);
+    this.name = 'StudioApiError';
+    this.data = input.data;
+    this.status = input.status ?? null;
+    this.structured = input.structured ?? null;
+  }
+}
+
+export function getStructuredStudioError(
+  error: unknown,
+): StructuredPublicErrorPayload | null {
+  return error instanceof StudioApiError ? error.structured : null;
+}
+
+function parseRetryAfterMs(response?: Response) {
+  if (!response) return null;
+  return parseRetryAfterValueMs(response.headers.get('Retry-After'));
+}
+
 function createPublicApiError(
   message: string | null | undefined,
   scope: PublicStudioErrorScope,
@@ -115,26 +162,36 @@ function createPublicApiError(
   data?: unknown
 ) {
   const publicMessage = getPublicStudioErrorMessage(message, scope);
-  const error = new Error(publicMessage);
-  (error as Error & { data?: unknown; status?: number }).data = data;
-  if (response) {
-    (error as Error & { data?: unknown; status?: number }).status = response.status;
-  }
-  return error;
+  const retryAfterMs = parseRetryAfterMs(response);
+  const structured = isStructuredPublicErrorPayload(data)
+    ? {
+        ...data,
+        message: publicMessage,
+        retryAfterMs: retryAfterMs ?? data.retryAfterMs,
+      }
+    : null;
+
+  return new StudioApiError({
+    message: publicMessage,
+    data,
+    status: response?.status ?? null,
+    structured,
+  });
 }
 
-async function parseApiResponse(response: Response, scope: PublicStudioErrorScope) {
+async function parseApiResponse(
+  response: Response,
+  scope: PublicStudioErrorScope,
+): Promise<unknown> {
   const contentType = response.headers.get('content-type') || '';
 
   if (contentType.includes('application/json')) {
-    const data = await response.json();
+    const data: unknown = await response.json();
     if (!response.ok) {
       const msg =
-        (typeof data?.error === 'string' && data.error.trim())
-          ? data.error
-          : (typeof data?.message === 'string' && data.message.trim())
-            ? data.message
-            : `HTTP ${response.status}`;
+        readString(data, 'error')
+          ?? readString(data, 'message')
+          ?? `HTTP ${response.status}`;
       throw createPublicApiError(msg, scope, response, data);
     }
     return data;
@@ -214,7 +271,14 @@ export async function generateMockup(
     || 'Artwork inspired by the uploaded customer reference image.';
 
   try {
-    const body: any = { prompt };
+    const body: {
+      prompt: string;
+      referenceImage?: {
+        base64: string;
+        mimeType: string;
+      };
+      generationContext?: ReturnType<typeof buildGenerationContext>;
+    } = { prompt };
     if (referenceImageBase64 && referenceImageMimeType) {
       body.referenceImage = {
         base64: referenceImageBase64,
@@ -257,7 +321,11 @@ export async function generateMockup(
       cache: 'no-store',
       body: JSON.stringify(body),
     });
-    const data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
+    const parsed = await parseApiResponse(response, 'generation');
+    if (!isRecord(parsed)) {
+      throw createPublicApiError(null, 'generation', response, parsed);
+    }
+    const data: GenerationApiResponse = parsed;
 
     if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
@@ -274,7 +342,9 @@ export async function generateMockup(
     }
     return data as GeneratedArtworkResult;
   } catch (error) {
-    const info = (error as { data?: Record<string, unknown> })?.data;
+    const info = error instanceof StudioApiError && isRecord(error.data)
+      ? error.data
+      : null;
     if (info && (info.code === 'quota_exceeded' || info.code === 'audience_disabled')) {
       dispatchQuotaExceeded(info);
     }
@@ -320,7 +390,11 @@ export async function recomposeMockup(
       }),
     }),
   });
-  const data = await parseApiResponse(response, 'generation') as GenerationApiResponse;
+  const parsed = await parseApiResponse(response, 'generation');
+  if (!isRecord(parsed)) {
+    throw createPublicApiError(null, 'generation', response, parsed);
+  }
+  const data: GenerationApiResponse = parsed;
   if (
     typeof data.previewUrl !== 'string'
     || typeof data.masterAssetId !== 'string'
@@ -350,8 +424,14 @@ export async function extractDesign(mockupImageBase64: string, mimeType: string,
     });
 
     const data = await parseApiResponse(response, 'extraction');
-    if (data?.error) throw createPublicApiError(data.error, 'extraction', response, data);
-    return data.imageUrl || null;
+    if (!isRecord(data)) {
+      throw createPublicApiError(null, 'extraction', response, data);
+    }
+    const extractionError = readString(data, 'error');
+    if (extractionError) {
+      throw createPublicApiError(extractionError, 'extraction', response, data);
+    }
+    return readString(data, 'imageUrl');
   } catch (error) {
     console.error("Error extracting design via proxy:", error);
     if (error instanceof Error) throw error;
