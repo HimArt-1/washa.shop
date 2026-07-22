@@ -552,6 +552,9 @@ export class DtfOrderService {
                 design_price: designPrice,
                 final_price: finalPrice,
                 dtf: true,
+                ...(approvedRevision?.pipeline === "prompt_native"
+                    ? { washa_ai_version: "v3" as const }
+                    : {}),
             };
             const designOrderInsertPayload: CustomDesignOrderInsert = {
                 user_id: userId,

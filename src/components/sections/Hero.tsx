@@ -13,6 +13,7 @@ interface HeroProps {
   backgroundMode?: "shader" | "video";
   showAuthButtons?: boolean;
   showWashaAiButton?: boolean;
+  showWashaAiV3Button?: boolean;
   showJoinArtistButton?: boolean;
 }
 
@@ -53,6 +54,7 @@ export function Hero({
   backgroundMode = "shader",
   showAuthButtons = true,
   showWashaAiButton = false,
+  showWashaAiV3Button = false,
   showJoinArtistButton = false,
 }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -473,7 +475,7 @@ export function Hero({
         </motion.div>
 
         {/* CTA Buttons — تظهر فقط عند تفعيلها من الإعدادات */}
-        {showAuthButtons && (
+        {(showAuthButtons || showWashaAiButton || showWashaAiV3Button) && (
           <motion.div
             className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
             initial={{ opacity: 0, y: 30 }}
@@ -482,6 +484,7 @@ export function Hero({
           >
             <SignedIn>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                {showAuthButtons ? (
                 <motion.button
                   type="button"
                     className="group relative px-8 py-4 font-bold rounded-2xl border overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
@@ -509,6 +512,7 @@ export function Hero({
                     </motion.span>
                   </span>
                 </motion.button>
+                ) : null}
                 {showWashaAiButton ? (
                   <motion.button
                     type="button"
@@ -538,11 +542,42 @@ export function Hero({
                     </span>
                   </motion.button>
                 ) : null}
+                {showWashaAiV3Button ? (
+                  <motion.button
+                    type="button"
+                    className="group relative overflow-hidden rounded-2xl border px-8 py-4 font-bold transition-all duration-500 hover:scale-[1.03] active:scale-[0.98]"
+                    style={{
+                      borderColor: "rgba(159, 181, 149, 0.42)",
+                      background: "linear-gradient(120deg, rgba(28, 62, 48, 0.9), rgba(96, 103, 69, 0.66))",
+                      color: "rgba(249, 244, 229, 0.96)",
+                    }}
+                    whileHover={{
+                      boxShadow: "0 12px 34px rgba(19, 47, 36, 0.28)",
+                      borderColor: "rgba(194, 205, 165, 0.62)",
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => router.push("/design/washa-ai/dev-v3")}
+                    suppressHydrationWarning
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      WASHA AI v3
+                      <motion.span
+                        animate={{ x: [0, 5, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        ←
+                      </motion.span>
+                    </span>
+                  </motion.button>
+                ) : null}
               </div>
             </SignedIn>
             <SignedOut>
               <div className="flex flex-col items-center gap-8">
                 {/* ═══ Outer Radiant Halo ═══ */}
+                {showWashaAiButton || showWashaAiV3Button ? (
+                  <div className="flex w-full flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center">
                 {showWashaAiButton ? (
                   <div className="relative">
                   <motion.div
@@ -663,8 +698,48 @@ export function Hero({
                   </motion.button>
                   </div>
                 ) : null}
+                {showWashaAiV3Button ? (
+                  <motion.button
+                    type="button"
+                    className="group relative min-h-[196px] w-full overflow-hidden rounded-[2.5rem] border px-8 py-8 text-right transition-all duration-700 active:scale-[0.98] sm:w-[260px]"
+                    style={{
+                      background: "linear-gradient(145deg, rgba(24, 54, 42, 0.94), rgba(73, 78, 54, 0.88))",
+                      borderColor: "rgba(186, 198, 157, 0.34)",
+                      boxShadow: "0 22px 48px rgba(18, 38, 30, 0.2), inset 0 1px 0 rgba(255,255,255,0.08)",
+                    }}
+                    whileHover={{
+                      y: -4,
+                      boxShadow: "0 28px 58px rgba(18, 38, 30, 0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
+                    }}
+                    onClick={() => router.push("/design/washa-ai/dev-v3")}
+                    suppressHydrationWarning
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(222,211,165,0.14),transparent_44%)]" />
+                    <div className="relative flex h-full flex-col justify-between gap-8">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+                          <Sparkles className="h-4 w-4 text-[#ded3a5]" />
+                        </span>
+                        <span className="rounded-full border border-[#ded3a5]/20 bg-[#ded3a5]/10 px-3 py-1 font-mono text-[10px] font-bold tracking-[0.18em] text-[#ded3a5]">
+                          PROMPT NATIVE
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-black tracking-tight text-[#f8f3e5]">WASHA AI v3</p>
+                        <p className="mt-2 text-xs leading-6 text-[#d8d2bf]/75">تصميم شفاف أصلي وموكب واقعي بخط توليد مستقل.</p>
+                        <span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#ded3a5]">
+                          افتح النسخة
+                          <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>←</motion.span>
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ) : null}
+                  </div>
+                ) : null}
 
                 {/* Auth Links — subtle and elegant */}
+                {showAuthButtons ? (
                 <div className="flex items-center gap-5">
                   <Link
                     href="/sign-in"
@@ -684,6 +759,7 @@ export function Hero({
                     <span className="transition-colors group-hover:text-gold">حساب جديد</span>
                   </Link>
                 </div>
+                ) : null}
               </div>
             </SignedOut>
           </motion.div>

@@ -81,7 +81,10 @@ function getSurfaceAccessMode(
     visibility: Awaited<ReturnType<typeof getPublicVisibility>>,
     surface: WashaAiDevSurface
 ): WashaAiDevAccessMode {
-    if (surface === "dev-v2" || surface === "dev-v3") {
+    if (surface === "dev-v3") {
+        return visibility.washa_ai_dev_v3_access ?? "admin";
+    }
+    if (surface === "dev-v2") {
         return visibility.washa_ai_dev_v2_access ?? "admin";
     }
 

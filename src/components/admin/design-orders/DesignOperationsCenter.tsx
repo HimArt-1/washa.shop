@@ -14,6 +14,7 @@ import {
 import type { ComponentType } from "react";
 import { DesignOrdersClient } from "@/components/admin/DesignOrdersClient";
 import type { CustomDesignOrder } from "@/types/database";
+import { getWashaAiOrderBadgeLabel } from "@/lib/washa-ai-order-version";
 
 type AdminProfile = {
     id: string;
@@ -213,7 +214,7 @@ function QueueLane({
                                     </div>
 
                                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-theme-subtle">
-                                        <span>{getMethodLabel(order.design_method)}</span>
+                                        <span>{order.design_method === "studio" ? getWashaAiOrderBadgeLabel(order) : getMethodLabel(order.design_method)}</span>
                                         <span className="text-theme-faint">•</span>
                                         <span>{formatDistanceToNow(new Date(order.updated_at), { addSuffix: true, locale: ar })}</span>
                                     </div>

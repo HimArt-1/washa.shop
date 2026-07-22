@@ -133,6 +133,7 @@ describe("DtfOrderService", () => {
             frontPreviewUrl: "https://cdn.example/mockup-front.webp",
             backPreviewUrl: null,
             mockupSourceType: "reference",
+            pipeline: "prompt_native",
         });
     });
 
@@ -219,6 +220,10 @@ describe("DtfOrderService", () => {
             master_checksum: "a".repeat(64),
             asset_schema_version: 1,
             production_readiness_status: "ready",
+            pricing_snapshot: expect.objectContaining({
+                dtf: true,
+                washa_ai_version: "v3",
+            }),
         }));
         expect(result.data).toMatchObject({
             masterAssetId: "22222222-2222-4222-8222-222222222222",

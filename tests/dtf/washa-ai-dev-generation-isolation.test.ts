@@ -25,6 +25,7 @@ function visibility(overrides: Record<string, unknown> = {}) {
         design_piece_dtf_studio_switch: true,
         washa_ai_dev_access: "admin",
         washa_ai_dev_v2_access: "admin",
+        washa_ai_dev_v3_access: "admin",
         ...overrides,
     };
 }
@@ -94,11 +95,24 @@ describe("WASHA AI dev generation isolation", () => {
             .resolves.toBe(false);
     });
 
-    it("uses the V2 visibility gate for the prompt-native V3 surface", async () => {
-        mockGetPublicVisibility.mockResolvedValue(visibility({ washa_ai_dev_v2_access: "link" }));
+    it("uses an independent visibility gate for the prompt-native V3 surface", async () => {
+        mockGetPublicVisibility.mockResolvedValue(visibility({
+            washa_ai_dev_v2_access: "disabled",
+            washa_ai_dev_v3_access: "link",
+        }));
 
         await expect(canUseWashaAiDevSurfaceForGeneration("dev-v3", false))
             .resolves.toBe(true);
+    });
+
+    it("does not leak the V2 access mode into V3", async () => {
+        mockGetPublicVisibility.mockResolvedValue(visibility({
+            washa_ai_dev_v2_access: "link",
+            washa_ai_dev_v3_access: "disabled",
+        }));
+
+        await expect(canUseWashaAiDevSurfaceForGeneration("dev-v3", true))
+            .resolves.toBe(false);
     });
 
 });

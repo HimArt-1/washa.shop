@@ -124,7 +124,10 @@ describe("DesignRevisionService", () => {
             prompt: "isolated artwork",
             generation_model: "gpt-image-1",
             provider: "openai",
-            generation_parameters: { background: "transparent" },
+            generation_parameters: {
+                background: "transparent",
+                pipeline: "prompt_native",
+            },
         };
 
         mockGetSupabaseAdminClient.mockReturnValue({
@@ -217,6 +220,7 @@ describe("DesignRevisionService", () => {
             masterChecksum: sb.__master.sha256_checksum,
             printAssetUrl: "https://cdn.example/print-production.png",
             mockupSourceType: "reference",
+            pipeline: "prompt_native",
         });
         expect(mockUploadImmutableBuffer).toHaveBeenCalledWith(
             expect.any(Buffer),

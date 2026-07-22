@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { createPrintProductionPng } from "@/lib/washa-artwork/compositor";
 import { assertStoredAssetIntegrity, sha256Hex } from "@/lib/washa-artwork/validation";
 import type { PlacementTransform } from "@/lib/washa-artwork/types";
+import { normalizeWashaGenerationPipeline } from "@/lib/washa-prompt-native/types";
 import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.service";
 
 type ApproveRevisionInput = {
@@ -24,6 +25,7 @@ export type ApprovedRevision = {
     frontPreviewUrl: string | null;
     backPreviewUrl: string | null;
     mockupSourceType: "reference" | "generated_blank_garment";
+    pipeline: "standard" | "prompt_native";
 };
 
 export class DesignRevisionService {
@@ -149,6 +151,7 @@ export class DesignRevisionService {
                     frontPreviewUrl: request.front_preview_url,
                     backPreviewUrl: request.back_preview_url,
                     mockupSourceType: request.mockup_source_type,
+                    pipeline: normalizeWashaGenerationPipeline(master.generation_parameters?.pipeline),
                 };
             }
         }
@@ -290,6 +293,7 @@ export class DesignRevisionService {
             frontPreviewUrl: request.front_preview_url,
             backPreviewUrl: request.back_preview_url,
             mockupSourceType: request.mockup_source_type,
+            pipeline: normalizeWashaGenerationPipeline(master.generation_parameters?.pipeline),
         };
     }
 }

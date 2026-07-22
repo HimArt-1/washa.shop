@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { updateDesignPromptTemplate } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
+import { getWashaAiOrderBadgeLabel } from "@/lib/washa-ai-order-version";
 
 // ─── Constants ───────────────────────────────────────────
 
@@ -117,7 +118,8 @@ export function DesignOrdersClient({
                 String(o.order_number).includes(q) ||
                 o.garment_name.toLowerCase().includes(q) ||
                 (o.customer_name && o.customer_name.toLowerCase().includes(q)) ||
-                (o.customer_email && o.customer_email.toLowerCase().includes(q))
+                (o.customer_email && o.customer_email.toLowerCase().includes(q)) ||
+                (o.design_method === "studio" && getWashaAiOrderBadgeLabel(o).toLowerCase().includes(q))
             );
         }
         if (filterAdmin !== "all") {
@@ -275,7 +277,7 @@ export function DesignOrdersClient({
                                                         {order.design_method === "studio" && (
                                                             <span className="inline-flex mt-1 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
                                                                 <Sparkles className="w-2.5 h-2.5" />
-                                                                WASHA AI
+                                                                {getWashaAiOrderBadgeLabel(order)}
                                                             </span>
                                                         )}
                                                     </div>
@@ -376,7 +378,7 @@ export function DesignOrdersClient({
                                                         {order.design_method === "studio" && (
                                                             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-300">
                                                                 <Sparkles className="w-2.5 h-2.5" />
-                                                                WASHA AI
+                                                                {getWashaAiOrderBadgeLabel(order)}
                                                             </span>
                                                         )}
                                                     </div>

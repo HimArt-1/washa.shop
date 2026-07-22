@@ -92,12 +92,14 @@ export type SiteSettingsType = {
         ai_section?: boolean;
         hero_auth_buttons?: boolean;
         hero_washa_ai_button?: boolean;
+        hero_washa_ai_v3_button?: boolean;
         hero_join_artist_button?: boolean;
         design_piece?: boolean;
         design_piece_dtf_studio_switch?: boolean;
         design_piece_generation_public?: boolean;
         washa_ai_dev_access?: WashaAiDevAccessMode;
         washa_ai_dev_v2_access?: WashaAiDevAccessMode;
+        washa_ai_dev_v3_access?: WashaAiDevAccessMode;
     };
     washa_ai?: {
         dtf_daily_quota_limit?: number;
@@ -165,12 +167,14 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         ai_section: true,
         hero_auth_buttons: true,
         hero_washa_ai_button: true,
+        hero_washa_ai_v3_button: false,
         hero_join_artist_button: false,
         design_piece: true,
         design_piece_dtf_studio_switch: true,
         design_piece_generation_public: false,
         washa_ai_dev_access: "admin",
         washa_ai_dev_v2_access: "admin",
+        washa_ai_dev_v3_access: "admin",
     },
     washa_ai: {
         dtf_daily_quota_limit: 5,
@@ -416,6 +420,10 @@ function coerceWashaAiDevAccessMode(value: unknown, fallback: WashaAiDevAccessMo
 function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibility"] {
     const visibility = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
     const fallback = DEFAULT_SITE_SETTINGS.visibility;
+    const washaAiDevV3Access = coerceWashaAiDevAccessMode(
+        visibility.washa_ai_dev_v3_access,
+        fallback.washa_ai_dev_v3_access ?? "admin"
+    );
 
     return {
         gallery: coerceBooleanSetting(visibility.gallery, fallback.gallery ?? false),
@@ -426,6 +434,10 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         ai_section: coerceBooleanSetting(visibility.ai_section, fallback.ai_section ?? true),
         hero_auth_buttons: coerceBooleanSetting(visibility.hero_auth_buttons, fallback.hero_auth_buttons ?? true),
         hero_washa_ai_button: coerceBooleanSetting(visibility.hero_washa_ai_button, fallback.hero_washa_ai_button ?? true),
+        hero_washa_ai_v3_button: coerceBooleanSetting(
+            visibility.hero_washa_ai_v3_button,
+            fallback.hero_washa_ai_v3_button ?? false
+        ) && washaAiDevV3Access === "link",
         hero_join_artist_button: coerceBooleanSetting(visibility.hero_join_artist_button, fallback.hero_join_artist_button ?? false),
         design_piece: coerceBooleanSetting(visibility.design_piece, fallback.design_piece ?? true),
         design_piece_dtf_studio_switch: coerceBooleanSetting(visibility.design_piece_dtf_studio_switch, fallback.design_piece_dtf_studio_switch ?? true),
@@ -441,6 +453,7 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
             visibility.washa_ai_dev_v2_access,
             fallback.washa_ai_dev_v2_access ?? "admin"
         ),
+        washa_ai_dev_v3_access: washaAiDevV3Access,
     };
 }
 

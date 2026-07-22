@@ -43,6 +43,7 @@ import {
     uploadDesignResultFile,
 } from "@/app/actions/smart-store";
 import type { CustomDesignOrder, CustomDesignOrderStatus } from "@/types/database";
+import { getWashaAiOrderBadgeLabel, getWashaAiOrderVersion } from "@/lib/washa-ai-order-version";
 import { DesignOrderAdminChat } from "@/components/admin/DesignOrderAdminChat";
 
 type AdminProfile = {
@@ -505,6 +506,11 @@ export function DesignOrderWorkspace({
                             <span className="rounded-full border border-theme-subtle bg-theme-faint px-3 py-1 text-[11px] font-semibold text-theme-subtle">
                                 {getMethodLabel(currentOrder.design_method)}
                             </span>
+                            {getWashaAiOrderVersion(currentOrder) === "v3" ? (
+                                <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 font-mono text-[11px] font-black tracking-[0.16em] text-emerald-200">
+                                    WASHA AI V3
+                                </span>
+                            ) : null}
                         </div>
 
                         <div>
@@ -897,7 +903,7 @@ export function DesignOrderWorkspace({
                         <div className="space-y-3">
                             <div className="flex items-center gap-2">
                                 <Printer className="h-4 w-4 text-gold" />
-                                <p className="text-sm font-bold text-theme">معاينة WASHA AI</p>
+                                <p className="text-sm font-bold text-theme">معاينة {getWashaAiOrderBadgeLabel(currentOrder)}</p>
                                 <span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
                                     منشأ آلياً
                                 </span>

@@ -7,6 +7,7 @@ import { getProducts } from "@/app/actions/products";
 import { PublicPageWrapper } from "@/components/layout/PublicPageWrapper";
 import { isWashaAiRouteAvailable } from "@/lib/design-piece-runtime";
 import { getWashaDtfGenerationReadiness } from "@/lib/washa-dtf-generation-readiness";
+import { getPromptNativeReadiness } from "@/lib/washa-prompt-native/readiness";
 
 export default async function Home() {
     const settings = await getSiteSettings();
@@ -15,6 +16,11 @@ export default async function Home() {
     const showWashaAiButton = (v.hero_washa_ai_button ?? true)
         && isWashaAiRouteAvailable(v)
         && generationReadiness.enabled;
+    const promptNativeReadiness = getPromptNativeReadiness();
+    const showWashaAiV3Button = (v.hero_washa_ai_v3_button ?? false)
+        && v.washa_ai_dev_v3_access === "link"
+        && isWashaAiRouteAvailable(v)
+        && promptNativeReadiness.ready;
     const heroBackgroundMode = process.env.HERO_BACKGROUND_MODE === "video" ? "video" : "shader";
     const showStore = Boolean(v.store);
     const showAiSection = settings.visibility.ai_section !== false;
@@ -28,6 +34,7 @@ export default async function Home() {
                     backgroundMode={heroBackgroundMode}
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={showWashaAiButton}
+                    showWashaAiV3Button={showWashaAiV3Button}
                     showJoinArtistButton={settings.visibility.hero_join_artist_button}
                 />
                 {showFlowStack ? (

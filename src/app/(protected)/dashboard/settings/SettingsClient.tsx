@@ -33,12 +33,14 @@ type VisibilityState = {
     ai_section: boolean;
     hero_auth_buttons: boolean;
     hero_washa_ai_button: boolean;
+    hero_washa_ai_v3_button: boolean;
     hero_join_artist_button: boolean;
     design_piece: boolean;
     design_piece_dtf_studio_switch: boolean;
     design_piece_generation_public: boolean;
     washa_ai_dev_access: WashaAiDevAccessMode;
     washa_ai_dev_v2_access: WashaAiDevAccessMode;
+    washa_ai_dev_v3_access: WashaAiDevAccessMode;
 };
 
 const WASHA_AI_DEV_ACCESS_OPTIONS: Array<{ value: WashaAiDevAccessMode; label: string; description: string }> = [
@@ -431,12 +433,14 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
+        hero_washa_ai_v3_button: settings.visibility.hero_washa_ai_v3_button ?? false,
         hero_join_artist_button: settings.visibility.hero_join_artist_button ?? false,
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
         design_piece_generation_public: settings.visibility.design_piece_generation_public ?? false,
         washa_ai_dev_access: settings.visibility.washa_ai_dev_access ?? "admin",
         washa_ai_dev_v2_access: settings.visibility.washa_ai_dev_v2_access ?? "admin",
+        washa_ai_dev_v3_access: settings.visibility.washa_ai_dev_v3_access ?? "admin",
     });
     const [washaAi, setWashaAi] = useState({
         dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
@@ -659,6 +663,17 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         onChange={(v) => setVisibility({ ...visibility, hero_washa_ai_button: v })}
                     />
                     <Toggle
+                        label="زر WASHA AI v3 في هيرو الصفحة الرئيسية"
+                        checked={visibility.hero_washa_ai_v3_button}
+                        onChange={(enabled) => setVisibility({
+                            ...visibility,
+                            hero_washa_ai_v3_button: enabled,
+                            washa_ai_dev_v3_access: enabled && visibility.washa_ai_dev_v3_access !== "link"
+                                ? "link"
+                                : visibility.washa_ai_dev_v3_access,
+                        })}
+                    />
+                    <Toggle
                         label="زر «انضم كفنان» في الهيرو"
                         checked={visibility.hero_join_artist_button ?? false}
                         onChange={(v) => setVisibility({ ...visibility, hero_join_artist_button: v })}
@@ -696,8 +711,19 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                 value={visibility.washa_ai_dev_v2_access}
                                 onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_v2_access: value })}
                             />
+                            <DevAccessSelect
+                                label="/design/washa-ai/dev-v3"
+                                value={visibility.washa_ai_dev_v3_access}
+                                onChange={(value) => setVisibility({
+                                    ...visibility,
+                                    washa_ai_dev_v3_access: value,
+                                    hero_washa_ai_v3_button: value === "link"
+                                        ? visibility.hero_washa_ai_v3_button
+                                        : false,
+                                })}
+                            />
                             <p className="rounded-xl border border-gold/10 bg-surface/50 px-3 py-2 text-xs leading-5 text-theme-subtle">
-                                المسار <span dir="ltr" className="font-mono font-bold text-theme">/design/washa-ai/dev-v3</span> يستخدم صلاحية V2 نفسها، ويشغّل خط Prompt Native المعزول.
+                                إظهار V3 في الهيرو يضبط وصولها تلقائيًا على «متاحة بالرابط». تعطيل المسار أو حصره بالمشرفين يخفي زر الهيرو فورًا.
                             </p>
                         </div>
                     </div>
