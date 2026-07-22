@@ -139,6 +139,18 @@ function buildFramingPlan(
     };
 }
 
+function transformPrintAreaForFraming(
+    printArea: NormalizedPrintArea,
+    plan: FramingPlan
+): NormalizedPrintArea {
+    return {
+        x: (plan.left + printArea.x * plan.sourceWidth) / plan.canvasWidth,
+        y: (plan.top + printArea.y * plan.sourceHeight) / plan.canvasHeight,
+        width: (printArea.width * plan.sourceWidth) / plan.canvasWidth,
+        height: (printArea.height * plan.sourceHeight) / plan.canvasHeight,
+    };
+}
+
 async function prepareFramedReference(
     buffer: Buffer,
     plan: FramingPlan,
@@ -380,6 +392,10 @@ export async function composePromptNativeMockup(params: {
     const timeoutMs = configuredTimeoutMs();
     const aspectRatio = resolvePromptNativeAspectRatio(garmentWidth, garmentHeight);
     const framingPlan = buildFramingPlan(garmentWidth, garmentHeight, aspectRatio);
+    const generationPrintArea = transformPrintAreaForFraming(
+        params.printArea,
+        framingPlan
+    );
     const [framedGarment, framedPlacementGuide] = await Promise.all([
         prepareFramedReference(params.garmentBase, framingPlan, true),
         prepareFramedReference(
@@ -398,7 +414,7 @@ export async function composePromptNativeMockup(params: {
         ? "image/png"
         : mimeTypeForFormat(placementGuideMetadata.format);
     const prompt = buildPromptNativeMockupPrompt({
-        printArea: params.printArea,
+        printArea: generationPrintArea,
         placement: params.placement,
     });
     const startedAt = Date.now();
@@ -487,6 +503,7 @@ export async function composePromptNativeMockup(params: {
                     sourceHeight: garmentHeight,
                     generationCanvasWidth: framingPlan.canvasWidth,
                     generationCanvasHeight: framingPlan.canvasHeight,
+                    generationPrintArea,
                     restoredToSourceDimensions: true,
                     pixelCrop: restored.pixelCrop,
                 },

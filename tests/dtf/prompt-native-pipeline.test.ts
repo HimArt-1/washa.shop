@@ -376,6 +376,12 @@ describe("WASHA AI Prompt Native pipeline", () => {
             sourceHeight: 200,
             generationCanvasWidth: 137,
             generationCanvasHeight: 206,
+            generationPrintArea: {
+                x: 0.28,
+                y: (3 + 0.2 * 200) / 206,
+                width: 0.44,
+                height: (0.5 * 200) / 206,
+            },
             restoredToSourceDimensions: true,
         });
     });
