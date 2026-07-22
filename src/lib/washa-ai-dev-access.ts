@@ -51,18 +51,31 @@ function getSurfaceAccessMode(
     return visibility.washa_ai_dev_access ?? "admin";
 }
 
+type WashaAiDevSurfaceAccessDecision =
+    | "hidden"
+    | "disabled"
+    | "link"
+    | "admin";
+
+function getSurfaceAccessDecision(
+    visibility: Awaited<ReturnType<typeof getPublicVisibility>>,
+    surface: WashaAiDevSurface
+): WashaAiDevSurfaceAccessDecision {
+    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
+        return "hidden";
+    }
+
+    return getSurfaceAccessMode(visibility, surface);
+}
+
 export async function canUseWashaAiDevSurfaceForGeneration(
     surface: WashaAiDevSurface,
     role: string | null | undefined
 ) {
     const visibility = await getPublicVisibility();
-    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
-        return false;
-    }
-
-    const mode = getSurfaceAccessMode(visibility, surface);
-    if (mode === "disabled") return false;
-    if (mode === "link") return true;
+    const decision = getSurfaceAccessDecision(visibility, surface);
+    if (decision === "link") return true;
+    if (decision !== "admin") return false;
     return role === "admin" || role === "dev";
 }
 
@@ -80,18 +93,17 @@ async function canAccessAdminOnlyDevSurface() {
 
 export async function ensureWashaAiDevSurfaceAccess(request: NextRequest, surface: WashaAiDevSurface) {
     const visibility = await getPublicVisibility();
+    const decision = getSurfaceAccessDecision(visibility, surface);
 
-    if (!visibility.design_piece || visibility.design_piece_dtf_studio_switch === false) {
+    if (decision === "hidden") {
         return NextResponse.redirect(new URL("/design", request.url));
     }
 
-    const mode = getSurfaceAccessMode(visibility, surface);
-
-    if (mode === "disabled") {
+    if (decision === "disabled") {
         return new NextResponse("Not Found", { status: 404 });
     }
 
-    if (mode === "admin") {
+    if (decision === "admin") {
         const canAccess = await canAccessAdminOnlyDevSurface();
         if (!canAccess) {
             return new NextResponse("Not Found", { status: 404 });
