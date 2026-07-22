@@ -27,6 +27,7 @@ const {
     mockGetQuotaStatus,
     mockGenerateBoard,
     mockNotifyBoardRequestReady,
+    mockCanUseWashaAiDevSurfaceForGeneration,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
@@ -52,6 +53,7 @@ const {
     mockGetQuotaStatus: vi.fn(),
     mockGenerateBoard: vi.fn(),
     mockNotifyBoardRequestReady: vi.fn(),
+    mockCanUseWashaAiDevSurfaceForGeneration: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -85,7 +87,8 @@ vi.mock("@/app/api/washa-dtf-studio/services/dtf-telemetry.service", () => ({
     },
 }));
 
-vi.mock("@/lib/washa-generation-mode", () => ({
+vi.mock("@/lib/washa-generation-mode", async (importOriginal) => ({
+    ...await importOriginal<typeof import("@/lib/washa-generation-mode")>(),
     getGenerationMode: mockGetGenerationMode,
     shouldChargeQuota: mockShouldChargeQuota,
 }));
@@ -96,6 +99,11 @@ vi.mock("@/app/api/washa-dtf-studio/services/board-generation.service", () => ({
 
 vi.mock("@/lib/board-request-telegram", () => ({
     notifyBoardRequestReady: mockNotifyBoardRequestReady,
+}));
+
+vi.mock("@/lib/washa-ai-dev-access", async (importOriginal) => ({
+    ...await importOriginal<typeof import("@/lib/washa-ai-dev-access")>(),
+    canUseWashaAiDevSurfaceForGeneration: mockCanUseWashaAiDevSurfaceForGeneration,
 }));
 
 vi.mock("@/lib/washa-dtf-studio", () => ({
@@ -181,6 +189,7 @@ describe("generate-mockup route", () => {
         mockGetQuotaStatus.mockReset();
         mockGenerateBoard.mockReset();
         mockNotifyBoardRequestReady.mockReset();
+        mockCanUseWashaAiDevSurfaceForGeneration.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -274,6 +283,7 @@ describe("generate-mockup route", () => {
             boardRequestId: "77777777-7777-4777-8777-777777777777",
         });
         mockNotifyBoardRequestReady.mockResolvedValue({ ok: true });
+        mockCanUseWashaAiDevSurfaceForGeneration.mockResolvedValue(true);
     });
 
     it("returns an uncharged board preview without touching primary readiness or quota reservation", async () => {
@@ -307,6 +317,91 @@ describe("generate-mockup route", () => {
         expect(mockGenerateMockup).not.toHaveBeenCalled();
         expect(mockGetGenerationReadiness).not.toHaveBeenCalled();
         expect(mockGetArtworkProviderReadiness).not.toHaveBeenCalled();
+    });
+
+    it.each(["dev", "dev-v2"] as const)(
+        "keeps the %s surface on the primary pipeline when the global mode is fallback",
+        async (surface) => {
+            mockGetGenerationMode.mockResolvedValue("fallback");
+            mockShouldChargeQuota.mockResolvedValue(true);
+
+            const response = await POST(new Request(
+                "http://localhost/api/washa-dtf-studio/generate-mockup",
+                {
+                    headers: {
+                        "x-request-id": `request-${surface}-primary-isolation`,
+                        referer: `http://localhost/design/washa-ai/${surface}`,
+                    },
+                }
+            ) as NextRequest);
+            const payload = await response.json();
+
+            expect(response.status).toBe(200);
+            expect(mockCanUseWashaAiDevSurfaceForGeneration).toHaveBeenCalledWith(
+                surface,
+                "subscriber"
+            );
+            expect(mockGetGenerationMode).not.toHaveBeenCalled();
+            expect(mockShouldChargeQuota).toHaveBeenCalledWith("primary");
+            expect(mockGenerateMockup).toHaveBeenCalledOnce();
+            expect(mockGenerateBoard).not.toHaveBeenCalled();
+            expect(payload).not.toHaveProperty("mode");
+            expect(payload).not.toHaveProperty("boardImageUrl");
+            expect(payload).not.toHaveProperty("boardRequestId");
+            expect(payload).not.toHaveProperty("disclaimer");
+            expect(payload).not.toHaveProperty("quotaCharged");
+        }
+    );
+
+    it("rejects a dev-surface generation request when that surface is not allowed for the caller", async () => {
+        mockCanUseWashaAiDevSurfaceForGeneration.mockResolvedValue(false);
+        mockGetGenerationMode.mockResolvedValue("fallback");
+
+        const response = await POST(new Request(
+            "http://localhost/api/washa-dtf-studio/generate-mockup",
+            {
+                headers: {
+                    "x-request-id": "request-dev-forbidden",
+                    referer: "http://localhost/design/washa-ai/dev",
+                },
+            }
+        ) as NextRequest);
+
+        expect(response.status).toBe(403);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "AUTH_FORBIDDEN",
+            requestId: "request-dev-forbidden",
+        });
+        expect(mockGetGenerationMode).not.toHaveBeenCalled();
+        expect(mockShouldChargeQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
+    });
+
+    it("does not let a cross-origin Referer impersonate a dev surface", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+
+        const response = await POST(new Request(
+            "http://localhost/api/washa-dtf-studio/generate-mockup",
+            {
+                headers: {
+                    "x-request-id": "request-cross-origin-dev-spoof",
+                    referer: "https://example.test/design/washa-ai/dev-v2",
+                },
+            }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            mode: "fallback",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+        });
+        expect(mockCanUseWashaAiDevSurfaceForGeneration).not.toHaveBeenCalled();
+        expect(mockGetGenerationMode).toHaveBeenCalledOnce();
+        expect(mockGenerateBoard).toHaveBeenCalledOnce();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
 
     it("completes the shared claim and records board success without primary asset metadata", async () => {

@@ -46,6 +46,10 @@ import {
 } from "@/lib/washa-generation-mode";
 import { generateBoard } from "../services/board-generation.service";
 import { notifyBoardRequestReady } from "@/lib/board-request-telegram";
+import {
+    canUseWashaAiDevSurfaceForGeneration,
+    resolveWashaAiDevGenerationSurface,
+} from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
 // gpt-image-2 عند 2048×2048 أبطأ من النماذج الأصغر. الميزانية الزمنية للطلب يجب أن تتّسع
@@ -301,6 +305,19 @@ export async function POST(request: NextRequest) {
             return attachDtfTraceId(accessResult.response, traceId);
         }
         const access = accessResult.access;
+        const devSurface = resolveWashaAiDevGenerationSurface(request);
+        if (
+            devSurface
+            && !await canUseWashaAiDevSurfaceForGeneration(devSurface, access.role)
+        ) {
+            return structuredErrorResponse(
+                traceId,
+                403,
+                "AUTH_FORBIDDEN",
+                "لا يملك المستخدم صلاحية إكمال العملية.",
+                { retryable: false }
+            );
+        }
 
         const suppliedRequestId = request.headers.get("x-request-id")?.trim();
         if (suppliedRequestId && suppliedRequestId !== traceId) {
@@ -353,13 +370,20 @@ export async function POST(request: NextRequest) {
         }
 
         let mode: GenerationMode = "primary";
-        try {
-            mode = await getGenerationMode();
-        } catch (error) {
-            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_mode_read_failed", {
+        if (devSurface) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_mode_locked_to_primary", {
                 selectedMode: "primary",
-                errorName: error instanceof Error ? error.name : "UnknownError",
+                surface: devSurface,
             });
+        } else {
+            try {
+                mode = await getGenerationMode();
+            } catch (error) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_mode_read_failed", {
+                    selectedMode: "primary",
+                    errorName: error instanceof Error ? error.name : "UnknownError",
+                });
+            }
         }
 
         let generationReadiness: ReturnType<typeof getWashaDtfGenerationReadiness> | null = null;
