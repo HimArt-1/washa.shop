@@ -3,6 +3,7 @@ import {
     getPremiumDesignBriefPlacementError,
     premiumDesignBriefSchema,
 } from "@/lib/premium-design-request";
+import { WASHA_AI_V4_ART_STYLE_IDS } from "@/lib/washa-ai-v4-art-styles";
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const washaAiV4BriefSchema = premiumDesignBriefSchema.safeExtend({
@@ -18,7 +19,7 @@ export const washaAiV4GenerateSchema = z.object({
     printPosition: z.enum(["front", "back", "left_chest", "right_chest", "full_back", "custom"]),
     customPrintPosition: z.string().trim().max(160).optional().default(""),
     styleName: z.string().trim().min(2).max(160),
-    artStyleName: z.string().trim().min(2).max(240),
+    artStyleId: z.enum(WASHA_AI_V4_ART_STYLE_IDS, "اختر أسلوبًا فنيًا معتمدًا"),
     artworkColors: z.array(z.object({
         name: z.string().trim().max(60).optional(),
         hex: z.string().trim().regex(HEX_COLOR, "لون التصميم غير صالح"),

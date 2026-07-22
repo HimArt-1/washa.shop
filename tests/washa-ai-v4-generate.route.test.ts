@@ -79,7 +79,7 @@ const validPayload = {
     garmentColorHex: "#1C1C1A",
     printPosition: "front",
     styleName: "Modern Saudi streetwear",
-    artStyleName: "Technical ink illustration",
+    artStyleId: "archival_editorial_ink",
     artworkColors: [{ name: "Bone", hex: "#E7DFC9" }],
 };
 
@@ -152,6 +152,9 @@ describe("WASHA AI v4 generation route", () => {
             height: 4000,
         });
         expect(mocks.buildPrompt).toHaveBeenCalledOnce();
+        expect(mocks.buildPrompt).toHaveBeenCalledWith(expect.objectContaining({
+            artStyleName: expect.stringContaining("Archival editorial ink illustration"),
+        }));
         expect(mocks.generateImage).toHaveBeenCalledOnce();
         expect(mocks.generateImage).toHaveBeenCalledWith(expect.objectContaining({
             genAiApiKey: "v4-dedicated-key",
@@ -197,6 +200,18 @@ describe("WASHA AI v4 generation route", () => {
 
         expect(response.status).toBe(400);
         expect(mocks.checkRateLimit).not.toHaveBeenCalled();
+        expect(mocks.generateImage).not.toHaveBeenCalled();
+    });
+
+    it("rejects an art style that is not part of the curated V4 catalog", async () => {
+        const response = await POST(request({
+            ...validPayload,
+            artStyleId: "freeform_style_injected_by_client",
+        }));
+
+        expect(response.status).toBe(400);
+        expect(mocks.checkRateLimit).not.toHaveBeenCalled();
+        expect(mocks.buildPrompt).not.toHaveBeenCalled();
         expect(mocks.generateImage).not.toHaveBeenCalled();
     });
 

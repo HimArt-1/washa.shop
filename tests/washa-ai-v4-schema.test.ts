@@ -17,7 +17,7 @@ const validRequest = {
     garmentColorHex: "#1C1C1A",
     printPosition: "front",
     styleName: "Modern Saudi streetwear",
-    artStyleName: "Technical ink illustration",
+    artStyleId: "archival_editorial_ink",
     artworkColors: [{ name: "Bone", hex: "#E7DFC9" }],
 };
 

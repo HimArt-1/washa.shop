@@ -9,6 +9,11 @@ import {
 } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState, type ReactNode } from 'react';
+import {
+  getWashaAiV4ArtStyle,
+  WASHA_AI_V4_ART_STYLES,
+  type WashaAiV4ArtStyleId,
+} from '../../../../src/lib/washa-ai-v4-art-styles';
 import SingleImageOutputMonitor from './SingleImageOutputMonitor';
 
 type Composition = 'horizontal' | 'vertical' | 'diagonal' | 'centered' | 'asymmetrical';
@@ -52,7 +57,7 @@ type V4State = {
   printPosition: PrintPosition;
   customPrintPosition: string;
   styleName: string;
-  artStyleName: string;
+  artStyleId: WashaAiV4ArtStyleId;
   artworkColors: Array<{ name: string; hex: string }>;
 };
 
@@ -112,7 +117,7 @@ const INITIAL_STATE: V4State = {
   printPosition: 'front',
   customPrintPosition: '',
   styleName: 'Modern Saudi streetwear',
-  artStyleName: 'Premium editorial illustration',
+  artStyleId: 'archival_editorial_ink',
   artworkColors: [
     { name: 'Bone', hex: '#E7DFC9' },
     { name: 'Ink', hex: '#242724' },
@@ -163,20 +168,21 @@ export default function WashaAiV4() {
     state.brief.mainSubject,
     state.brief.detailOne,
     state.brief.detailTwo,
-    state.artStyleName,
+    state.artStyleId,
   ].every((value) => value.trim().length >= 2), [state]);
   const filledOutputInputs = useMemo(() => [
     state.brief.designIdea,
     state.brief.mainSubject,
     state.brief.detailOne,
     state.brief.detailTwo,
-    state.artStyleName,
+    state.artStyleId,
   ].filter((value) => value.trim().length >= 2).length, [state]);
   const hasArtworkText = Boolean(
     state.brief.mainText.trim() || state.brief.secondaryText.trim(),
   );
 
   const placement = PLACEMENT[state.printPosition];
+  const selectedArtStyle = getWashaAiV4ArtStyle(state.artStyleId);
   const productionValid = state.brief.designWidth >= 5
     && state.brief.designHeight >= 5
     && state.brief.designWidth <= placement.maxWidth
@@ -236,7 +242,7 @@ export default function WashaAiV4() {
           printPosition: state.printPosition,
           customPrintPosition: state.customPrintPosition,
           styleName: state.styleName,
-          artStyleName: state.artStyleName,
+          artStyleId: state.artStyleId,
           artworkColors: state.artworkColors.filter((color) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.hex)),
         }),
       });
@@ -292,7 +298,7 @@ export default function WashaAiV4() {
                       <Field label="العنصر الرئيسي"><input className={fieldClass} value={state.brief.mainSubject} onChange={(event) => updateBrief({ mainSubject: event.target.value })} placeholder="العنصر الذي يقود التكوين" /></Field>
                       <Field label="العناصر الثانوية"><input className={fieldClass} value={state.brief.secondarySubjects} onChange={(event) => updateBrief({ secondarySubjects: event.target.value })} placeholder="اختياري" /></Field>
                       <Field label="البيئة والخلفية داخل الرسم"><input className={fieldClass} value={state.brief.environment} onChange={(event) => updateBrief({ environment: event.target.value })} placeholder="فراغ سلبي، نجوم، عمارة..." /></Field>
-                      <Field label="الأسلوب الفني"><input className={fieldClass} value={state.artStyleName} onChange={(event) => setState((current) => ({ ...current, artStyleName: event.target.value }))} /></Field>
+                      <Field label="الأسلوب الفني" hint={`${selectedArtStyle.labelEn} — ${selectedArtStyle.descriptionAr}`}><select className={fieldClass} value={state.artStyleId} onChange={(event) => setState((current) => ({ ...current, artStyleId: event.target.value as WashaAiV4ArtStyleId }))}>{WASHA_AI_V4_ART_STYLES.map((style) => <option key={style.id} value={style.id}>{style.labelAr}</option>)}</select></Field>
                       <Field label="اتجاه التكوين"><select className={fieldClass} value={state.brief.composition} onChange={(event) => updateBrief({ composition: event.target.value as Composition })}><option value="centered">متمركز</option><option value="diagonal">قطري</option><option value="vertical">رأسي</option><option value="horizontal">أفقي</option><option value="asymmetrical">غير متماثل</option></select></Field>
                       <Field label="الحركة البصرية"><select className={fieldClass} value={state.brief.visualMovement} onChange={(event) => updateBrief({ visualMovement: event.target.value as Movement })}><option value="center_outward">من المركز إلى الخارج</option><option value="lower_left_to_upper_right">من أسفل اليسار إلى أعلى اليمين</option><option value="left_to_right">من اليسار إلى اليمين</option><option value="bottom_to_top">من الأسفل إلى الأعلى</option></select></Field>
                     </div>
@@ -347,7 +353,7 @@ export default function WashaAiV4() {
                       ['الفكرة', state.brief.designIdea || 'غير مكتملة'],
                       ['القطعة', `${state.garmentColorName} / ${state.garmentColorHex}`],
                       ['الطباعة', `${PLACEMENT[state.printPosition].label} · ${state.brief.designWidth} × ${state.brief.designHeight} سم`],
-                      ['الأسلوب', state.artStyleName],
+                      ['الأسلوب', `${selectedArtStyle.labelAr} · ${selectedArtStyle.labelEn}`],
                       ['النص داخل التصميم', hasArtworkText ? [state.brief.mainText, state.brief.secondaryText].filter(Boolean).join(' · ') : 'بدون نص — يمنع المحرك الحروف والعبارات'],
                       ['الخلفية', `${state.brief.background} / ${state.brief.backgroundColor}`],
                     ].map(([label, value]) => <div key={label} className="grid gap-2 py-4 md:grid-cols-[140px_1fr]"><span className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#738075]">{label}</span><span className="text-sm leading-6 text-[#424642]">{value}</span></div>)}

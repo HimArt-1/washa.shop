@@ -41,6 +41,9 @@ describe("WASHA AI v4 architectural isolation", () => {
         expect(client).toContain("الهيرو يسارًا والتفاصيل يمينًا");
         expect(client).not.toContain('<option value="right">يمين</option>');
         expect(client).not.toContain("BoardMap");
+        expect(client).toContain("WASHA_AI_V4_ART_STYLES.map");
+        expect(client).toContain("value={state.artStyleId}");
+        expect(client).not.toContain("value={state.artStyleName}");
         expect(outputMonitor).toContain("NO SIMULATION");
         expect(outputMonitor).toContain("لا توجد معاينة اصطناعية");
         expect(outputMonitor).not.toContain("HERO PRODUCT");

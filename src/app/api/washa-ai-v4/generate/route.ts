@@ -22,6 +22,7 @@ import {
 } from "@/lib/washa-artwork/arabic-text-verification";
 import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 import { verifyPremiumBoardArtworkTextPolicy } from "@/lib/washa-ai-v4-board-text-verification";
+import { getWashaAiV4ArtStylePrompt } from "@/lib/washa-ai-v4-art-style-prompts";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
     let providerStarted = false;
     try {
         const input = parsed.data;
+        const artStylePrompt = getWashaAiV4ArtStylePrompt(input.artStyleId);
         const prompt = buildPremiumDesignRequestPrompt({
             brief: input.brief,
             garmentName: input.garmentName,
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
             printPosition: input.printPosition,
             customPrintPosition: input.customPrintPosition,
             styleName: input.styleName,
-            artStyleName: input.artStyleName,
+            artStyleName: artStylePrompt,
             artworkColors: input.artworkColors,
         });
         providerStarted = true;
