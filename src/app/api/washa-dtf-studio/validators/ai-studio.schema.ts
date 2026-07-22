@@ -37,6 +37,8 @@ export const generationContextSchema = z.object({
     printOffsetY: z.number().min(-45).max(45).nullable().optional(),
 });
 
+export type GenerationContext = z.infer<typeof generationContextSchema>;
+
 export const generateMockupSchema = z.object({
     prompt: z.string().trim().min(1, "الوصف مطلوب").max(12_000, "الوصف طويل جداً"),
     referenceImage: aiImageReferenceSchema.optional().nullable(),

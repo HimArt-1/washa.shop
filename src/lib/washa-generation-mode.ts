@@ -3,6 +3,10 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { createTimeoutFetch, readPositiveIntegerEnv } from "@/lib/async-timeout";
 import type { Database } from "@/types/database";
+import {
+    normalizeBoardPromptTemplate,
+    type BoardPromptTemplate,
+} from "@/lib/washa-board-prompt";
 
 export type GenerationMode = "primary" | "fallback";
 export type QuotaManualOverride = "enabled" | "disabled" | null;
@@ -45,7 +49,9 @@ function getAdminSupabase() {
     });
 }
 
-async function readSiteSettingValue(key: "generation_mode" | "quota_charging"): Promise<unknown> {
+async function readSiteSettingValue(
+    key: "generation_mode" | "board_prompt_template" | "quota_charging"
+): Promise<unknown> {
     try {
         const supabase = getAdminSupabase();
         if (!supabase) return undefined;
@@ -89,6 +95,12 @@ export function normalizeQuotaChargingConfig(value: unknown): QuotaChargingConfi
 
 export async function getGenerationMode(): Promise<GenerationMode> {
     return normalizeGenerationMode(await readSiteSettingValue("generation_mode"));
+}
+
+export async function getBoardPromptTemplate(): Promise<BoardPromptTemplate> {
+    return normalizeBoardPromptTemplate(
+        await readSiteSettingValue("board_prompt_template")
+    );
 }
 
 export async function getQuotaChargingConfig(): Promise<QuotaChargingConfig> {

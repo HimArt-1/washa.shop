@@ -23,6 +23,12 @@ import {
     type GenerationMode,
     type QuotaChargingConfig,
 } from "@/lib/washa-generation-mode";
+import {
+    DEFAULT_BOARD_PROMPT_TEMPLATE,
+    getMissingBoardPromptPlaceholders,
+    normalizeBoardPromptTemplate,
+    type BoardPromptTemplate,
+} from "@/lib/washa-board-prompt";
 
 const SITE_SETTINGS_CACHE_TAG = "site-settings";
 const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
@@ -30,54 +36,6 @@ const SITE_SETTINGS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("SITE_SETTINGS_QUE
 const SITE_SETTINGS_CACHE_REVALIDATE_SECONDS = readPositiveIntegerEnv("SITE_SETTINGS_CACHE_REVALIDATE_SECONDS", 120, 10, 3600);
 
 export type WashaAiDevAccessMode = "disabled" | "admin" | "link";
-declare const boardPromptTemplateBrand: unique symbol;
-export type BoardPromptTemplate = string & {
-    readonly [boardPromptTemplateBrand]: true;
-};
-
-const REQUIRED_BOARD_PROMPT_PLACEHOLDERS = [
-    "{{GARMENT_COLOR}}",
-    "{{PLACEMENT}}",
-    "{{WIDTH}}",
-    "{{HEIGHT}}",
-    "{{DESIGN_DESCRIPTION}}",
-    "{{STYLE}}",
-    "{{TEXT_BLOCK}}",
-] as const;
-
-const DEFAULT_BOARD_PROMPT_TEMPLATE = `Create a premium streetwear apparel presentation board. Single image, square 1:1 composition, high resolution.
-
-═══ LAYOUT — one square image split into two stacked zones ═══
-
-TOP ZONE (upper ~55%):
-A realistic premium oversized boxy t-shirt, front view, in color {{GARMENT_COLOR}}.
-The custom design is printed on the {{PLACEMENT}} at an approximate size of {{WIDTH}}cm × {{HEIGHT}}cm.
-The print must look genuinely integrated into the fabric — following folds, preserving cotton texture, clean DTF edges, NO white box, NO sticker effect, NO floating rectangle.
-Studio lighting, soft shadows, neutral background.
-
-BOTTOM ZONE (lower ~45%):
-The SAME design shown flat and complete, isolated on a neutral background, centered, uncropped, no garment, no folds, no perspective.
-This must be visually identical to the print in the top zone.
-
-Below the flat design, show simple indicative measurement guides:
-- horizontal line labeled with the width
-- vertical line labeled with the height
-Keep measurement text minimal and in Latin numerals only (e.g. "40 cm", "27 cm").
-These measurements are INDICATIVE ONLY.
-
-═══ THE DESIGN ═══
-
-{{DESIGN_DESCRIPTION}}
-
-Art style: {{STYLE}}
-{{TEXT_BLOCK}}
-
-═══ HARD RULES ═══
-- The design in both zones must be identical.
-- Do NOT invent extra graphics, logos, badges, or frames.
-- Do NOT generate any text other than what is explicitly requested and the measurement labels.
-- Do NOT write Arabic text as image content unless it is part of the requested design.
-- Keep the whole board clean, minimal, editorial, premium.` as BoardPromptTemplate;
 
 // ─── Admin Supabase Client ──────────────────────────────────
 
@@ -424,20 +382,6 @@ function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSett
             fallback?.controls ?? DEFAULT_SITE_SETTINGS.washa_ai!.controls!
         ),
     };
-}
-
-function getMissingBoardPromptPlaceholders(value: unknown) {
-    if (typeof value !== "string" || value.trim().length === 0) {
-        return [...REQUIRED_BOARD_PROMPT_PLACEHOLDERS];
-    }
-    return REQUIRED_BOARD_PROMPT_PLACEHOLDERS.filter((placeholder) => !value.includes(placeholder));
-}
-
-function normalizeBoardPromptTemplate(value: unknown): BoardPromptTemplate {
-    if (typeof value !== "string" || getMissingBoardPromptPlaceholders(value).length > 0) {
-        return DEFAULT_BOARD_PROMPT_TEMPLATE;
-    }
-    return value as BoardPromptTemplate;
 }
 
 function coerceBooleanSetting(value: unknown, fallback: boolean) {

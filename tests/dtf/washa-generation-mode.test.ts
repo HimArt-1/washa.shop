@@ -9,10 +9,15 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 import {
+    getBoardPromptTemplate,
     getGenerationMode,
     getQuotaChargingConfig,
     shouldChargeQuota,
 } from "@/lib/washa-generation-mode";
+import {
+    DEFAULT_BOARD_PROMPT_TEMPLATE,
+    REQUIRED_BOARD_PROMPT_PLACEHOLDERS,
+} from "@/lib/washa-board-prompt";
 
 function mockSettingLookup(result: unknown, error: unknown = null, rejection?: unknown) {
     const maybeSingle = rejection === undefined
@@ -55,6 +60,32 @@ describe("WASHA generation mode", () => {
         expect(select).toHaveBeenCalledWith("value");
         expect(eq).toHaveBeenCalledWith("key", "generation_mode");
         expect(maybeSingle).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads a complete board prompt template without cache", async () => {
+        process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+        process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+        const customTemplate = REQUIRED_BOARD_PROMPT_PLACEHOLDERS.join(" | ");
+        const { eq, maybeSingle } = mockSettingLookup(customTemplate);
+
+        await expect(getBoardPromptTemplate()).resolves.toBe(customTemplate);
+        await expect(getBoardPromptTemplate()).resolves.toBe(customTemplate);
+
+        expect(eq).toHaveBeenCalledWith("key", "board_prompt_template");
+        expect(maybeSingle).toHaveBeenCalledTimes(2);
+        expect(mockCreateClient).toHaveBeenCalledTimes(2);
+    });
+
+    it("uses the approved board template when its operational read is unavailable or invalid", async () => {
+        await expect(getBoardPromptTemplate()).resolves.toBe(DEFAULT_BOARD_PROMPT_TEMPLATE);
+
+        process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+        process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+        mockSettingLookup("template missing controls");
+        await expect(getBoardPromptTemplate()).resolves.toBe(DEFAULT_BOARD_PROMPT_TEMPLATE);
+
+        mockSettingLookup(undefined, { message: "read failed" });
+        await expect(getBoardPromptTemplate()).resolves.toBe(DEFAULT_BOARD_PROMPT_TEMPLATE);
     });
 
     it("returns primary when the Supabase client constructor throws", async () => {
