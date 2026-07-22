@@ -83,7 +83,10 @@ self.addEventListener("fetch", (event) => {
     const copy = response.clone();
     caches.open(CACHE_NAME).then((cache) => cache.put(APP_PATH, copy));
     return response;
-  }).catch(() => caches.match(APP_PATH)));
+  }).catch(async () => (await caches.match(APP_PATH)) || new Response(
+    "WASHA AI Prompt Native is offline",
+    { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+  )));
 });
 `.trimStart();
 }

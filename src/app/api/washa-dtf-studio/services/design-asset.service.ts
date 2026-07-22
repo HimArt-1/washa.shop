@@ -1102,26 +1102,29 @@ export class DesignAssetService {
             referenceMockupId: params.mockup.id,
             printAreaId: params.mockup.printAreaId,
         };
+        const effects = {
+            garmentMask: await materializeOptional(params.mockup.garmentMaskUrl),
+            shadingMap: await materializeOptional(params.mockup.shadingMapUrl),
+            displacementMap: await materializeOptional(params.mockup.displacementMapUrl),
+            perspectiveTransform: params.mockup.perspectiveTransform,
+        };
+        const deterministicComposite = await compositeArtworkPreview({
+            garmentBase,
+            masterArtwork: params.masterBuffer,
+            printArea: params.mockup.printArea,
+            placement: effectivePlacement,
+            effects,
+        });
         const composite = params.pipeline === "prompt_native"
             ? await composePromptNativeMockup({
                 garmentBase,
                 masterArtwork: params.masterBuffer,
+                placementGuide: deterministicComposite.buffer,
                 printArea: params.mockup.printArea,
                 placement: effectivePlacement,
                 traceId: params.requestId,
             })
-            : await compositeArtworkPreview({
-                garmentBase,
-                masterArtwork: params.masterBuffer,
-                printArea: params.mockup.printArea,
-                placement: effectivePlacement,
-                effects: {
-                    garmentMask: await materializeOptional(params.mockup.garmentMaskUrl),
-                    shadingMap: await materializeOptional(params.mockup.shadingMapUrl),
-                    displacementMap: await materializeOptional(params.mockup.displacementMapUrl),
-                    perspectiveTransform: params.mockup.perspectiveTransform,
-                },
-            });
+            : deterministicComposite;
         return DesignAssetService.recordDerivative({
             master: params.master,
             requestId: params.requestId,

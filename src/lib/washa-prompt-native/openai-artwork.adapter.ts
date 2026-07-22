@@ -9,7 +9,9 @@ import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
 
 const DEFAULT_MODEL = "gpt-image-1.5";
 const DEFAULT_SIZE = "1024x1536";
-const DEFAULT_TIMEOUT_MS = 90_000;
+// Two alpha-validation attempts must fit inside the 300s route budget together
+// with text verification, Gemini composition, persistence, and response work.
+const DEFAULT_TIMEOUT_MS = 70_000;
 const MAX_ATTEMPTS = 2;
 
 type OpenAiImageResponse = {
@@ -36,7 +38,7 @@ function configuredTimeoutMs() {
         10
     );
     return Number.isFinite(parsed)
-        ? Math.min(120_000, Math.max(20_000, parsed))
+        ? Math.min(70_000, Math.max(20_000, parsed))
         : DEFAULT_TIMEOUT_MS;
 }
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 150;
 
 export async function POST(request: NextRequest) {
     const accessResult = await requireDtfRouteAccess();

@@ -54,11 +54,31 @@ async function garmentPng() {
     }).png().toBuffer();
 }
 
+async function compositedMockupPng(garment: Buffer, artwork: Buffer) {
+    const overlay = await sharp(artwork).resize(72, 72, { fit: "contain" }).png().toBuffer();
+    return sharp(garment).composite([{ input: overlay, left: 44, top: 64 }]).png().toBuffer();
+}
+
+function verifiedMockupResponse(overrides: Record<string, unknown> = {}) {
+    return {
+        pass: true,
+        artworkVisible: true,
+        artworkIdentityPreserved: true,
+        textPreserved: true,
+        garmentIdentityPreserved: true,
+        placementPlausible: true,
+        framingPreserved: true,
+        issues: [],
+        ...overrides,
+    };
+}
+
 describe("WASHA AI Prompt Native pipeline", () => {
     beforeEach(() => {
         vi.resetModules();
         vi.stubEnv("OPENAI_API_KEY", "openai-test-key");
         vi.stubEnv("GEMINI_API_KEY", "gemini-test-key");
+        vi.stubEnv("WASHA_DTF_GENERATION_ENABLED", "true");
         vi.stubEnv("WASHA_DTF_MIN_ARTWORK_DIMENSION", "64");
         vi.stubEnv("WASHA_PROMPT_NATIVE_OPENAI_MODEL", "gpt-image-1.5");
         vi.stubEnv("WASHA_PROMPT_NATIVE_GEMINI_MODEL", "gemini-3.1-flash-image");
@@ -137,13 +157,16 @@ describe("WASHA AI Prompt Native pipeline", () => {
         expect(result.normalization.backgroundRemovalApplied).toBe(false);
     });
 
-    it("gives Gemini the selected mockup first and immutable artwork second", async () => {
+    it("gives Gemini the selected mockup, immutable artwork, and deterministic placement guide", async () => {
         const garment = await garmentPng();
         const artwork = await artworkPng(0);
-        const generated = await garmentPng();
-        let request: any;
+        const generated = await compositedMockupPng(garment, artwork);
+        const requests: any[] = [];
         mockGenerateContent.mockImplementation(async (input: any) => {
-            request = input;
+            requests.push(input);
+            if (requests.length === 2) {
+                return { text: JSON.stringify(verifiedMockupResponse()) };
+            }
             return {
                 candidates: [{
                     content: {
@@ -164,6 +187,7 @@ describe("WASHA AI Prompt Native pipeline", () => {
         const result = await composePromptNativeMockup({
             garmentBase: garment,
             masterArtwork: artwork,
+            placementGuide: generated,
             printArea: { x: 0.28, y: 0.2, width: 0.44, height: 0.5 },
             placement: {
                 side: "front",
@@ -182,19 +206,105 @@ describe("WASHA AI Prompt Native pipeline", () => {
             traceId: "prompt-native-mockup",
         });
 
-        expect(request.model).toBe("gemini-3.1-flash-image");
-        const parts = request.contents.parts;
+        expect(requests).toHaveLength(2);
+        expect(requests[0].model).toBe("gemini-3.1-flash-image");
+        const parts = requests[0].contents.parts;
         expect(parts[0].text).toContain("REFERENCE IMAGE A");
         expect(parts[1].inlineData.data).toBe(garment.toString("base64"));
         expect(parts[2].text).toContain("REFERENCE IMAGE B");
         expect(parts[3].inlineData.data).toBe(artwork.toString("base64"));
-        expect(parts[4].text).toContain("immutable print artwork");
-        expect(parts[4].text).toContain("0.28");
+        expect(parts[4].text).toContain("REFERENCE IMAGE C");
+        expect(parts[5].inlineData.data).toBe(generated.toString("base64"));
+        expect(parts[6].text).toContain("immutable print artwork");
+        expect(parts[6].text).toContain("0.28");
+        expect(requests[1].contents.parts).toHaveLength(9);
         expect(result.mimeType).toBe("image/webp");
         expect(result.transformationMetadata).toMatchObject({
             pipeline: "prompt_native",
             previewProvider: "gemini",
             artworkMutationAllowed: false,
+            verification: { pass: true, artworkIdentityPreserved: true },
         });
+    });
+
+    it("rejects a readable Gemini image when the artwork identity gate fails", async () => {
+        const garment = await garmentPng();
+        const artwork = await artworkPng(0);
+        mockGenerateContent
+            .mockResolvedValueOnce({
+                candidates: [{ content: { parts: [{ inlineData: {
+                    mimeType: "image/png",
+                    data: garment.toString("base64"),
+                } }] } }],
+            })
+            .mockResolvedValueOnce({
+                text: JSON.stringify(verifiedMockupResponse({
+                    pass: false,
+                    artworkVisible: false,
+                    artworkIdentityPreserved: false,
+                    issues: ["Artwork is absent from the garment."],
+                })),
+            });
+
+        const { composePromptNativeMockup } = await import(
+            "@/lib/washa-prompt-native/gemini-mockup.adapter"
+        );
+        await expect(composePromptNativeMockup({
+            garmentBase: garment,
+            masterArtwork: artwork,
+            placementGuide: garment,
+            printArea: { x: 0.28, y: 0.2, width: 0.44, height: 0.5 },
+            placement: {
+                side: "front", x: 0.5, y: 0.5, scale: 0.8, rotation: 0,
+                printWidthCm: 28, printHeightCm: 34, anchorX: 0.5, anchorY: 0.5,
+                referenceMockupId: "mockup-1", printAreaId: "front_main", transformVersion: 1,
+            },
+            traceId: "prompt-native-mockup-rejected",
+        })).rejects.toThrow("identity verification");
+    });
+
+    it("rejects an impossible placement before calling Gemini", async () => {
+        const garment = await garmentPng();
+        const artwork = await artworkPng(0);
+        const { composePromptNativeMockup } = await import(
+            "@/lib/washa-prompt-native/gemini-mockup.adapter"
+        );
+
+        await expect(composePromptNativeMockup({
+            garmentBase: garment,
+            masterArtwork: artwork,
+            placementGuide: garment,
+            printArea: { x: 0.28, y: 0.2, width: 0.44, height: 0.5 },
+            placement: {
+                side: "front", x: 0.95, y: 0.5, scale: 1, rotation: 0,
+                printWidthCm: 28, printHeightCm: 34, anchorX: 0.5, anchorY: 0.5,
+                referenceMockupId: "mockup-1", printAreaId: "front_main", transformVersion: 1,
+            },
+            traceId: "prompt-native-placement-rejected",
+        })).rejects.toMatchObject({ code: "ARTWORK_PLACEMENT_INVALID" });
+        expect(mockGenerateContent).not.toHaveBeenCalled();
+    });
+
+    it("requires both Prompt Native providers before starting the pipeline", async () => {
+        const { getPromptNativeReadiness } = await import(
+            "@/lib/washa-prompt-native/readiness"
+        );
+        expect(getPromptNativeReadiness()).toMatchObject({ ready: true });
+
+        vi.stubEnv("GEMINI_API_KEY", "");
+        expect(getPromptNativeReadiness()).toMatchObject({
+            ready: false,
+            missing: ["GEMINI_API_KEY"],
+        });
+    });
+
+    it("selects the nearest supported Gemini ratio without forcing portrait mockups to 4:5", async () => {
+        const { resolvePromptNativeAspectRatio } = await import(
+            "@/lib/washa-prompt-native/gemini-mockup.adapter"
+        );
+
+        expect(resolvePromptNativeAspectRatio(1200, 1800)).toBe("2:3");
+        expect(resolvePromptNativeAspectRatio(1080, 1920)).toBe("9:16");
+        expect(resolvePromptNativeAspectRatio(1600, 900)).toBe("16:9");
     });
 });

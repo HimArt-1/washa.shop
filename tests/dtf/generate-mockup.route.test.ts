@@ -167,6 +167,9 @@ function generationResult(preview = "https://cdn.example/mockup-front.webp") {
 describe("generate-mockup route", () => {
     beforeEach(() => {
         vi.stubEnv("WASHA_AI_DEV_SURFACE_SECRET", "test-dev-surface-secret");
+        vi.stubEnv("WASHA_DTF_GENERATION_ENABLED", "true");
+        vi.stubEnv("OPENAI_API_KEY", "openai-test-key");
+        vi.stubEnv("GEMINI_API_KEY", "gemini-test-key");
         mockRequireDtfRouteAccess.mockReset();
         mockClaimDtfGenerationRequest.mockReset();
         mockCompleteDtfGenerationRequest.mockReset();
@@ -351,6 +354,11 @@ describe("generate-mockup route", () => {
                 pipeline: surface === "dev-v3" ? "prompt_native" : "standard",
             }));
             expect(mockGenerateBoard).not.toHaveBeenCalled();
+            if (surface === "dev-v3") {
+                expect(mockRecordGenerationSuccess).not.toHaveBeenCalled();
+            } else {
+                expect(mockRecordGenerationSuccess).toHaveBeenCalledOnce();
+            }
             expect(payload).not.toHaveProperty("mode");
             expect(payload).not.toHaveProperty("boardImageUrl");
             expect(payload).not.toHaveProperty("boardRequestId");
@@ -1717,6 +1725,38 @@ describe("generate-mockup route", () => {
                 errorMessage: "انتهت مهلة التوليد من المزود الخارجي.",
             })
         );
+    });
+
+    it("keeps a Prompt Native provider failure out of the standard circuit breaker", async () => {
+        mockGenerateMockup.mockRejectedValue(new Error("gemini prompt-native timeout"));
+        mockGetWashaDtfErrorDetails.mockReturnValue({
+            message: "انتهت مهلة توليد الموكب.",
+            status: 504,
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: createWashaAiDevGenerationHeaders("dev-v3") }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(mockRecordGenerationFailure).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledOnce();
+    });
+
+    it("rejects Prompt Native before claim and quota work when Gemini is not configured", async () => {
+        vi.stubEnv("GEMINI_API_KEY", "");
+        vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "");
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: createWashaAiDevGenerationHeaders("dev-v3") }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(mockClaimDtfGenerationRequest).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
 
     it("rejects unexpected writing and refunds quota while automatic retry is disabled", async () => {

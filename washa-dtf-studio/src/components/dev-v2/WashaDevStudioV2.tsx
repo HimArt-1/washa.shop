@@ -910,10 +910,10 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
           <div className="flex items-center justify-between gap-3 px-2 pb-4">
             <div>
               <p className="text-xs font-black text-washa-gold">{isPromptNative ? 'مسار أصل الطباعة' : 'واجهة التوليد'}</p>
-              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : 'الموكب الواقعي' : 'لوحة التكوين'}</p>
+              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : isPromptNative ? 'الموكب الواقعي' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
             </div>
             <span className="rounded-2xl border border-washa-bg/10 bg-washa-bg/10 px-3 py-2 text-xs font-black text-washa-bg/80">
-              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : 'GEMINI COMPOSITE' : 'بانتظار النتيجة'}
+              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : isPromptNative ? 'GEMINI COMPOSITE' : 'جاهز للسلة' : 'بانتظار النتيجة'}
             </span>
           </div>
 

@@ -50,6 +50,7 @@ import {
     canUseWashaAiDevSurfaceForGeneration,
     resolveWashaAiDevGenerationSurface,
 } from "@/lib/washa-ai-dev-access";
+import { getPromptNativeReadiness } from "@/lib/washa-prompt-native/readiness";
 
 export const runtime = "nodejs";
 // gpt-image-2 عند 2048×2048 أبطأ من النماذج الأصغر. الميزانية الزمنية للطلب يجب أن تتّسع
@@ -406,7 +407,9 @@ export async function POST(request: NextRequest) {
         let generationReadiness: ReturnType<typeof getWashaDtfGenerationReadiness> | null = null;
         let hasPersistedAttempt = false;
         if (mode === "primary") {
-            generationReadiness = getWashaDtfGenerationReadiness();
+            if (pipeline === "standard") {
+                generationReadiness = getWashaDtfGenerationReadiness();
+            }
             const existingGeneration = await DesignAssetService.getExistingGeneration(
                 access.profileId,
                 traceId
@@ -428,7 +431,31 @@ export async function POST(request: NextRequest) {
                 access.profileId,
                 traceId
             );
-            if (!hasPersistedAttempt && !generationReadiness.enabled) {
+            const promptNativeReadiness = pipeline === "prompt_native"
+                ? getPromptNativeReadiness({
+                    requireArtworkProvider: !hasPersistedAttempt,
+                })
+                : null;
+            if (promptNativeReadiness && !promptNativeReadiness.ready) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "prompt_native_unavailable", {
+                    statusCode: 503,
+                    errorCode: "PROMPT_NATIVE_PROVIDER_UNAVAILABLE",
+                    missing: promptNativeReadiness.missing,
+                    hasPersistedAttempt,
+                });
+                return structuredErrorResponse(
+                    traceId,
+                    503,
+                    "IMAGE_PROVIDER_UNAVAILABLE",
+                    promptNativeReadiness.message,
+                    { retryable: false }
+                );
+            }
+            if (
+                !hasPersistedAttempt
+                && generationReadiness
+                && !generationReadiness.enabled
+            ) {
                 logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_unavailable", {
                     provider: generationReadiness.provider ?? null,
                     statusCode: 503,
@@ -447,8 +474,14 @@ export async function POST(request: NextRequest) {
                     }
                 );
             }
-            const artworkProviderReadiness = getIsolatedArtworkProviderReadiness();
-            if (!hasPersistedAttempt && !artworkProviderReadiness.ready) {
+            const artworkProviderReadiness = pipeline === "standard"
+                ? getIsolatedArtworkProviderReadiness()
+                : null;
+            if (
+                !hasPersistedAttempt
+                && artworkProviderReadiness
+                && !artworkProviderReadiness.ready
+            ) {
                 return structuredErrorResponse(
                     traceId,
                     503,
@@ -952,7 +985,9 @@ export async function POST(request: NextRequest) {
             },
             pipeline,
         });
-        recordWashaDtfGenerationSuccess();
+        if (pipeline === "standard") {
+            recordWashaDtfGenerationSuccess();
+        }
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {
             resolvedProvider: generationReadiness?.provider ?? "configured",
             attemptedProvider: generationResult.provider,
@@ -1045,7 +1080,10 @@ export async function POST(request: NextRequest) {
                 }
             );
         } else {
-            if (handled.status === 429 || handled.status >= 500) {
+            if (
+                pipeline === "standard"
+                && (handled.status === 429 || handled.status >= 500)
+            ) {
                 recordWashaDtfGenerationFailure(error);
             }
             const providerAttempts = getWashaDtfProviderAttempts(error);
