@@ -84,6 +84,8 @@ interface GenerateOptions {
   retryIdentity?: GenerationRetryIdentity;
 }
 
+type GenerationAttemptOutcome = 'succeeded' | 'preview' | 'failed' | 'not_started';
+
 interface DesignContextType {
   step: number;
   setStep: (step: number) => void;
@@ -98,6 +100,7 @@ interface DesignContextType {
   isMockupCurrent: boolean;
   extractedImage: string | null;
   generationResult: GeneratedArtworkResult | null;
+  generationAttemptOutcome: GenerationAttemptOutcome | null;
   isBoardPreview: boolean;
   generationDisclaimer: 'preview_only' | null;
   error: string | null;
@@ -109,7 +112,7 @@ interface DesignContextType {
   orderResult: OrderResult | null;
   submitOrder: () => Promise<boolean>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleGenerate: (options?: GenerateOptions) => Promise<void>;
+  handleGenerate: (options?: GenerateOptions) => Promise<GenerationAttemptOutcome>;
   handleExtract: () => Promise<void>;
   handleDownload: (imageUrl: string, filename: string) => void;
   resetDesign: () => void;
@@ -284,6 +287,7 @@ export function DesignProvider({
   const [mockupState, setMockupState] = useState<DesignState | null>(null);
   const [extractedImage, setExtractedImage] = useState<string | null>(null);
   const [generationResult, setGenerationResult] = useState<GeneratedArtworkResult | null>(null);
+  const [generationAttemptOutcome, setGenerationAttemptOutcome] = useState<GenerationAttemptOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [structuredGenerationError, setStructuredGenerationError] =
     useState<StructuredGenerationErrorState | null>(null);
@@ -299,8 +303,8 @@ export function DesignProvider({
   const restoredAuthDraftRef = useRef(false);
   const generationInFlightRef = useRef(false);
   const generationRetryRef = useRef<{ fingerprint: string; requestId: string } | null>(null);
-  const handleGenerateRef = useRef<(options?: GenerateOptions) => Promise<void>>(
-    async () => undefined
+  const handleGenerateRef = useRef<(options?: GenerateOptions) => Promise<GenerationAttemptOutcome>>(
+    async () => 'not_started'
   );
   const structuredRecoveryRef = useRef<StructuredRecoveryCoordinator | null>(null);
   if (structuredRecoveryRef.current === null) {
@@ -587,7 +591,11 @@ export function DesignProvider({
     window.location.assign(url);
   }, [authGateIntent, mockupImage, showToast, state]);
 
-  const handleGenerate = useCallback(async (options: GenerateOptions = {}) => {
+  const handleGenerate = useCallback(async (options: GenerateOptions = {}): Promise<GenerationAttemptOutcome> => {
+    const reportOutcome = (outcome: GenerationAttemptOutcome) => {
+      setGenerationAttemptOutcome(outcome);
+      return outcome;
+    };
     const isAutomaticRetry = typeof options.automaticRetryAttempt === 'number';
     const canRetryExpiredReadiness = canBypassDisabledReadiness({
       isAutomaticRetry,
@@ -603,12 +611,12 @@ export function DesignProvider({
       && structuredGenerationError?.userAction === 'wait_and_retry'
       && structuredGenerationError.retryRemainingMs > 0
     ) {
-      return;
+      return reportOutcome('not_started');
     }
     if (!isAutomaticRetry) {
       cancelStructuredRecovery();
     }
-    if (generationInFlightRef.current || isGenerating) return;
+    if (generationInFlightRef.current || isGenerating) return 'not_started';
     if (
       config?.generation?.enabled === false
       && !canRetryExpiredReadiness
@@ -629,48 +637,48 @@ export function DesignProvider({
         });
         setError(readiness.message);
         showToast(readiness.message, 'error');
-        return;
+        return reportOutcome('not_started');
       }
       const message = legacyMessage;
       setError(message);
       showToast(message, 'error');
-      return;
+      return reportOutcome('not_started');
     }
     if (state.designMethod === 'calligraphy') {
       if (!state.calligraphyText.trim()) {
         setError('يرجى كتابة الجملة أو النص المراد تحويله لمخطوطة');
         showToast('يرجى كتابة النص المراد تصميمه', 'error');
-        return;
+        return reportOutcome('failed');
       }
     } else if (!state.prompt && !state.referenceImage) {
       setError('يرجى إدخال وصف أو رفع صورة مرجعية');
       showToast('يرجى إدخال وصف أو رفع صورة مرجعية', 'error');
-      return;
+      return reportOutcome('failed');
     }
 
     if (!state.garmentType || !state.garmentColor || !state.garmentSize || !state.style || !state.technique || !state.paletteId) {
       setError('إعدادات القطعة أو النمط غير مكتملة.');
       showToast('أكمل القطعة واللون والمقاس والأسلوب قبل التوليد', 'error');
-      return;
+      return reportOutcome('failed');
     }
 
     if (selectedSize?.stockStatus === 'out') {
       setError('المقاس المحدد غير متوفر حالياً.');
       showToast('اختر مقاساً متوفراً قبل المتابعة', 'error');
-      return;
+      return reportOutcome('failed');
     }
 
     if (state.paletteId === CUSTOM_PALETTE_ID && !state.customPalette?.trim()) {
       setError('يرجى كتابة وصف لوحة الألوان المخصصة.');
       showToast('اكتب وصف لوحة الألوان المخصصة قبل التوليد', 'error');
-      return;
+      return reportOutcome('failed');
     }
 
     generationInFlightRef.current = true;
     const authenticated = await requireAuthenticatedAction('generate');
     if (!authenticated) {
       generationInFlightRef.current = false;
-      return;
+      return reportOutcome('not_started');
     }
 
     let sessionToken: string | null = null;
@@ -681,14 +689,14 @@ export function DesignProvider({
       setError(message);
       showToast(message, 'error');
       generationInFlightRef.current = false;
-      return;
+      return reportOutcome('failed');
     }
     if (!sessionToken) {
       const message = 'تعذّر التحقق من جلسة الدخول مؤقتاً.';
       setError(message);
       showToast(message, 'error');
       generationInFlightRef.current = false;
-      return;
+      return reportOutcome('failed');
     }
 
     setIsGenerating(true);
@@ -809,9 +817,11 @@ export function DesignProvider({
         setMockupState({ ...state });
         setExtractedImage(isBoardPreviewResult(generated) ? null : generated.masterAssetUrl);
         showToast('تم توليد التصميم بنجاح', 'success');
+        return reportOutcome(isBoardPreviewResult(generated) ? 'preview' : 'succeeded');
       } else {
         setError('لم تصل صورة صالحة من خدمة التوليد. نتيجتك السابقة محفوظة ويمكنك إعادة المحاولة.');
         showToast('لم تصل صورة صالحة؛ أعد المحاولة', 'error');
+        return reportOutcome('failed');
       }
     } catch (generationError) {
       // نفاد الحصة ليس خطأً — نافذة الرصيد اللطيفة تتكفّل به (حدث washa:quota-exceeded).
@@ -829,7 +839,7 @@ export function DesignProvider({
             const message = 'وصلت إلى حد تجربة الزائر، وتعذر حفظ اختياراتك في المتصفح. أبقِ الصفحة مفتوحة ثم سجّل الدخول من صفحة أخرى.';
             setError(message);
             showToast(message, 'error');
-            return;
+            return reportOutcome('failed');
           }
           setAuthGateNotice(
             draft.referenceImageOmitted
@@ -838,7 +848,7 @@ export function DesignProvider({
           );
           setAuthGateIntent('generate');
         }
-        return;
+        return reportOutcome('not_started');
       }
 
       const structuredError = getStructuredStudioError(generationError);
@@ -870,10 +880,10 @@ export function DesignProvider({
               : 'انتهت جلسة الدخول. سجّل الدخول مجددًا، وأبقِ هذه الصفحة مفتوحة للحفاظ على اختياراتك.'
           );
           setAuthGateIntent('generate');
-          return;
+          return reportOutcome('failed');
         }
 
-        return;
+        return reportOutcome('failed');
       }
 
       const message = getReadableErrorMessage(generationError, PUBLIC_GENERATION_ERROR, 'generation');
@@ -884,6 +894,7 @@ export function DesignProvider({
       const finalMessage = `${message}${timeoutHint}`;
       setError(finalMessage);
       showToast(finalMessage, 'error');
+      return reportOutcome('failed');
     } finally {
       setIsGenerating(false);
       generationInFlightRef.current = false;
@@ -1163,6 +1174,7 @@ export function DesignProvider({
     setMockupState(null);
     setExtractedImage(null);
     setGenerationResult(null);
+    setGenerationAttemptOutcome(null);
     setError(null);
     setPromptFieldError(false);
     setOrderResult(null);
@@ -1187,6 +1199,7 @@ export function DesignProvider({
         isMockupCurrent,
         extractedImage,
         generationResult,
+        generationAttemptOutcome,
         isBoardPreview,
         generationDisclaimer,
         error,
