@@ -11,6 +11,7 @@ const {
     mockRunNanoBananaDataUrl,
     mockRunReplicatePredictions,
     mockGenerateBoardProviderImage,
+    mockNormalizeBoardImageBuffer,
     mockUploadOptimizedImage,
     mockLogDtfTrace,
 } = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ const {
     mockRunNanoBananaDataUrl: vi.fn(),
     mockRunReplicatePredictions: vi.fn(),
     mockGenerateBoardProviderImage: vi.fn(),
+    mockNormalizeBoardImageBuffer: vi.fn(),
     mockUploadOptimizedImage: vi.fn(),
     mockLogDtfTrace: vi.fn(),
 }));
@@ -42,7 +44,12 @@ vi.mock("@/lib/washa-dtf-studio", () => ({
 }));
 
 vi.mock("@/lib/openai-image", () => ({
+    isGptImage2Model: (model: string) => model.startsWith("gpt-image-2"),
     runOpenAIGenerateDataUrl: mockRunOpenAIGenerateDataUrl,
+}));
+
+vi.mock("@/lib/board-image-normalization", () => ({
+    normalizeBoardImageBuffer: mockNormalizeBoardImageBuffer,
 }));
 
 vi.mock("@/lib/gemini-rest-image", () => ({
@@ -140,6 +147,8 @@ function createSupabaseHarness(existing: Record<string, unknown> | null = null) 
 
 describe("board generation service", () => {
     beforeEach(() => {
+        const validPng = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+        const normalizedWebp = "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEAAUAmJQBOgCHwAP7+AAA=";
         vi.clearAllMocks();
         vi.stubEnv("WASHA_DTF_IMAGE_PROVIDER", "genai");
         vi.stubEnv("WASHA_DTF_GENAI_MODEL", "gemini-board-test");
@@ -149,12 +158,13 @@ describe("board generation service", () => {
 
         mockGetBoardPromptTemplate.mockResolvedValue(DEFAULT_BOARD_PROMPT_TEMPLATE);
         mockGenerateContent.mockResolvedValue({ candidates: [{ content: { parts: [] } }] });
-        mockExtractGeneratedImageDataUrl.mockReturnValue("data:image/png;base64,iVBORw0KGgo=");
-        mockRunOpenAIGenerateDataUrl.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
-        mockRunNanoBananaDataUrl.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
+        mockExtractGeneratedImageDataUrl.mockReturnValue(validPng);
+        mockRunOpenAIGenerateDataUrl.mockResolvedValue(validPng);
+        mockRunNanoBananaDataUrl.mockResolvedValue(validPng);
         mockRunReplicatePredictions.mockResolvedValue({
-            urls: ["data:image/png;base64,iVBORw0KGgo="],
+            urls: [validPng],
         });
+        mockNormalizeBoardImageBuffer.mockResolvedValue(normalizedWebp);
         mockUploadOptimizedImage.mockResolvedValue({
             path: "board-previews/2026/07/board-id/generated-board.webp",
             publicUrl: "https://cdn.example/board-previews/generated-board.webp",
@@ -190,13 +200,19 @@ describe("board generation service", () => {
             traceId: validInput.generationRequestId,
         }));
         expect(mockGenerateContent).toHaveBeenCalledOnce();
+        expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
+            config: expect.objectContaining({
+                imageConfig: { aspectRatio: "4:5", imageSize: "4K" },
+            }),
+        }));
+        expect(mockNormalizeBoardImageBuffer).toHaveBeenCalledOnce();
         expect(mockRunOpenAIGenerateDataUrl).not.toHaveBeenCalled();
         expect(mockUploadOptimizedImage).toHaveBeenCalledWith(expect.objectContaining({
             bucket: "smart-store",
             folder: expect.stringMatching(/^board-previews\/\d{4}\/\d{2}\/[0-9a-f-]{36}$/),
             originalFileName: expect.stringMatching(/^board-[0-9a-f-]{36}\.png$/),
-            contentType: "image/png",
-            profile: "mockup",
+            contentType: "image/webp",
+            profile: "board",
             createThumbnail: false,
             uploadOriginal: false,
         }));
@@ -234,6 +250,24 @@ describe("board generation service", () => {
                 mockRunReplicatePredictions,
             };
             expect(providerMocks[expectedMockName]).toHaveBeenCalledOnce();
+            if (provider === "openai") {
+                expect(mockRunOpenAIGenerateDataUrl).toHaveBeenCalledWith(
+                    expect.any(String),
+                    expect.objectContaining({ size: "3072x3840", quality: "high" })
+                );
+            } else if (provider === "nanobanana") {
+                expect(mockRunNanoBananaDataUrl).toHaveBeenCalledWith(
+                    expect.any(String),
+                    null,
+                    expect.objectContaining({ aspectRatio: "4:5" })
+                );
+            } else {
+                expect(mockRunReplicatePredictions).toHaveBeenCalledWith(
+                    expect.objectContaining({
+                        input: expect.objectContaining({ aspect_ratio: "4:5" }),
+                    })
+                );
+            }
             expect(database.state.row).toMatchObject({
                 provider,
                 status: "ready",
@@ -303,7 +337,7 @@ describe("board generation service", () => {
             })
         );
         expect(mockUploadOptimizedImage).toHaveBeenCalledWith(expect.objectContaining({
-            contentType: "image/png",
+            contentType: "image/webp",
             file: expect.any(Buffer),
         }));
     });

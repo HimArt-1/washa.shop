@@ -51,40 +51,7 @@ import {
     getWashaAiSettings,
     updateSiteSetting,
 } from "@/app/actions/settings";
-
-const APPROVED_BOARD_PROMPT_TEMPLATE = `Create a premium streetwear apparel presentation board. Single image, square 1:1 composition, high resolution.
-
-═══ LAYOUT — one square image split into two stacked zones ═══
-
-TOP ZONE (upper ~55%):
-A realistic premium oversized boxy t-shirt, front view, in color {{GARMENT_COLOR}}.
-The custom design is printed on the {{PLACEMENT}} at an approximate size of {{WIDTH}}cm × {{HEIGHT}}cm.
-The print must look genuinely integrated into the fabric — following folds, preserving cotton texture, clean DTF edges, NO white box, NO sticker effect, NO floating rectangle.
-Studio lighting, soft shadows, neutral background.
-
-BOTTOM ZONE (lower ~45%):
-The SAME design shown flat and complete, isolated on a neutral background, centered, uncropped, no garment, no folds, no perspective.
-This must be visually identical to the print in the top zone.
-
-Below the flat design, show simple indicative measurement guides:
-- horizontal line labeled with the width
-- vertical line labeled with the height
-Keep measurement text minimal and in Latin numerals only (e.g. "40 cm", "27 cm").
-These measurements are INDICATIVE ONLY.
-
-═══ THE DESIGN ═══
-
-{{DESIGN_DESCRIPTION}}
-
-Art style: {{STYLE}}
-{{TEXT_BLOCK}}
-
-═══ HARD RULES ═══
-- The design in both zones must be identical.
-- Do NOT invent extra graphics, logos, badges, or frames.
-- Do NOT generate any text other than what is explicitly requested and the measurement labels.
-- Do NOT write Arabic text as image content unless it is part of the requested design.
-- Keep the whole board clean, minimal, editorial, premium.`;
+import { DEFAULT_BOARD_PROMPT_TEMPLATE as APPROVED_BOARD_PROMPT_TEMPLATE } from "@/lib/washa-board-prompt";
 
 describe("settings visibility normalization", () => {
     beforeEach(() => {

@@ -5,6 +5,7 @@ export type ImageOptimizationProfile =
     | "display"
     | "product"
     | "mockup"
+    | "board"
     | "original";
 
 export type ImageInput = File | Blob | Buffer | ArrayBuffer | Uint8Array;
@@ -72,6 +73,12 @@ export const IMAGE_OPTIMIZATION_PROFILES: Record<ImageOptimizationProfile, Image
         maxDimension: 2000,
         quality: 85,
         targetBytes: 1024 * 1024,
+        outputType: "image/webp",
+    },
+    board: {
+        maxDimension: 4000,
+        quality: 92,
+        targetBytes: 8 * 1024 * 1024,
         outputType: "image/webp",
     },
     original: {

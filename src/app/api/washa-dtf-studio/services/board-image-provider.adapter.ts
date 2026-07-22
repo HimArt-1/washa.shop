@@ -1,7 +1,10 @@
 import "server-only";
 
 import { runNanoBananaDataUrl } from "@/lib/gemini-rest-image";
-import { runOpenAIGenerateDataUrl } from "@/lib/openai-image";
+import {
+    isGptImage2Model,
+    runOpenAIGenerateDataUrl,
+} from "@/lib/openai-image";
 import {
     FLUX_SCHNELL,
     runReplicatePredictions,
@@ -15,6 +18,7 @@ import type {
     WashaDtfProvider,
     WashaDtfProviderConfiguration,
 } from "@/lib/washa-dtf-provider-config";
+import { normalizeBoardImageBuffer } from "@/lib/board-image-normalization";
 
 type SuccessfulBoardProvider = Exclude<WashaDtfProvider, "unsupported">;
 
@@ -132,6 +136,12 @@ async function materializeBoardImageDataUrl(value: string) {
     }
 }
 
+function getOpenAIBoardSize(model: string) {
+    if (isGptImage2Model(model)) return "3072x3840";
+    if (model.trim().toLowerCase() === "dall-e-3") return "1024x1792";
+    return "1024x1536";
+}
+
 async function generateWithResolvedProvider(input: {
     prompt: string;
     configuration: WashaDtfProviderConfiguration;
@@ -143,7 +153,7 @@ async function generateWithResolvedProvider(input: {
             contents: input.prompt,
             config: {
                 responseModalities: ["IMAGE"],
-                imageConfig: { aspectRatio: "1:1", imageSize: "1K" },
+                imageConfig: { aspectRatio: "4:5", imageSize: "4K" },
             },
         });
         return extractGeneratedImageDataUrl(response);
@@ -154,11 +164,14 @@ async function generateWithResolvedProvider(input: {
             background: "opaque",
             outputFormat: "png",
             quality: "high",
-            size: "1024x1024",
+            size: getOpenAIBoardSize(configuration.model),
         });
     }
     if (configuration.provider === "nanobanana") {
-        return runNanoBananaDataUrl(input.prompt, null, { throwOnError: true });
+        return runNanoBananaDataUrl(input.prompt, null, {
+            throwOnError: true,
+            aspectRatio: "4:5",
+        });
     }
     if (configuration.provider === "replicate") {
         const prediction = await runReplicatePredictions({
@@ -166,7 +179,7 @@ async function generateWithResolvedProvider(input: {
             input: {
                 prompt: input.prompt,
                 output_format: "png",
-                aspect_ratio: "1:1",
+                aspect_ratio: "4:5",
                 num_outputs: 1,
             },
         });
@@ -195,8 +208,10 @@ export async function generateBoardProviderImage(input: {
     );
     if (!imageValue) throw new Error("Board image provider returned no image.");
 
+    const materializedImage = await materializeBoardImageDataUrl(imageValue);
+    const decodedImage = decodeBoardImageDataUrl(materializedImage);
     return {
-        dataUrl: await materializeBoardImageDataUrl(imageValue),
+        dataUrl: await normalizeBoardImageBuffer(decodedImage.buffer),
         provider,
         model: input.configuration.model,
     };

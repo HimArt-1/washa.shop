@@ -38,12 +38,20 @@ describe("WASHA board prompt", () => {
         });
 
         expect(rendered).toContain("in color Desert Sand.");
+        expect(rendered).toContain("Vertical 4:5 aspect ratio");
+        expect(rendered).toContain("front view, in color Desert Sand");
+        expect(rendered).toContain("exactly 4 sections");
+        expect(rendered).toContain("DETAIL 01");
+        expect(rendered).toContain("DETAIL 02");
+        expect(rendered).toContain("FULL DESIGN");
+        expect(rendered).toContain("التصميم كامل");
         expect(rendered).toContain("front chest at an approximate size of 24cm × 32cm");
         expect(rendered).toContain("Geometric falcon with gold linework");
         expect(rendered).toContain("Art style: embroidery");
         expect(rendered).toContain('Include this exact text in the design: "وشى".');
         for (const placeholder of [
             "{{GARMENT_COLOR}}",
+            "{{GARMENT_VIEW}}",
             "{{PLACEMENT}}",
             "{{WIDTH}}",
             "{{HEIGHT}}",
@@ -53,6 +61,19 @@ describe("WASHA board prompt", () => {
         ]) {
             expect(rendered).not.toContain(placeholder);
         }
+    });
+
+    it("uses a back garment view for back-placement boards", () => {
+        const rendered = renderBoardPrompt({
+            template: DEFAULT_BOARD_PROMPT_TEMPLATE,
+            prompt: "Large back artwork",
+            generationContext: {
+                ...baseContext,
+                printPosition: "back",
+            },
+        });
+
+        expect(rendered).toContain("back view, in color Black");
     });
 
     it.each([

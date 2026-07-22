@@ -367,7 +367,7 @@ export async function generateBoard(
             file: uploadInput.buffer,
             originalFileName: `board-${boardRequestId}.png`,
             contentType: uploadInput.contentType,
-            profile: "mockup",
+            profile: "board",
             createThumbnail: false,
             uploadOriginal: false,
             returnPublicUrl: true,

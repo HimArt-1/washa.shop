@@ -100,6 +100,14 @@ import {
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
 import { escapeAdminNotificationHtml } from "@/lib/notifications";
 import { verifyApprovedOrderAssetGraph } from "@/lib/washa-artwork/order-integrity";
+import {
+    type PremiumArtworkColor,
+    type PremiumDesignBrief,
+} from "@/lib/premium-design-request";
+import {
+    buildPremiumDesignRequestPrompt,
+    serializePremiumDesignBrief,
+} from "@/lib/premium-design-request-prompt";
 
 
 function getSmartStoreSb() {
@@ -1398,6 +1406,8 @@ export async function submitDesignOrder(orderData: {
     color_package_name?: string;
     studio_item_id?: string | null;
     custom_colors?: any[];
+    artwork_colors?: PremiumArtworkColor[];
+    premium_brief?: PremiumDesignBrief;
     customer_name?: string;
     customer_email?: string;
     customer_phone?: string;
@@ -1471,8 +1481,10 @@ export async function submitDesignOrder(orderData: {
         studioItemImageUrl,
     } = resolvedCreativeSelections;
 
-    // 1. Get prompt template
-    const template = await getDesignPromptTemplate();
+    // 1. Legacy orders keep the editable prompt. Premium briefs use the fixed,
+    // production-oriented board contract supplied by the customer flow.
+    const usesPremiumBoardPrompt = Boolean(input.premium_brief && designMethod !== "studio");
+    const template = usesPremiumBoardPrompt ? null : await getDesignPromptTemplate();
 
     // 2. Build colors string
     const colorsStr = colorPackageName
@@ -1486,7 +1498,9 @@ export async function submitDesignOrder(orderData: {
     const inputTextPrompt = sanitizePlainText(input.text_prompt, 3000);
     const effectiveTextPrompt = designMethod === "studio"
         ? (studioItemName ?? inputTextPrompt ?? null)
-        : inputTextPrompt;
+        : input.premium_brief
+            ? serializePremiumDesignBrief(input.premium_brief)
+            : inputTextPrompt;
     const effectiveReferenceImageUrl = safeReferenceImageUrl ?? (designMethod === "studio" ? studioItemImageUrl : null);
 
     // 3. User prompt or image note
@@ -1520,15 +1534,26 @@ export async function submitDesignOrder(orderData: {
     }
 
     // 4. Generate AI prompt
-    const aiPrompt = generateAiPrompt(template, {
-        garment_name: garmentName,
-        color_name: colorName,
-        color_hex: colorHex,
-        style_name: styleName || "—",
-        art_style_name: artStyleName || "—",
-        colors: colorsStr,
-        user_prompt: userPrompt,
-    });
+    const aiPrompt = usesPremiumBoardPrompt && input.premium_brief
+        ? buildPremiumDesignRequestPrompt({
+            brief: input.premium_brief,
+            garmentName,
+            garmentColorName: colorName,
+            garmentColorHex: colorHex,
+            printPosition,
+            styleName: styleName || "modern Saudi streetwear",
+            artStyleName: artStyleName || "premium editorial illustration",
+            artworkColors: input.artwork_colors ?? [],
+        })
+        : generateAiPrompt(template ?? "", {
+            garment_name: garmentName,
+            color_name: colorName,
+            color_hex: colorHex,
+            style_name: styleName || "—",
+            art_style_name: artStyleName || "—",
+            colors: colorsStr,
+            user_prompt: userPrompt,
+        });
 
     // 5. Insert order
     const payload = {

@@ -516,10 +516,13 @@ function PromptSettingsModal({ template, onClose }: { template: string; onClose:
                 className="theme-surface-panel relative z-10 w-full max-w-2xl rounded-2xl p-6 shadow-2xl"
             >
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-theme flex items-center gap-2"><Settings2 className="w-5 h-5 text-gold" /> إعدادات البرومبت الموحد</h3>
+                    <h3 className="text-lg font-bold text-theme flex items-center gap-2"><Settings2 className="w-5 h-5 text-gold" /> برومبت الطلبات الكلاسيكية</h3>
                     <button onClick={onClose} className="rounded-lg p-2 hover:bg-theme-faint"><X className="w-5 h-5 text-theme-subtle" /></button>
                 </div>
 
+                <p className="text-xs text-theme-subtle mb-3">
+                    طلبات الـ Brief الاحترافي تستخدم عقد لوحة 4:5 ثابتًا. هذا القالب مخصص للطلبات القديمة والبسيطة فقط.
+                </p>
                 <p className="text-xs text-theme-subtle mb-3">
                     استخدم المتغيرات: <code className="text-gold/70">{"{{garment_name}}"}</code> <code className="text-gold/70">{"{{color_name}}"}</code> <code className="text-gold/70">{"{{color_hex}}"}</code> <code className="text-gold/70">{"{{style_name}}"}</code> <code className="text-gold/70">{"{{art_style_name}}"}</code> <code className="text-gold/70">{"{{colors}}"}</code> <code className="text-gold/70">{"{{user_prompt}}"}</code>
                 </p>

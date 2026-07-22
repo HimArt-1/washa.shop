@@ -16,6 +16,7 @@ const NANO_BANANA_MODEL =
 
 type GeminiRestImageOptions = {
     throwOnError?: boolean;
+    aspectRatio?: "1:1" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9";
 };
 
 export function isGeminiKeyConfigured() {
@@ -65,7 +66,7 @@ export async function runNanoBananaDataUrl(
             instances: [instance],
             parameters: {
                 sampleCount: 1,
-                aspectRatio: "1:1",
+                aspectRatio: options.aspectRatio ?? "1:1",
                 outputMimeType: "image/png",
             },
         }),

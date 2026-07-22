@@ -1,4 +1,8 @@
 import { normalizeColorTokens } from "@/lib/design-intelligence";
+import {
+    getPremiumDesignBriefPlacementError,
+    premiumDesignBriefSchema,
+} from "@/lib/premium-design-request";
 import { z } from "zod";
 
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/;
@@ -281,6 +285,11 @@ export const smartStoreSubmitDesignOrderSchema = z
         color_package_name: optionalText("اسم باقة الألوان", 120),
         studio_item_id: optionalUuid("معرّف عنصر الستيديو"),
         custom_colors: customColorsSchema,
+        artwork_colors: z.array(z.object({
+            name: optionalText("اسم لون العمل", 60),
+            hex: z.string().regex(HEX_COLOR_REGEX, "لون العمل غير صالح"),
+        })).max(5, "الحد الأقصى لألوان العمل هو 5").optional(),
+        premium_brief: premiumDesignBriefSchema.optional(),
         customer_name: optionalText("اسم العميل", 120),
         customer_email: optionalEmail,
         customer_phone: optionalPhone,
@@ -290,6 +299,20 @@ export const smartStoreSubmitDesignOrderSchema = z
         dtf_extracted_url: optionalSafeUrl("رابط التصميم المفرغ"),
     })
     .superRefine((data, ctx) => {
+        if (data.premium_brief && data.design_method !== "studio") {
+            const placementError = getPremiumDesignBriefPlacementError(
+                data.premium_brief,
+                data.print_position
+            );
+            if (placementError) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ["premium_brief", "designWidth"],
+                    message: placementError,
+                });
+            }
+        }
+
         if (!data.garment_id && !data.garment_name) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
