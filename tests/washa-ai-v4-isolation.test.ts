@@ -30,6 +30,13 @@ describe("WASHA AI v4 architectural isolation", () => {
         expect(combined).not.toContain("extract-design");
         expect(combined).not.toContain("recompose-preview");
         expect(combined).not.toContain("generate-mockup");
+        expect(client).toContain("ONE IMAGE");
+        expect(client).not.toContain("4 SECTIONS");
+        expect(client).toContain("الهيرو يسارًا والتفاصيل يمينًا");
+        expect(client).not.toContain('<option value="right">يمين</option>');
+        expect(client).toContain("previewGarmentColor");
+        expect(client).toContain("previewBackgroundColor");
+        expect(client).toContain("[0-9a-f]{3}|[0-9a-f]{6}");
     });
 
     it("does not cache an access-controlled shell beyond the admin switch", () => {

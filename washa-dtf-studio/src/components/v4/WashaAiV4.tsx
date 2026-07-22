@@ -16,7 +16,6 @@ import { useMemo, useState, type ReactNode } from 'react';
 
 type Composition = 'horizontal' | 'vertical' | 'diagonal' | 'centered' | 'asymmetrical';
 type Movement = 'lower_left_to_upper_right' | 'left_to_right' | 'bottom_to_top' | 'center_outward';
-type HeroPosition = 'left' | 'right' | 'center';
 type PrintPosition = 'front' | 'back' | 'left_chest' | 'right_chest' | 'full_back' | 'custom';
 type Background = 'ice_vanilla' | 'light_beige' | 'soft_concrete' | 'muted_charcoal';
 type PrintMethod = 'dtf' | 'screen_print' | 'embroidery' | 'mixed';
@@ -30,7 +29,7 @@ type V4Brief = {
   environment: string;
   composition: Composition;
   visualMovement: Movement;
-  heroPosition: HeroPosition;
+  heroPosition: 'left';
   garmentView: 'front' | 'back';
   designWidth: number;
   designHeight: number;
@@ -149,33 +148,44 @@ function SectionHeading({ index, title, description }: { index: string; title: s
   );
 }
 
+function safePreviewColor(value: string, fallback: string) {
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : fallback;
+}
+
 function BoardMap({ state, generating }: { state: V4State; generating: boolean }) {
-  const heroFirst = state.brief.heroPosition !== 'right';
+  const previewGarmentColor = safePreviewColor(state.garmentColorHex, '#292c2a');
+  const previewBackgroundColor = safePreviewColor(state.brief.backgroundColor, BACKGROUND_HEX[state.brief.background]);
   return (
-    <div className="relative aspect-[4/5] overflow-hidden border border-white/10 bg-[#232724] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(186,198,173,0.10),transparent_36%)]" />
+    <div className="relative aspect-[4/5] overflow-hidden border border-[#c8c0b4] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]" style={{ backgroundColor: previewBackgroundColor }}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.72),transparent_38%)]" />
       {generating ? (
-        <div className="relative grid h-full grid-rows-[62%_38%] gap-2" aria-label="جاري إنشاء اللوحة" aria-busy="true">
-          <div className="grid grid-cols-[2fr_1fr] gap-2">
-            <div className="v4-skeleton border border-white/10" />
-            <div className="grid grid-rows-2 gap-2"><div className="v4-skeleton" /><div className="v4-skeleton" /></div>
+        <div className="relative grid h-full grid-rows-[62%_38%]" aria-label="جاري إنشاء صورة موحدة" aria-busy="true">
+          <div dir="ltr" className="grid grid-cols-[2.1fr_1fr] border-b-2 border-[#f8f5ee]">
+            <div className="v4-skeleton border-r-2 border-[#f8f5ee]" />
+            <div className="grid grid-rows-2"><div className="v4-skeleton border-b-2 border-[#f8f5ee]" /><div className="v4-skeleton" /></div>
           </div>
-          <div className="v4-skeleton border border-white/10" />
+          <div className="v4-skeleton" />
         </div>
       ) : (
-        <div className="relative grid h-full grid-rows-[62%_38%] gap-2">
-          <div className={`grid gap-2 ${heroFirst ? 'grid-cols-[2fr_1fr]' : 'grid-cols-[1fr_2fr]'}`}>
-            <div className={`flex items-end border border-[#aebba8]/25 bg-[#aebba8]/[0.07] p-3 ${heroFirst ? 'order-1' : 'order-2'}`}>
-              <div><p className="font-mono text-[9px] tracking-[0.18em] text-[#c7d0c1]">HERO / 01</p><p className="mt-1 text-[10px] text-white/45">{PLACEMENT[state.printPosition].label}</p></div>
+        <div className="relative grid h-full grid-rows-[62%_38%]">
+          <div dir="ltr" className="grid grid-cols-[2.1fr_1fr] border-b-2 border-[#f8f5ee]">
+            <div className="relative overflow-hidden border-r-2 border-[#f8f5ee] bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.72),transparent_68%)]" style={{ backgroundColor: previewBackgroundColor }}>
+              <div className="absolute inset-x-[16%] bottom-[9%] top-[8%] shadow-[0_12px_22px_rgba(33,35,33,0.18)]" style={{ backgroundColor: previewGarmentColor, clipPath: 'polygon(32% 0, 43% 5%, 57% 5%, 68% 0, 100% 15%, 88% 36%, 77% 29%, 77% 100%, 23% 100%, 23% 29%, 12% 36%, 0 15%)' }}>
+                <div className="absolute inset-x-[28%] top-[24%] h-[46%] rounded-full bg-[radial-gradient(circle_at_55%_38%,rgba(230,222,201,0.68),rgba(117,128,113,0.34)_42%,transparent_69%)]" />
+              </div>
+              <div className="absolute bottom-3 right-3"><p className="font-mono text-[8px] tracking-[0.16em] text-[#62665f]">HERO PRODUCT</p><p className="mt-1 text-[9px] text-[#777970]">{PLACEMENT[state.printPosition].label}</p></div>
             </div>
-            <div className={`grid grid-rows-2 gap-2 ${heroFirst ? 'order-2' : 'order-1'}`}>
-              <div className="flex items-end border border-white/10 bg-white/[0.035] p-2 font-mono text-[8px] text-white/45">DETAIL 01</div>
-              <div className="flex items-end border border-white/10 bg-white/[0.035] p-2 font-mono text-[8px] text-white/45">DETAIL 02</div>
+            <div className="grid grid-rows-2" style={{ backgroundColor: previewGarmentColor }}>
+              <div className="relative overflow-hidden border-b-2 border-[#f8f5ee] bg-[radial-gradient(circle_at_62%_48%,rgba(221,213,191,0.46),transparent_32%)] p-3 font-mono text-[8px] tracking-[0.14em] text-white/70"><span className="relative z-10">DETAIL 01</span><div className="absolute -bottom-7 -left-5 h-24 w-24 rounded-full border border-white/20" /></div>
+              <div className="relative overflow-hidden bg-[radial-gradient(circle_at_35%_42%,rgba(145,158,143,0.42),transparent_36%)] p-3 font-mono text-[8px] tracking-[0.14em] text-white/70"><span className="relative z-10">DETAIL 02</span><div className="absolute bottom-5 right-4 h-px w-24 rotate-[-28deg] bg-white/20" /></div>
             </div>
           </div>
-          <div className="flex items-end justify-between border border-white/10 bg-white/[0.035] p-3">
-            <span className="font-mono text-[9px] text-white/55">FULL DESIGN</span>
-            <span className="font-mono text-[9px] text-[#bdc8b8]">{state.brief.designWidth} × {state.brief.designHeight} CM</span>
+          <div className="relative overflow-hidden p-4" style={{ backgroundColor: previewBackgroundColor }}>
+            <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[8px] tracking-[0.16em] text-[#676b64]">FULL DESIGN</p><p className="mt-1 text-[9px] font-bold text-[#30332f]">التصميم كامل</p></div><div className="text-left"><p className="text-[9px] font-bold text-[#30332f]">مقاسات التصميم</p><p className="mt-1 font-mono text-[8px] text-[#62665f]">العرض: {state.brief.designWidth} سم</p><p className="font-mono text-[8px] text-[#62665f]">الارتفاع: {state.brief.designHeight} سم</p></div></div>
+            <div className="absolute inset-x-[22%] bottom-[16%] top-[25%] bg-[radial-gradient(ellipse_at_54%_45%,rgba(103,121,105,0.56),rgba(164,117,79,0.34)_36%,transparent_68%)]" />
+            <div className="absolute bottom-[10%] left-[20%] right-[20%] h-px bg-[#575b55]/55"><span className="absolute left-1/2 top-1 -translate-x-1/2 font-mono text-[7px] text-[#4e524c]">{state.brief.designWidth} CM</span></div>
+            <div className="absolute bottom-[17%] left-[16%] top-[31%] w-px bg-[#575b55]/55"><span className="absolute -left-1 top-1/2 -translate-x-full -translate-y-1/2 font-mono text-[7px] text-[#4e524c]">{state.brief.designHeight} CM</span></div>
+            <div className="absolute bottom-3 right-4 flex gap-1">{state.artworkColors.filter((color) => color.hex).slice(0, 5).map((color) => <span key={`${color.name}-${color.hex}`} className="h-2.5 w-2.5 border border-black/5" style={{ backgroundColor: color.hex }} />)}</div>
           </div>
         </div>
       )}
@@ -265,7 +275,7 @@ export default function WashaAiV4() {
           customPrintPosition: state.customPrintPosition,
           styleName: state.styleName,
           artStyleName: state.artStyleName,
-          artworkColors: state.artworkColors.filter((color) => /^#[0-9a-f]{6}$/i.test(color.hex)),
+          artworkColors: state.artworkColors.filter((color) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color.hex)),
         }),
       });
       const payload = await response.json() as { ok?: boolean; error?: string } & Partial<GenerationResult>;
@@ -343,7 +353,7 @@ export default function WashaAiV4() {
                     <div className="grid gap-5 md:grid-cols-3">
                       <Field label="لون القطعة"><input className={fieldClass} value={state.garmentColorName} onChange={(event) => setState((current) => ({ ...current, garmentColorName: event.target.value }))} /></Field>
                       <Field label="HEX القطعة"><input dir="ltr" className={`${fieldClass} text-left font-mono`} value={state.garmentColorHex} onChange={(event) => setState((current) => ({ ...current, garmentColorHex: event.target.value }))} /></Field>
-                      <Field label="موضع الـHero"><select className={fieldClass} value={state.brief.heroPosition} onChange={(event) => updateBrief({ heroPosition: event.target.value as HeroPosition })}><option value="left">يسار</option><option value="right">يمين</option><option value="center">منتصف</option></select></Field>
+                      <Field label="تكوين القالب"><div className={`${fieldClass} flex items-center bg-[#eee9de] text-[#5e665f]`}>الهيرو يسارًا والتفاصيل يمينًا</div></Field>
                       <Field label="منظور القطعة" hint={state.printPosition === 'custom' ? 'اختر المنظور المناسب للموضع المخصص.' : 'يُضبط تلقائيًا حسب موضع الطباعة.'}><select className={fieldClass} disabled={state.printPosition !== 'custom'} value={state.brief.garmentView} onChange={(event) => updateBrief({ garmentView: event.target.value as 'front' | 'back' })}><option value="front">أمامي</option><option value="back">خلفي</option></select></Field>
                       <Field label="العرض (سم)" hint={`الحد: ${placement.maxWidth} سم`}><input type="number" min={5} max={placement.maxWidth} step={0.5} className={`${fieldClass} font-mono`} value={state.brief.designWidth} onChange={(event) => updateBrief({ designWidth: Number(event.target.value) })} /></Field>
                       <Field label="الارتفاع (سم)" hint={`الحد: ${placement.maxHeight} سم`}><input type="number" min={5} max={placement.maxHeight} step={0.5} className={`${fieldClass} font-mono`} value={state.brief.designHeight} onChange={(event) => updateBrief({ designHeight: Number(event.target.value) })} /></Field>
@@ -369,7 +379,7 @@ export default function WashaAiV4() {
 
               {stage === 2 ? (
                 <div>
-                  <SectionHeading index="03 / GENERATE" title="راجع ثم أنشئ اللوحة" description="عملية واحدة مباشرة إلى لوحة 4:5؛ لا إزالة خلفية، لا استخراج، ولا تركيب ثانوي." />
+                  <SectionHeading index="03 / GENERATE" title="راجع ثم أنشئ الصورة" description="استدعاء واحد ينتج صورة نهائية واحدة متماسكة 4:5؛ لا صور منفصلة، لا إزالة خلفية، ولا تركيب ثانوي." />
                   <div className="divide-y divide-[#d2cbc0] border-y border-[#d2cbc0]">
                     {[
                       ['الفكرة', state.brief.designIdea || 'غير مكتملة'],
@@ -398,7 +408,7 @@ export default function WashaAiV4() {
 
         <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
           <div className="border border-[#c9c2b7] bg-[#e7e1d6] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] md:p-5">
-            <div className="mb-4 flex items-center justify-between"><div><p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#657469]">LIVE OUTPUT</p><p className="mt-1 text-sm font-black">لوحة الاعتماد</p></div><span className="font-mono text-[10px] text-[#69776d]">3200 × 4000</span></div>
+            <div className="mb-4 flex items-center justify-between"><div><p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#657469]">SINGLE IMAGE OUTPUT</p><p className="mt-1 text-sm font-black">صورة اعتماد واحدة</p></div><span className="font-mono text-[10px] text-[#69776d]">3200 × 4000</span></div>
             {result && !generating ? (
               <motion.div initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
                 <img src={result.imageUrl} alt="لوحة WASHA AI v4 الناتجة" className="block aspect-[4/5] w-full bg-[#232724] object-cover" />
@@ -411,7 +421,7 @@ export default function WashaAiV4() {
             ) : <BoardMap state={state} generating={generating} />}
             <div className="mt-4 grid grid-cols-2 gap-px bg-[#c7c0b5]">
               <div className="bg-[#ece7de] p-3"><DimensionsIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">EXACT SCALE</p></div>
-              <div className="bg-[#ece7de] p-3"><ImageIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">4 SECTIONS</p></div>
+              <div className="bg-[#ece7de] p-3"><ImageIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">ONE IMAGE</p></div>
               <div className="bg-[#ece7de] p-3"><MixerHorizontalIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">DIRECT PIPELINE</p></div>
               <div className="bg-[#ece7de] p-3"><CheckIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">NO BG REMOVAL</p></div>
             </div>

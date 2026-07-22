@@ -5,10 +5,13 @@ import {
 } from "@/lib/premium-design-request";
 
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const washaAiV4BriefSchema = premiumDesignBriefSchema.safeExtend({
+    heroPosition: z.literal("left"),
+});
 
 export const washaAiV4GenerateSchema = z.object({
     requestId: z.string().trim().regex(/^[a-zA-Z0-9_-]{8,128}$/, "معرّف الطلب غير صالح"),
-    brief: premiumDesignBriefSchema,
+    brief: washaAiV4BriefSchema,
     garmentName: z.string().trim().min(2).max(160),
     garmentColorName: z.string().trim().min(2).max(100),
     garmentColorHex: z.string().trim().regex(HEX_COLOR, "لون القطعة غير صالح"),

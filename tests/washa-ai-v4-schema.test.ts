@@ -26,6 +26,13 @@ describe("WASHA AI v4 generation contract", () => {
         expect(washaAiV4GenerateSchema.safeParse(validRequest).success).toBe(true);
     });
 
+    it("rejects hero placements outside the fixed v4 reference composition", () => {
+        expect(washaAiV4GenerateSchema.safeParse({
+            ...validRequest,
+            brief: { ...validRequest.brief, heroPosition: "right" },
+        }).success).toBe(false);
+    });
+
     it("rejects malformed colors and incomplete concepts", () => {
         expect(washaAiV4GenerateSchema.safeParse({
             ...validRequest,
