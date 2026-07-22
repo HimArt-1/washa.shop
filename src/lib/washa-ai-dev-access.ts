@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { getPublicVisibility, type WashaAiDevAccessMode } from "@/app/actions/settings";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 
@@ -9,30 +10,65 @@ const DEV_SURFACE_PATHS: Record<WashaAiDevSurface, string> = {
     "dev-v2": "/design/washa-ai/dev-v2",
 };
 
-function pathnameBelongsToSurface(pathname: string, surface: WashaAiDevSurface) {
-    const surfacePath = DEV_SURFACE_PATHS[surface];
-    return pathname === surfacePath || pathname.startsWith(`${surfacePath}/`);
+export const WASHA_AI_DEV_SURFACE_HEADER = "x-washa-ai-dev-surface";
+export const WASHA_AI_DEV_SIGNATURE_HEADER = "x-washa-ai-dev-signature";
+export const WASHA_AI_DEV_SURFACE_META_NAME = "washa-ai-dev-surface";
+export const WASHA_AI_DEV_SIGNATURE_META_NAME = "washa-ai-dev-signature";
+
+function getDevSurfaceSigningSecret() {
+    return process.env.WASHA_AI_DEV_SURFACE_SECRET?.trim()
+        || process.env.CLERK_SECRET_KEY?.trim()
+        || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+        || null;
 }
 
-/**
- * Same-origin browser requests carry the page URL in Referer. Keep this
- * server-derived so the public studio cannot opt itself out of the active
- * generation mode by adding a client-controlled flag.
- */
+function isWashaAiDevSurface(value: string | null): value is WashaAiDevSurface {
+    return Boolean(value && Object.prototype.hasOwnProperty.call(DEV_SURFACE_PATHS, value));
+}
+
+function signWashaAiDevSurface(surface: WashaAiDevSurface) {
+    const secret = getDevSurfaceSigningSecret();
+    if (!secret) {
+        throw new Error("WASHA AI dev surface signing secret is not configured.");
+    }
+
+    return createHmac("sha256", secret)
+        .update(`washa-ai-dev-generation:v1:${surface}`)
+        .digest("hex");
+}
+
+export function createWashaAiDevGenerationHeaders(surface: WashaAiDevSurface) {
+    return {
+        [WASHA_AI_DEV_SURFACE_HEADER]: surface,
+        [WASHA_AI_DEV_SIGNATURE_HEADER]: signWashaAiDevSurface(surface),
+    };
+}
+
+export function createWashaAiDevGenerationMetaTags(surface: WashaAiDevSurface) {
+    const headers = createWashaAiDevGenerationHeaders(surface);
+    return [
+        `<meta name="${WASHA_AI_DEV_SURFACE_META_NAME}" content="${headers[WASHA_AI_DEV_SURFACE_HEADER]}" />`,
+        `<meta name="${WASHA_AI_DEV_SIGNATURE_META_NAME}" content="${headers[WASHA_AI_DEV_SIGNATURE_HEADER]}" />`,
+    ];
+}
+
 export function resolveWashaAiDevGenerationSurface(
-    request: Pick<Request, "headers" | "url">
+    request: Pick<Request, "headers">
 ): WashaAiDevSurface | null {
-    const referer = request.headers.get("referer");
-    if (!referer) return null;
+    const surface = request.headers.get(WASHA_AI_DEV_SURFACE_HEADER);
+    const suppliedSignature = request.headers.get(WASHA_AI_DEV_SIGNATURE_HEADER);
+    if (!isWashaAiDevSurface(surface) || !suppliedSignature) return null;
 
     try {
-        const requestUrl = new URL(request.url);
-        const refererUrl = new URL(referer);
-        if (refererUrl.origin !== requestUrl.origin) return null;
-
-        // dev-v2 must be checked first because its path starts with /dev.
-        if (pathnameBelongsToSurface(refererUrl.pathname, "dev-v2")) return "dev-v2";
-        if (pathnameBelongsToSurface(refererUrl.pathname, "dev")) return "dev";
+        const expectedSignature = signWashaAiDevSurface(surface);
+        const suppliedBuffer = Buffer.from(suppliedSignature, "utf8");
+        const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+        if (
+            suppliedBuffer.length === expectedBuffer.length
+            && timingSafeEqual(suppliedBuffer, expectedBuffer)
+        ) {
+            return surface;
+        }
     } catch {
         return null;
     }
@@ -70,13 +106,13 @@ function getSurfaceAccessDecision(
 
 export async function canUseWashaAiDevSurfaceForGeneration(
     surface: WashaAiDevSurface,
-    role: string | null | undefined
+    hasPlatformAdminAccess: boolean
 ) {
     const visibility = await getPublicVisibility();
     const decision = getSurfaceAccessDecision(visibility, surface);
     if (decision === "link") return true;
     if (decision !== "admin") return false;
-    return role === "admin" || role === "dev";
+    return hasPlatformAdminAccess;
 }
 
 async function canAccessAdminOnlyDevSurface() {

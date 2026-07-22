@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetPublicVisibility } = vi.hoisted(() => ({
     mockGetPublicVisibility: vi.fn(),
@@ -15,6 +15,7 @@ vi.mock("@/lib/admin-access", () => ({
 
 import {
     canUseWashaAiDevSurfaceForGeneration,
+    createWashaAiDevGenerationHeaders,
     resolveWashaAiDevGenerationSurface,
 } from "@/lib/washa-ai-dev-access";
 
@@ -30,31 +31,38 @@ function visibility(overrides: Record<string, unknown> = {}) {
 
 describe("WASHA AI dev generation isolation", () => {
     beforeEach(() => {
+        vi.stubEnv("WASHA_AI_DEV_SURFACE_SECRET", "test-dev-surface-secret");
         mockGetPublicVisibility.mockReset();
         mockGetPublicVisibility.mockResolvedValue(visibility());
     });
 
-    it.each([
-        ["http://localhost/design/washa-ai/dev", "dev"],
-        ["http://localhost/design/washa-ai/dev/results/1", "dev"],
-        ["http://localhost/design/washa-ai/dev-v2", "dev-v2"],
-        ["http://localhost/design/washa-ai/dev-v2/results/1", "dev-v2"],
-    ] as const)("recognizes the same-origin surface from %s", (referer, expected) => {
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    it.each(["dev", "dev-v2"] as const)("recognizes a signed %s surface", (surface) => {
         const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
-            headers: { referer },
+            headers: createWashaAiDevGenerationHeaders(surface),
         });
 
-        expect(resolveWashaAiDevGenerationSurface(request)).toBe(expected);
+        expect(resolveWashaAiDevGenerationSurface(request)).toBe(surface);
     });
 
     it.each([
-        [null],
-        ["http://localhost/design/washa-ai/app"],
-        ["http://localhost/design/washa-ai/developer"],
-        ["https://example.test/design/washa-ai/dev"],
-        ["not a url"],
-    ])("does not classify an unrelated or untrusted Referer: %s", (referer) => {
-        const headers = referer ? { referer } : undefined;
+        [{}, "missing headers"],
+        [{ "x-washa-ai-dev-surface": "dev", "x-washa-ai-dev-signature": "forged" }, "forged signature"],
+        [{ "x-washa-ai-dev-surface": "app", "x-washa-ai-dev-signature": "forged" }, "public app surface"],
+    ])("does not classify an untrusted request: %s", (headers, _description) => {
+        const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
+            headers,
+        });
+
+        expect(resolveWashaAiDevGenerationSurface(request)).toBeNull();
+    });
+
+    it("binds the signature to its exact surface", () => {
+        const headers = createWashaAiDevGenerationHeaders("dev");
+        headers["x-washa-ai-dev-surface"] = "dev-v2";
         const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
             headers,
         });
@@ -63,19 +71,18 @@ describe("WASHA AI dev generation isolation", () => {
     });
 
     it.each([
-        ["admin", "admin", true],
-        ["admin", "dev", true],
-        ["admin", "subscriber", false],
-        ["link", "subscriber", true],
-        ["disabled", "admin", false],
+        ["admin", true, true],
+        ["admin", false, false],
+        ["link", false, true],
+        ["disabled", true, false],
     ] as const)(
-        "applies the existing %s access setting to role %s",
-        async (accessMode, role, expected) => {
+        "applies the existing %s access setting when platform-admin access is %s",
+        async (accessMode, hasPlatformAdminAccess, expected) => {
             mockGetPublicVisibility.mockResolvedValue(visibility({
                 washa_ai_dev_access: accessMode,
             }));
 
-            await expect(canUseWashaAiDevSurfaceForGeneration("dev", role))
+            await expect(canUseWashaAiDevSurfaceForGeneration("dev", hasPlatformAdminAccess))
                 .resolves.toBe(expected);
         }
     );
@@ -83,7 +90,8 @@ describe("WASHA AI dev generation isolation", () => {
     it("denies generation when the studio itself is hidden", async () => {
         mockGetPublicVisibility.mockResolvedValue(visibility({ design_piece: false }));
 
-        await expect(canUseWashaAiDevSurfaceForGeneration("dev-v2", "admin"))
+        await expect(canUseWashaAiDevSurfaceForGeneration("dev-v2", true))
             .resolves.toBe(false);
     });
+
 });

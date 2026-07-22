@@ -1,4 +1,5 @@
 import type { ReferenceImageMode } from '../types';
+import { getWashaAiDevGenerationHeadersFromDocument } from '../lib/devGenerationSurface';
 
 // Use the integrated Next.js API instead of a separate local proxy server.
 import {
@@ -336,6 +337,7 @@ export async function generateMockup(
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${sessionToken}`,
+      ...getWashaAiDevGenerationHeadersFromDocument(),
     };
     if (preferences.requestId) {
       headers['X-Request-Id'] = preferences.requestId;

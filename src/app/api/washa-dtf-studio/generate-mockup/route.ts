@@ -308,7 +308,10 @@ export async function POST(request: NextRequest) {
         const devSurface = resolveWashaAiDevGenerationSurface(request);
         if (
             devSurface
-            && !await canUseWashaAiDevSurfaceForGeneration(devSurface, access.role)
+            && !await canUseWashaAiDevSurfaceForGeneration(
+                devSurface,
+                access.role === "admin" || access.role === "dev"
+            )
         ) {
             return structuredErrorResponse(
                 traceId,
@@ -451,14 +454,16 @@ export async function POST(request: NextRequest) {
         }
 
         let quotaShouldCharge = mode === "primary";
-        try {
-            quotaShouldCharge = await shouldChargeQuota(mode);
-        } catch (error) {
-            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_policy_read_failed", {
-                selectedMode: mode,
-                chargeQuota: quotaShouldCharge,
-                errorName: error instanceof Error ? error.name : "UnknownError",
-            });
+        if (!devSurface) {
+            try {
+                quotaShouldCharge = await shouldChargeQuota(mode);
+            } catch (error) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_policy_read_failed", {
+                    selectedMode: mode,
+                    chargeQuota: quotaShouldCharge,
+                    errorName: error instanceof Error ? error.name : "UnknownError",
+                });
+            }
         }
 
         const generationClaim = await claimDtfGenerationRequest(

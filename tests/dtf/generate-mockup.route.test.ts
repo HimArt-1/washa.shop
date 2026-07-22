@@ -130,6 +130,7 @@ import { WashaDtfProviderChainError } from "@/lib/washa-dtf-provider-config";
 import { ArtworkTextPolicyError } from "@/lib/washa-artwork/arabic-text-verification";
 import { ArtworkPrintValidationError } from "@/lib/washa-artwork/normalization";
 import { ArtworkPlacementError } from "@/lib/washa-artwork/placement";
+import { createWashaAiDevGenerationHeaders } from "@/lib/washa-ai-dev-access";
 
 function generationResult(preview = "https://cdn.example/mockup-front.webp") {
     return {
@@ -165,6 +166,7 @@ function generationResult(preview = "https://cdn.example/mockup-front.webp") {
 
 describe("generate-mockup route", () => {
     beforeEach(() => {
+        vi.stubEnv("WASHA_AI_DEV_SURFACE_SECRET", "test-dev-surface-secret");
         mockRequireDtfRouteAccess.mockReset();
         mockClaimDtfGenerationRequest.mockReset();
         mockCompleteDtfGenerationRequest.mockReset();
@@ -330,7 +332,7 @@ describe("generate-mockup route", () => {
                 {
                     headers: {
                         "x-request-id": `request-${surface}-primary-isolation`,
-                        referer: `http://localhost/design/washa-ai/${surface}`,
+                        ...createWashaAiDevGenerationHeaders(surface),
                     },
                 }
             ) as NextRequest);
@@ -339,10 +341,11 @@ describe("generate-mockup route", () => {
             expect(response.status).toBe(200);
             expect(mockCanUseWashaAiDevSurfaceForGeneration).toHaveBeenCalledWith(
                 surface,
-                "subscriber"
+                false
             );
             expect(mockGetGenerationMode).not.toHaveBeenCalled();
-            expect(mockShouldChargeQuota).toHaveBeenCalledWith("primary");
+            expect(mockShouldChargeQuota).not.toHaveBeenCalled();
+            expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
             expect(mockGenerateMockup).toHaveBeenCalledOnce();
             expect(mockGenerateBoard).not.toHaveBeenCalled();
             expect(payload).not.toHaveProperty("mode");
@@ -362,7 +365,7 @@ describe("generate-mockup route", () => {
             {
                 headers: {
                     "x-request-id": "request-dev-forbidden",
-                    referer: "http://localhost/design/washa-ai/dev",
+                    ...createWashaAiDevGenerationHeaders("dev"),
                 },
             }
         ) as NextRequest);
@@ -379,7 +382,7 @@ describe("generate-mockup route", () => {
         expect(mockGenerateBoard).not.toHaveBeenCalled();
     });
 
-    it("does not let a cross-origin Referer impersonate a dev surface", async () => {
+    it("does not let an unsigned surface header impersonate a dev surface", async () => {
         mockGetGenerationMode.mockResolvedValue("fallback");
         mockShouldChargeQuota.mockResolvedValue(false);
 
@@ -388,7 +391,8 @@ describe("generate-mockup route", () => {
             {
                 headers: {
                     "x-request-id": "request-cross-origin-dev-spoof",
-                    referer: "https://example.test/design/washa-ai/dev-v2",
+                    "x-washa-ai-dev-surface": "dev-v2",
+                    "x-washa-ai-dev-signature": "forged",
                 },
             }
         ) as NextRequest);

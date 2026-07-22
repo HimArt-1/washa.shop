@@ -1,7 +1,11 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { NextRequest, NextResponse } from "next/server";
-import { ensureWashaAiDevSurfaceAccess } from "@/lib/washa-ai-dev-access";
+import {
+    createWashaAiDevGenerationMetaTags,
+    ensureWashaAiDevSurfaceAccess,
+    WASHA_AI_DEV_SIGNATURE_META_NAME,
+} from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
 
@@ -84,11 +88,15 @@ function extractShellAssetPaths(indexHtml: string) {
 }
 
 function injectDevPwaTags(indexHtml: string) {
-    if (indexHtml.includes("/design/washa-ai/dev/manifest.webmanifest")) {
+    if (
+        indexHtml.includes("/design/washa-ai/dev/manifest.webmanifest")
+        && indexHtml.includes(`name="${WASHA_AI_DEV_SIGNATURE_META_NAME}"`)
+    ) {
         return indexHtml;
     }
 
     const pwaTags = [
+        ...createWashaAiDevGenerationMetaTags("dev"),
         '<link rel="manifest" href="/design/washa-ai/dev/manifest.webmanifest" />',
         '<link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
         '<meta name="application-name" content="WASHA AI Dev Studio" />',
