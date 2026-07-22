@@ -39,6 +39,12 @@ import { isArtworkPrintValidationError } from "@/lib/washa-artwork/normalization
 import { isArtworkPlacementError } from "@/lib/washa-artwork/placement";
 import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 import { unstable_rethrow } from "next/navigation";
+import {
+    getGenerationMode,
+    shouldChargeQuota,
+    type GenerationMode,
+} from "@/lib/washa-generation-mode";
+import { generateBoard } from "../services/board-generation.service";
 
 export const runtime = "nodejs";
 // gpt-image-2 عند 2048×2048 أبطأ من النماذج الأصغر. الميزانية الزمنية للطلب يجب أن تتّسع
@@ -335,7 +341,6 @@ export async function POST(request: NextRequest) {
             return attachDtfTraceId(rateLimitResponse, traceId);
         }
 
-        const generationReadiness = getWashaDtfGenerationReadiness();
         if (!access.profileId) {
             return structuredErrorResponse(
                 traceId,
@@ -346,55 +351,89 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const existingGeneration = await DesignAssetService.getExistingGeneration(
-            access.profileId,
-            traceId
-        );
-        if (existingGeneration) {
-            return attachDtfTraceId(NextResponse.json({
-                ok: true,
-                requestId: traceId,
-                ...existingGeneration,
-                remainingPoints: null,
-                freeRemaining: null,
-                paidBalance: null,
-                consumedSource: null,
-                guest: false,
-                reused: true,
-            }), traceId);
-        }
-        const hasPersistedAttempt = await DesignAssetService.hasPersistedGenerationAttempt(
-            access.profileId,
-            traceId
-        );
-        if (!hasPersistedAttempt && !generationReadiness.enabled) {
-            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_unavailable", {
-                provider: generationReadiness.provider ?? null,
-                statusCode: 503,
-                errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
+        let mode: GenerationMode = "primary";
+        try {
+            mode = await getGenerationMode();
+        } catch (error) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_mode_read_failed", {
+                selectedMode: "primary",
+                errorName: error instanceof Error ? error.name : "UnknownError",
             });
-            return structuredErrorResponse(
-                traceId,
-                503,
-                "IMAGE_PROVIDER_UNAVAILABLE",
-                generationReadiness.message,
-                {
-                    retryable: generationReadiness.code === "temporarily_unavailable",
-                    headers: generationReadiness.retryAfterSeconds
-                        ? { "Retry-After": String(generationReadiness.retryAfterSeconds) }
-                        : undefined,
-                }
-            );
         }
-        const artworkProviderReadiness = getIsolatedArtworkProviderReadiness();
-        if (!hasPersistedAttempt && !artworkProviderReadiness.ready) {
+
+        let generationReadiness: ReturnType<typeof getWashaDtfGenerationReadiness> | null = null;
+        let hasPersistedAttempt = false;
+        if (mode === "primary") {
+            generationReadiness = getWashaDtfGenerationReadiness();
+            const existingGeneration = await DesignAssetService.getExistingGeneration(
+                access.profileId,
+                traceId
+            );
+            if (existingGeneration) {
+                return attachDtfTraceId(NextResponse.json({
+                    ok: true,
+                    requestId: traceId,
+                    ...existingGeneration,
+                    remainingPoints: null,
+                    freeRemaining: null,
+                    paidBalance: null,
+                    consumedSource: null,
+                    guest: false,
+                    reused: true,
+                }), traceId);
+            }
+            hasPersistedAttempt = await DesignAssetService.hasPersistedGenerationAttempt(
+                access.profileId,
+                traceId
+            );
+            if (!hasPersistedAttempt && !generationReadiness.enabled) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_unavailable", {
+                    provider: generationReadiness.provider ?? null,
+                    statusCode: 503,
+                    errorCode: "IMAGE_PROVIDER_UNAVAILABLE",
+                });
+                return structuredErrorResponse(
+                    traceId,
+                    503,
+                    "IMAGE_PROVIDER_UNAVAILABLE",
+                    generationReadiness.message,
+                    {
+                        retryable: generationReadiness.code === "temporarily_unavailable",
+                        headers: generationReadiness.retryAfterSeconds
+                            ? { "Retry-After": String(generationReadiness.retryAfterSeconds) }
+                            : undefined,
+                    }
+                );
+            }
+            const artworkProviderReadiness = getIsolatedArtworkProviderReadiness();
+            if (!hasPersistedAttempt && !artworkProviderReadiness.ready) {
+                return structuredErrorResponse(
+                    traceId,
+                    503,
+                    "TRANSPARENT_ARTWORK_PROVIDER_UNAVAILABLE",
+                    artworkProviderReadiness.message,
+                    { retryable: false }
+                );
+            }
+        } else if (!generationContext) {
             return structuredErrorResponse(
                 traceId,
-                503,
-                "TRANSPARENT_ARTWORK_PROVIDER_UNAVAILABLE",
-                artworkProviderReadiness.message,
+                400,
+                "INVALID_BOARD_INPUT",
+                "بيانات معاينة اللوحة غير مكتملة.",
                 { retryable: false }
             );
+        }
+
+        let quotaShouldCharge = mode === "primary";
+        try {
+            quotaShouldCharge = await shouldChargeQuota(mode);
+        } catch (error) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "quota_policy_read_failed", {
+                selectedMode: mode,
+                chargeQuota: quotaShouldCharge,
+                errorName: error instanceof Error ? error.name : "UnknownError",
+            });
         }
 
         const generationClaim = await claimDtfGenerationRequest(
@@ -435,6 +474,63 @@ export async function POST(request: NextRequest) {
         }
 
         const quotaStartedAt = Date.now();
+        let noChargeQuota: Awaited<ReturnType<typeof DtfTelemetryService.reserveDailyQuota>> | null = null;
+        if (!hasPersistedAttempt && !quotaShouldCharge) {
+            try {
+                const quotaStatus = await DtfTelemetryService.getQuotaStatus(
+                    access.profileId,
+                    access.role,
+                    { guestIdentifier: null }
+                );
+                noChargeQuota = quotaStatus.blocked
+                    ? {
+                        allowed: false,
+                        remaining: 0,
+                        used: 0,
+                        tracked: false,
+                        source: "blocked",
+                        freeRemaining: 0,
+                        paidBalance: 0,
+                        reason: "audience_disabled",
+                        canPurchase: false,
+                    }
+                    : {
+                        allowed: true,
+                        remaining: quotaStatus.freeRemaining + quotaStatus.paidBalance,
+                        used: quotaStatus.freeUsed,
+                        tracked: false,
+                        source: quotaStatus.unlimited ? "unlimited" : "bypass",
+                        freeRemaining: quotaStatus.freeRemaining,
+                        paidBalance: quotaStatus.paidBalance,
+                        canPurchase: quotaStatus.canPurchase,
+                    };
+            } catch (error) {
+                await failDtfGenerationRequest(access.profileId, traceId, {
+                    operation: GENERATE_MOCKUP_OPERATION,
+                    blockRetry: false,
+                });
+                logDtfTrace(
+                    GENERATE_MOCKUP_ROUTE,
+                    traceId,
+                    mode === "fallback"
+                        ? "board_eligibility_check_failed"
+                        : "generation_eligibility_check_failed",
+                    {
+                        selectedMode: mode,
+                        statusCode: 503,
+                        errorCode: "QUOTA_ELIGIBILITY_UNAVAILABLE",
+                        errorName: error instanceof Error ? error.name : "UnknownError",
+                    }
+                );
+                return structuredErrorResponse(
+                    traceId,
+                    503,
+                    "QUOTA_ELIGIBILITY_UNAVAILABLE",
+                    "تعذّر التحقق من أهلية التوليد حاليًا. حاول بعد قليل.",
+                    { retryable: true }
+                );
+            }
+        }
         const quota = hasPersistedAttempt
             ? {
                 allowed: true,
@@ -445,6 +541,8 @@ export async function POST(request: NextRequest) {
                 freeRemaining: 0,
                 paidBalance: 0,
             }
+            : noChargeQuota
+            ? noChargeQuota
             : await DtfTelemetryService.reserveDailyQuota(
                 access.profileId,
                 access.role,
@@ -604,6 +702,144 @@ export async function POST(request: NextRequest) {
             ), traceId);
         }
 
+        if (mode === "fallback") {
+            let boardResult: Awaited<ReturnType<typeof generateBoard>>;
+            try {
+                boardResult = await generateBoard({
+                    profileId: access.profileId,
+                    generationRequestId: traceId,
+                    prompt,
+                    generationContext: generationContext!,
+                });
+            } catch {
+                boardResult = {
+                    ok: false,
+                    code: "BOARD_PERSISTENCE_FAILED",
+                };
+            }
+
+            if (!boardResult.ok || !boardResult.boardImageUrl || !boardResult.boardRequestId) {
+                let quotaReleased = !quota.tracked;
+                if (quota.tracked) {
+                    const releaseStartedAt = Date.now();
+                    try {
+                        quotaReleased = await DtfTelemetryService.releaseDailyQuota(
+                            access.profileId,
+                            access.role,
+                            quota.source,
+                            {
+                                guestIdentifier: null,
+                                requestId: traceId,
+                                operation: GENERATE_MOCKUP_OPERATION,
+                                quotaDate: quota.quotaDate ?? null,
+                            }
+                        );
+                    } catch {
+                        quotaReleased = false;
+                    }
+                    logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "board_quota_released", {
+                        durationMs: Date.now() - releaseStartedAt,
+                        source: quota.source,
+                        released: quotaReleased,
+                    });
+                }
+
+                if (quota.tracked && !quotaReleased) {
+                    await failDtfGenerationRequest(access.profileId, traceId, {
+                        operation: GENERATE_MOCKUP_OPERATION,
+                        blockRetry: true,
+                    });
+                    return structuredErrorResponse(
+                        traceId,
+                        500,
+                        "INTERNAL_ERROR",
+                        "تعذّر إنشاء المعاينة ولم نتمكن من تأكيد استرجاع الحصة. راجع رصيدك قبل إعادة المحاولة.",
+                        { retryable: false }
+                    );
+                }
+
+                if (!quota.tracked) {
+                    await failDtfGenerationRequest(access.profileId, traceId, {
+                        operation: GENERATE_MOCKUP_OPERATION,
+                        blockRetry: false,
+                    });
+                }
+
+                const boardFailureCode = boardResult.code ?? "BOARD_PERSISTENCE_FAILED";
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "board_generation_failed", {
+                    boardRequestId: boardResult.boardRequestId ?? null,
+                    statusCode: boardFailureCode === "INVALID_BOARD_INPUT"
+                        ? 400
+                        : boardFailureCode === "BOARD_GENERATION_IN_PROGRESS"
+                            ? 409
+                            : 503,
+                    errorCode: boardFailureCode,
+                    quotaReleased,
+                });
+                return structuredErrorResponse(
+                    traceId,
+                    boardFailureCode === "INVALID_BOARD_INPUT"
+                        ? 400
+                        : boardFailureCode === "BOARD_GENERATION_IN_PROGRESS"
+                            ? 409
+                            : 503,
+                    boardFailureCode,
+                    "تعذّر إنشاء معاينة اللوحة حاليًا.",
+                    { retryable: boardFailureCode === "IMAGE_PROVIDER_UNAVAILABLE" }
+                );
+            }
+
+            try {
+                await DtfTelemetryService.logActivity({
+                    profileId: access.profileId,
+                    clerkId: access.clerkId,
+                    action: "generate-mockup",
+                    status: "success",
+                    resultImageUrl: boardResult.boardImageUrl,
+                    metadata: {
+                        generationMode: "fallback",
+                        boardRequestId: boardResult.boardRequestId,
+                        quotaCharged: quota.tracked,
+                        remainingPointsAfterReservation: quota.remaining,
+                        usedPoints: quota.used,
+                        quotaDate: quota.quotaDate,
+                    },
+                });
+            } catch (error) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "board_success_telemetry_failed", {
+                    boardRequestId: boardResult.boardRequestId,
+                    errorName: error instanceof Error ? error.name : "UnknownError",
+                });
+            }
+
+            const requestCompleted = await completeDtfGenerationRequest(
+                access.profileId,
+                traceId,
+                GENERATE_MOCKUP_OPERATION
+            );
+            if (!requestCompleted) {
+                logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "board_idempotency_completion_failed", {
+                    boardRequestId: boardResult.boardRequestId,
+                    statusCode: 200,
+                    errorCode: "IDEMPOTENCY_COMPLETION_FAILED",
+                });
+            }
+            return attachDtfTraceId(NextResponse.json({
+                ok: true,
+                requestId: traceId,
+                mode: "fallback",
+                boardImageUrl: boardResult.boardImageUrl,
+                boardRequestId: boardResult.boardRequestId,
+                disclaimer: "preview_only",
+                quotaCharged: quota.tracked,
+                remainingPoints: quota.tracked ? quota.remaining : null,
+                freeRemaining: quota.tracked ? quota.freeRemaining : null,
+                paidBalance: quota.tracked ? quota.paidBalance : null,
+                consumedSource: quota.tracked ? quota.source : null,
+                guest: false,
+            }), traceId);
+        }
+
         let generationResult: Awaited<ReturnType<typeof DesignAssetService.generate>>;
         try {
         const providerStartedAt = Date.now();
@@ -637,7 +873,7 @@ export async function POST(request: NextRequest) {
         });
         recordWashaDtfGenerationSuccess();
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {
-            resolvedProvider: generationReadiness.provider ?? "configured",
+            resolvedProvider: generationReadiness?.provider ?? "configured",
             attemptedProvider: generationResult.provider,
             attemptedModel: generationResult.model,
             durationMs: Date.now() - providerStartedAt,
@@ -681,8 +917,8 @@ export async function POST(request: NextRequest) {
                 traceId,
                 "artwork_text_policy_failed",
                 {
-                    resolvedProvider: generationReadiness.provider ?? "configured",
-                    resolvedModel: generationReadiness.model ?? null,
+                    resolvedProvider: generationReadiness?.provider ?? "configured",
+                    resolvedModel: generationReadiness?.model ?? null,
                     statusCode: 422,
                     errorCode: textPolicyError.code,
                     durationMs: Date.now() - routeStartedAt,
@@ -716,9 +952,9 @@ export async function POST(request: NextRequest) {
                     ? "artwork_placement_failed"
                     : "artwork_print_validation_failed",
                 {
-                    resolvedProvider: generationReadiness.provider ?? "configured",
-                    resolvedModel: generationReadiness.model ?? null,
-                    fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
+                    resolvedProvider: generationReadiness?.provider ?? "configured",
+                    resolvedModel: generationReadiness?.model ?? null,
+                    fallbackEnabled: generationReadiness?.fallbackEnabled ?? null,
                     statusCode: 422,
                     errorCode: artworkError.code,
                     errorStage: artworkError.stage,
@@ -734,14 +970,14 @@ export async function POST(request: NextRequest) {
             const providerAttempts = getWashaDtfProviderAttempts(error);
             const lastProviderAttempt = providerAttempts.at(-1);
             logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_failed", {
-                resolvedProvider: generationReadiness.provider ?? "configured",
-                resolvedModel: generationReadiness.model ?? null,
-                fallbackEnabled: generationReadiness.fallbackEnabled ?? null,
+                resolvedProvider: generationReadiness?.provider ?? "configured",
+                resolvedModel: generationReadiness?.model ?? null,
+                fallbackEnabled: generationReadiness?.fallbackEnabled ?? null,
                 attemptedProvider: lastProviderAttempt?.provider
-                    ?? generationReadiness.provider
+                    ?? generationReadiness?.provider
                     ?? "configured",
                 attemptedModel: lastProviderAttempt?.model
-                    ?? generationReadiness.model
+                    ?? generationReadiness?.model
                     ?? null,
                 providerAttempt: lastProviderAttempt?.attempt ?? 1,
                 providerAttempts,

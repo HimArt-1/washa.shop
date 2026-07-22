@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     generateMockup,
+    isBoardPreviewResult,
     recomposeMockup,
 } from "../../washa-dtf-studio/src/services/geminiService";
 
@@ -77,8 +78,13 @@ describe("WASHA AI single-source browser flow (E2E contract)", () => {
                 requestId: "generation-request",
             }
         );
+        expect(generated).not.toBeNull();
+        expect(isBoardPreviewResult(generated)).toBe(false);
+        if (!generated || isBoardPreviewResult(generated)) {
+            throw new Error("Primary single-source generation returned a board preview");
+        }
         const recomposed = await recomposeMockup(
-            generated!,
+            generated,
             "تيشيرت",
             "أسود",
             "DTF",
@@ -104,8 +110,8 @@ describe("WASHA AI single-source browser flow (E2E contract)", () => {
             masterAssetId: masterIdentity.masterAssetId,
         });
         expect(requests[1].body).not.toHaveProperty("prompt");
-        expect(recomposed.masterAssetId).toBe(generated!.masterAssetId);
-        expect(recomposed.masterChecksum).toBe(generated!.masterChecksum);
-        expect(recomposed.previewUrl).not.toBe(generated!.previewUrl);
+        expect(recomposed.masterAssetId).toBe(generated.masterAssetId);
+        expect(recomposed.masterChecksum).toBe(generated.masterChecksum);
+        expect(recomposed.previewUrl).not.toBe(generated.previewUrl);
     });
 });

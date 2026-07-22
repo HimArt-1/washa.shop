@@ -19,11 +19,12 @@ import {
 } from '../types';
 import {
   generateMockup,
+  getGeneratedPreviewUrl,
   getStructuredStudioError,
+  isBoardPreviewResult,
   recomposeMockup,
   type GeneratedArtworkResult,
 } from '../services/geminiService';
-import { useCredits } from './CreditsContext';
 import { fetchDtfStudioConfig } from '../services/configService';
 import { parseDataUrlParts, resizeDataUrl, stripDataUrlPrefix } from '../lib/image';
 import {
@@ -97,6 +98,8 @@ interface DesignContextType {
   isMockupCurrent: boolean;
   extractedImage: string | null;
   generationResult: GeneratedArtworkResult | null;
+  isBoardPreview: boolean;
+  generationDisclaimer: 'preview_only' | null;
   error: string | null;
   structuredGenerationError: StructuredGenerationErrorState | null;
   isGenerationRetryBlocked: boolean;
@@ -263,7 +266,6 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
 
 export function DesignProvider({ children }: { children: React.ReactNode }) {
   const {getToken, isLoaded: authLoaded, isSignedIn} = useAuth();
-  const { requestGenerationAccess } = useCredits();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(EMPTY_STATE);
   const [config, setConfig] = useState<DtfStudioConfig | null>(null);
@@ -652,7 +654,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (state.paletteId === CUSTOM_PALETTE_ID && !state.customPalette.trim()) {
+    if (state.paletteId === CUSTOM_PALETTE_ID && !state.customPalette?.trim()) {
       setError('يرجى كتابة وصف لوحة الألوان المخصصة.');
       showToast('اكتب وصف لوحة الألوان المخصصة قبل التوليد', 'error');
       return;
@@ -686,28 +688,15 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setIsGenerating(true);
     setError(null);
 
+    const primaryGenerationResult = isBoardPreviewResult(generationResult)
+      ? null
+      : generationResult;
     const canRecompose = Boolean(
-      generationResult
+      primaryGenerationResult
       && mockupState
       && !options.promptOverride?.trim()
       && createArtworkFingerprint(mockupState) === createArtworkFingerprint(state)
     );
-    if (!canRecompose) {
-      const creditAccess = await requestGenerationAccess(sessionToken);
-      if (creditAccess.allowed === false) {
-        if (creditAccess.reason === 'unavailable') {
-          const message = 'تعذر التحقق من رصيد التوليد حالياً. حاول بعد قليل.';
-          setError(message);
-          showToast(message, 'error');
-        } else {
-          setError(null);
-        }
-        setIsGenerating(false);
-        generationInFlightRef.current = false;
-        return;
-      }
-    }
-
     setExtractedImage(null);
     setStep(6);
     const currentGenerationFingerprint = createGenerationFingerprint(state);
@@ -784,7 +773,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       };
       const generated = canRecompose
         ? await recomposeMockup(
-            generationResult!,
+            primaryGenerationResult!,
             state.garmentType,
             state.garmentColor,
             techniquePrompt,
@@ -798,8 +787,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
             state.referenceImageMimeType || undefined
           );
 
-      const validation = await validateGeneratedImage(generated?.previewUrl ?? null);
-      if (validation.valid) {
+      const generatedPreviewUrl = generated ? getGeneratedPreviewUrl(generated) : null;
+      const validation = await validateGeneratedImage(generatedPreviewUrl);
+      if (validation.valid && generated) {
         if (canRecompose) {
           cancelStructuredRecovery();
         } else {
@@ -807,9 +797,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         }
         setPromptFieldError(false);
         setGenerationResult(generated);
-        setMockupImage(generated!.previewUrl);
+        setMockupImage(generatedPreviewUrl);
         setMockupState({ ...state });
-        setExtractedImage(generated!.masterAssetUrl);
+        setExtractedImage(isBoardPreviewResult(generated) ? null : generated.masterAssetUrl);
         showToast('تم توليد التصميم بنجاح', 'success');
       } else {
         setError('لم تصل صورة صالحة من خدمة التوليد. نتيجتك السابقة محفوظة ويمكنك إعادة المحاولة.');
@@ -900,7 +890,6 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     isGenerating,
     mockupState,
     requireAuthenticatedAction,
-    requestGenerationAccess,
     selectedGarment,
     selectedPalette,
     selectedSize?.stockStatus,
@@ -983,7 +972,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         const session = await fetchWashaAiSession(sessionToken);
         if (cancelled) return;
 
-        if (session.authenticated && session.canGenerate && (draft.intent === 'generate' || !restoredMockup)) {
+        if (session.authenticated && session.canGenerate && (draft?.intent === 'generate' || !restoredMockup)) {
           setPendingGenerateAfterAuth(true);
           showToast(authenticatedMessage, 'info');
           return;
@@ -1023,7 +1012,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   }, [handleGenerate, pendingGenerateAfterAuth]);
 
   const handleExtract = async () => {
-    if (!generationResult) return;
+    if (!generationResult || isBoardPreviewResult(generationResult)) return;
 
     setIsExtracting(true);
     setError(null);
@@ -1051,7 +1040,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   };
 
   const submitOrder = async (): Promise<boolean> => {
-    if (!mockupImage || !generationResult) return false;
+    if (!mockupImage || !generationResult || isBoardPreviewResult(generationResult)) {
+      return false;
+    }
 
     if (!isMockupCurrent) {
       const message = 'هذه النتيجة تخص إعدادات سابقة. أعد التوليد بالإعدادات الحالية قبل إضافتها إلى السلة.';
@@ -1169,6 +1160,9 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     setOrderResult(null);
   };
 
+  const isBoardPreview = isBoardPreviewResult(generationResult);
+  const generationDisclaimer = isBoardPreview ? 'preview_only' as const : null;
+
   return (
     <DesignContext.Provider
       value={{
@@ -1185,6 +1179,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         isMockupCurrent,
         extractedImage,
         generationResult,
+        isBoardPreview,
+        generationDisclaimer,
         error,
         structuredGenerationError,
         isGenerationRetryBlocked,

@@ -10,6 +10,9 @@ import { cn } from '../../lib/utils';
 import { LIGHT_GARMENT_COLORS } from '../../types';
 import { getGenerationStage } from '../../lib/generationExperience';
 import { isCleanOutputEnabled } from '../../lib/outputPreferences';
+import BoardPreviewDisclosure from '../BoardPreviewDisclosure';
+import { resolveGenerationPresentation } from '../../lib/generationPresentation';
+import { isBoardPreviewResult } from '../../services/geminiService';
 
 function useGenerationProgress(active: boolean) {
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -269,6 +272,8 @@ export default function StepResult() {
     handleGenerate,
     state,
     generationResult,
+    isBoardPreview,
+    generationDisclaimer,
     structuredGenerationError,
     isGenerationRetryBlocked,
     showToast,
@@ -281,6 +286,8 @@ export default function StepResult() {
   const resultState = mockupState ?? state;
   const cleanOutputEnabled = isCleanOutputEnabled(resultState);
   const displayPreviewImage = activePreviewImage || mockupImage;
+  const presentation = resolveGenerationPresentation(generationResult);
+  const shouldDiscloseBoard = isBoardPreview || generationDisclaimer === 'preview_only';
   const retrySeconds = structuredGenerationError
     ? Math.ceil(structuredGenerationError.retryRemainingMs / 1_000)
     : 0;
@@ -299,7 +306,7 @@ export default function StepResult() {
   };
 
   useEffect(() => {
-    if (!generationResult) {
+    if (!generationResult || isBoardPreviewResult(generationResult)) {
       setActivePreviewImage(null);
       return;
     }
@@ -326,7 +333,7 @@ export default function StepResult() {
     <>
       {/* Terms Modal */}
       <AnimatePresence>
-        {showTerms && (
+        {showTerms && presentation.canSubmitOrder && (
           <TermsModal
             onAccept={handleAcceptTerms}
             onClose={() => !isSubmittingOrder && setShowTerms(false)}
@@ -364,7 +371,7 @@ export default function StepResult() {
             </button>
             <div className="absolute bottom-5 flex gap-3">
               <button
-                onClick={(e) => { e.stopPropagation(); handleDownload(lightboxImage, 'washa-mockup.png'); }}
+                onClick={(e) => { e.stopPropagation(); handleDownload(lightboxImage, presentation.previewDownloadName); }}
                 className="px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium hover:bg-white/20 transition-colors flex items-center gap-2 border border-white/15"
               >
                 <Download className="w-4 h-4" /> تحميل
@@ -483,7 +490,7 @@ export default function StepResult() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="step-badge border-washa-gold/30 bg-washa-gold/10 text-washa-gold">
                 <Sparkles className="w-3 h-3 text-washa-gold" />
-                الخطوة ٦ من ٦: النتيجة النهائية
+                الخطوة ٦ من ٦: {presentation.resultLabel}
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-washa-surface/50 border border-washa-border/25 text-xs text-washa-text-sec">
                 <span
@@ -501,6 +508,8 @@ export default function StepResult() {
                 ) : null}
               </div>
             </div>
+
+            <BoardPreviewDisclosure visible={shouldDiscloseBoard} />
 
             {error ? (
               <div className="flex items-start gap-3 rounded-xl border border-amber-700/20 bg-amber-700/5 px-4 py-3 text-right" role="alert">
@@ -574,15 +583,19 @@ export default function StepResult() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDownload(displayPreviewImage || mockupImage, 'washa-mockup.png')}
+                  onClick={() => handleDownload(displayPreviewImage || mockupImage, presentation.previewDownloadName)}
                   className="gap-2 rounded-xl shrink-0"
                 >
-                  <Download className="w-4 h-4" /> تحميل الموكب
+                  <Download className="w-4 h-4" /> {isBoardPreview ? 'تحميل المعاينة' : 'تحميل الموكب'}
                 </Button>
               </div>
             </motion.div>
 
-            {generationResult?.frontPreviewUrl && generationResult?.backPreviewUrl ? (
+            {!isBoardPreview
+              && generationResult
+              && !isBoardPreviewResult(generationResult)
+              && generationResult.frontPreviewUrl
+              && generationResult.backPreviewUrl ? (
               <div className="flex justify-center gap-2" aria-label="اختيار جهة الموكب">
                 {[
                   { label: 'الأمام', url: generationResult.frontPreviewUrl },
@@ -613,19 +626,25 @@ export default function StepResult() {
                 </p>
               </div>
               <div className="bg-washa-ivory px-4 py-3 text-right">
-                <p className="text-[10px] font-bold text-washa-gold">الطباعة</p>
+                <p className="text-[10px] font-bold text-washa-gold">{isBoardPreview ? 'موضع المعاينة' : 'الطباعة'}</p>
                 <p className="mt-1 text-xs leading-5 text-washa-text-sec">
-                  {resultState.printPositionLabel || resultState.designPosition} · {cleanOutputEnabled ? 'خلفية شفافة وحواف نظيفة' : 'الخلفية والحواف مسموحة'}
+                  {resultState.printPositionLabel || resultState.designPosition}
+                  {!isBoardPreview
+                    ? ` · ${cleanOutputEnabled ? 'خلفية شفافة وحواف نظيفة' : 'الخلفية والحواف مسموحة'}`
+                    : null}
                 </p>
               </div>
             </section>
 
-            <p className="rounded-xl border border-emerald-700/15 bg-emerald-700/5 px-4 py-3 text-right text-xs leading-6 text-washa-text-sec">
-              يُستخدم نفس ملف التصميم المعتمد في المعاينة والطباعة. قد تختلف فقط إضاءة القماش وملمسه الظاهران في الموكب عن المنتج الفعلي.
-            </p>
+            {!isBoardPreview ? (
+              <p className="rounded-xl border border-emerald-700/15 bg-emerald-700/5 px-4 py-3 text-right text-xs leading-6 text-washa-text-sec">
+                يُستخدم نفس ملف التصميم المعتمد في المعاينة والطباعة. قد تختلف فقط إضاءة القماش وملمسه الظاهران في الموكب عن المنتج الفعلي.
+              </p>
+            ) : null}
 
             {/* ── Order CTA ── */}
-            <motion.div
+            {presentation.canSubmitOrder ? (
+              <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.4 }}
@@ -651,7 +670,8 @@ export default function StepResult() {
                   <ShoppingBag className="w-5 h-5" /> اعتماد وإضافة إلى السلة
                 </Button>
               </div>
-            </motion.div>
+              </motion.div>
+            ) : null}
 
             {/* ── Footer navigation ── */}
             <div className="flex flex-wrap justify-between gap-2 pt-2">

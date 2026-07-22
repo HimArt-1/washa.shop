@@ -22,6 +22,10 @@ const {
     mockRecordGenerationSuccess,
     mockGetArtworkProviderReadiness,
     mockLogDtfTrace,
+    mockGetGenerationMode,
+    mockShouldChargeQuota,
+    mockGetQuotaStatus,
+    mockGenerateBoard,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
@@ -42,6 +46,10 @@ const {
     mockRecordGenerationSuccess: vi.fn(),
     mockGetArtworkProviderReadiness: vi.fn(),
     mockLogDtfTrace: vi.fn(),
+    mockGetGenerationMode: vi.fn(),
+    mockShouldChargeQuota: vi.fn(),
+    mockGetQuotaStatus: vi.fn(),
+    mockGenerateBoard: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -69,9 +77,19 @@ vi.mock("@/lib/washa-artwork/provider", () => ({
 vi.mock("@/app/api/washa-dtf-studio/services/dtf-telemetry.service", () => ({
     DtfTelemetryService: {
         reserveDailyQuota: mockReserveDailyQuota,
+        getQuotaStatus: mockGetQuotaStatus,
         logActivity: mockLogActivity,
         releaseDailyQuota: mockReleaseDailyQuota,
     },
+}));
+
+vi.mock("@/lib/washa-generation-mode", () => ({
+    getGenerationMode: mockGetGenerationMode,
+    shouldChargeQuota: mockShouldChargeQuota,
+}));
+
+vi.mock("@/app/api/washa-dtf-studio/services/board-generation.service", () => ({
+    generateBoard: mockGenerateBoard,
 }));
 
 vi.mock("@/lib/washa-dtf-studio", () => ({
@@ -152,6 +170,10 @@ describe("generate-mockup route", () => {
         mockRecordGenerationSuccess.mockReset();
         mockGetArtworkProviderReadiness.mockReset();
         mockLogDtfTrace.mockReset();
+        mockGetGenerationMode.mockReset();
+        mockShouldChargeQuota.mockReset();
+        mockGetQuotaStatus.mockReset();
+        mockGenerateBoard.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -227,6 +249,374 @@ describe("generate-mockup route", () => {
             model: "gemini-3-pro-image",
             fallbackEnabled: false,
         });
+        mockGetGenerationMode.mockResolvedValue("primary");
+        mockShouldChargeQuota.mockResolvedValue(true);
+        mockGetQuotaStatus.mockResolvedValue({
+            audience: "subscriber",
+            unlimited: false,
+            blocked: false,
+            freeLimit: 5,
+            freeUsed: 5,
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: true,
+        });
+        mockGenerateBoard.mockResolvedValue({
+            ok: true,
+            boardImageUrl: "https://cdn.example/board-preview.webp",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+        });
+    });
+
+    it("returns an uncharged board preview without touching primary readiness or quota reservation", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-auto" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toEqual({
+            ok: true,
+            requestId: "request-board-auto",
+            mode: "fallback",
+            boardImageUrl: "https://cdn.example/board-preview.webp",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+            disclaimer: "preview_only",
+            quotaCharged: false,
+            remainingPoints: null,
+            freeRemaining: null,
+            paidBalance: null,
+            consumedSource: null,
+            guest: false,
+        });
+        expect(mockGetQuotaStatus).toHaveBeenCalledOnce();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).toHaveBeenCalledOnce();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+        expect(mockGetGenerationReadiness).not.toHaveBeenCalled();
+        expect(mockGetArtworkProviderReadiness).not.toHaveBeenCalled();
+    });
+
+    it("completes the shared claim and records board success without primary asset metadata", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-success-telemetry" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        expect(mockCompleteDtfGenerationRequest).toHaveBeenCalledWith(
+            "profile_1",
+            "request-board-success-telemetry",
+            "generate-mockup"
+        );
+        expect(mockLogActivity).toHaveBeenCalledWith({
+            profileId: "profile_1",
+            clerkId: "clerk_1",
+            action: "generate-mockup",
+            status: "success",
+            resultImageUrl: "https://cdn.example/board-preview.webp",
+            metadata: {
+                generationMode: "fallback",
+                boardRequestId: "77777777-7777-4777-8777-777777777777",
+                quotaCharged: false,
+                remainingPointsAfterReservation: 0,
+                usedPoints: 5,
+                quotaDate: undefined,
+            },
+        });
+    });
+
+    it.each([
+        {
+            name: "primary + auto",
+            mode: "primary" as const,
+            charge: true,
+            expectedPrimaryCalls: 1,
+            expectedBoardCalls: 0,
+            expectedReserveCalls: 1,
+        },
+        {
+            name: "fallback + auto",
+            mode: "fallback" as const,
+            charge: false,
+            expectedPrimaryCalls: 0,
+            expectedBoardCalls: 1,
+            expectedReserveCalls: 0,
+        },
+        {
+            name: "fallback + manual enabled",
+            mode: "fallback" as const,
+            charge: true,
+            expectedPrimaryCalls: 0,
+            expectedBoardCalls: 1,
+            expectedReserveCalls: 1,
+        },
+        {
+            name: "primary + manual disabled",
+            mode: "primary" as const,
+            charge: false,
+            expectedPrimaryCalls: 1,
+            expectedBoardCalls: 0,
+            expectedReserveCalls: 0,
+        },
+    ])("applies quota side effects exactly once for $name", async ({
+        mode,
+        charge,
+        expectedPrimaryCalls,
+        expectedBoardCalls,
+        expectedReserveCalls,
+    }) => {
+        mockGetGenerationMode.mockResolvedValue(mode);
+        mockShouldChargeQuota.mockResolvedValue(charge);
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": `request-matrix-${mode}-${charge}` } }
+        ) as NextRequest);
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(mockGenerateMockup).toHaveBeenCalledTimes(expectedPrimaryCalls);
+        expect(mockGenerateBoard).toHaveBeenCalledTimes(expectedBoardCalls);
+        expect(mockReserveDailyQuota).toHaveBeenCalledTimes(expectedReserveCalls);
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        if (mode === "primary") {
+            expect(payload).toMatchObject({
+                ok: true,
+                requestId: `request-matrix-${mode}-${charge}`,
+                imageUrl: "https://cdn.example/mockup-front.webp",
+                masterAssetId: "22222222-2222-4222-8222-222222222222",
+                remainingPoints: charge ? 4 : null,
+            });
+            expect(payload).not.toHaveProperty("mode");
+            expect(payload).not.toHaveProperty("boardImageUrl");
+            expect(payload).not.toHaveProperty("boardRequestId");
+            expect(payload).not.toHaveProperty("disclaimer");
+            expect(payload).not.toHaveProperty("quotaCharged");
+        } else {
+            expect(payload).toMatchObject({
+                mode: "fallback",
+                disclaimer: "preview_only",
+                quotaCharged: expectedReserveCalls === 1,
+            });
+        }
+    });
+
+    it("refunds one tracked manual board charge when board generation fails", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(true);
+        mockGenerateBoard.mockResolvedValue({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-manual-failure" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledOnce();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledWith(
+            "profile_1",
+            "subscriber",
+            "free",
+            {
+                guestIdentifier: null,
+                requestId: "request-board-manual-failure",
+                operation: "generate-mockup",
+                quotaDate: "2026-03-30",
+            }
+        );
+    });
+
+    it("does not reserve or refund quota when an automatic board generation fails", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+        mockGenerateBoard.mockResolvedValue({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-auto-failure" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockFailDtfGenerationRequest).toHaveBeenCalledWith(
+            "profile_1",
+            "request-board-auto-failure",
+            { operation: "generate-mockup", blockRetry: false }
+        );
+    });
+
+    it("blocks retry when a failed manual board charge cannot be restored", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(true);
+        mockGenerateBoard.mockResolvedValue({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+        });
+        mockReleaseDailyQuota.mockResolvedValue(false);
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-release-failed" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(500);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "INTERNAL_ERROR",
+            retryable: false,
+        });
+        expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
+        expect(mockReleaseDailyQuota).toHaveBeenCalledOnce();
+        expect(mockFailDtfGenerationRequest).toHaveBeenCalledWith(
+            "profile_1",
+            "request-board-release-failed",
+            { operation: "generate-mockup", blockRetry: true }
+        );
+    });
+
+    it("rejects fallback without generation context before claim or quota work", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                prompt: "تصميم عربي حديث",
+                referenceImage: null,
+                garmentReferenceImage: null,
+                generationContext: null,
+            },
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-context-missing" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "INVALID_BOARD_INPUT",
+        });
+        expect(mockClaimDtfGenerationRequest).not.toHaveBeenCalled();
+        expect(mockGetQuotaStatus).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
+    });
+
+    it("fails safely to the unchanged primary path when generation mode lookup throws", async () => {
+        mockGetGenerationMode.mockRejectedValue(new Error("settings programmer error"));
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-mode-read-failed" } }
+        ) as NextRequest);
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload).toEqual({
+            ok: true,
+            requestId: "request-mode-read-failed",
+            ...generationResult(),
+            remainingPoints: 4,
+            freeRemaining: 4,
+            paidBalance: 0,
+            consumedSource: "free",
+            guest: false,
+        });
+        expect(payload).not.toHaveProperty("mode");
+        expect(payload).not.toHaveProperty("disclaimer");
+        expect(mockGetGenerationReadiness).toHaveBeenCalledOnce();
+        expect(mockGetArtworkProviderReadiness).toHaveBeenCalledOnce();
+        expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
+        expect(mockGenerateMockup).toHaveBeenCalledOnce();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "/api/washa-dtf-studio/generate-mockup",
+            "request-mode-read-failed",
+            "generation_mode_read_failed",
+            expect.objectContaining({ selectedMode: "primary" })
+        );
+    });
+
+    it("reports an unexpected board eligibility failure separately from provider failures", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+        mockGetQuotaStatus.mockRejectedValue(new Error("unexpected eligibility defect"));
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-eligibility-failed" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(503);
+        await expect(response.json()).resolves.toMatchObject({
+            ok: false,
+            code: "QUOTA_ELIGIBILITY_UNAVAILABLE",
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            "/api/washa-dtf-studio/generate-mockup",
+            "request-board-eligibility-failed",
+            "board_eligibility_check_failed",
+            expect.objectContaining({
+                statusCode: 503,
+                errorCode: "QUOTA_ELIGIBILITY_UNAVAILABLE",
+            })
+        );
+        expect(
+            mockLogDtfTrace.mock.calls.some((call) => call[2] === "board_provider_failed")
+        ).toBe(false);
+    });
+
+    it("preserves audience blocking without reserving no-charge fallback quota", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+        mockGetQuotaStatus.mockResolvedValue({
+            audience: "subscriber",
+            unlimited: false,
+            blocked: true,
+            freeLimit: 0,
+            freeUsed: 0,
+            freeRemaining: 0,
+            paidBalance: 0,
+            canPurchase: false,
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-audience-blocked" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(403);
+        await expect(response.json()).resolves.toMatchObject({
+            code: "audience_disabled",
+        });
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
     });
 
     afterEach(() => {
@@ -830,21 +1220,55 @@ describe("generate-mockup route", () => {
     });
 
     it("returns the current success payload shape", async () => {
-        const response = await POST(new Request("http://localhost/api/dtf/generate") as NextRequest);
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-primary-regression" } }
+        ) as NextRequest);
+        const payload = await response.json();
 
         expect(response.status).toBe(200);
-        expect(response.headers.get("X-Trace-Id")).toBeTruthy();
-        await expect(response.json()).resolves.toMatchObject({
+        expect(response.headers.get("X-Trace-Id")).toBe("request-primary-regression");
+        expect(payload).toEqual({
             ok: true,
+            requestId: "request-primary-regression",
             imageUrl: "https://cdn.example/mockup-front.webp",
+            previewUrl: "https://cdn.example/mockup-front.webp",
+            frontPreviewUrl: "https://cdn.example/mockup-front.webp",
+            backPreviewUrl: null,
+            designRequestId: "11111111-1111-4111-8111-111111111111",
             masterAssetId: "22222222-2222-4222-8222-222222222222",
+            masterAssetUrl: "https://cdn.example/design-master.png",
             masterChecksum: "a".repeat(64),
+            mockupSourceType: "reference",
+            placement: {
+                side: "front",
+                x: 0.5,
+                y: 0.5,
+                scale: 1,
+                rotation: 0,
+                printWidthCm: 30,
+                printHeightCm: 40,
+                anchorX: 0.5,
+                anchorY: 0.5,
+                referenceMockupId: "33333333-3333-4333-8333-333333333333",
+                printAreaId: "front_default",
+                transformVersion: 1,
+            },
+            transparencyVerificationStatus: "verified",
+            productionReadinessStatus: "ready",
+            provider: "genai",
+            model: "gemini-3-pro-image",
             remainingPoints: 4,
             freeRemaining: 4,
             paidBalance: 0,
             consumedSource: "free",
             guest: false,
         });
+        expect(payload).not.toHaveProperty("mode");
+        expect(payload).not.toHaveProperty("boardImageUrl");
+        expect(payload).not.toHaveProperty("boardRequestId");
+        expect(payload).not.toHaveProperty("disclaimer");
+        expect(payload).not.toHaveProperty("quotaCharged");
         expect(response.headers.get("X-Request-Id")).toBeTruthy();
         expect(mockGenerateMockup).toHaveBeenCalledWith(
             expect.objectContaining({

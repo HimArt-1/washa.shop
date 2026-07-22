@@ -22,6 +22,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
+import BoardPreviewDisclosure from '../BoardPreviewDisclosure';
 import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import { siteAsset } from '../../lib/assets';
 import { cn } from '../../lib/utils';
@@ -331,6 +332,8 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
     extractedImage,
     error,
     orderResult,
+    isBoardPreview,
+    generationDisclaimer,
   } = useDesign();
 
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -882,14 +885,16 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
     const resultTitle = isGenerating
       ? 'نجهز التصميم الآن.'
       : hasFinalDesign
-        ? 'التصميم جاهز.'
+        ? isBoardPreview ? 'المعاينة المبدئية جاهزة.' : 'التصميم جاهز.'
         : error
           ? 'لم يكتمل التوليد.'
           : 'جاهز لتوليد النتيجة.';
     const resultBody = isGenerating
       ? 'نرتب الفكرة والقطعة والموضع في نتيجة واحدة قابلة للطلب.'
       : hasFinalDesign
-        ? 'راجع التصميم النهائي، ثم أضفه للسلة أو عدّل الاختيارات قبل الاعتماد.'
+        ? isBoardPreview
+          ? 'راجع معاينة اللوحة؛ المقاسات والتفاصيل النهائية يؤكدها فريق خدمة العملاء.'
+          : 'راجع التصميم النهائي، ثم أضفه للسلة أو عدّل الاختيارات قبل الاعتماد.'
         : 'يمكنك إعادة التوليد من هنا أو الرجوع لتعديل أي اختيار.';
 
     return (
@@ -898,10 +903,10 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
           <div className="flex items-center justify-between gap-3 px-2 pb-4">
             <div>
               <p className="text-xs font-black text-washa-gold">واجهة التوليد</p>
-              <p className="mt-1 text-lg font-black">{hasFinalDesign ? 'النتيجة النهائية' : 'لوحة التكوين'}</p>
+              <p className="mt-1 text-lg font-black">{hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
             </div>
             <span className="rounded-2xl border border-washa-bg/10 bg-washa-bg/10 px-3 py-2 text-xs font-black text-washa-bg/80">
-              {isGenerating ? 'قيد التوليد' : hasFinalDesign ? 'جاهز للسلة' : 'بانتظار النتيجة'}
+              {isGenerating ? 'قيد التوليد' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : 'جاهز للسلة' : 'بانتظار النتيجة'}
             </span>
           </div>
 
@@ -909,7 +914,7 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
             {displayImage ? (
               <img
                 src={displayImage}
-                alt={hasFinalDesign ? 'التصميم النهائي على القطعة' : 'القطعة المختارة قبل التوليد'}
+                alt={hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية للوحة التصميم' : 'التصميم النهائي على القطعة' : 'القطعة المختارة قبل التوليد'}
                 className={cn('h-full w-full object-contain', hasFinalDesign ? 'object-cover' : 'p-5')}
               />
             ) : (
@@ -943,6 +948,8 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
         <section className="space-y-5">
           <StepIntro eyebrow="النتيجة" title={resultTitle} body={resultBody} />
 
+          <BoardPreviewDisclosure visible={isBoardPreview || generationDisclaimer === 'preview_only'} />
+
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             <SummaryRow label="الفكرة" value={getIdeaText(state) || 'غير محددة'} />
             <SummaryRow label="القطعة" value={`${cleanOptionName(state.garmentType) || 'غير محددة'}${state.garmentColor ? `، ${cleanOptionName(state.garmentColor)}` : ''}`} />
@@ -967,7 +974,7 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
                   {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
                   {error ? 'إعادة التوليد' : 'توليد التصميم'}
                 </Button>
-              ) : (
+              ) : !isBoardPreview ? (
                 <Button
                   variant="gold"
                   disabled={isSubmittingOrder}
@@ -977,22 +984,24 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
                   {isSubmittingOrder ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingBag className="h-5 w-5" />}
                   إضافة للسلة وإتمام الطلب
                 </Button>
-              )}
+              ) : null}
 
               {hasFinalDesign ? (
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  <Button variant="outline" disabled={isExtracting} onClick={() => void handleExtract()} className="h-12 gap-2 rounded-2xl">
-                    {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    استخراج التصميم
-                  </Button>
-                  <Button variant="outline" onClick={() => handleDownload(mockupImage!, 'washa-ai-mockup.png')} className="h-12 gap-2 rounded-2xl">
+                  {!isBoardPreview ? (
+                    <Button variant="outline" disabled={isExtracting} onClick={() => void handleExtract()} className="h-12 gap-2 rounded-2xl">
+                      {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      استخراج التصميم
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => handleDownload(mockupImage!, isBoardPreview ? 'washa-board-preview.webp' : 'washa-ai-mockup.png')} className="h-12 gap-2 rounded-2xl">
                     <Download className="h-4 w-4" />
                     تحميل المعاينة
                   </Button>
                 </div>
               ) : null}
 
-              {extractedImage ? (
+              {extractedImage && !isBoardPreview ? (
                 <Button
                   variant="outline"
                   onClick={() => handleDownload(extractedImage, 'washa-ai-print.png')}

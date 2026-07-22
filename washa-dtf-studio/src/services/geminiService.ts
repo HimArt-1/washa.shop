@@ -34,7 +34,7 @@ interface GenerationPreferences {
   printOffsetY?: number | null;
 }
 
-export type GeneratedArtworkResult = {
+export type PrimaryGeneratedArtworkResult = {
   imageUrl: string;
   previewUrl: string;
   frontPreviewUrl: string | null;
@@ -62,7 +62,29 @@ export type GeneratedArtworkResult = {
   productionReadinessStatus: 'ready';
 };
 
-type GenerationApiResponse = Partial<GeneratedArtworkResult> & {
+export type BoardPreviewResult = {
+  mode: 'fallback';
+  boardImageUrl: string;
+  boardRequestId: string;
+  disclaimer: 'preview_only';
+  quotaCharged: boolean;
+};
+
+export type GeneratedArtworkResult = PrimaryGeneratedArtworkResult | BoardPreviewResult;
+
+export function isBoardPreviewResult(
+  result: GeneratedArtworkResult | null | undefined,
+): result is BoardPreviewResult {
+  if (!result) return false;
+  return ('mode' in result && result.mode === 'fallback')
+    || ('disclaimer' in result && result.disclaimer === 'preview_only');
+}
+
+export function getGeneratedPreviewUrl(result: GeneratedArtworkResult): string {
+  return isBoardPreviewResult(result) ? result.boardImageUrl : result.previewUrl;
+}
+
+type GenerationApiResponse = Partial<PrimaryGeneratedArtworkResult> & {
   ok?: boolean;
   error?: string;
   message?: string;
@@ -71,6 +93,11 @@ type GenerationApiResponse = Partial<GeneratedArtworkResult> & {
   freeRemaining?: unknown;
   paidBalance?: unknown;
   guest?: unknown;
+  mode?: unknown;
+  boardImageUrl?: unknown;
+  boardRequestId?: unknown;
+  disclaimer?: unknown;
+  quotaCharged?: unknown;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -329,6 +356,23 @@ export async function generateMockup(
 
     if (data.error) throw createPublicApiError(data.error, 'generation', undefined, data);
     dispatchQuotaChanged(data);
+    if (data.mode === 'fallback' || data.disclaimer === 'preview_only') {
+      if (
+        typeof data.boardImageUrl !== 'string'
+        || !data.boardImageUrl.trim()
+        || typeof data.boardRequestId !== 'string'
+        || !data.boardRequestId.trim()
+      ) {
+        throw createPublicApiError('تعذر تثبيت معاينة اللوحة.', 'generation', response, data);
+      }
+      return {
+        mode: 'fallback',
+        boardImageUrl: data.boardImageUrl,
+        boardRequestId: data.boardRequestId,
+        disclaimer: 'preview_only',
+        quotaCharged: data.quotaCharged === true,
+      };
+    }
     if (
       typeof data?.imageUrl !== 'string' ||
       typeof data?.previewUrl !== 'string' ||
@@ -340,7 +384,7 @@ export async function generateMockup(
     ) {
       throw createPublicApiError('تعذر تثبيت أصل التصميم الدائم.', 'generation', response, data);
     }
-    return data as GeneratedArtworkResult;
+    return data as PrimaryGeneratedArtworkResult;
   } catch (error) {
     const info = error instanceof StudioApiError && isRecord(error.data)
       ? error.data
@@ -355,7 +399,7 @@ export async function generateMockup(
 }
 
 export async function recomposeMockup(
-  existing: Pick<GeneratedArtworkResult, 'designRequestId' | 'masterAssetId'>,
+  existing: Pick<PrimaryGeneratedArtworkResult, 'designRequestId' | 'masterAssetId'>,
   garmentType: string,
   color: string,
   technique: string,
@@ -363,7 +407,7 @@ export async function recomposeMockup(
   palette: string,
   calligraphyText: string | undefined,
   preferences: GenerationPreferences,
-): Promise<GeneratedArtworkResult> {
+): Promise<PrimaryGeneratedArtworkResult> {
   const sessionToken = preferences.sessionToken?.trim();
   if (!sessionToken) {
     throw createPublicApiError('يلزم تسجيل الدخول لإكمال العملية.', 'generation');
@@ -403,7 +447,7 @@ export async function recomposeMockup(
   ) {
     throw createPublicApiError('تعذر تحديث المعاينة من أصل التصميم.', 'generation', response, data);
   }
-  return data as GeneratedArtworkResult;
+  return data as PrimaryGeneratedArtworkResult;
 }
 
 export async function extractDesign(mockupImageBase64: string, mimeType: string, cleanOutputEnabled = true): Promise<string | null> {
