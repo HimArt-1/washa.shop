@@ -333,6 +333,7 @@ describe("generate-mockup route", () => {
                     headers: {
                         "x-request-id": `request-${surface}-primary-isolation`,
                         ...createWashaAiDevGenerationHeaders(surface),
+                        referer: `http://localhost/design/washa-ai/${surface}`,
                     },
                 }
             ) as NextRequest);
@@ -366,6 +367,7 @@ describe("generate-mockup route", () => {
                 headers: {
                     "x-request-id": "request-dev-forbidden",
                     ...createWashaAiDevGenerationHeaders("dev"),
+                    referer: "http://localhost/design/washa-ai/dev",
                 },
             }
         ) as NextRequest);
@@ -382,7 +384,7 @@ describe("generate-mockup route", () => {
         expect(mockGenerateBoard).not.toHaveBeenCalled();
     });
 
-    it("does not let an unsigned surface header impersonate a dev surface", async () => {
+    it("fails closed when a request claims an unsigned dev surface", async () => {
         mockGetGenerationMode.mockResolvedValue("fallback");
         mockShouldChargeQuota.mockResolvedValue(false);
 
@@ -397,16 +399,44 @@ describe("generate-mockup route", () => {
             }
         ) as NextRequest);
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(409);
         await expect(response.json()).resolves.toMatchObject({
-            mode: "fallback",
-            boardRequestId: "77777777-7777-4777-8777-777777777777",
+            code: "DEV_SURFACE_REFRESH_REQUIRED",
+            requestId: "request-cross-origin-dev-spoof",
         });
         expect(mockCanUseWashaAiDevSurfaceForGeneration).not.toHaveBeenCalled();
-        expect(mockGetGenerationMode).toHaveBeenCalledOnce();
-        expect(mockGenerateBoard).toHaveBeenCalledOnce();
+        expect(mockGetGenerationMode).not.toHaveBeenCalled();
+        expect(mockShouldChargeQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
         expect(mockGenerateMockup).not.toHaveBeenCalled();
     });
+
+    it.each(["dev", "dev-v2"] as const)(
+        "fails closed for a stale unsigned %s tab instead of entering Board fallback",
+        async (surface) => {
+            mockGetGenerationMode.mockResolvedValue("fallback");
+
+            const response = await POST(new Request(
+                "http://localhost/api/washa-dtf-studio/generate-mockup",
+                {
+                    headers: {
+                        "x-request-id": `request-stale-${surface}`,
+                        referer: `http://localhost/design/washa-ai/${surface}`,
+                    },
+                }
+            ) as NextRequest);
+
+            expect(response.status).toBe(409);
+            await expect(response.json()).resolves.toMatchObject({
+                code: "DEV_SURFACE_REFRESH_REQUIRED",
+            });
+            expect(mockGetGenerationMode).not.toHaveBeenCalled();
+            expect(mockShouldChargeQuota).not.toHaveBeenCalled();
+            expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+            expect(mockGenerateBoard).not.toHaveBeenCalled();
+            expect(mockGenerateMockup).not.toHaveBeenCalled();
+        }
+    );
 
     it("completes the shared claim and records board success without primary asset metadata", async () => {
         mockGetGenerationMode.mockResolvedValue("fallback");

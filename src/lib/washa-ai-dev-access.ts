@@ -2,28 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { getPublicVisibility, type WashaAiDevAccessMode } from "@/app/actions/settings";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
+import {
+    isWashaAiDevSurface,
+    WASHA_AI_DEV_SIGNATURE_HEADER,
+    WASHA_AI_DEV_SIGNATURE_META_NAME,
+    WASHA_AI_DEV_SURFACE_HEADER,
+    WASHA_AI_DEV_SURFACE_META_NAME,
+    type WashaAiDevSurface,
+} from "@/lib/washa-ai-dev-protocol";
 
-export type WashaAiDevSurface = "dev" | "dev-v2";
+export {
+    WASHA_AI_DEV_SIGNATURE_META_NAME,
+    type WashaAiDevSurface,
+} from "@/lib/washa-ai-dev-protocol";
 
 const DEV_SURFACE_PATHS: Record<WashaAiDevSurface, string> = {
     dev: "/design/washa-ai/dev",
     "dev-v2": "/design/washa-ai/dev-v2",
 };
 
-export const WASHA_AI_DEV_SURFACE_HEADER = "x-washa-ai-dev-surface";
-export const WASHA_AI_DEV_SIGNATURE_HEADER = "x-washa-ai-dev-signature";
-export const WASHA_AI_DEV_SURFACE_META_NAME = "washa-ai-dev-surface";
-export const WASHA_AI_DEV_SIGNATURE_META_NAME = "washa-ai-dev-signature";
-
 function getDevSurfaceSigningSecret() {
     return process.env.WASHA_AI_DEV_SURFACE_SECRET?.trim()
         || process.env.CLERK_SECRET_KEY?.trim()
         || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
         || null;
-}
-
-function isWashaAiDevSurface(value: string | null): value is WashaAiDevSurface {
-    return Boolean(value && Object.prototype.hasOwnProperty.call(DEV_SURFACE_PATHS, value));
 }
 
 function signWashaAiDevSurface(surface: WashaAiDevSurface) {
@@ -52,7 +54,7 @@ export function createWashaAiDevGenerationMetaTags(surface: WashaAiDevSurface) {
     ];
 }
 
-export function resolveWashaAiDevGenerationSurface(
+function resolveSignedWashaAiDevGenerationSurface(
     request: Pick<Request, "headers">
 ): WashaAiDevSurface | null {
     const surface = request.headers.get(WASHA_AI_DEV_SURFACE_HEADER);
@@ -74,6 +76,58 @@ export function resolveWashaAiDevGenerationSurface(
     }
 
     return null;
+}
+
+function resolveNavigationWashaAiDevSurface(
+    request: Pick<Request, "headers" | "url">
+): WashaAiDevSurface | null {
+    const referer = request.headers.get("referer");
+    if (!referer) return null;
+
+    try {
+        const requestUrl = new URL(request.url);
+        const refererUrl = new URL(referer);
+        if (requestUrl.origin !== refererUrl.origin) return null;
+
+        if (
+            refererUrl.pathname === DEV_SURFACE_PATHS["dev-v2"]
+            || refererUrl.pathname.startsWith(`${DEV_SURFACE_PATHS["dev-v2"]}/`)
+        ) {
+            return "dev-v2";
+        }
+        if (
+            refererUrl.pathname === DEV_SURFACE_PATHS.dev
+            || refererUrl.pathname.startsWith(`${DEV_SURFACE_PATHS.dev}/`)
+        ) {
+            return "dev";
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+}
+
+export type WashaAiDevGenerationIdentity =
+    | { kind: "app"; surface: null }
+    | { kind: "dev"; surface: WashaAiDevSurface }
+    | { kind: "invalid"; surface: null };
+
+export function resolveWashaAiDevGenerationIdentity(
+    request: Pick<Request, "headers" | "url">
+): WashaAiDevGenerationIdentity {
+    const signedSurface = resolveSignedWashaAiDevGenerationSurface(request);
+    const navigationSurface = resolveNavigationWashaAiDevSurface(request);
+    const hasIdentityHeaders = request.headers.has(WASHA_AI_DEV_SURFACE_HEADER)
+        || request.headers.has(WASHA_AI_DEV_SIGNATURE_HEADER);
+
+    if (signedSurface && navigationSurface === signedSurface) {
+        return { kind: "dev", surface: signedSurface };
+    }
+    if (signedSurface || navigationSurface || hasIdentityHeaders) {
+        return { kind: "invalid", surface: null };
+    }
+    return { kind: "app", surface: null };
 }
 
 function getSurfaceAccessMode(

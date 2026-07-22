@@ -16,7 +16,7 @@ vi.mock("@/lib/admin-access", () => ({
 import {
     canUseWashaAiDevSurfaceForGeneration,
     createWashaAiDevGenerationHeaders,
-    resolveWashaAiDevGenerationSurface,
+    resolveWashaAiDevGenerationIdentity,
 } from "@/lib/washa-ai-dev-access";
 
 function visibility(overrides: Record<string, unknown> = {}) {
@@ -42,10 +42,16 @@ describe("WASHA AI dev generation isolation", () => {
 
     it.each(["dev", "dev-v2"] as const)("recognizes a signed %s surface", (surface) => {
         const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
-            headers: createWashaAiDevGenerationHeaders(surface),
+            headers: {
+                ...createWashaAiDevGenerationHeaders(surface),
+                referer: `http://localhost/design/washa-ai/${surface}`,
+            },
         });
 
-        expect(resolveWashaAiDevGenerationSurface(request)).toBe(surface);
+        expect(resolveWashaAiDevGenerationIdentity(request)).toEqual({
+            kind: "dev",
+            surface,
+        });
     });
 
     it.each([
@@ -57,7 +63,10 @@ describe("WASHA AI dev generation isolation", () => {
             headers,
         });
 
-        expect(resolveWashaAiDevGenerationSurface(request)).toBeNull();
+        expect(resolveWashaAiDevGenerationIdentity(request)).toEqual({
+            kind: Object.keys(headers).length === 0 ? "app" : "invalid",
+            surface: null,
+        });
     });
 
     it("binds the signature to its exact surface", () => {
@@ -67,8 +76,25 @@ describe("WASHA AI dev generation isolation", () => {
             headers,
         });
 
-        expect(resolveWashaAiDevGenerationSurface(request)).toBeNull();
+        expect(resolveWashaAiDevGenerationIdentity(request)).toEqual({
+            kind: "invalid",
+            surface: null,
+        });
     });
+
+    it.each(["dev", "dev-v2"] as const)(
+        "classifies an unsigned %s navigation as invalid instead of app traffic",
+        (surface) => {
+            const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
+                headers: { referer: `http://localhost/design/washa-ai/${surface}` },
+            });
+
+            expect(resolveWashaAiDevGenerationIdentity(request)).toEqual({
+                kind: "invalid",
+                surface: null,
+            });
+        }
+    );
 
     it.each([
         ["admin", true, true],

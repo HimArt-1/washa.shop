@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     createWashaAiDevGenerationHeaders,
     createWashaAiDevGenerationMetaTags,
+} from "@/lib/washa-ai-dev-access";
+import {
     WASHA_AI_DEV_SIGNATURE_META_NAME,
     WASHA_AI_DEV_SURFACE_META_NAME,
-} from "@/lib/washa-ai-dev-access";
+    WASHA_AI_DEV_SURFACES,
+} from "@/lib/washa-ai-dev-protocol";
 import { getWashaAiDevGenerationHeadersFromDocument } from "../../washa-dtf-studio/src/lib/devGenerationSurface";
 
 function metaDocument(values: Record<string, string>) {
@@ -28,7 +31,7 @@ describe("WASHA AI dev client generation identity", () => {
         vi.unstubAllEnvs();
     });
 
-    it.each(["dev", "dev-v2", "dev-v3"] as const)(
+    it.each(WASHA_AI_DEV_SURFACES)(
         "carries the signed %s identity from server meta tags into request headers",
         (surface) => {
             const values = Object.fromEntries(
