@@ -48,6 +48,7 @@ interface WashaDevStudioV2Props {
 
 type WizardStepId = 'idea' | 'garment' | 'position' | 'style' | 'palette';
 type StudioView = 'wizard' | 'generation';
+type GenerationAttemptStatus = 'idle' | 'running' | 'succeeded' | 'failed' | 'preview' | 'not_started';
 
 const BRAND_MARK_SRC = 'header-logo-identity.png';
 const CURRENT_APP_PATH = '/design/washa-ai/app';
@@ -59,6 +60,12 @@ const WIZARD_STEPS: { id: WizardStepId; label: string; eyebrow: string }[] = [
   { id: 'style', label: 'الأسلوب', eyebrow: '04' },
   { id: 'palette', label: 'الألوان', eyebrow: '05' },
 ];
+
+const PROMPT_NATIVE_PIPELINE = [
+  { number: '01', title: 'أصل التصميم', meta: 'OPENAI · PNG', icon: FileImage },
+  { number: '02', title: 'فحص الشفافية', meta: 'ALPHA GATE', icon: CheckCircle2 },
+  { number: '03', title: 'الموكب الواقعي', meta: 'GEMINI', icon: Shirt },
+] as const;
 
 const METHOD_TABS: { id: DesignMethod; label: string; hint: string; icon: ComponentType<{ className?: string }> }[] = [
   { id: 'text', label: 'وصف', hint: 'اكتب الفكرة', icon: Type },
@@ -330,7 +337,9 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     isExtracting,
     isSubmittingOrder,
     mockupImage,
+    isMockupCurrent,
     extractedImage,
+    generationAttemptOutcome,
     error,
     orderResult,
     isBoardPreview,
@@ -342,6 +351,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   const [dragging, setDragging] = useState(false);
   const [resultAssetView, setResultAssetView] = useState<'mockup' | 'artwork'>('mockup');
   const isPromptNative = variant === 'prompt-native';
+  const generationAttemptStatus: GenerationAttemptStatus = isGenerating ? 'running' : generationAttemptOutcome ?? 'idle';
 
   const activeStep = WIZARD_STEPS[activeStepIndex];
   const isLastWizardStep = activeStepIndex === WIZARD_STEPS.length - 1;
@@ -456,17 +466,22 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     selectedPalette,
   });
 
+  const runGenerationAttempt = async () => {
+    if (!canGenerate) return;
+    await handleGenerate({ promptOverride: getGenerationPromptOverride() });
+  };
+
   const handleGenerateFromWizard = () => {
     if (!canGenerate) return;
     setResultAssetView('mockup');
     setStudioView('generation');
-    void handleGenerate({ promptOverride: getGenerationPromptOverride() });
+    void runGenerationAttempt();
   };
 
   const handleRetryGenerate = () => {
     if (!canGenerate) return;
     setResultAssetView('mockup');
-    void handleGenerate({ promptOverride: getGenerationPromptOverride() });
+    void runGenerationAttempt();
   };
 
   const handleEditStep = (index: number) => {
@@ -887,33 +902,55 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
 
   const renderGenerationView = () => {
     const hasFinalDesign = Boolean(mockupImage);
+    const hasCurrentFinalDesign = hasFinalDesign && (!isPromptNative || isMockupCurrent);
     const isArtworkView = isPromptNative && resultAssetView === 'artwork' && Boolean(extractedImage);
     const displayImage = isArtworkView ? extractedImage : mockupImage || previewImage;
+    const generationAttemptFailed = isPromptNative && generationAttemptStatus === 'failed';
+    const generationAttemptNotStarted = isPromptNative && generationAttemptStatus === 'not_started';
+    const needsCurrentGeneration = !hasFinalDesign || generationAttemptNotStarted || (isPromptNative && !isMockupCurrent);
     const resultTitle = isGenerating
-      ? 'نجهز التصميم الآن.'
-      : hasFinalDesign
-        ? isBoardPreview ? 'المعاينة المبدئية جاهزة.' : 'التصميم جاهز.'
-        : error
-          ? 'لم يكتمل التوليد.'
+      ? isPromptNative ? 'محرك V3 يبني النتيجة الآن.' : 'نجهز التصميم الآن.'
+      : generationAttemptFailed
+        ? 'لم تكتمل المحاولة الأخيرة.'
+        : generationAttemptNotStarted
+          ? 'لم تبدأ محاولة جديدة.'
+        : hasCurrentFinalDesign
+          ? isBoardPreview ? 'المعاينة المبدئية جاهزة.' : isPromptNative ? 'اكتمل أصل التصميم والموكب.' : 'التصميم جاهز.'
+          : hasFinalDesign
+            ? 'النتيجة السابقة محفوظة.'
           : 'جاهز لتوليد النتيجة.';
     const resultBody = isGenerating
-      ? 'نرتب الفكرة والقطعة والموضع في نتيجة واحدة قابلة للطلب.'
-      : hasFinalDesign
-        ? isBoardPreview
-          ? 'راجع معاينة اللوحة؛ المقاسات والتفاصيل النهائية يؤكدها فريق خدمة العملاء.'
-          : 'راجع التصميم النهائي، ثم أضفه للسلة أو عدّل الاختيارات قبل الاعتماد.'
-        : 'يمكنك إعادة التوليد من هنا أو الرجوع لتعديل أي اختيار.';
+      ? isPromptNative
+        ? 'ينشئ OpenAI ملف الطباعة الشفاف أولاً، ثم يتحقق النظام من قناة Alpha قبل أن يركّبه Gemini على القطعة المختارة.'
+        : 'نرتب الفكرة والقطعة والموضع في نتيجة واحدة قابلة للطلب.'
+      : generationAttemptFailed
+        ? hasFinalDesign
+          ? 'تعذرت المحاولة الجديدة، لذلك أبقينا النتيجة السابقة متاحة للمراجعة. يمكنك إعادة المحاولة أو تعديل التوجيه.'
+          : 'يمكنك إعادة التوليد من هنا أو الرجوع لتعديل أي اختيار.'
+        : generationAttemptNotStarted
+          ? hasFinalDesign
+            ? 'لم يبدأ طلب جديد، والنتيجة السابقة ما زالت متاحة للمراجعة. حاول مجدداً عندما تصبح الخدمة جاهزة.'
+            : 'لم يبدأ طلب التوليد. راجع التنبيه الظاهر ثم حاول مجدداً.'
+        : hasCurrentFinalDesign
+          ? isBoardPreview
+            ? 'راجع معاينة اللوحة؛ المقاسات والتفاصيل النهائية يؤكدها فريق خدمة العملاء.'
+            : isPromptNative
+              ? 'راجع الموكب الواقعي وأصل الطباعة الشفاف، ثم اعتمد التصميم أو عدّل توجيهك.'
+              : 'راجع التصميم النهائي، ثم أضفه للسلة أو عدّل الاختيارات قبل الاعتماد.'
+          : hasFinalDesign
+            ? 'هذه النتيجة تخص اختيارات سابقة. ولّد الاختيارات الحالية قبل اعتماد الطلب.'
+          : 'يمكنك إعادة التوليد من هنا أو الرجوع لتعديل أي اختيار.';
 
     return (
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.02fr)_minmax(340px,0.58fr)]">
         <section className="overflow-hidden rounded-[34px] bg-washa-text p-3 text-washa-bg shadow-[0_28px_90px_rgba(31,25,16,0.22)] sm:p-4">
           <div className="flex items-center justify-between gap-3 px-2 pb-4">
             <div>
-              <p className="text-xs font-black text-washa-gold">{isPromptNative ? 'مسار أصل الطباعة' : 'واجهة التوليد'}</p>
-              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : isPromptNative ? 'الموكب الواقعي' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
+              <p className="text-xs font-black text-washa-gold-light">{isPromptNative ? 'مسار أصل الطباعة' : 'واجهة التوليد'}</p>
+              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : isPromptNative ? isMockupCurrent ? 'الموكب الواقعي' : 'الموكب السابق' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
             </div>
             <span className="rounded-2xl border border-washa-bg/10 bg-washa-bg/10 px-3 py-2 text-xs font-black text-washa-bg/80">
-              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : isPromptNative ? 'GEMINI COMPOSITE' : 'جاهز للسلة' : 'بانتظار النتيجة'}
+              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : isPromptNative ? isMockupCurrent ? 'GEMINI COMPOSITE' : 'نتيجة سابقة' : 'جاهز للسلة' : 'بانتظار النتيجة'}
             </span>
           </div>
 
@@ -993,7 +1030,17 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
 
           <div className="rounded-[28px] border border-washa-border bg-washa-ivory p-3 shadow-[0_16px_46px_rgba(154,123,61,0.08)]">
             <div className="grid gap-3">
-              {!hasFinalDesign ? (
+              {generationAttemptFailed ? (
+                <Button
+                  variant="gold"
+                  disabled={!canGenerate}
+                  onClick={handleRetryGenerate}
+                  className="h-14 w-full gap-2 rounded-2xl text-base"
+                >
+                  <RefreshCcw className="h-5 w-5" />
+                  إعادة التوليد
+                </Button>
+              ) : needsCurrentGeneration ? (
                 <Button
                   variant="gold"
                   disabled={!canGenerate}
@@ -1001,7 +1048,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
                   className="h-14 w-full gap-2 rounded-2xl text-base"
                 >
                   {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-                  {error ? 'إعادة التوليد' : 'توليد التصميم'}
+                  {hasFinalDesign ? 'توليد الاختيارات الحالية' : 'توليد التصميم'}
                 </Button>
               ) : !isBoardPreview ? (
                 <Button
@@ -1081,22 +1128,253 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     return renderIdeaStep();
   };
 
-  const promptNativeTheme = isPromptNative ? {
-    '--color-washa-bg': '#F2F0E8',
-    '--color-washa-surface': '#E7E3D8',
-    '--color-washa-elevated': '#DAD6C9',
-    '--color-washa-border': 'rgba(20, 54, 47, 0.18)',
-    '--color-washa-gold': '#A56F42',
-    '--color-washa-gold-light': '#C49568',
-    '--color-washa-gold-deep': '#6F422B',
-    '--color-washa-ivory': '#FBFAF5',
-    '--color-washa-text': '#14362F',
-    '--color-washa-text-sec': '#60716A',
-    '--color-washa-text-faint': '#89958F',
-  } as CSSProperties : undefined;
+  const promptNativeTheme = {
+    '--color-washa-bg': '#F8F5EF',
+    '--color-washa-surface': '#F0EBE1',
+    '--color-washa-elevated': '#E6DED0',
+    '--color-washa-border': 'rgba(61, 49, 33, 0.16)',
+    '--color-washa-gold': '#76591F',
+    '--color-washa-gold-light': '#C9A84C',
+    '--color-washa-gold-deep': '#6F5625',
+    '--color-washa-ivory': '#FFFDF9',
+    '--color-washa-text': '#1D1B17',
+    '--color-washa-text-sec': '#625C53',
+    '--color-washa-text-faint': '#716A60',
+  } as CSSProperties;
+
+  const completedWizardSteps = [hasIdea, hasGarment, Boolean(state.printOptionId), hasStyle, hasPalette];
+  const pipelineRunning = generationAttemptStatus === 'running' || isGenerating;
+  const pipelineFailed = generationAttemptStatus === 'failed';
+  const pipelineNotStarted = generationAttemptStatus === 'not_started';
+  const pipelineStale = studioView === 'generation' && Boolean(mockupImage) && !isMockupCurrent;
+  const pipelineUnavailable = studioView === 'generation' && !pipelineRunning && (generationAttemptStatus === 'preview' || generationAttemptStatus === 'idle' && isBoardPreview);
+  const promptNativeComplete = studioView === 'generation'
+    && !pipelineRunning
+    && !pipelineFailed
+    && !pipelineNotStarted
+    && !pipelineUnavailable
+    && !pipelineStale
+    && isMockupCurrent
+    && Boolean(mockupImage && extractedImage);
+  const pipelineProgress = studioView === 'wizard' || pipelineRunning || pipelineUnavailable || pipelineFailed || pipelineNotStarted || pipelineStale ? 0 : promptNativeComplete ? 3 : extractedImage ? 2 : 0;
+  const pipelineStatusLabel = pipelineRunning
+    ? 'محرك V3 يعمل'
+    : pipelineUnavailable
+      ? 'معاينة بديلة للمراجعة'
+      : pipelineFailed
+        ? 'تعذرت المحاولة الأخيرة'
+        : pipelineNotStarted
+          ? 'لم تبدأ محاولة جديدة'
+          : pipelineStale
+            ? 'بانتظار توليد الاختيارات الحالية'
+            : promptNativeComplete
+              ? 'اكتمل محرك V3'
+              : 'محرك V3 جاهز';
+
+  if (isPromptNative) {
+    return (
+      <div
+        dir="rtl"
+        style={promptNativeTheme}
+        className="relative min-h-[100dvh] overflow-x-hidden bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-white"
+      >
+        <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_84%_4%,rgba(201,168,76,0.14),transparent_26%),radial-gradient(circle_at_8%_82%,rgba(29,27,23,0.06),transparent_32%)]" />
+        <div className="pointer-events-none fixed inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(29,27,23,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(29,27,23,0.45)_1px,transparent_1px)] [background-size:48px_48px]" />
+
+        <header className="sticky top-0 z-40 border-b border-washa-border bg-washa-bg/90 backdrop-blur-2xl">
+          <div className="mx-auto flex h-[76px] w-full max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#1A1A1A] shadow-[0_14px_28px_rgba(26,26,26,0.2)]">
+                <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="h-full w-full object-contain p-2" />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-lg font-black leading-none text-[#1A1A1A] sm:text-xl" dir="ltr">WASHA AI</p>
+                  <span className="inline-flex h-6 items-center rounded-full border border-[#C9A84C]/35 bg-[#C9A84C]/12 px-2 text-[10px] font-black tracking-[0.14em] text-[#715618]" dir="ltr">V3</span>
+                </div>
+                <p className="mt-1 hidden text-[11px] font-bold text-washa-text-sec sm:block">مختبر التصميم الذكي · من الفكرة إلى أصل طباعة حقيقي</p>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <a
+                href={CURRENT_APP_PATH}
+                aria-label="العودة إلى WASHA AI"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-washa-border bg-white/70 px-3 text-xs font-black text-washa-text-sec transition hover:border-[#C9A84C]/50 hover:text-washa-text active:scale-[0.98]"
+              >
+                <ArrowRight className="h-4 w-4" />
+                <span className="hidden sm:inline">العودة</span>
+              </a>
+              <button
+                type="button"
+                onClick={onOpenGallery}
+                aria-label="فتح تصاميمي"
+                className="inline-flex h-11 items-center gap-2 rounded-full bg-[#1A1A1A] px-3.5 text-xs font-black text-white shadow-[0_10px_24px_rgba(26,26,26,0.16)] transition hover:bg-[#342D25] active:scale-[0.98] sm:px-4"
+              >
+                <GalleryHorizontalEnd className="h-4 w-4 text-[#C9A84C]" />
+                <span className="hidden sm:inline">تصاميمي</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="relative mx-auto w-full max-w-[1440px] px-3 pb-12 pt-4 sm:px-6 sm:pt-6 lg:px-10 lg:pb-16">
+          <section className="mb-4 overflow-hidden rounded-[26px] bg-[#1A1A1A] text-white shadow-[0_18px_50px_rgba(26,26,26,0.16)] sm:mb-6" aria-label="محرك إنتاج WASHA AI V3" aria-live="polite">
+            <div className="grid lg:grid-cols-[minmax(220px,0.62fr)_minmax(0,1.38fr)]">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3.5 lg:border-b-0 lg:border-l lg:px-6">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      {isGenerating ? <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#C9A84C] opacity-50" /> : null}
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#C9A84C]" />
+                    </span>
+                    <p className="text-xs font-black text-white">{pipelineStatusLabel}</p>
+                  </div>
+                  <p className="mt-1 text-[10px] font-bold text-white/48" dir="ltr">PROMPT-NATIVE PIPELINE</p>
+                </div>
+                <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[10px] font-bold text-white/60">3 مراحل</span>
+              </div>
+
+              <div className="grid grid-cols-3 divide-x-reverse divide-x divide-white/10">
+                {PROMPT_NATIVE_PIPELINE.map(({ number, title, meta, icon: Icon }, index) => {
+                  const complete = index < pipelineProgress;
+                  const active = !pipelineUnavailable && !pipelineFailed && !pipelineNotStarted && !pipelineStale && pipelineProgress < PROMPT_NATIVE_PIPELINE.length && index === pipelineProgress;
+                  return (
+                    <div key={number} aria-current={active ? 'step' : undefined} className="relative flex min-w-0 items-center gap-2 px-2 py-3.5 sm:gap-3 sm:px-4">
+                      <span className={cn(
+                        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors sm:h-9 sm:w-9',
+                        complete ? 'border-[#C9A84C] bg-[#C9A84C] text-[#1A1A1A]' : active ? 'border-[#C9A84C]/60 bg-[#C9A84C]/12 text-[#C9A84C]' : 'border-white/10 bg-white/[0.04] text-white/35'
+                      )}>
+                        {complete ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Icon className="h-3.5 w-3.5" />}
+                      </span>
+                      <div className="min-w-0">
+                        <p className={cn('truncate text-[10px] font-black sm:text-xs', complete || active ? 'text-white' : 'text-white/60')}>{title}</p>
+                        <p className={cn('mt-0.5 hidden truncate text-[9px] font-bold tracking-[0.08em] sm:block', complete || active ? 'text-[#C9A84C]' : 'text-white/55')} dir="ltr">{number} · {meta}</p>
+                        <span className="sr-only">{pipelineUnavailable ? 'لم تنفذ في المعاينة البديلة' : pipelineFailed ? 'تعذرت في المحاولة الأخيرة' : pipelineNotStarted ? 'لم تبدأ محاولة جديدة' : pipelineStale ? 'بانتظار توليد الاختيارات الحالية' : complete ? 'مكتملة' : active ? 'المرحلة الحالية' : 'بانتظار التنفيذ'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {studioView === 'wizard' ? (
+            <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-6">
+              <aside className="self-start overflow-hidden rounded-[28px] border border-washa-border bg-white/76 shadow-[0_18px_50px_rgba(56,43,20,0.06)] backdrop-blur-xl lg:sticky lg:top-[100px]">
+                <div className="hidden border-b border-washa-border px-5 py-5 lg:block">
+                  <p className="text-[10px] font-black tracking-[0.16em] text-[#715618]" dir="ltr">DESIGN DIRECTION</p>
+                  <p className="mt-2 text-xl font-black text-[#1A1A1A]">ابنِ فكرتك بدقة.</p>
+                  <p className="mt-1 text-xs font-bold leading-6 text-washa-text-sec">كل اختيار يضيف توجيهاً واضحاً لمحرك التصميم.</p>
+                </div>
+
+                <nav className="grid grid-cols-5 gap-1 p-2 lg:block lg:space-y-1 lg:p-3" aria-label="خطوات تصميم V3">
+                  {WIZARD_STEPS.map((step, index) => {
+                    const active = index === activeStepIndex;
+                    const complete = completedWizardSteps[index] && index < activeStepIndex;
+                    const disabled = index > activeStepIndex + 1 || (index === activeStepIndex + 1 && !stepCanContinue);
+                    return (
+                      <button
+                        key={step.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => handleStepClick(index)}
+                        aria-current={active ? 'step' : undefined}
+                        className={cn(
+                          'group flex min-h-[62px] min-w-0 flex-col items-center justify-center gap-1 rounded-[18px] px-1 text-center transition active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-35 lg:min-h-[56px] lg:w-full lg:flex-row lg:justify-start lg:gap-2 lg:px-3 lg:text-right',
+                          active ? 'bg-[#1A1A1A] text-white shadow-[0_10px_24px_rgba(26,26,26,0.14)]' : 'text-washa-text-sec hover:bg-washa-surface hover:text-washa-text'
+                        )}
+                      >
+                        <span className={cn(
+                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-black tabular-nums',
+                          active ? 'border-[#C9A84C] bg-[#C9A84C] text-[#1A1A1A]' : complete ? 'border-[#C9A84C]/35 bg-[#C9A84C]/12 text-[#715618]' : 'border-washa-border bg-white/60 text-washa-text-faint'
+                        )}>
+                          {complete ? <Check className="h-3 w-3" strokeWidth={3} /> : step.eyebrow}
+                        </span>
+                        <span className="w-full truncate text-[10px] font-black sm:text-xs lg:w-auto lg:text-sm">{step.label}</span>
+                        {active ? <span className="mr-auto hidden h-1.5 w-1.5 rounded-full bg-[#C9A84C] lg:block" /> : null}
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                <div className="hidden border-t border-washa-border p-4 lg:block">
+                  <div className="rounded-[20px] bg-washa-surface px-4 py-3">
+                    <div className="flex items-center justify-between text-[11px] font-black">
+                      <span className="text-washa-text-sec">جاهزية التوجيه</span>
+                      <span className="text-[#715618]">{promptQuality}%</span>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                      <motion.div className="h-full rounded-full bg-[#C9A84C]" animate={{ width: `${promptQuality}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
+                    </div>
+                  </div>
+                </div>
+              </aside>
+
+              <div className="min-w-0">
+                <motion.section
+                  layout
+                  className="min-h-[620px] overflow-hidden rounded-[30px] border border-washa-border bg-washa-ivory/92 p-5 shadow-[0_24px_70px_rgba(56,43,20,0.08)] sm:p-7 lg:min-h-[680px] lg:p-10"
+                >
+                  <div className="mb-7 flex items-center justify-between border-b border-washa-border pb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black tracking-[0.16em] text-[#715618]" dir="ltr">STEP {activeStep.eyebrow}</span>
+                      <span className="h-1 w-1 rounded-full bg-washa-text-faint" />
+                      <span className="text-xs font-black text-washa-text-sec">{activeStep.label}</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-washa-text-faint">{activeStepIndex + 1} / {WIZARD_STEPS.length}</span>
+                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeStep.id}
+                      initial={{ opacity: 0, y: 14 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      {renderStepContent()}
+                    </motion.div>
+                  </AnimatePresence>
+                </motion.section>
+
+                <div className="sticky bottom-3 z-20 mt-4 flex items-center justify-between gap-2 rounded-[24px] border border-washa-border bg-washa-bg/90 p-2.5 shadow-[0_18px_50px_rgba(26,26,26,0.12)] backdrop-blur-2xl sm:p-3">
+                  <Button variant="ghost" onClick={goBack} disabled={activeStepIndex === 0} className="h-12 gap-2 rounded-2xl px-3 sm:px-5">
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="hidden sm:inline">السابق</span>
+                  </Button>
+                  <div className="hidden text-center sm:block">
+                    <p className="text-xs font-black text-washa-text">{activeStep.label}</p>
+                    <p className="mt-0.5 text-[10px] font-bold text-washa-text-faint">خطوة {activeStepIndex + 1} من {WIZARD_STEPS.length}</p>
+                  </div>
+                  <Button
+                    variant="gold"
+                    disabled={isLastWizardStep ? !canGenerate : !stepCanContinue}
+                    onClick={isLastWizardStep ? handleGenerateFromWizard : goNext}
+                    className="h-12 min-w-[148px] gap-2 rounded-2xl bg-[#1A1A1A] px-5 text-white hover:bg-[#3A3128] disabled:bg-washa-elevated disabled:text-washa-text-faint sm:min-w-[170px]"
+                  >
+                    {isLastWizardStep ? <><span>توليد التصميم</span><Wand2 className="h-4 w-4 text-[#C9A84C]" /></> : <><span>التالي</span><ArrowLeft className="h-4 w-4 text-[#C9A84C]" /></>}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <motion.section
+              layout
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden rounded-[32px] border border-washa-border bg-washa-ivory/92 p-4 shadow-[0_24px_70px_rgba(56,43,20,0.1)] sm:p-6 lg:p-8"
+            >
+              {renderGenerationView()}
+            </motion.section>
+          )}
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div dir="rtl" style={promptNativeTheme} className="min-h-[100dvh] bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-washa-bg">
+    <div dir="rtl" className="min-h-[100dvh] bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-washa-bg">
       <header className="sticky top-0 z-40 border-b border-washa-border/60 bg-washa-bg/92 backdrop-blur-2xl">
         <div className="mx-auto flex min-h-20 w-full max-w-[1380px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -1104,17 +1382,12 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
               <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="h-full w-full object-contain px-1.5 py-2" />
             </span>
             <div className="min-w-0">
-              <p className="text-xl font-black leading-none text-washa-text sm:text-2xl">{isPromptNative ? 'WASHA AI Atelier' : 'وشّى AI'}</p>
-              <p className="mt-1 text-xs font-bold text-washa-text-sec">{isPromptNative ? 'تصميم شفاف أصلي، ثم موكب واقعي.' : 'صمم قطعتك بخطوات واضحة.'}</p>
+              <p className="text-xl font-black leading-none text-washa-text sm:text-2xl">وشّى AI</p>
+              <p className="mt-1 text-xs font-bold text-washa-text-sec">صمم قطعتك بخطوات واضحة.</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {isPromptNative ? (
-              <span className="inline-flex h-10 items-center rounded-2xl border border-washa-gold/30 bg-washa-gold/10 px-3 text-[11px] font-black tracking-[0.12em] text-washa-gold-deep" dir="ltr">
-                PROMPT NATIVE / DEV V3
-              </span>
-            ) : null}
             <a
               href={CURRENT_APP_PATH}
               className="inline-flex h-10 items-center gap-2 rounded-2xl border border-washa-border bg-washa-ivory px-3 text-sm font-black text-washa-text-sec transition hover:border-washa-gold/50 hover:text-washa-gold active:scale-[0.985]"
@@ -1135,23 +1408,6 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
       </header>
 
       <main className="mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6">
-        {isPromptNative ? (
-          <div className="mb-5 grid gap-px overflow-hidden rounded-[24px] border border-washa-border bg-washa-border sm:grid-cols-3" aria-label="مسار إنتاج التصميم">
-            {[
-              ['01', 'OpenAI Artwork', 'توليد PNG شفاف أصلي'],
-              ['02', 'Alpha Gate', 'تحقق حقيقي من الشفافية'],
-              ['03', 'Gemini Mockup', 'تركيب واقعي على القطعة'],
-            ].map(([number, title, body]) => (
-              <div key={number} className="flex items-center gap-3 bg-washa-ivory px-4 py-3">
-                <span className="font-mono text-xs font-black text-washa-gold">{number}</span>
-                <div>
-                  <p className="text-xs font-black text-washa-text" dir="ltr">{title}</p>
-                  <p className="mt-0.5 text-[11px] font-bold text-washa-text-sec">{body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
         {studioView === 'wizard' ? (
           <>
             <nav className="mb-5" aria-label="خطوات التصميم">
