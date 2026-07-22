@@ -35,10 +35,14 @@ const primaryResult = {
     frontPreviewUrl: "https://cdn.example/mockup.webp",
     backPreviewUrl: null,
     designRequestId: "11111111-1111-4111-8111-111111111111",
+    sourceAssetId: "22222222-2222-4222-8222-222222222222",
+    sourceAssetUrl: "https://cdn.example/master.png",
+    sourceChecksum: "a".repeat(64),
     masterAssetId: "22222222-2222-4222-8222-222222222222",
     masterAssetUrl: "https://cdn.example/master.png",
     masterChecksum: "a".repeat(64),
     mockupSourceType: "reference" as const,
+    previewKind: "mockup" as const,
     placement: {
         side: "front" as const,
         x: 0.5,
@@ -63,6 +67,24 @@ const boardResult = {
     boardRequestId: "77777777-7777-4777-8777-777777777777",
     disclaimer: "preview_only" as const,
     quotaCharged: false,
+};
+
+const pendingPrepressResult = {
+    ...primaryResult,
+    imageUrl: "https://cdn.example/provider-output.png",
+    previewUrl: "https://cdn.example/provider-output.png",
+    frontPreviewUrl: "https://cdn.example/provider-output.png",
+    sourceAssetId: "99999999-9999-4999-8999-999999999999",
+    sourceAssetUrl: "https://cdn.example/provider-output.png",
+    sourceChecksum: "c".repeat(64),
+    masterAssetId: null,
+    masterAssetUrl: null,
+    masterChecksum: null,
+    mockupSourceType: "source_preview" as const,
+    previewKind: "source" as const,
+    transparencyVerificationStatus: "pending" as const,
+    productionReadinessStatus: "pending_prepress" as const,
+    previewProvider: "source" as const,
 };
 
 function makeDesignContext(result: typeof primaryResult | typeof boardResult) {
@@ -130,6 +152,7 @@ describe("board fallback presentation", () => {
     it("disables final-production actions only for board previews", () => {
         expect(resolveGenerationPresentation(boardResult)).toEqual({
             isBoardPreview: true,
+            isPendingPrepress: false,
             resultLabel: "معاينة مبدئية",
             canRecompose: false,
             canExtract: false,
@@ -139,12 +162,26 @@ describe("board fallback presentation", () => {
         });
         expect(resolveGenerationPresentation(primaryResult)).toEqual({
             isBoardPreview: false,
+            isPendingPrepress: false,
             resultLabel: "النتيجة النهائية",
             canRecompose: true,
             canExtract: true,
             canSubmitOrder: true,
             canDownloadPrintFile: true,
             previewDownloadName: "washa-mockup.png",
+        });
+    });
+
+    it("keeps a preserved source orderable while print-only actions wait for prepress", () => {
+        expect(resolveGenerationPresentation(pendingPrepressResult)).toEqual({
+            isBoardPreview: false,
+            isPendingPrepress: true,
+            resultLabel: "التصميم محفوظ",
+            canRecompose: false,
+            canExtract: false,
+            canSubmitOrder: true,
+            canDownloadPrintFile: false,
+            previewDownloadName: "washa-source-preview.png",
         });
     });
 

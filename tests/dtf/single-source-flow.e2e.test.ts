@@ -84,7 +84,10 @@ describe("WASHA AI single-source browser flow (E2E contract)", () => {
             throw new Error("Primary single-source generation returned a board preview");
         }
         const recomposed = await recomposeMockup(
-            generated,
+            {
+                designRequestId: generated.designRequestId,
+                masterAssetId: generated.masterAssetId!,
+            },
             "تيشيرت",
             "أسود",
             "DTF",

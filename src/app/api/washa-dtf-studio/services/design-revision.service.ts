@@ -8,8 +8,10 @@ import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.serv
 type ApproveRevisionInput = {
     profileId: string;
     designRequestId: string;
-    masterAssetId: string;
-    masterChecksum: string;
+    sourceAssetId?: string | null;
+    sourceChecksum?: string | null;
+    masterAssetId?: string | null;
+    masterChecksum?: string | null;
     placement: PlacementTransform;
     productVariant: Record<string, unknown>;
     garmentColor: Record<string, unknown>;
@@ -17,16 +19,41 @@ type ApproveRevisionInput = {
 
 export type ApprovedRevision = {
     designRevisionId: string;
-    masterAssetId: string;
-    masterAssetUrl: string;
-    masterChecksum: string;
-    printAssetPath: string;
-    printAssetUrl: string;
+    sourceAssetId: string;
+    sourceAssetUrl: string;
+    sourceChecksum: string;
+    masterAssetId: string | null;
+    masterAssetUrl: string | null;
+    masterChecksum: string | null;
+    printAssetPath: string | null;
+    printAssetUrl: string | null;
     frontPreviewUrl: string | null;
     backPreviewUrl: string | null;
-    mockupSourceType: "reference" | "generated_blank_garment";
+    mockupSourceType: "reference" | "generated_blank_garment" | "source_preview";
     pipeline: "standard" | "prompt_native";
+    productionReadinessStatus: "ready" | "pending_prepress";
 };
+
+function placementsEqual(
+    left: PlacementTransform | null | undefined,
+    right: PlacementTransform
+) {
+    return Boolean(
+        left
+        && left.side === right.side
+        && left.x === right.x
+        && left.y === right.y
+        && left.scale === right.scale
+        && left.rotation === right.rotation
+        && left.printWidthCm === right.printWidthCm
+        && left.printHeightCm === right.printHeightCm
+        && left.anchorX === right.anchorX
+        && left.anchorY === right.anchorY
+        && left.referenceMockupId === right.referenceMockupId
+        && left.printAreaId === right.printAreaId
+        && left.transformVersion === right.transformVersion
+    );
+}
 
 export class DesignRevisionService {
     private static db() {
@@ -45,29 +72,27 @@ export class DesignRevisionService {
             throw new Error("Design request is missing or does not belong to this customer.");
         }
         if (
-            request.production_readiness_status !== "ready"
+            !["ready", "pending_prepress"].includes(request.production_readiness_status)
             || request.generation_status !== "ready"
             || !request.mockup_source_type
         ) {
-            throw new Error("Design request is not production-ready.");
+            throw new Error("Design request is not ready for approval.");
         }
-        if (request.master_asset_id !== input.masterAssetId) {
+        if (
+            request.master_asset_id
+            && request.master_asset_id !== input.masterAssetId
+        ) {
             throw new Error("Design request master asset does not match the submitted asset.");
         }
+        if (
+            request.source_asset_id
+            && input.sourceAssetId
+            && request.source_asset_id !== input.sourceAssetId
+        ) {
+            throw new Error("Design request source asset does not match the submitted asset.");
+        }
         const storedPlacement = request.placement_data as PlacementTransform | null;
-        const placementMatches = storedPlacement
-            && storedPlacement.side === input.placement.side
-            && storedPlacement.x === input.placement.x
-            && storedPlacement.y === input.placement.y
-            && storedPlacement.scale === input.placement.scale
-            && storedPlacement.rotation === input.placement.rotation
-            && storedPlacement.printWidthCm === input.placement.printWidthCm
-            && storedPlacement.printHeightCm === input.placement.printHeightCm
-            && storedPlacement.anchorX === input.placement.anchorX
-            && storedPlacement.anchorY === input.placement.anchorY
-            && storedPlacement.referenceMockupId === input.placement.referenceMockupId
-            && storedPlacement.printAreaId === input.placement.printAreaId
-            && storedPlacement.transformVersion === input.placement.transformVersion;
+        const placementMatches = placementsEqual(storedPlacement, input.placement);
         if (!placementMatches || request.selected_side !== input.placement.side) {
             throw new Error("Approved placement does not match the generated customer preview.");
         }
@@ -97,6 +122,155 @@ export class DesignRevisionService {
             throw new Error("Approved product, color, or side does not match the customer preview.");
         }
 
+        if (request.production_readiness_status === "pending_prepress") {
+            if (!request.source_asset_id || !input.sourceAssetId || !input.sourceChecksum) {
+                throw new Error("Generated source identity is required for pending prepress approval.");
+            }
+            const { data: source, error: sourceError } = await sb
+                .from("washa_design_source_assets")
+                .select("*")
+                .eq("id", input.sourceAssetId)
+                .eq("profile_id", input.profileId)
+                .single();
+            if (sourceError || !source) throw new Error("Generated source asset is missing.");
+            if (
+                source.sha256_checksum !== input.sourceChecksum
+                || request.source_asset_id !== source.id
+            ) {
+                throw new Error("Generated source checksum or identity mismatch.");
+            }
+            const storedSource = await StorageService.downloadStoredBuffer(
+                source.permanent_storage_path,
+                { bucket: source.storage_bucket }
+            );
+            if ("error" in storedSource) throw new Error(storedSource.error);
+            if (sha256Hex(storedSource) !== source.sha256_checksum) {
+                throw new Error("Stored generated source checksum mismatch.");
+            }
+
+            if (request.current_revision_id) {
+                const { data: currentRevision, error: currentRevisionError } = await sb
+                    .from("washa_design_revisions")
+                    .select("*")
+                    .eq("id", request.current_revision_id)
+                    .eq("design_request_id", request.id)
+                    .maybeSingle();
+                if (currentRevisionError) throw currentRevisionError;
+                const revisionPlacement = currentRevision?.placement_transform as PlacementTransform | null;
+                const samePlacement = placementsEqual(revisionPlacement, input.placement);
+                if (
+                    currentRevision
+                    && currentRevision.source_asset_id === source.id
+                    && currentRevision.source_sha256_checksum === source.sha256_checksum
+                    && currentRevision.production_readiness_status === "pending_prepress"
+                    && samePlacement
+                ) {
+                    return {
+                        designRevisionId: currentRevision.id,
+                        sourceAssetId: source.id,
+                        sourceAssetUrl: source.permanent_url,
+                        sourceChecksum: source.sha256_checksum,
+                        masterAssetId: null,
+                        masterAssetUrl: null,
+                        masterChecksum: null,
+                        printAssetPath: null,
+                        printAssetUrl: null,
+                        frontPreviewUrl: request.front_preview_url,
+                        backPreviewUrl: request.back_preview_url,
+                        mockupSourceType: "source_preview",
+                        pipeline: normalizeWashaGenerationPipeline(source.generation_parameters?.pipeline),
+                        productionReadinessStatus: "pending_prepress",
+                    };
+                }
+            }
+
+            const { data: lastRevision, error: revisionLookupError } = await sb
+                .from("washa_design_revisions")
+                .select("revision_number")
+                .eq("design_request_id", request.id)
+                .order("revision_number", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (revisionLookupError) throw revisionLookupError;
+            const revisionNumber = Number(lastRevision?.revision_number || 0) + 1;
+            const designRevisionId = crypto.randomUUID();
+            const { error: revisionError } = await sb
+                .from("washa_design_revisions")
+                .insert({
+                    id: designRevisionId,
+                    design_request_id: request.id,
+                    revision_number: revisionNumber,
+                    source_asset_id: source.id,
+                    source_asset_path: source.permanent_storage_path,
+                    source_sha256_checksum: source.sha256_checksum,
+                    master_asset_id: null,
+                    master_asset_path: null,
+                    master_sha256_checksum: null,
+                    width: source.width,
+                    height: source.height,
+                    mime_type: source.mime_type,
+                    transparency_status: "pending",
+                    prompt: source.prompt,
+                    generation_model: source.generation_model,
+                    provider: source.provider,
+                    generation_parameters: source.generation_parameters,
+                    product_variant: input.productVariant,
+                    garment_color: input.garmentColor,
+                    selected_side: input.placement.side,
+                    placement_transform: input.placement,
+                    print_dimensions: {
+                        widthCm: input.placement.printWidthCm,
+                        heightCm: input.placement.printHeightCm,
+                        dpi: null,
+                        widthPx: null,
+                        heightPx: null,
+                    },
+                    reference_mockup_id: request.reference_mockup_id,
+                    generated_blank_garment_mockup_id: request.generated_garment_mockup_id,
+                    customer_preview_urls: {
+                        front: request.front_preview_url,
+                        back: request.back_preview_url,
+                    },
+                    print_asset_path: null,
+                    print_asset_url: null,
+                    production_readiness_status: "pending_prepress",
+                    schema_version: 2,
+                });
+            if (revisionError) throw revisionError;
+
+            const { error: requestUpdateError } = await sb
+                .from("washa_design_requests")
+                .update({
+                    current_revision_id: designRevisionId,
+                    placement_data: input.placement,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("id", request.id)
+                .eq("source_asset_id", source.id);
+            if (requestUpdateError) throw requestUpdateError;
+
+            return {
+                designRevisionId,
+                sourceAssetId: source.id,
+                sourceAssetUrl: source.permanent_url,
+                sourceChecksum: source.sha256_checksum,
+                masterAssetId: null,
+                masterAssetUrl: null,
+                masterChecksum: null,
+                printAssetPath: null,
+                printAssetUrl: null,
+                frontPreviewUrl: request.front_preview_url,
+                backPreviewUrl: request.back_preview_url,
+                mockupSourceType: "source_preview",
+                pipeline: normalizeWashaGenerationPipeline(source.generation_parameters?.pipeline),
+                productionReadinessStatus: "pending_prepress",
+            };
+        }
+
+        if (!input.masterAssetId || !input.masterChecksum) {
+            throw new Error("Master artwork identity is required for production-ready approval.");
+        }
+
         const { data: master, error: masterError } = await sb
             .from("washa_design_master_assets")
             .select("*")
@@ -113,6 +287,28 @@ export class DesignRevisionService {
         if (master.alpha_channel_status === "failed") {
             throw new Error("Master artwork transparency verification failed.");
         }
+        let approvedSource = {
+            id: master.id as string,
+            permanent_url: master.permanent_url as string,
+            permanent_storage_path: master.permanent_storage_path as string,
+            sha256_checksum: master.sha256_checksum as string,
+        };
+        if (request.source_asset_id) {
+            const { data: source, error: sourceError } = await sb
+                .from("washa_design_source_assets")
+                .select("id, permanent_url, permanent_storage_path, sha256_checksum")
+                .eq("id", request.source_asset_id)
+                .eq("profile_id", input.profileId)
+                .single();
+            if (sourceError || !source) throw new Error("Generated source asset is missing.");
+            if (
+                (input.sourceAssetId && input.sourceAssetId !== source.id)
+                || (input.sourceChecksum && input.sourceChecksum !== source.sha256_checksum)
+            ) {
+                throw new Error("Generated source checksum or identity mismatch.");
+            }
+            approvedSource = source;
+        }
         if (request.current_revision_id) {
             const { data: currentRevision, error: currentRevisionError } = await sb
                 .from("washa_design_revisions")
@@ -122,19 +318,7 @@ export class DesignRevisionService {
                 .maybeSingle();
             if (currentRevisionError) throw currentRevisionError;
             const revisionPlacement = currentRevision?.placement_transform as PlacementTransform | null;
-            const samePlacement = revisionPlacement
-                && revisionPlacement.side === input.placement.side
-                && revisionPlacement.x === input.placement.x
-                && revisionPlacement.y === input.placement.y
-                && revisionPlacement.scale === input.placement.scale
-                && revisionPlacement.rotation === input.placement.rotation
-                && revisionPlacement.printWidthCm === input.placement.printWidthCm
-                && revisionPlacement.printHeightCm === input.placement.printHeightCm
-                && revisionPlacement.anchorX === input.placement.anchorX
-                && revisionPlacement.anchorY === input.placement.anchorY
-                && revisionPlacement.referenceMockupId === input.placement.referenceMockupId
-                && revisionPlacement.printAreaId === input.placement.printAreaId
-                && revisionPlacement.transformVersion === input.placement.transformVersion;
+            const samePlacement = placementsEqual(revisionPlacement, input.placement);
             if (
                 currentRevision
                 && currentRevision.master_asset_id === master.id
@@ -143,6 +327,9 @@ export class DesignRevisionService {
             ) {
                 return {
                     designRevisionId: currentRevision.id,
+                    sourceAssetId: approvedSource.id,
+                    sourceAssetUrl: approvedSource.permanent_url,
+                    sourceChecksum: approvedSource.sha256_checksum,
                     masterAssetId: master.id,
                     masterAssetUrl: master.permanent_url,
                     masterChecksum: master.sha256_checksum,
@@ -152,6 +339,7 @@ export class DesignRevisionService {
                     backPreviewUrl: request.back_preview_url,
                     mockupSourceType: request.mockup_source_type,
                     pipeline: normalizeWashaGenerationPipeline(master.generation_parameters?.pipeline),
+                    productionReadinessStatus: "ready",
                 };
             }
         }
@@ -238,6 +426,9 @@ export class DesignRevisionService {
                 id: designRevisionId,
                 design_request_id: request.id,
                 revision_number: revisionNumber,
+                source_asset_id: approvedSource.id,
+                source_asset_path: approvedSource.permanent_storage_path,
+                source_sha256_checksum: approvedSource.sha256_checksum,
                 master_asset_id: master.id,
                 master_asset_path: master.permanent_storage_path,
                 master_sha256_checksum: master.sha256_checksum,
@@ -268,7 +459,8 @@ export class DesignRevisionService {
                 },
                 print_asset_path: uploaded.path,
                 print_asset_url: uploaded.url,
-                schema_version: 1,
+                production_readiness_status: "ready",
+                schema_version: 2,
             });
         if (revisionError) throw revisionError;
 
@@ -285,6 +477,9 @@ export class DesignRevisionService {
 
         return {
             designRevisionId,
+            sourceAssetId: approvedSource.id,
+            sourceAssetUrl: approvedSource.permanent_url,
+            sourceChecksum: approvedSource.sha256_checksum,
             masterAssetId: master.id,
             masterAssetUrl: master.permanent_url,
             masterChecksum: master.sha256_checksum,
@@ -294,6 +489,7 @@ export class DesignRevisionService {
             backPreviewUrl: request.back_preview_url,
             mockupSourceType: request.mockup_source_type,
             pipeline: normalizeWashaGenerationPipeline(master.generation_parameters?.pipeline),
+            productionReadinessStatus: "ready",
         };
     }
 }

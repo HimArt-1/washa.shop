@@ -83,6 +83,47 @@ describe('WASHA AI generation placement instructions', () => {
     expect(init?.credentials).toBe('omit');
   });
 
+  it('accepts a durable source preview without requiring a print master', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      ...generationResponse,
+      imageUrl: 'https://cdn.example/provider-output.png',
+      previewUrl: 'https://cdn.example/provider-output.png',
+      frontPreviewUrl: 'https://cdn.example/provider-output.png',
+      sourceAssetId: '99999999-9999-4999-8999-999999999999',
+      sourceAssetUrl: 'https://cdn.example/provider-output.png',
+      sourceChecksum: 'c'.repeat(64),
+      masterAssetId: null,
+      masterAssetUrl: null,
+      masterChecksum: null,
+      mockupSourceType: 'source_preview',
+      previewKind: 'source',
+      transparencyVerificationStatus: 'pending',
+      productionReadinessStatus: 'pending_prepress',
+      previewProvider: 'source',
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+
+    await expect(generateMockup(
+      'تيشيرت',
+      'أسود',
+      'صقر هندسي',
+      'DTF',
+      'هندسي',
+      'ذهبي',
+      undefined,
+      undefined,
+      undefined,
+      { sessionToken: 'session-token' },
+    )).resolves.toMatchObject({
+      sourceAssetId: '99999999-9999-4999-8999-999999999999',
+      masterAssetId: null,
+      previewKind: 'source',
+      productionReadinessStatus: 'pending_prepress',
+    });
+  });
+
   it('selects the prompt-native backend contract for DEV V3', async () => {
     let body: { pipeline?: string } | undefined;
     vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {

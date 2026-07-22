@@ -22,6 +22,12 @@ export async function verifyApprovedOrderAssetGraph(
     if ((order.asset_schema_version ?? 0) < 1) {
         return { ok: true, legacy: true };
     }
+    if (order.production_readiness_status === "pending_prepress") {
+        return {
+            ok: false,
+            error: "أصل التصميم محفوظ، لكن ملف الطباعة ما زال قيد التجهيز قبل الإنتاج.",
+        };
+    }
     try {
         if (
             order.production_readiness_status !== "ready"

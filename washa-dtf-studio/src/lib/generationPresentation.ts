@@ -8,12 +8,13 @@ export const BOARD_PREVIEW_DISCLOSURE =
 
 export interface GenerationPresentation {
   isBoardPreview: boolean;
-  resultLabel: 'معاينة مبدئية' | 'النتيجة النهائية';
+  isPendingPrepress: boolean;
+  resultLabel: 'معاينة مبدئية' | 'النتيجة النهائية' | 'التصميم محفوظ';
   canRecompose: boolean;
   canExtract: boolean;
   canSubmitOrder: boolean;
   canDownloadPrintFile: boolean;
-  previewDownloadName: 'washa-board-preview.webp' | 'washa-mockup.png';
+  previewDownloadName: 'washa-board-preview.webp' | 'washa-mockup.png' | 'washa-source-preview.png';
 }
 
 export function resolveGenerationPresentation(
@@ -22,6 +23,7 @@ export function resolveGenerationPresentation(
   if (isBoardPreviewResult(result)) {
     return {
       isBoardPreview: true,
+      isPendingPrepress: false,
       resultLabel: 'معاينة مبدئية',
       canRecompose: false,
       canExtract: false,
@@ -31,8 +33,22 @@ export function resolveGenerationPresentation(
     };
   }
 
+  if (result?.productionReadinessStatus === 'pending_prepress') {
+    return {
+      isBoardPreview: false,
+      isPendingPrepress: true,
+      resultLabel: 'التصميم محفوظ',
+      canRecompose: false,
+      canExtract: false,
+      canSubmitOrder: true,
+      canDownloadPrintFile: false,
+      previewDownloadName: 'washa-source-preview.png',
+    };
+  }
+
   return {
     isBoardPreview: false,
+    isPendingPrepress: false,
     resultLabel: 'النتيجة النهائية',
     canRecompose: true,
     canExtract: true,

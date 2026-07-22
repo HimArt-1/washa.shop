@@ -125,6 +125,9 @@ describe("DtfOrderService", () => {
         });
         mockApproveRevision.mockResolvedValue({
             designRevisionId: "77777777-7777-4777-8777-777777777777",
+            sourceAssetId: "22222222-2222-4222-8222-222222222222",
+            sourceAssetUrl: "https://cdn.example/design-master.png",
+            sourceChecksum: "a".repeat(64),
             masterAssetId: "22222222-2222-4222-8222-222222222222",
             masterAssetUrl: "https://cdn.example/design-master.png",
             masterChecksum: "a".repeat(64),
@@ -134,6 +137,7 @@ describe("DtfOrderService", () => {
             backPreviewUrl: null,
             mockupSourceType: "reference",
             pipeline: "prompt_native",
+            productionReadinessStatus: "ready",
         });
     });
 
@@ -215,10 +219,12 @@ describe("DtfOrderService", () => {
             dtf_extracted_url: "https://cdn.example/print-production.png",
             reference_image_url: "https://cdn.example/design-master.png",
             design_request_id: "11111111-1111-4111-8111-111111111111",
+            design_source_asset_id: "22222222-2222-4222-8222-222222222222",
             design_master_asset_id: "22222222-2222-4222-8222-222222222222",
             design_revision_id: "77777777-7777-4777-8777-777777777777",
             master_checksum: "a".repeat(64),
-            asset_schema_version: 1,
+            source_checksum: "a".repeat(64),
+            asset_schema_version: 2,
             production_readiness_status: "ready",
             pricing_snapshot: expect.objectContaining({
                 dtf: true,
@@ -230,5 +236,83 @@ describe("DtfOrderService", () => {
             designRevisionId: "77777777-7777-4777-8777-777777777777",
             masterChecksum: "a".repeat(64),
         });
+    });
+
+    it("creates an order from an approved source while print preparation remains pending", async () => {
+        mockApproveRevision.mockResolvedValueOnce({
+            designRevisionId: "77777777-7777-4777-8777-777777777777",
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            sourceAssetUrl: "https://cdn.example/provider-output.png",
+            sourceChecksum: "c".repeat(64),
+            masterAssetId: null,
+            masterAssetUrl: null,
+            masterChecksum: null,
+            printAssetPath: null,
+            printAssetUrl: null,
+            frontPreviewUrl: "https://cdn.example/provider-output.png",
+            backPreviewUrl: null,
+            mockupSourceType: "source_preview",
+            pipeline: "standard",
+            productionReadinessStatus: "pending_prepress",
+        });
+
+        const result = await DtfOrderService.prepareCartItem({
+            garmentType: "تيشيرت",
+            garmentColor: "أسود",
+            garmentSize: "XL",
+            designMethod: "text",
+            style: "بوب آرت",
+            technique: "رسم رقمي",
+            paletteId: CUSTOM_PALETTE_ID,
+            palette: "مخصص",
+            customPalette: "أحمر وأزرق",
+            printPosition: "chest",
+            printSize: "large",
+            designRequestId: "11111111-1111-4111-8111-111111111111",
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            sourceChecksum: "c".repeat(64),
+            masterAssetId: null,
+            masterChecksum: null,
+            placementData: {
+                side: "front",
+                x: 0.5,
+                y: 0.5,
+                scale: 0.8,
+                rotation: 0,
+                printWidthCm: 30,
+                printHeightCm: 40,
+                anchorX: 0.5,
+                anchorY: 0.5,
+                referenceMockupId: null,
+                printAreaId: "front_default",
+                transformVersion: 1,
+            },
+        }, null, {
+            traceId: "trace_pending_prepress",
+            profileId: "profile_1",
+        });
+
+        expect(result.error).toBeUndefined();
+        expect(mockApproveRevision).toHaveBeenCalledWith(expect.objectContaining({
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            sourceChecksum: "c".repeat(64),
+            masterAssetId: null,
+            masterChecksum: null,
+        }));
+        expect(mockInsertOrder).toHaveBeenCalledWith(expect.objectContaining({
+            reference_image_url: "https://cdn.example/provider-output.png",
+            design_source_asset_id: "99999999-9999-4999-8999-999999999999",
+            source_checksum: "c".repeat(64),
+            design_master_asset_id: null,
+            print_asset_path: null,
+            asset_schema_version: 2,
+            production_readiness_status: "pending_prepress",
+        }));
+        expect(result.data).toMatchObject({
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            masterAssetId: null,
+            productionReadinessStatus: "pending_prepress",
+        });
+        expect(mockUploadBase64Image).not.toHaveBeenCalled();
     });
 });

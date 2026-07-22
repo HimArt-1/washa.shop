@@ -139,10 +139,14 @@ function generationResult(preview = "https://cdn.example/mockup-front.webp") {
         frontPreviewUrl: preview,
         backPreviewUrl: null,
         designRequestId: "11111111-1111-4111-8111-111111111111",
+        sourceAssetId: "99999999-9999-4999-8999-999999999999",
+        sourceAssetUrl: "https://cdn.example/provider-output.png",
+        sourceChecksum: "c".repeat(64),
         masterAssetId: "22222222-2222-4222-8222-222222222222",
         masterAssetUrl: "https://cdn.example/design-master.png",
         masterChecksum: "a".repeat(64),
         mockupSourceType: "reference",
+        previewKind: "mockup",
         placement: {
             side: "front",
             x: 0.5,
@@ -1512,10 +1516,14 @@ describe("generate-mockup route", () => {
             frontPreviewUrl: "https://cdn.example/mockup-front.webp",
             backPreviewUrl: null,
             designRequestId: "11111111-1111-4111-8111-111111111111",
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            sourceAssetUrl: "https://cdn.example/provider-output.png",
+            sourceChecksum: "c".repeat(64),
             masterAssetId: "22222222-2222-4222-8222-222222222222",
             masterAssetUrl: "https://cdn.example/design-master.png",
             masterChecksum: "a".repeat(64),
             mockupSourceType: "reference",
+            previewKind: "mockup",
             placement: {
                 side: "front",
                 x: 0.5,
@@ -1580,6 +1588,40 @@ describe("generate-mockup route", () => {
                 status: "success",
             })
         );
+    });
+
+    it("returns a successful durable source while print preparation is pending", async () => {
+        mockGenerateMockup.mockResolvedValueOnce({
+            ...generationResult("https://cdn.example/provider-output.png"),
+            frontPreviewUrl: "https://cdn.example/provider-output.png",
+            masterAssetId: null,
+            masterAssetUrl: null,
+            masterChecksum: null,
+            mockupSourceType: "source_preview",
+            previewKind: "source",
+            transparencyVerificationStatus: "pending",
+            productionReadinessStatus: "pending_prepress",
+            previewProvider: "source",
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-pending-prepress" } }
+        ) as NextRequest);
+        const payload = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(payload).toMatchObject({
+            ok: true,
+            requestId: "request-pending-prepress",
+            sourceAssetId: "99999999-9999-4999-8999-999999999999",
+            sourceChecksum: "c".repeat(64),
+            masterAssetId: null,
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+        });
+        expect(mockCompleteDtfGenerationRequest).toHaveBeenCalled();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
     });
 
     it("reserves one point once per successful generation request", async () => {

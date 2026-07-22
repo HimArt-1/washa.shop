@@ -40,6 +40,8 @@ export const submitOrderSchema = z.object({
   printSize: z.enum(["large", "small"]).nullable().optional(),
   printPositionLabel: z.string().trim().nullable().optional(),
   designRequestId: z.string().uuid().nullable().optional(),
+  sourceAssetId: z.string().uuid().nullable().optional(),
+  sourceChecksum: z.string().trim().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   masterAssetId: z.string().uuid().nullable().optional(),
   masterChecksum: z.string().trim().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   placementData: placementDataSchema.nullable().optional(),
@@ -74,17 +76,26 @@ export const submitOrderSchema = z.object({
     }
 
     if (data.designRequestId) {
-        if (!data.masterAssetId) {
+        const hasSourceIdentity = Boolean(data.sourceAssetId && data.sourceChecksum);
+        const hasMasterIdentity = Boolean(data.masterAssetId && data.masterChecksum);
+        if (!hasSourceIdentity && !hasMasterIdentity) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "معرّف أصل التصميم مطلوب",
-                path: ["masterAssetId"],
+                message: "هوية أصل التصميم المحفوظ مطلوبة",
+                path: ["sourceAssetId"],
             });
         }
-        if (!data.masterChecksum) {
+        if (Boolean(data.sourceAssetId) !== Boolean(data.sourceChecksum)) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "بصمة أصل التصميم مطلوبة",
+                message: "معرّف المصدر وبصمته يجب أن يرسلا معًا",
+                path: ["sourceChecksum"],
+            });
+        }
+        if (Boolean(data.masterAssetId) !== Boolean(data.masterChecksum)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "معرّف ملف الطباعة وبصمته يجب أن يرسلا معًا",
                 path: ["masterChecksum"],
             });
         }

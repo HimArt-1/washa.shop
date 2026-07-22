@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const STAFF_ROLES = new Set(["admin", "wushsha", "dev"]);
-const ALLOWED_KINDS = new Set(["master", "derivative", "garment"]);
+const ALLOWED_KINDS = new Set(["source", "master", "derivative", "garment"]);
 
 type AssetLocation = {
     bucket: string;
@@ -18,6 +18,21 @@ type AssetLocation = {
 
 async function resolveAssetLocation(kind: string, id: string): Promise<AssetLocation | null> {
     const sb = getSupabaseAdminClient() as any;
+
+    if (kind === "source") {
+        const { data, error } = await sb
+            .from("washa_design_source_assets")
+            .select("profile_id, storage_bucket, permanent_storage_path, mime_type")
+            .eq("id", id)
+            .maybeSingle();
+        if (error || !data) return null;
+        return {
+            bucket: data.storage_bucket,
+            path: data.permanent_storage_path,
+            mimeType: data.mime_type,
+            ownerProfileId: data.profile_id,
+        };
+    }
 
     if (kind === "master") {
         const { data, error } = await sb

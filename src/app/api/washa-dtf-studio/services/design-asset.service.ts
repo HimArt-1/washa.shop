@@ -1,7 +1,6 @@
 import sharp from "sharp";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import {
-    buildArtworkBackgroundRecoveryPrompt,
     buildBlankGarmentPrompt,
     buildIsolatedArtworkPrompt,
 } from "@/lib/washa-artwork/prompt";
@@ -19,7 +18,6 @@ import {
 import {
     ArtworkPrintValidationError,
     isArtworkPrintValidationError,
-    isRecoverableArtworkBackgroundError,
     normalizeGeneratedArtworkForPrint,
     type ArtworkNormalizationDiagnostics,
 } from "@/lib/washa-artwork/normalization";
@@ -35,7 +33,10 @@ import {
     resolveDtfMockupTemplate,
     type DtfMockupTemplate,
 } from "@/lib/dtf-mockup-templates";
-import { verifyArtworkTextPolicy } from "@/lib/washa-artwork/arabic-text-verification";
+import {
+    isArtworkTextPolicyError,
+    verifyArtworkTextPolicy,
+} from "@/lib/washa-artwork/arabic-text-verification";
 import { verifyBlankGarmentSemantics } from "@/lib/washa-artwork/garment-semantic-verification";
 import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 import type {
@@ -48,21 +49,16 @@ import type {
     PlacementTransform,
 } from "@/lib/washa-artwork/types";
 import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.service";
+import {
+    GeneratedSourceAssetService,
+    type GeneratedSourceAssetDescriptor,
+} from "@/app/api/washa-dtf-studio/services/generated-source-asset.service";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
 import { generatePromptNativeArtwork } from "@/lib/washa-prompt-native/openai-artwork.adapter";
 import { composePromptNativeMockup } from "@/lib/washa-prompt-native/gemini-mockup.adapter";
 import type { WashaGenerationPipeline } from "@/lib/washa-prompt-native/types";
 
 const ARTWORK_NORMALIZATION_SCOPE = "dtf.artwork.normalization";
-
-function summarizeArtworkError(error: ArtworkPrintValidationError) {
-    return {
-        message: error.message,
-        stage: error.stage,
-        diagnostics: error.diagnostics,
-        validationErrors: error.validationErrors,
-    };
-}
 
 function asArtworkNormalizationError(params: {
     error: unknown;
@@ -175,6 +171,7 @@ type MasterAssetRow = {
     prompt: string;
     generation_parameters: Record<string, unknown>;
     created_at: string;
+    source_asset_id?: string | null;
 };
 
 function asNumber(value: number | string) {
@@ -197,6 +194,7 @@ function mapMaster(row: MasterAssetRow): MasterAssetDescriptor {
         prompt: row.prompt,
         generationParameters: row.generation_parameters,
         createdAt: row.created_at,
+        sourceAssetId: row.source_asset_id ?? null,
     };
 }
 
@@ -274,12 +272,59 @@ export class DesignAssetService {
         profileId: string,
         generationRequestId: string
     ): Promise<GeneratedArtworkResponse | null> {
+        const { data: existingRequest, error: existingRequestError } = await DesignAssetService.db()
+            .from("washa_design_requests")
+            .select("*")
+            .eq("profile_id", profileId)
+            .eq("generation_request_id", generationRequestId)
+            .maybeSingle();
+        if (existingRequestError) throw existingRequestError;
+        if (!existingRequest || existingRequest.generation_status !== "ready") return null;
+
+        if (
+            existingRequest.production_readiness_status === "pending_prepress"
+            && existingRequest.source_asset_id
+        ) {
+            const { source } = await GeneratedSourceAssetService.load(
+                profileId,
+                existingRequest.source_asset_id
+            );
+            const selectedPreview = existingRequest.selected_side === "back"
+                ? existingRequest.back_preview_url
+                : existingRequest.front_preview_url;
+            if (!selectedPreview) return null;
+            return {
+                imageUrl: selectedPreview,
+                previewUrl: selectedPreview,
+                frontPreviewUrl: existingRequest.front_preview_url,
+                backPreviewUrl: existingRequest.back_preview_url,
+                designRequestId: existingRequest.id,
+                sourceAssetId: source.id,
+                sourceAssetUrl: source.permanentUrl,
+                sourceChecksum: source.checksum,
+                masterAssetId: null,
+                masterAssetUrl: null,
+                masterChecksum: null,
+                mockupSourceType: "source_preview",
+                placement: existingRequest.placement_data,
+                transparencyVerificationStatus: "pending",
+                productionReadinessStatus: "pending_prepress",
+                previewKind: "source",
+                provider: source.provider,
+                model: source.model,
+                pipeline: source.generationParameters?.pipeline === "prompt_native"
+                    ? "prompt_native"
+                    : "standard",
+                previewProvider: "source",
+            };
+        }
+
         const attempt = await DesignAssetService.loadGenerationAttempt(
             profileId,
             generationRequestId
         );
         if (!attempt || attempt.request.generation_status !== "ready") return null;
-        const { request, masterRow: master } = attempt;
+        const { request, masterRow: master, source } = attempt;
         const selectedPreview = request.selected_side === "back"
             ? request.back_preview_url
             : request.front_preview_url;
@@ -291,6 +336,9 @@ export class DesignAssetService {
             frontPreviewUrl: request.front_preview_url,
             backPreviewUrl: request.back_preview_url,
             designRequestId: request.id,
+            sourceAssetId: source?.id ?? master.id,
+            sourceAssetUrl: source?.permanentUrl ?? master.permanent_url,
+            sourceChecksum: source?.checksum ?? master.sha256_checksum,
             masterAssetId: master.id,
             masterAssetUrl: master.permanent_url,
             masterChecksum: master.sha256_checksum,
@@ -298,14 +346,17 @@ export class DesignAssetService {
             placement: request.placement_data,
             transparencyVerificationStatus: request.transparency_verification_status,
             productionReadinessStatus: "ready",
+            previewKind: request.preview_kind === "source" ? "source" : "mockup",
             provider: master.provider,
             model: master.generation_model,
             pipeline: master.generation_parameters?.pipeline === "prompt_native"
                 ? "prompt_native"
                 : "standard",
-            previewProvider: master.generation_parameters?.pipeline === "prompt_native"
-                ? "gemini"
-                : "sharp",
+            previewProvider: request.preview_kind === "source"
+                ? "source"
+                : master.generation_parameters?.pipeline === "prompt_native"
+                    ? "gemini"
+                    : "sharp",
         };
     }
 
@@ -331,6 +382,7 @@ export class DesignAssetService {
         masterRow: MasterAssetRow;
         master: MasterAssetDescriptor;
         masterBuffer: Buffer;
+        source: GeneratedSourceAssetDescriptor | null;
     } | null> {
         const sb = DesignAssetService.db();
         const { data: request, error } = await sb
@@ -341,6 +393,14 @@ export class DesignAssetService {
             .maybeSingle();
         if (error) throw error;
         if (!request) return null;
+        if (!request.master_asset_id) return null;
+
+        const source = request.source_asset_id
+            ? (await GeneratedSourceAssetService.load(
+                profileId,
+                request.source_asset_id
+            )).source
+            : null;
 
         const { data: master, error: masterError } = await sb
             .from("washa_design_master_assets")
@@ -362,7 +422,40 @@ export class DesignAssetService {
             masterRow,
             master: mapMaster(masterRow),
             masterBuffer: stored,
+            source,
         };
+    }
+
+    private static async recoverGenerationAfterUniqueConflict(
+        profileId: string,
+        generationRequestId: string
+    ): Promise<GeneratedArtworkResponse | null> {
+        const completed = await DesignAssetService.getExistingGeneration(
+            profileId,
+            generationRequestId
+        );
+        if (completed) return completed;
+
+        // A concurrent request can own the same idempotency key while it is
+        // still composing the mockup. Its immutable source/master are already
+        // safe to return, so finalize a source preview instead of failing or
+        // invoking the image provider again.
+        const attempt = await DesignAssetService.loadGenerationAttempt(
+            profileId,
+            generationRequestId
+        );
+        if (!attempt) return null;
+        return DesignAssetService.persistReadySourcePreview({
+            profileId,
+            generationRequestId,
+            designRequestId: attempt.request.id,
+            source: attempt.source,
+            master: attempt.master,
+            placement: attempt.request.placement_data,
+            pipeline: attempt.master.generationParameters?.pipeline === "prompt_native"
+                ? "prompt_native"
+                : "standard",
+        });
     }
 
     private static async loadDesignRequest(
@@ -377,6 +470,15 @@ export class DesignAssetService {
             .eq("profile_id", profileId)
             .single();
         if (error || !request) throw new Error("Design request is missing.");
+        if (!request.master_asset_id) {
+            throw new Error("Design request is awaiting print-master preparation.");
+        }
+        const source = request.source_asset_id
+            ? (await GeneratedSourceAssetService.load(
+                profileId,
+                request.source_asset_id
+            )).source
+            : null;
         const { data: master, error: masterError } = await sb
             .from("washa_design_master_assets")
             .select("*")
@@ -395,6 +497,7 @@ export class DesignAssetService {
         }
         return {
             request,
+            source,
             master: mapMaster(masterRow),
             masterBuffer,
         };
@@ -424,6 +527,7 @@ export class DesignAssetService {
 
     private static async persistMasterAsset(params: {
         profileId: string;
+        sourceAssetId: string;
         buffer: Buffer;
         provider: string;
         model: string;
@@ -498,6 +602,7 @@ export class DesignAssetService {
             .from("washa_design_master_assets")
             .select("*")
             .eq("profile_id", params.profileId)
+            .eq("source_asset_id", params.sourceAssetId)
             .eq("sha256_checksum", checksum)
             .maybeSingle();
         if (existingError) throw existingError;
@@ -529,8 +634,21 @@ export class DesignAssetService {
         const stored = await StorageService.downloadStoredBuffer(uploaded.path, {
             bucket: uploaded.bucket,
         });
-        if ("error" in stored) throw new Error(stored.error);
-        const storedValidation = await assertStoredAssetIntegrity(params.buffer, stored);
+        if ("error" in stored) {
+            await StorageService.removeStoredObject(uploaded.path, {
+                bucket: uploaded.bucket,
+            });
+            throw new Error(stored.error);
+        }
+        let storedValidation: Awaited<ReturnType<typeof assertStoredAssetIntegrity>>;
+        try {
+            storedValidation = await assertStoredAssetIntegrity(params.buffer, stored);
+        } catch (error) {
+            await StorageService.removeStoredObject(uploaded.path, {
+                bucket: uploaded.bucket,
+            });
+            throw error;
+        }
 
         const createdAt = new Date().toISOString();
         const row: MasterAssetRow = {
@@ -557,12 +675,14 @@ export class DesignAssetService {
                 validatedPrintHeightCm: params.printHeightCm,
             },
             created_at: createdAt,
+            source_asset_id: params.sourceAssetId,
         };
         const { error: insertError } = await sb
             .from("washa_design_master_assets")
             .insert({
                 ...row,
                 profile_id: params.profileId,
+                source_asset_id: params.sourceAssetId,
                 storage_bucket: uploaded.bucket,
                 safe_padding_ratio: storedValidation.safePaddingRatio,
                 validation_report: storedValidation,
@@ -570,7 +690,30 @@ export class DesignAssetService {
                     ? params.normalization
                     : null,
             });
-        if (insertError) throw insertError;
+        if (insertError) {
+            await StorageService.removeStoredObject(uploaded.path, {
+                bucket: uploaded.bucket,
+            });
+            if (insertError.code === "23505") {
+                const { data: winner, error: winnerError } = await sb
+                    .from("washa_design_master_assets")
+                    .select("*")
+                    .eq("profile_id", params.profileId)
+                    .eq("source_asset_id", params.sourceAssetId)
+                    .eq("sha256_checksum", checksum)
+                    .single();
+                if (winnerError || !winner) throw winnerError || insertError;
+                const winnerRow = winner as MasterAssetRow;
+                const winnerBuffer = await StorageService.downloadStoredBuffer(
+                    winnerRow.permanent_storage_path,
+                    { bucket: winnerRow.storage_bucket || "washa-design-assets" }
+                );
+                if ("error" in winnerBuffer) throw new Error(winnerBuffer.error);
+                await assertStoredAssetIntegrity(params.buffer, winnerBuffer);
+                return { master: mapMaster(winnerRow), buffer: winnerBuffer };
+            }
+            throw insertError;
+        }
 
         return { master: mapMaster(row), buffer: stored };
     }
@@ -1145,6 +1288,7 @@ export class DesignAssetService {
     private static async composeRequestPreview(params: {
         profileId: string;
         designRequestId: string;
+        source?: GeneratedSourceAssetDescriptor | null;
         master: MasterAssetDescriptor;
         masterBuffer: Buffer;
         selection: GenerationSelection;
@@ -1259,6 +1403,9 @@ export class DesignAssetService {
             frontPreviewUrl,
             backPreviewUrl,
             designRequestId: params.designRequestId,
+            sourceAssetId: params.source?.id ?? params.master.sourceAssetId ?? params.master.id,
+            sourceAssetUrl: params.source?.permanentUrl ?? params.master.permanentUrl,
+            sourceChecksum: params.source?.checksum ?? params.master.checksum,
             masterAssetId: params.master.id,
             masterAssetUrl: params.master.permanentUrl,
             masterChecksum: params.master.checksum,
@@ -1266,10 +1413,153 @@ export class DesignAssetService {
             placement,
             transparencyVerificationStatus: params.master.alphaChannelStatus,
             productionReadinessStatus: "ready",
+            previewKind: "mockup",
             provider: params.master.provider,
             model: params.master.model,
             pipeline: params.pipeline,
             previewProvider: params.pipeline === "prompt_native" ? "gemini" : "sharp",
+        };
+    }
+
+    private static async persistPendingPrepressPreview(params: {
+        profileId: string;
+        generationRequestId: string;
+        source: GeneratedSourceAssetDescriptor;
+        selection: GenerationSelection;
+        placement: PlacementTransform;
+        pipeline: WashaGenerationPipeline;
+    }): Promise<GeneratedArtworkResponse> {
+        const designRequestId = crypto.randomUUID();
+        const selectedSide = params.placement.side;
+        const frontPreviewUrl = selectedSide === "front"
+            ? params.source.permanentUrl
+            : null;
+        const backPreviewUrl = selectedSide === "back"
+            ? params.source.permanentUrl
+            : null;
+        const { error } = await DesignAssetService.db()
+            .from("washa_design_requests")
+            .insert({
+                id: designRequestId,
+                generation_request_id: params.generationRequestId,
+                profile_id: params.profileId,
+                source_asset_id: params.source.id,
+                master_asset_id: null,
+                selected_product_id: params.selection.garmentId,
+                selected_color_id: params.selection.colorId,
+                selected_color_hex: params.selection.colorHex,
+                selected_side: selectedSide,
+                placement_data: params.placement,
+                front_preview_url: frontPreviewUrl,
+                back_preview_url: backPreviewUrl,
+                mockup_source_type: "source_preview",
+                preview_kind: "source",
+                prompt: params.source.prompt,
+                generation_model: params.source.model,
+                provider: params.source.provider,
+                transparency_verification_status: "pending",
+                production_readiness_status: "pending_prepress",
+                generation_status: "ready",
+                schema_version: 2,
+            });
+        if (error) {
+            if (error.code === "23505") {
+                const existing = await DesignAssetService.recoverGenerationAfterUniqueConflict(
+                    params.profileId,
+                    params.generationRequestId
+                );
+                if (existing) return existing;
+            }
+            throw error;
+        }
+
+        return {
+            imageUrl: params.source.permanentUrl,
+            previewUrl: params.source.permanentUrl,
+            frontPreviewUrl,
+            backPreviewUrl,
+            designRequestId,
+            sourceAssetId: params.source.id,
+            sourceAssetUrl: params.source.permanentUrl,
+            sourceChecksum: params.source.checksum,
+            masterAssetId: null,
+            masterAssetUrl: null,
+            masterChecksum: null,
+            mockupSourceType: "source_preview",
+            placement: params.placement,
+            transparencyVerificationStatus: "pending",
+            productionReadinessStatus: "pending_prepress",
+            previewKind: "source",
+            provider: params.source.provider,
+            model: params.source.model,
+            pipeline: params.pipeline,
+            previewProvider: "source",
+        };
+    }
+
+    private static async persistReadySourcePreview(params: {
+        profileId: string;
+        generationRequestId: string;
+        designRequestId: string;
+        source: GeneratedSourceAssetDescriptor | null;
+        master: MasterAssetDescriptor;
+        placement: PlacementTransform;
+        pipeline: WashaGenerationPipeline;
+    }): Promise<GeneratedArtworkResponse> {
+        const previewUrl = params.source?.permanentUrl ?? params.master.permanentUrl;
+        const selectedSide = params.placement.side;
+        const frontPreviewUrl = selectedSide === "front" ? previewUrl : null;
+        const backPreviewUrl = selectedSide === "back" ? previewUrl : null;
+        const { data: updated, error } = await DesignAssetService.db()
+            .from("washa_design_requests")
+            .update({
+                selected_side: selectedSide,
+                placement_data: params.placement,
+                front_preview_url: frontPreviewUrl,
+                back_preview_url: backPreviewUrl,
+                mockup_source_type: "source_preview",
+                preview_kind: "source",
+                production_readiness_status: "ready",
+                generation_status: "ready",
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", params.designRequestId)
+            .eq("profile_id", params.profileId)
+            .eq("master_asset_id", params.master.id)
+            .eq("generation_status", "processing")
+            .select("id")
+            .maybeSingle();
+        if (error) throw error;
+        if (!updated) {
+            const completed = await DesignAssetService.getExistingGeneration(
+                params.profileId,
+                params.generationRequestId
+            );
+            if (completed) return completed;
+            throw new Error("Concurrent design request could not be finalized safely.");
+        }
+
+        return {
+            imageUrl: previewUrl,
+            previewUrl,
+            frontPreviewUrl,
+            backPreviewUrl,
+            designRequestId: params.designRequestId,
+            sourceAssetId: params.source?.id ?? params.master.id,
+            sourceAssetUrl: params.source?.permanentUrl ?? params.master.permanentUrl,
+            sourceChecksum: params.source?.checksum ?? params.master.checksum,
+            masterAssetId: params.master.id,
+            masterAssetUrl: params.master.permanentUrl,
+            masterChecksum: params.master.checksum,
+            mockupSourceType: "source_preview",
+            placement: params.placement,
+            transparencyVerificationStatus: params.master.alphaChannelStatus,
+            productionReadinessStatus: "ready",
+            previewKind: "source",
+            provider: params.master.provider,
+            model: params.master.model,
+            pipeline: params.pipeline,
+            previewProvider: "source",
         };
     }
 
@@ -1285,6 +1575,7 @@ export class DesignAssetService {
         return DesignAssetService.composeRequestPreview({
             profileId: input.profileId,
             designRequestId: input.designRequestId,
+            source: loaded.source,
             master: loaded.master,
             masterBuffer: loaded.masterBuffer,
             selection,
@@ -1294,6 +1585,18 @@ export class DesignAssetService {
 
     static async generate(input: GenerateDesignAssetInput): Promise<GeneratedArtworkResponse> {
         let designRequestId: string | null = null;
+        let pendingPrepressContext: {
+            source: GeneratedSourceAssetDescriptor;
+            selection: GenerationSelection;
+            placement: PlacementTransform;
+            pipeline: WashaGenerationPipeline;
+        } | null = null;
+        let readySourcePreviewContext: {
+            source: GeneratedSourceAssetDescriptor | null;
+            master: MasterAssetDescriptor;
+            placement: PlacementTransform;
+            pipeline: WashaGenerationPipeline;
+        } | null = null;
         try {
             const existing = await DesignAssetService.getExistingGeneration(
                 input.profileId,
@@ -1302,28 +1605,30 @@ export class DesignAssetService {
             if (existing) return existing;
 
             const selection = await DesignAssetService.resolveCatalogSelection(input.selection);
+            const selectedSide: ArtworkSide =
+                selection.printPosition === "back" ? "back" : "front";
+            const provisionalPlacement = buildPlacementTransform({
+                side: selectedSide,
+                printPosition: selection.printPosition,
+                printSize: selection.printSize,
+                scalePercent: selection.printScale,
+                offsetXPercent: selection.printOffsetX,
+                offsetYPercent: selection.printOffsetY,
+            });
             const existingAttempt = await DesignAssetService.loadGenerationAttempt(
                 input.profileId,
                 input.generationRequestId
             );
             let master: MasterAssetDescriptor;
             let masterBuffer: Buffer;
+            let source: GeneratedSourceAssetDescriptor | null = null;
 
             if (existingAttempt) {
                 designRequestId = existingAttempt.request.id;
                 master = existingAttempt.master;
                 masterBuffer = existingAttempt.masterBuffer;
+                source = existingAttempt.source;
             } else {
-                const selectedSide: ArtworkSide =
-                    selection.printPosition === "back" ? "back" : "front";
-                const provisionalPlacement = buildPlacementTransform({
-                    side: selectedSide,
-                    printPosition: selection.printPosition,
-                    printSize: selection.printSize,
-                    scalePercent: selection.printScale,
-                    offsetXPercent: selection.printOffsetX,
-                    offsetYPercent: selection.printOffsetY,
-                });
                 const prompt = buildIsolatedArtworkPrompt(input.userIdea, input.context);
                 const referenceImageDataUrl = input.referenceImage
                     ? `data:${input.referenceImage.mimeType};base64,${input.referenceImage.base64}`
@@ -1335,7 +1640,7 @@ export class DesignAssetService {
                         traceId: input.generationRequestId,
                     })
                     : null;
-                let providerResult = promptNativeArtwork
+                const providerResult = promptNativeArtwork
                     ? {
                         imageUrl: `data:image/png;base64,${promptNativeArtwork.buffer.toString("base64")}`,
                         provider: promptNativeArtwork.provider,
@@ -1347,248 +1652,91 @@ export class DesignAssetService {
                         referenceImageDataUrl,
                         traceId: input.generationRequestId,
                     });
-                const initialProviderResult = providerResult;
-                let materialized = promptNativeArtwork
+                const materialized = promptNativeArtwork
                     ? { buffer: promptNativeArtwork.buffer, mimeType: "image/png" }
                     : await materializeImageSource(providerResult.imageUrl);
                 const masterPrompt = promptNativeArtwork?.prompt ?? prompt;
+                const capturedSource = await GeneratedSourceAssetService.capture({
+                    profileId: input.profileId,
+                    buffer: materialized.buffer,
+                    declaredMimeType: materialized.mimeType,
+                    provider: providerResult.provider,
+                    model: providerResult.model,
+                    prompt: masterPrompt,
+                    generationParameters: {
+                        ...providerResult.parameters,
+                        pipeline: input.pipeline ?? "standard",
+                    },
+                });
+                source = capturedSource.source;
+                pendingPrepressContext = {
+                    source,
+                    selection,
+                    placement: provisionalPlacement,
+                    pipeline: input.pipeline ?? "standard",
+                };
                 const normalizationWorkflowStartedAt = Date.now();
-                let normalizationAttempt = 1;
-                let backgroundRecoveryApplied = false;
-                let backgroundRecoveryStartedAt: number | null = null;
-                let initialNormalizationFailure: ArtworkPrintValidationError | null = null;
+                const normalizationAttemptStartedAt = Date.now();
+                logDtfTrace(
+                    ARTWORK_NORMALIZATION_SCOPE,
+                    input.generationRequestId,
+                    "artwork_normalization_started",
+                    {
+                        attemptedProvider: providerResult.provider,
+                        attemptedModel: providerResult.model,
+                        normalizationAttempt: 1,
+                        declaredMimeType: materialized.mimeType,
+                        byteLength: materialized.buffer.byteLength,
+                    }
+                );
                 let normalizedArtwork!: Awaited<
                     ReturnType<typeof normalizeGeneratedArtworkForPrint>
                 >;
-                while (true) {
-                    if (promptNativeArtwork) {
-                        const validation = promptNativeArtwork.validation;
-                        const diagnostics = {
-                            declaredMimeType: "image/png",
-                            magicBytesFormat: "png",
-                            detectedFormat: "png",
-                            format: "png",
-                            width: validation.width,
-                            height: validation.height,
-                            hasAlphaChannel: validation.hasAlphaChannel,
-                            transparentPixelRatio: validation.transparentPixelRatio,
-                        };
-                        normalizedArtwork = {
-                            buffer: promptNativeArtwork.buffer,
-                            input: diagnostics,
-                            output: diagnostics,
-                            normalization: promptNativeArtwork.normalization,
-                            validation,
-                        };
-                        logDtfTrace(
-                            ARTWORK_NORMALIZATION_SCOPE,
-                            input.generationRequestId,
-                            "prompt_native_alpha_accepted",
-                            {
-                                attemptedProvider: providerResult.provider,
-                                attemptedModel: providerResult.model,
-                                normalizationSkipped: true,
-                                backgroundRemovalApplied: false,
-                                validation,
-                            }
-                        );
-                        break;
-                    }
-                    const normalizationAttemptStartedAt = Date.now();
+                try {
+                    normalizedArtwork = await normalizeGeneratedArtworkForPrint({
+                        buffer: materialized.buffer,
+                        declaredMimeType: materialized.mimeType,
+                        safePaddingRatio: 0.1,
+                    });
                     logDtfTrace(
                         ARTWORK_NORMALIZATION_SCOPE,
                         input.generationRequestId,
-                        "artwork_normalization_started",
+                        "artwork_normalization_completed",
                         {
                             attemptedProvider: providerResult.provider,
                             attemptedModel: providerResult.model,
-                            normalizationAttempt,
-                            declaredMimeType: materialized.mimeType,
-                            byteLength: materialized.buffer.byteLength,
+                            normalizationAttempt: 1,
+                            durationMs: Date.now() - normalizationAttemptStartedAt,
+                            input: normalizedArtwork.input,
+                            output: normalizedArtwork.output,
+                            normalization: normalizedArtwork.normalization,
+                            printValidation: normalizedArtwork.validation,
                         }
                     );
-                    try {
-                        normalizedArtwork = await normalizeGeneratedArtworkForPrint({
-                            buffer: materialized.buffer,
-                            declaredMimeType: materialized.mimeType,
-                            safePaddingRatio: 0.1,
-                        });
-                        logDtfTrace(
-                            ARTWORK_NORMALIZATION_SCOPE,
-                            input.generationRequestId,
-                            "artwork_normalization_completed",
-                            {
-                                attemptedProvider: providerResult.provider,
-                                attemptedModel: providerResult.model,
-                                normalizationAttempt,
-                                durationMs: Date.now() - normalizationAttemptStartedAt,
-                                input: normalizedArtwork.input,
-                                output: normalizedArtwork.output,
-                                normalization: normalizedArtwork.normalization,
-                                printValidation: normalizedArtwork.validation,
-                            }
-                        );
-                        if (backgroundRecoveryApplied && backgroundRecoveryStartedAt) {
-                            logDtfTrace(
-                                ARTWORK_NORMALIZATION_SCOPE,
-                                input.generationRequestId,
-                                "artwork_background_recovery_completed",
-                                {
-                                    attemptedProvider: providerResult.provider,
-                                    attemptedModel: providerResult.model,
-                                    normalizationAttempt,
-                                    durationMs: Date.now() - backgroundRecoveryStartedAt,
-                                    printValidationValid: normalizedArtwork.validation.valid,
-                                }
-                            );
+                } catch (error) {
+                    const artworkError = asArtworkNormalizationError({
+                        error,
+                        provider: providerResult.provider,
+                        model: providerResult.model,
+                        declaredMimeType: materialized.mimeType,
+                        byteLength: materialized.buffer.byteLength,
+                    });
+                    logDtfTrace(
+                        ARTWORK_NORMALIZATION_SCOPE,
+                        input.generationRequestId,
+                        "artwork_print_validation_failed",
+                        {
+                            attemptedProvider: providerResult.provider,
+                            attemptedModel: providerResult.model,
+                            normalizationAttempt: 1,
+                            durationMs: Date.now() - normalizationWorkflowStartedAt,
+                            errorCode: artworkError.code,
+                            errorStage: artworkError.stage,
+                            diagnostics: artworkError.diagnostics,
+                            validationErrors: artworkError.validationErrors,
                         }
-                        break;
-                    } catch (error) {
-                        const artworkError = asArtworkNormalizationError({
-                            error,
-                            provider: providerResult.provider,
-                            model: providerResult.model,
-                            declaredMimeType: materialized.mimeType,
-                            byteLength: materialized.buffer.byteLength,
-                        });
-                        if (
-                            normalizationAttempt === 1
-                            && (
-                                providerResult.provider === "genai"
-                                || providerResult.provider === "openai"
-                            )
-                            && isRecoverableArtworkBackgroundError(artworkError)
-                        ) {
-                            initialNormalizationFailure = artworkError;
-                            backgroundRecoveryStartedAt = Date.now();
-                            logDtfTrace(
-                                ARTWORK_NORMALIZATION_SCOPE,
-                                input.generationRequestId,
-                                "artwork_background_recovery_started",
-                                {
-                                    attemptedProvider: providerResult.provider,
-                                    attemptedModel: providerResult.model,
-                                    normalizationAttempt,
-                                    reason: artworkError.diagnostics.reason,
-                                    diagnostics: artworkError.diagnostics,
-                                }
-                            );
-                            try {
-                                const recoveredProviderResult = await generateIsolatedArtwork({
-                                    prompt: buildArtworkBackgroundRecoveryPrompt(),
-                                    referenceImageDataUrl:
-                                        `data:${materialized.mimeType};base64,${materialized.buffer.toString("base64")}`,
-                                    traceId: input.generationRequestId,
-                                    requiredProvider: providerResult.provider,
-                                    requiredModel: providerResult.model,
-                                    attemptPurpose: "background_recovery",
-                                });
-                                if (
-                                    recoveredProviderResult.provider !== providerResult.provider
-                                    || recoveredProviderResult.model !== providerResult.model
-                                ) {
-                                    throw new ArtworkPrintValidationError({
-                                        message: "Artwork background recovery changed provider or model and was rejected.",
-                                        stage: "normalization",
-                                        diagnostics: {
-                                            reason: "background_recovery_provider_mismatch",
-                                            attemptedProvider: providerResult.provider,
-                                            attemptedModel: providerResult.model,
-                                            recoveredProvider: recoveredProviderResult.provider,
-                                            recoveredModel: recoveredProviderResult.model,
-                                            originalFailure: summarizeArtworkError(artworkError),
-                                        },
-                                        cause: artworkError,
-                                    });
-                                }
-                                providerResult = recoveredProviderResult;
-                                materialized = await materializeImageSource(
-                                    recoveredProviderResult.imageUrl
-                                );
-                                backgroundRecoveryApplied = true;
-                                normalizationAttempt = 2;
-                                continue;
-                            } catch (recoveryCause) {
-                                const recoveryError = isArtworkPrintValidationError(recoveryCause)
-                                    ? recoveryCause
-                                    : new ArtworkPrintValidationError({
-                                        message: "Generated artwork background could not be recovered safely.",
-                                        stage: "normalization",
-                                        diagnostics: {
-                                            reason: "background_recovery_generation_failed",
-                                            attemptedProvider: providerResult.provider,
-                                            attemptedModel: providerResult.model,
-                                            originalFailure: summarizeArtworkError(artworkError),
-                                        },
-                                        cause: recoveryCause,
-                                    });
-                                logDtfTrace(
-                                    ARTWORK_NORMALIZATION_SCOPE,
-                                    input.generationRequestId,
-                                    "artwork_background_recovery_failed",
-                                    {
-                                        attemptedProvider: providerResult.provider,
-                                        attemptedModel: providerResult.model,
-                                        normalizationAttempt,
-                                        durationMs: backgroundRecoveryStartedAt
-                                            ? Date.now() - backgroundRecoveryStartedAt
-                                            : 0,
-                                        errorCode: recoveryError.code,
-                                        errorStage: recoveryError.stage,
-                                        diagnostics: recoveryError.diagnostics,
-                                    }
-                                );
-                                logDtfTrace(
-                                    ARTWORK_NORMALIZATION_SCOPE,
-                                    input.generationRequestId,
-                                    "artwork_print_validation_failed",
-                                    {
-                                        attemptedProvider: providerResult.provider,
-                                        attemptedModel: providerResult.model,
-                                        normalizationAttempt,
-                                        durationMs: Date.now() - normalizationWorkflowStartedAt,
-                                        errorCode: recoveryError.code,
-                                        errorStage: recoveryError.stage,
-                                        diagnostics: recoveryError.diagnostics,
-                                        validationErrors: recoveryError.validationErrors,
-                                    }
-                                );
-                                throw recoveryError;
-                            }
-                        }
-                        const finalArtworkError = initialNormalizationFailure
-                            ? new ArtworkPrintValidationError({
-                                message: artworkError.message,
-                                stage: artworkError.stage,
-                                diagnostics: {
-                                    ...artworkError.diagnostics,
-                                    backgroundRecovery: {
-                                        attempted: true,
-                                        originalFailure:
-                                            summarizeArtworkError(initialNormalizationFailure),
-                                    },
-                                },
-                                validationErrors: artworkError.validationErrors,
-                                cause: artworkError,
-                            })
-                            : artworkError;
-                        logDtfTrace(
-                            ARTWORK_NORMALIZATION_SCOPE,
-                            input.generationRequestId,
-                            "artwork_print_validation_failed",
-                            {
-                                attemptedProvider: providerResult.provider,
-                                attemptedModel: providerResult.model,
-                                normalizationAttempt,
-                                durationMs: Date.now() - normalizationWorkflowStartedAt,
-                                errorCode: finalArtworkError.code,
-                                errorStage: finalArtworkError.stage,
-                                diagnostics: finalArtworkError.diagnostics,
-                                validationErrors: finalArtworkError.validationErrors,
-                            }
-                        );
-                        throw finalArtworkError;
-                    }
+                    );
+                    throw artworkError;
                 }
                 const textPolicyVerificationStartedAt = Date.now();
                 const textRenderingAllowed =
@@ -1673,6 +1821,7 @@ export class DesignAssetService {
                 try {
                     persisted = await DesignAssetService.persistMasterAsset({
                         profileId: input.profileId,
+                        sourceAssetId: source.id,
                         buffer: normalizedArtwork.buffer,
                         provider: providerResult.provider,
                         model: providerResult.model,
@@ -1680,17 +1829,6 @@ export class DesignAssetService {
                         generationParameters: {
                             ...providerResult.parameters,
                             textPolicyVerification,
-                            ...(backgroundRecoveryApplied
-                                ? {
-                                    artworkBackgroundRecovery: {
-                                        applied: true,
-                                        sourceProvider: initialProviderResult.provider,
-                                        sourceModel: initialProviderResult.model,
-                                        recoveredProvider: providerResult.provider,
-                                        recoveredModel: providerResult.model,
-                                    },
-                                }
-                                : {}),
                             artworkNormalization: {
                                 input: normalizedArtwork.input,
                                 output: normalizedArtwork.output,
@@ -1723,13 +1861,14 @@ export class DesignAssetService {
                 }
                 master = persisted.master;
                 masterBuffer = persisted.buffer;
-                designRequestId = crypto.randomUUID();
+                const requestId = crypto.randomUUID();
                 const { error: insertError } = await DesignAssetService.db()
                     .from("washa_design_requests")
                     .insert({
-                        id: designRequestId,
+                        id: requestId,
                         generation_request_id: input.generationRequestId,
                         profile_id: input.profileId,
+                        source_asset_id: source.id,
                         master_asset_id: master.id,
                         selected_product_id: selection.garmentId,
                         selected_color_id: selection.colorId,
@@ -1737,21 +1876,39 @@ export class DesignAssetService {
                         selected_side: selectedSide,
                         placement_data: provisionalPlacement,
                         mockup_source_type: null,
+                        preview_kind: "mockup",
                         prompt: masterPrompt,
                         generation_model: master.model,
                         provider: master.provider,
                         transparency_verification_status: master.alphaChannelStatus,
                         production_readiness_status: "blocked",
                         generation_status: "processing",
-                        schema_version: 1,
+                        schema_version: 2,
                     });
-                if (insertError) throw insertError;
+                if (insertError) {
+                    if (insertError.code === "23505") {
+                        const concurrent = await DesignAssetService.recoverGenerationAfterUniqueConflict(
+                            input.profileId,
+                            input.generationRequestId
+                        );
+                        if (concurrent) return concurrent;
+                    }
+                    throw insertError;
+                }
+                designRequestId = requestId;
             }
 
             if (!designRequestId) throw new Error("Design request was not persisted.");
+            readySourcePreviewContext = {
+                source,
+                master,
+                placement: existingAttempt?.request.placement_data ?? provisionalPlacement,
+                pipeline: input.pipeline ?? "standard",
+            };
             return await DesignAssetService.composeRequestPreview({
                 profileId: input.profileId,
                 designRequestId,
+                source,
                 master,
                 masterBuffer,
                 selection,
@@ -1759,6 +1916,30 @@ export class DesignAssetService {
                 pipeline: input.pipeline ?? "standard",
             });
         } catch (error) {
+            if (
+                !designRequestId
+                && pendingPrepressContext
+                && !isArtworkTextPolicyError(error)
+            ) {
+                return DesignAssetService.persistPendingPrepressPreview({
+                    profileId: input.profileId,
+                    generationRequestId: input.generationRequestId,
+                    ...pendingPrepressContext,
+                });
+            }
+            if (designRequestId && readySourcePreviewContext) {
+                try {
+                    return await DesignAssetService.persistReadySourcePreview({
+                        profileId: input.profileId,
+                        generationRequestId: input.generationRequestId,
+                        designRequestId,
+                        ...readySourcePreviewContext,
+                    });
+                } catch {
+                    // The normal blocked-state path below preserves retry semantics
+                    // if even the durable source-preview update is unavailable.
+                }
+            }
             if (designRequestId) {
                 await DesignAssetService.db()
                     .from("washa_design_requests")

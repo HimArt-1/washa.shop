@@ -707,6 +707,7 @@ export function DesignProvider({
       : generationResult;
     const canRecompose = Boolean(
       primaryGenerationResult
+      && primaryGenerationResult.masterAssetId
       && mockupState
       && !options.promptOverride?.trim()
       && createArtworkFingerprint(mockupState) === createArtworkFingerprint(state)
@@ -789,7 +790,10 @@ export function DesignProvider({
       };
       const generated = canRecompose
         ? await recomposeMockup(
-            primaryGenerationResult!,
+            {
+              designRequestId: primaryGenerationResult!.designRequestId,
+              masterAssetId: primaryGenerationResult!.masterAssetId!,
+            },
             state.garmentType,
             state.garmentColor,
             techniquePrompt,
@@ -815,8 +819,18 @@ export function DesignProvider({
         setGenerationResult(generated);
         setMockupImage(generatedPreviewUrl);
         setMockupState({ ...state });
-        setExtractedImage(isBoardPreviewResult(generated) ? null : generated.masterAssetUrl);
-        showToast('تم توليد التصميم بنجاح', 'success');
+        setExtractedImage(
+          isBoardPreviewResult(generated)
+            ? null
+            : (generated.masterAssetUrl ?? generated.sourceAssetUrl)
+        );
+        showToast(
+          !isBoardPreviewResult(generated)
+            && generated.productionReadinessStatus === 'pending_prepress'
+            ? 'تم حفظ أصل التصميم؛ تجهيز ملف الطباعة مستمر دون تعطيل طلبك'
+            : 'تم توليد التصميم بنجاح',
+          'success'
+        );
         return reportOutcome(isBoardPreviewResult(generated) ? 'preview' : 'succeeded');
       } else {
         setError('لم تصل صورة صالحة من خدمة التوليد. نتيجتك السابقة محفوظة ويمكنك إعادة المحاولة.');
@@ -1033,6 +1047,11 @@ export function DesignProvider({
   const handleExtract = async () => {
     if (!generationResult || isBoardPreviewResult(generationResult)) return;
 
+    if (!generationResult.masterAssetUrl) {
+      showToast('أصل التصميم محفوظ، وسيجهّز فريق الإنتاج ملف الطباعة بعد الاعتماد', 'info');
+      return;
+    }
+
     setIsExtracting(true);
     setError(null);
 
@@ -1112,6 +1131,8 @@ export function DesignProvider({
           printSize: state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition),
           printPositionLabel: state.printPositionLabel,
           designRequestId: generationResult.designRequestId,
+          sourceAssetId: generationResult.sourceAssetId,
+          sourceChecksum: generationResult.sourceChecksum,
           masterAssetId: generationResult.masterAssetId,
           masterChecksum: generationResult.masterChecksum,
           placementData: generationResult.placement,

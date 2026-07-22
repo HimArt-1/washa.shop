@@ -251,7 +251,8 @@ export class DtfOrderService {
                 paletteId, palette, customPalette, prompt, calligraphyText,
                 printOptionId, printPosition, printSize, printPositionLabel,
                 mockupDataUrl, extractedDataUrl,
-                designRequestId, masterAssetId, masterChecksum, placementData
+                designRequestId, sourceAssetId, sourceChecksum,
+                masterAssetId, masterChecksum, placementData
             } = payload;
 
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_started", {
@@ -264,6 +265,7 @@ export class DtfOrderService {
                 has_mockup_data_url: Boolean(mockupDataUrl),
                 has_extracted_data_url: Boolean(extractedDataUrl),
                 design_request_id: designRequestId ?? null,
+                source_asset_id: sourceAssetId ?? null,
                 master_asset_id: masterAssetId ?? null,
                 authenticated: Boolean(userProfile),
             });
@@ -407,7 +409,14 @@ export class DtfOrderService {
             let approvedRevision: ApprovedRevision | null = null;
             let mockupUrl: string;
             let extractedUrl: string | null = null;
-            if (designRequestId && masterAssetId && masterChecksum && placementData) {
+            if (
+                designRequestId
+                && placementData
+                && (
+                    (sourceAssetId && sourceChecksum)
+                    || (masterAssetId && masterChecksum)
+                )
+            ) {
                 if (!options?.profileId) {
                     if (reservedSizeId) await releaseSmartStoreSizeReservation(sb, reservedSizeId, 1);
                     return { error: "تعذر ربط اعتماد التصميم بحساب المستخدم.", status: 401 };
@@ -415,8 +424,10 @@ export class DtfOrderService {
                 approvedRevision = await DesignRevisionService.approve({
                     profileId: options.profileId,
                     designRequestId,
-                    masterAssetId,
-                    masterChecksum,
+                    sourceAssetId: sourceAssetId ?? null,
+                    sourceChecksum: sourceChecksum ?? null,
+                    masterAssetId: masterAssetId ?? null,
+                    masterChecksum: masterChecksum ?? null,
                     placement: placementData,
                     productVariant: {
                         garmentId: garmentRow?.id ?? null,
@@ -569,7 +580,10 @@ export class DtfOrderService {
                 size_name: resolvedSizeName,
                 design_method: "studio",
                 text_prompt: calligraphyText?.trim() ? `مخطوطة: ${calligraphyText.trim()}` : (prompt || "تصميم DTF من الاستوديو"),
-                reference_image_url: approvedRevision?.masterAssetUrl ?? extractedUrl ?? mockupResult.url,
+                reference_image_url: approvedRevision?.sourceAssetUrl
+                    ?? approvedRevision?.masterAssetUrl
+                    ?? extractedUrl
+                    ?? mockupResult.url,
                 preset_id: null,
                 preset_name: null,
                 preset_fully_aligned: false,
@@ -596,6 +610,8 @@ export class DtfOrderService {
                 dtf_technique_label: resolvedTechniqueName,
                 dtf_palette_label: resolvedPaletteLabel,
                 design_request_id: approvedRevision ? designRequestId : null,
+                design_source_asset_id: approvedRevision?.sourceAssetId ?? null,
+                source_checksum: approvedRevision?.sourceChecksum ?? null,
                 design_master_asset_id: approvedRevision?.masterAssetId ?? null,
                 design_revision_id: approvedRevision?.designRevisionId ?? null,
                 master_checksum: approvedRevision?.masterChecksum ?? null,
@@ -604,8 +620,10 @@ export class DtfOrderService {
                 preview_front_url: approvedRevision?.frontPreviewUrl ?? null,
                 preview_back_url: approvedRevision?.backPreviewUrl ?? null,
                 print_asset_path: approvedRevision?.printAssetPath ?? null,
-                asset_schema_version: approvedRevision ? 1 : 0,
-                production_readiness_status: approvedRevision ? "ready" : "legacy_unverified",
+                asset_schema_version: approvedRevision ? 2 : 0,
+                production_readiness_status: approvedRevision
+                    ? approvedRevision.productionReadinessStatus
+                    : "legacy_unverified",
             };
             const { data: insertedOrder, error: insertOrderError } = await sb
                 .from("custom_design_orders")
@@ -654,9 +672,13 @@ export class DtfOrderService {
                     mockupUrl: mockupResult.url,
                     extractedUrl,
                     designRequestId: approvedRevision ? designRequestId : null,
+                    sourceAssetId: approvedRevision?.sourceAssetId ?? null,
+                    sourceChecksum: approvedRevision?.sourceChecksum ?? null,
                     designRevisionId: approvedRevision?.designRevisionId ?? null,
                     masterAssetId: approvedRevision?.masterAssetId ?? null,
                     masterChecksum: approvedRevision?.masterChecksum ?? null,
+                    productionReadinessStatus:
+                        approvedRevision?.productionReadinessStatus ?? "legacy_unverified",
                     pricing: {
                         basePrice: pricing.base_price,
                         designPrice,

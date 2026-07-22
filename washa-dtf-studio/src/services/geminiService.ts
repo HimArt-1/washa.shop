@@ -45,10 +45,14 @@ export type PrimaryGeneratedArtworkResult = {
   frontPreviewUrl: string | null;
   backPreviewUrl: string | null;
   designRequestId: string;
-  masterAssetId: string;
-  masterAssetUrl: string;
-  masterChecksum: string;
-  mockupSourceType: 'reference' | 'generated_blank_garment';
+  sourceAssetId: string;
+  sourceAssetUrl: string;
+  sourceChecksum: string;
+  masterAssetId: string | null;
+  masterAssetUrl: string | null;
+  masterChecksum: string | null;
+  mockupSourceType: 'reference' | 'generated_blank_garment' | 'source_preview';
+  previewKind: 'mockup' | 'source';
   placement: {
     side: 'front' | 'back';
     x: number;
@@ -63,10 +67,10 @@ export type PrimaryGeneratedArtworkResult = {
     printAreaId: string;
     transformVersion: number;
   };
-  transparencyVerificationStatus: 'verified' | 'fallback_processed';
-  productionReadinessStatus: 'ready';
+  transparencyVerificationStatus: 'pending' | 'verified' | 'fallback_processed';
+  productionReadinessStatus: 'ready' | 'pending_prepress';
   pipeline?: 'standard' | 'prompt_native';
-  previewProvider?: 'sharp' | 'gemini';
+  previewProvider?: 'sharp' | 'gemini' | 'source';
 };
 
 export type BoardPreviewResult = {
@@ -383,18 +387,52 @@ export async function generateMockup(
         quotaCharged: data.quotaCharged === true,
       };
     }
+    const sourceAssetId = typeof data.sourceAssetId === 'string'
+      ? data.sourceAssetId
+      : (typeof data.masterAssetId === 'string' ? data.masterAssetId : null);
+    const sourceAssetUrl = typeof data.sourceAssetUrl === 'string'
+      ? data.sourceAssetUrl
+      : (typeof data.masterAssetUrl === 'string' ? data.masterAssetUrl : null);
+    const sourceChecksum = typeof data.sourceChecksum === 'string'
+      ? data.sourceChecksum
+      : (typeof data.masterChecksum === 'string' ? data.masterChecksum : null);
     if (
-      typeof data?.imageUrl !== 'string' ||
-      typeof data?.previewUrl !== 'string' ||
-      typeof data?.designRequestId !== 'string' ||
-      typeof data?.masterAssetId !== 'string' ||
-      typeof data?.masterAssetUrl !== 'string' ||
-      typeof data?.masterChecksum !== 'string' ||
-      !data?.placement
+      typeof data.imageUrl !== 'string' ||
+      typeof data.previewUrl !== 'string' ||
+      typeof data.designRequestId !== 'string' ||
+      !sourceAssetId ||
+      !sourceAssetUrl ||
+      !sourceChecksum ||
+      !data.placement
     ) {
       throw createPublicApiError('تعذر تثبيت أصل التصميم الدائم.', 'generation', response, data);
     }
-    return data as PrimaryGeneratedArtworkResult;
+    const masterAssetId = typeof data.masterAssetId === 'string' ? data.masterAssetId : null;
+    const masterAssetUrl = typeof data.masterAssetUrl === 'string' ? data.masterAssetUrl : null;
+    const masterChecksum = typeof data.masterChecksum === 'string' ? data.masterChecksum : null;
+    const productionReadinessStatus = data.productionReadinessStatus === 'pending_prepress'
+      ? 'pending_prepress'
+      : 'ready';
+    return {
+      ...data,
+      sourceAssetId,
+      sourceAssetUrl,
+      sourceChecksum,
+      masterAssetId,
+      masterAssetUrl,
+      masterChecksum,
+      previewKind: data.previewKind === 'source' ? 'source' : 'mockup',
+      mockupSourceType: data.mockupSourceType === 'source_preview'
+        ? 'source_preview'
+        : (data.mockupSourceType === 'generated_blank_garment' ? 'generated_blank_garment' : 'reference'),
+      transparencyVerificationStatus: data.transparencyVerificationStatus === 'pending'
+        ? 'pending'
+        : (data.transparencyVerificationStatus === 'fallback_processed' ? 'fallback_processed' : 'verified'),
+      productionReadinessStatus,
+      previewProvider: data.previewProvider === 'source'
+        ? 'source'
+        : (data.previewProvider === 'gemini' ? 'gemini' : 'sharp'),
+    } as PrimaryGeneratedArtworkResult;
   } catch (error) {
     const info = error instanceof StudioApiError && isRecord(error.data)
       ? error.data
@@ -409,7 +447,7 @@ export async function generateMockup(
 }
 
 export async function recomposeMockup(
-  existing: Pick<PrimaryGeneratedArtworkResult, 'designRequestId' | 'masterAssetId'>,
+  existing: Pick<PrimaryGeneratedArtworkResult, 'designRequestId'> & { masterAssetId: string },
   garmentType: string,
   color: string,
   technique: string,

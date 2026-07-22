@@ -511,6 +511,16 @@ export default function StepResult() {
 
             <BoardPreviewDisclosure visible={shouldDiscloseBoard} />
 
+            {presentation.isPendingPrepress ? (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-700/20 bg-amber-700/5 px-4 py-3 text-right" role="status">
+                <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+                <div>
+                  <p className="text-sm font-bold text-washa-text">أصل التصميم محفوظ بالكامل</p>
+                  <p className="mt-0.5 text-xs leading-5 text-washa-text-sec">يمكنك اعتماده الآن. سيُجهّز ملف الطباعة المناسب في مرحلة ما قبل الإنتاج دون مطالبتك بإعادة التوليد.</p>
+                </div>
+              </div>
+            ) : null}
+
             {error ? (
               <div className="flex items-start gap-3 rounded-xl border border-amber-700/20 bg-amber-700/5 px-4 py-3 text-right" role="alert">
                 <CircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
@@ -578,7 +588,7 @@ export default function StepResult() {
               <div className="flex items-center justify-between gap-3 border-t border-washa-border/20 px-4 py-3">
                 <div className="min-w-0 text-right text-xs leading-5 text-washa-text-faint">
                   <p className="truncate text-washa-text-sec">{resultState.printPositionLabel || resultState.designPosition}</p>
-                  <p className="truncate">{resultState.style} · {resultState.technique} · {resultState.palette} · {cleanOutputEnabled ? 'إخراج نظيف' : 'خلفية وحدود مسموحة'}</p>
+                  <p className="truncate">{resultState.style} · {resultState.technique} · {resultState.palette} · {presentation.isPendingPrepress ? 'الأصل محفوظ للتجهيز' : (cleanOutputEnabled ? 'إخراج نظيف' : 'خلفية وحدود مسموحة')}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -629,14 +639,14 @@ export default function StepResult() {
                 <p className="text-[10px] font-bold text-washa-gold">{isBoardPreview ? 'موضع المعاينة' : 'الطباعة'}</p>
                 <p className="mt-1 text-xs leading-5 text-washa-text-sec">
                   {resultState.printPositionLabel || resultState.designPosition}
-                  {!isBoardPreview
+                  {!isBoardPreview && !presentation.isPendingPrepress
                     ? ` · ${cleanOutputEnabled ? 'خلفية شفافة وحواف نظيفة' : 'الخلفية والحواف مسموحة'}`
                     : null}
                 </p>
               </div>
             </section>
 
-            {!isBoardPreview ? (
+            {!isBoardPreview && !presentation.isPendingPrepress ? (
               <p className="rounded-xl border border-emerald-700/15 bg-emerald-700/5 px-4 py-3 text-right text-xs leading-6 text-washa-text-sec">
                 يُستخدم نفس ملف التصميم المعتمد في المعاينة والطباعة. قد تختلف فقط إضاءة القماش وملمسه الظاهران في الموكب عن المنتج الفعلي.
               </p>
@@ -657,7 +667,9 @@ export default function StepResult() {
                     اعتماد التصميم
                   </h3>
                   <p className="text-sm text-washa-text-sec leading-relaxed">
-                    أضف التصميم إلى السلة الآن ليُحتسب بسعر القطعة والطباعة المعتمدين ثم أكمل الطلب من صفحة الدفع
+                    {presentation.isPendingPrepress
+                      ? 'اعتمد أصل التصميم المحفوظ الآن؛ سيُستكمل تجهيزه للطباعة قبل بدء الإنتاج'
+                      : 'أضف التصميم إلى السلة الآن ليُحتسب بسعر القطعة والطباعة المعتمدين ثم أكمل الطلب من صفحة الدفع'}
                   </p>
                 </div>
                 <Button

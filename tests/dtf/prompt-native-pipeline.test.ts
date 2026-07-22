@@ -133,20 +133,16 @@ describe("WASHA AI Prompt Native pipeline", () => {
         expect(String(bodies[0]?.prompt)).toContain("real alpha channel");
         expect(result.provider).toBe("openai");
         expect(result.model).toBe("gpt-image-1.5");
-        expect(result.validation.valid).toBe(true);
-        expect(result.normalization.backgroundRemovalApplied).toBe(false);
         expect(result.buffer.equals(transparent)).toBe(true);
     });
 
-    it("regenerates once instead of removing an opaque background", async () => {
+    it("returns the first opaque provider output for immediate raw-source persistence", async () => {
         const opaque = await artworkPng(1);
-        const transparent = await artworkPng(0);
         const bodies: Array<Record<string, unknown>> = [];
         vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
             bodies.push(JSON.parse(String(init?.body)));
-            const image = bodies.length === 1 ? opaque : transparent;
             return new Response(JSON.stringify({
-                data: [{ b64_json: image.toString("base64") }],
+                data: [{ b64_json: opaque.toString("base64") }],
             }), {
                 status: 200,
                 headers: { "content-type": "application/json" },
@@ -161,11 +157,9 @@ describe("WASHA AI Prompt Native pipeline", () => {
             traceId: "prompt-native-retry",
         });
 
-        expect(bodies).toHaveLength(2);
-        expect(String(bodies[1].prompt)).toContain("previous attempt failed alpha validation");
-        expect(result.attempt).toBe(2);
-        expect(result.validation.valid).toBe(true);
-        expect(result.normalization.backgroundRemovalApplied).toBe(false);
+        expect(bodies).toHaveLength(1);
+        expect(result.attempt).toBe(1);
+        expect(result.buffer.equals(opaque)).toBe(true);
     });
 
     it("gives Gemini the selected mockup, immutable artwork, and deterministic placement guide", async () => {

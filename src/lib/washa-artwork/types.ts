@@ -1,5 +1,7 @@
 export type ArtworkSide = "front" | "back";
-export type MockupSourceType = "reference" | "generated_blank_garment";
+export type MockupSourceType = "reference" | "generated_blank_garment" | "source_preview";
+export type ArtworkProductionReadiness = "ready" | "pending_prepress";
+export type ArtworkTransparencyStatus = "pending" | "verified" | "fallback_processed";
 
 export type NormalizedPrintArea = {
     x: number;
@@ -68,6 +70,7 @@ export type MasterAssetDescriptor = {
     prompt: string;
     generationParameters: Record<string, unknown>;
     createdAt: string;
+    sourceAssetId: string | null;
 };
 
 export type GeneratedArtworkResponse = {
@@ -76,15 +79,19 @@ export type GeneratedArtworkResponse = {
     frontPreviewUrl: string | null;
     backPreviewUrl: string | null;
     designRequestId: string;
-    masterAssetId: string;
-    masterAssetUrl: string;
-    masterChecksum: string;
+    sourceAssetId: string;
+    sourceAssetUrl: string;
+    sourceChecksum: string;
+    masterAssetId: string | null;
+    masterAssetUrl: string | null;
+    masterChecksum: string | null;
     mockupSourceType: MockupSourceType;
     placement: PlacementTransform;
-    transparencyVerificationStatus: "verified" | "fallback_processed";
-    productionReadinessStatus: "ready";
+    transparencyVerificationStatus: ArtworkTransparencyStatus;
+    productionReadinessStatus: ArtworkProductionReadiness;
+    previewKind: "mockup" | "source";
     provider: string;
     model: string;
     pipeline?: "standard" | "prompt_native";
-    previewProvider?: "sharp" | "gemini";
+    previewProvider?: "sharp" | "gemini" | "source";
 };

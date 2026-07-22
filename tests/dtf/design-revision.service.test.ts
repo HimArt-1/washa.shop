@@ -83,6 +83,10 @@ describe("DesignRevisionService", () => {
         const request = {
             id: "11111111-1111-4111-8111-111111111111",
             profile_id: "profile_1",
+            // Simulates a legacy ready request after migration backfilled the
+            // compatibility source. The older client payloads below still send
+            // master identity only.
+            source_asset_id: "22222222-2222-4222-8222-222222222222",
             master_asset_id: "22222222-2222-4222-8222-222222222222",
             selected_product_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             selected_color_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -129,6 +133,14 @@ describe("DesignRevisionService", () => {
                 pipeline: "prompt_native",
             },
         };
+        const compatibilitySource = {
+            id: request.source_asset_id,
+            profile_id: request.profile_id,
+            permanent_storage_path: master.permanent_storage_path,
+            permanent_url: master.permanent_url,
+            storage_bucket: master.storage_bucket,
+            sha256_checksum: master.sha256_checksum,
+        };
 
         mockGetSupabaseAdminClient.mockReturnValue({
             from(table: string) {
@@ -137,12 +149,16 @@ describe("DesignRevisionService", () => {
                         select: () => selectChain(request),
                         update: (payload: unknown) => {
                             requestUpdates.push(payload);
+                            Object.assign(request, payload);
                             return mutationChain();
                         },
                     };
                 }
                 if (table === "washa_design_master_assets") {
                     return { select: () => selectChain(master) };
+                }
+                if (table === "washa_design_source_assets") {
+                    return { select: () => selectChain(compatibilitySource) };
                 }
                 if (table === "washa_design_revisions") {
                     return {
@@ -300,6 +316,137 @@ describe("DesignRevisionService", () => {
             productVariant: {},
             garmentColor: {},
         })).rejects.toThrow("placement");
+        expect(mockUploadImmutableBuffer).not.toHaveBeenCalled();
+    });
+
+    it("pins an immutable generated source when approval is pending prepress", async () => {
+        const sourceBuffer = await sharp({
+            create: {
+                width: 96,
+                height: 96,
+                channels: 3,
+                background: { r: 17, g: 17, b: 17 },
+            },
+        }).png().toBuffer();
+        const sourceChecksum = sha256Hex(sourceBuffer);
+        const revisionInserts: unknown[] = [];
+        const requestUpdates: unknown[] = [];
+        const placement = {
+            side: "front" as const,
+            x: 0.5,
+            y: 0.5,
+            scale: 0.8,
+            rotation: 0,
+            printWidthCm: 30,
+            printHeightCm: 40,
+            anchorX: 0.5,
+            anchorY: 0.5,
+            referenceMockupId: null,
+            printAreaId: "front_default",
+            transformVersion: 1,
+        };
+        const request = {
+            id: "11111111-1111-4111-8111-111111111111",
+            profile_id: "profile_1",
+            source_asset_id: "99999999-9999-4999-8999-999999999999",
+            master_asset_id: null,
+            selected_product_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            selected_color_id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+            selected_color_hex: "#111111",
+            selected_side: "front",
+            placement_data: placement,
+            production_readiness_status: "pending_prepress",
+            generation_status: "ready",
+            mockup_source_type: "source_preview",
+            front_preview_url: "https://cdn.example/provider-output.png",
+            back_preview_url: null,
+            current_revision_id: null,
+        };
+        const source = {
+            id: request.source_asset_id,
+            profile_id: "profile_1",
+            permanent_storage_path: "design-sources/profile/source/provider-output.png",
+            permanent_url: request.front_preview_url,
+            storage_bucket: "washa-design-assets",
+            sha256_checksum: sourceChecksum,
+            width: 96,
+            height: 96,
+            mime_type: "image/png",
+            background_mode: "opaque",
+            prompt: "opaque artwork",
+            generation_model: "gpt-image-2",
+            provider: "openai",
+            generation_parameters: { background: "opaque", pipeline: "standard" },
+        };
+        mockGetSupabaseAdminClient.mockReturnValue({
+            from(table: string) {
+                if (table === "washa_design_requests") {
+                    return {
+                        select: () => selectChain(request),
+                        update: (payload: unknown) => {
+                            requestUpdates.push(payload);
+                            Object.assign(request, payload);
+                            return mutationChain();
+                        },
+                    };
+                }
+                if (table === "washa_design_source_assets") {
+                    return { select: () => selectChain(source) };
+                }
+                if (table === "washa_design_revisions") {
+                    return {
+                        select: () => selectChain(
+                            request.current_revision_id ? revisionInserts[0] : null
+                        ),
+                        insert: async (payload: unknown) => {
+                            revisionInserts.push(payload);
+                            return { error: null };
+                        },
+                    };
+                }
+                throw new Error(`Unexpected table: ${table}`);
+            },
+        });
+        mockDownloadStoredBuffer.mockResolvedValue(sourceBuffer);
+
+        const approvalInput = {
+            profileId: "profile_1",
+            designRequestId: request.id,
+            sourceAssetId: source.id,
+            sourceChecksum,
+            masterAssetId: null,
+            masterChecksum: null,
+            placement,
+            productVariant: {
+                garmentId: request.selected_product_id,
+                printPosition: "chest",
+            },
+            garmentColor: {
+                colorId: request.selected_color_id,
+                colorHex: request.selected_color_hex,
+            },
+        };
+        const result = await DesignRevisionService.approve(approvalInput);
+        const repeated = await DesignRevisionService.approve(approvalInput);
+
+        expect(result).toMatchObject({
+            sourceAssetId: source.id,
+            sourceChecksum,
+            masterAssetId: null,
+            printAssetPath: null,
+            printAssetUrl: null,
+            productionReadinessStatus: "pending_prepress",
+        });
+        expect(revisionInserts[0]).toMatchObject({
+            source_asset_id: source.id,
+            source_sha256_checksum: sourceChecksum,
+            master_asset_id: null,
+            print_asset_path: null,
+            production_readiness_status: "pending_prepress",
+        });
+        expect(requestUpdates).toHaveLength(1);
+        expect(repeated.designRevisionId).toBe(result.designRevisionId);
+        expect(revisionInserts).toHaveLength(1);
         expect(mockUploadImmutableBuffer).not.toHaveBeenCalled();
     });
 });

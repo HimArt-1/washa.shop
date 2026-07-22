@@ -215,6 +215,7 @@ export function DesignOrderWorkspace({
     const [downloadingDtf, setDownloadingDtf] = useState(false);
 
     const status = statusMeta[currentOrder.status];
+    const isPendingPrepress = currentOrder.production_readiness_status === "pending_prepress";
     const next = nextStatuses[currentOrder.status] || [];
     const assignedAdmin = useMemo(
         () => adminList.find((admin) => admin.id === assignedTo)?.display_name ?? null,
@@ -469,6 +470,11 @@ export function DesignOrderWorkspace({
             {error ? (
                 <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                     {error}
+                </div>
+            ) : null}
+            {isPendingPrepress ? (
+                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200">
+                    أصل التوليد محفوظ ومثبت في الطلب. ملف الطباعة يحتاج مراجعة وتجهيزًا قبل نقل الطلب إلى المراجعة أو الإنتاج.
                 </div>
             ) : null}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -980,7 +986,11 @@ export function DesignOrderWorkspace({
                             ) : (
                                 <div className="rounded-2xl border border-dashed border-theme-subtle bg-theme-faint p-4 text-center">
                                     <Printer className="h-6 w-6 text-theme-faint mx-auto mb-2" />
-                                    <p className="text-xs text-theme-faint">لم يتم استخراج ملف DTF بعد من قِبَل العميل</p>
+                                    <p className="text-xs text-theme-faint">
+                                        {isPendingPrepress
+                                            ? "أصل التصميم محفوظ؛ ملف DTF ما زال قيد التجهيز قبل الإنتاج"
+                                            : "لم يتم استخراج ملف DTF بعد من قِبَل العميل"}
+                                    </p>
                                 </div>
                             )}
                         </div>

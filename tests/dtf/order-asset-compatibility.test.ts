@@ -62,4 +62,16 @@ describe("design order asset compatibility", () => {
         expect(workspace).not.toContain("removeEdgeBackground");
         expect(downloadRoute).toContain("verifyApprovedOrderAssetGraph");
     });
+
+    it("does not let the admin skip-results action bypass pending prepress integrity", () => {
+        const actions = readFileSync(resolve("src/app/actions/smart-store.ts"), "utf8");
+        const skipAction = actions.match(
+            /export async function skipDesignResults[\s\S]*?(?=\/\/ ─── Admin: Update Notes)/
+        )?.[0] || "";
+
+        expect(skipAction).toContain("production_readiness_status");
+        expect(skipAction).toContain("verifyApprovedOrderAssetGraph");
+        expect(skipAction.indexOf("verifyApprovedOrderAssetGraph"))
+            .toBeLessThan(skipAction.indexOf('status: "completed"'));
+    });
 });

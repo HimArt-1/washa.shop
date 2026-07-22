@@ -26,6 +26,7 @@ vi.mock("@/app/api/washa-dtf-studio/services/storage.service", () => ({
 import { GET } from "@/app/api/washa-dtf-studio/assets/[kind]/[id]/route";
 
 const MASTER_ID = "22222222-2222-4222-8222-222222222222";
+const SOURCE_ID = "99999999-9999-4999-8999-999999999999";
 
 function masterQuery(ownerProfileId: string) {
     return {
@@ -72,6 +73,28 @@ describe("private WASHA design asset delivery", () => {
         expect(response.status).toBe(200);
         expect(response.headers.get("cache-control")).toContain("private");
         expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("exact-private-png-bytes");
+    });
+
+    it("streams the immutable provider source through the same owner-only route", async () => {
+        const requestedTables: string[] = [];
+        mockGetSupabaseAdminClient.mockReturnValue({
+            from: (table: string) => {
+                requestedTables.push(table);
+                return masterQuery("profile_owner");
+            },
+        });
+
+        const response = await GET(
+            new NextRequest(`http://localhost/api/washa-dtf-studio/assets/source/${SOURCE_ID}`),
+            { params: Promise.resolve({ kind: "source", id: SOURCE_ID }) }
+        );
+
+        expect(response.status).toBe(200);
+        expect(requestedTables).toEqual(["washa_design_source_assets"]);
+        expect(mockDownloadStoredBuffer).toHaveBeenCalledWith(
+            "design-masters/profile/master/design-master.png",
+            { bucket: "washa-design-assets" }
+        );
     });
 
     it("does not expose another customer's master asset", async () => {

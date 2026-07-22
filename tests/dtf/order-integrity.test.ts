@@ -74,6 +74,26 @@ function mockSupabase(params: {
 }
 
 describe("approved order asset integrity", () => {
+    it("keeps a preserved source blocked from production until prepress completes", async () => {
+        const master = await png({ r: 200, g: 30, b: 40 });
+        const print = await png({ r: 200, g: 30, b: 40 });
+
+        const result = await verifyApprovedOrderAssetGraph(
+            mockSupabase({ master, print }),
+            {
+                asset_schema_version: 2,
+                production_readiness_status: "pending_prepress",
+                design_request_id: "request_1",
+                design_revision_id: "revision_1",
+            }
+        );
+
+        expect(result).toEqual({
+            ok: false,
+            error: "أصل التصميم محفوظ، لكن ملف الطباعة ما زال قيد التجهيز قبل الإنتاج.",
+        });
+    });
+
     it("verifies revision, master, derivative and both stored checksums", async () => {
         const master = await png({ r: 200, g: 30, b: 40 });
         const print = await png({ r: 200, g: 30, b: 40 });

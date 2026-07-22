@@ -1922,13 +1922,20 @@ export async function skipDesignResults(id: string) {
     const { sb } = await requireSmartStoreAdmin();
     const { data: order } = await sb
         .from("custom_design_orders")
-        .select("status")
+        .select("status, design_request_id, design_master_asset_id, design_revision_id, master_checksum, print_asset_path, asset_schema_version, production_readiness_status")
         .eq("id", id)
         .single();
-    const currentOrder = order as Pick<CustomDesignOrder, "status"> | null;
+    const currentOrder = order as Pick<
+        CustomDesignOrder,
+        "status" | "design_request_id" | "design_master_asset_id" | "design_revision_id" | "master_checksum" | "print_asset_path" | "asset_schema_version" | "production_readiness_status"
+    > | null;
     if (!currentOrder) return { error: "الطلب غير موجود." };
     if (currentOrder.status === "completed" || currentOrder.status === "cancelled") {
         return { error: "لا يمكن تجاوز النتائج لهذا الطلب في حالته الحالية." };
+    }
+    if ((currentOrder.asset_schema_version ?? 0) >= 1) {
+        const integrity = await verifyApprovedOrderAssetGraph(sb, currentOrder);
+        if (!integrity.ok) return { error: integrity.error };
     }
 
     const { error } = await sb

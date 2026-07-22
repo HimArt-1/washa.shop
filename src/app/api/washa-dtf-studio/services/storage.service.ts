@@ -19,7 +19,7 @@ type ImmutableStorageUploadSuccess = {
 };
 
 export class StorageService {
-    static getPrivateAssetUrl(kind: "master" | "derivative" | "garment", assetId: string) {
+    static getPrivateAssetUrl(kind: "source" | "master" | "derivative" | "garment", assetId: string) {
         const configuredBaseUrl =
             process.env.NEXT_PUBLIC_APP_URL
             || process.env.NEXT_PUBLIC_BASE_URL
@@ -96,6 +96,23 @@ export class StorageService {
                 error: error instanceof Error ? error.message : "تعذر التحقق من الأصل المخزن",
                 status: 503,
             };
+        }
+    }
+
+    static async removeStoredObject(
+        path: string,
+        options: { bucket?: string } = {}
+    ): Promise<void> {
+        try {
+            const sb = getSupabaseAdminClient() as any;
+            const { error } = await sb.storage
+                .from(options.bucket ?? "washa-design-assets")
+                .remove([path]);
+            if (error) throw error;
+        } catch (error) {
+            // Cleanup is deliberately best-effort: a failed cleanup must not hide
+            // the original storage or database error from the caller.
+            logDiagnosticWarning("StorageService.removeStoredObject", error);
         }
     }
 

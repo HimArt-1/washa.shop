@@ -7,6 +7,7 @@ const {
     mockGenerateBlankGarment,
     mockUploadImmutableBuffer,
     mockDownloadStoredBuffer,
+    mockRemoveStoredObject,
     mockLogDtfTrace,
     mockVerifyArtworkTextPolicy,
 } = vi.hoisted(() => ({
@@ -15,6 +16,7 @@ const {
     mockGenerateBlankGarment: vi.fn(),
     mockUploadImmutableBuffer: vi.fn(),
     mockDownloadStoredBuffer: vi.fn(),
+    mockRemoveStoredObject: vi.fn(),
     mockLogDtfTrace: vi.fn(),
     mockVerifyArtworkTextPolicy: vi.fn(),
 }));
@@ -30,6 +32,10 @@ vi.mock("@/lib/washa-artwork/provider", () => ({
 
 vi.mock("@/lib/washa-artwork/arabic-text-verification", () => ({
     verifyArtworkTextPolicy: mockVerifyArtworkTextPolicy,
+    isArtworkTextPolicyError: (error: unknown) =>
+        error instanceof Error
+        && "code" in error
+        && error.code === "ARTWORK_TEXT_POLICY_FAILED",
 }));
 
 vi.mock("@/lib/washa-artwork/garment-semantic-verification", () => ({
@@ -49,6 +55,7 @@ vi.mock("@/app/api/washa-dtf-studio/services/storage.service", () => ({
     StorageService: {
         uploadImmutableBuffer: mockUploadImmutableBuffer,
         downloadStoredBuffer: mockDownloadStoredBuffer,
+        removeStoredObject: mockRemoveStoredObject,
         getPrivateAssetUrl: vi.fn((kind: string, id: string) => `https://washa.shop/assets/${kind}/${id}`),
     },
 }));
@@ -59,6 +66,7 @@ vi.mock("@/app/api/washa-dtf-studio/utils/trace", () => ({
 
 import { DesignAssetService } from "@/app/api/washa-dtf-studio/services/design-asset.service";
 import { sha256Hex, validateArtworkPng } from "@/lib/washa-artwork/validation";
+import { ArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
 
 type QueryMode = "front-reference" | "back-fallback";
 
@@ -93,10 +101,20 @@ function queryChain(
             if (table === "washa_design_master_assets") {
                 const master = rows[table]?.find((candidate: any) =>
                     (!filters.id || candidate.id === filters.id)
+                    && (!filters.source_asset_id
+                        || candidate.source_asset_id === filters.source_asset_id)
                     && (!filters.sha256_checksum
                         || candidate.sha256_checksum === filters.sha256_checksum)
                 ) ?? null;
                 return { data: master, error: null };
+            }
+            if (table === "washa_design_source_assets") {
+                const source = rows[table]?.find((candidate: any) =>
+                    (!filters.id || candidate.id === filters.id)
+                    && (!filters.sha256_checksum
+                        || candidate.sha256_checksum === filters.sha256_checksum)
+                ) ?? null;
+                return { data: source, error: null };
             }
             if (table === "custom_design_garments") {
                 return {
@@ -146,6 +164,9 @@ function queryChain(
                 return { data: rows[table]?.at(-1) ?? null, error: null };
             }
             if (table === "washa_design_master_assets") {
+                return { data: rows[table]?.at(-1) ?? null, error: null };
+            }
+            if (table === "washa_design_source_assets") {
                 return { data: rows[table]?.at(-1) ?? null, error: null };
             }
             return { data: null, error: null };
@@ -207,6 +228,7 @@ describe("DesignAssetService", () => {
         mockGenerateBlankGarment.mockReset();
         mockUploadImmutableBuffer.mockReset();
         mockDownloadStoredBuffer.mockReset();
+        mockRemoveStoredObject.mockReset();
         mockLogDtfTrace.mockReset();
         mockVerifyArtworkTextPolicy.mockReset();
         mockVerifyArtworkTextPolicy.mockImplementation(
@@ -327,6 +349,195 @@ describe("DesignAssetService", () => {
             master_asset_id: result.masterAssetId,
             mockup_source_type: "reference",
             production_readiness_status: "ready",
+        });
+    });
+
+    it("keeps distinct raw-source lineage when normalization produces identical master pixels", async () => {
+        const sourceA = master;
+        const sourceB = await sharp(master)
+            .withMetadata({ density: 144 })
+            .png()
+            .toBuffer();
+        expect(sha256Hex(sourceB)).not.toBe(sha256Hex(sourceA));
+        mockGenerateIsolatedArtwork
+            .mockResolvedValueOnce({
+                imageUrl: `data:image/png;base64,${sourceA.toString("base64")}`,
+                provider: "openai",
+                model: "gpt-image-1",
+                parameters: { background: "transparent" },
+            })
+            .mockResolvedValueOnce({
+                imageUrl: `data:image/png;base64,${sourceB.toString("base64")}`,
+                provider: "openai",
+                model: "gpt-image-1",
+                parameters: { background: "transparent" },
+            });
+        const baseInput = {
+            profileId: "profile_1",
+            userIdea: "صقر هندسي",
+            referenceImage: null,
+            context: { designMethod: "text" as const },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest" as const,
+                printSize: "large" as const,
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        };
+
+        const first = await DesignAssetService.generate({
+            ...baseInput,
+            generationRequestId: "generation_lineage_a",
+        });
+        const second = await DesignAssetService.generate({
+            ...baseInput,
+            generationRequestId: "generation_lineage_b",
+        });
+
+        expect(first.sourceAssetId).not.toBe(second.sourceAssetId);
+        expect(first.masterAssetId).not.toBe(second.masterAssetId);
+        expect(first.masterChecksum).toBe(second.masterChecksum);
+        expect(rows.washa_design_source_assets).toHaveLength(2);
+        expect(rows.washa_design_master_assets).toHaveLength(2);
+    });
+
+    it("reuses the committed master and removes its loser upload after a concurrent insert", async () => {
+        const winnerId = "77777777-7777-4777-8777-777777777777";
+        const winnerPath = `design-masters/profile_1/${winnerId}/design-master.png`;
+        mockGetSupabaseAdminClient.mockImplementation(() => ({
+            from(table: string) {
+                const chain = queryChain(
+                    table,
+                    mode,
+                    rows,
+                    `data:image/png;base64,${frontGarment.toString("base64")}`
+                );
+                if (table !== "washa_design_master_assets") return chain;
+                return {
+                    ...chain,
+                    async insert(payload: any) {
+                        const loserBuffer = storedBuffers.get(payload.permanent_storage_path);
+                        if (loserBuffer) storedBuffers.set(winnerPath, loserBuffer);
+                        rows[table] ||= [];
+                        rows[table].push({
+                            ...payload,
+                            id: winnerId,
+                            permanent_storage_path: winnerPath,
+                            permanent_url: `https://washa.shop/assets/master/${winnerId}`,
+                        });
+                        return {
+                            error: {
+                                code: "23505",
+                                message: "duplicate master lineage",
+                            },
+                        };
+                    },
+                };
+            },
+            __rows: rows,
+        }));
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_master_race",
+            userIdea: "صقر هندسي",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result.masterAssetId).toBe(winnerId);
+        expect(result.productionReadinessStatus).toBe("ready");
+        expect(mockRemoveStoredObject).toHaveBeenCalledWith(
+            expect.stringMatching(/\/design-master\.png$/),
+            { bucket: "washa-design-assets" }
+        );
+    });
+
+    it("returns the concurrent processing request as a safe source preview instead of failing", async () => {
+        const winnerRequestId = "88888888-8888-4888-8888-888888888888";
+        mockGetSupabaseAdminClient.mockImplementation(() => ({
+            from(table: string) {
+                const chain = queryChain(
+                    table,
+                    mode,
+                    rows,
+                    `data:image/png;base64,${frontGarment.toString("base64")}`
+                );
+                if (table !== "washa_design_requests") return chain;
+                return {
+                    ...chain,
+                    async insert(payload: any) {
+                        rows[table] ||= [];
+                        rows[table].push({
+                            ...payload,
+                            id: winnerRequestId,
+                            generation_status: "processing",
+                        });
+                        return {
+                            error: {
+                                code: "23505",
+                                message: "duplicate generation request",
+                            },
+                        };
+                    },
+                };
+            },
+            __rows: rows,
+        }));
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_request_race",
+            userIdea: "صقر هندسي",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result).toMatchObject({
+            designRequestId: winnerRequestId,
+            previewKind: "source",
+            productionReadinessStatus: "ready",
+            sourceAssetId: expect.any(String),
+            masterAssetId: expect.any(String),
+        });
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(1);
+        expect(rows.washa_design_requests[0]).toMatchObject({
+            id: winnerRequestId,
+            generation_status: "ready",
+            mockup_source_type: "source_preview",
         });
     });
 
@@ -511,11 +722,195 @@ describe("DesignAssetService", () => {
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
     });
 
+    it("preserves a generated source and returns a usable preview when print preparation needs prepress", async () => {
+        const opaqueUnseparableSource = await sharp(Buffer.from(`
+            <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="96" height="96" fill="#ff0000"/>
+                <rect x="96" y="0" width="96" height="96" fill="#00ff00"/>
+                <rect x="0" y="96" width="96" height="96" fill="#0000ff"/>
+                <rect x="96" y="96" width="96" height="96" fill="#ffff00"/>
+                <circle cx="96" cy="96" r="34" fill="#111111"/>
+            </svg>
+        `)).removeAlpha().png().toBuffer();
+        mockGenerateIsolatedArtwork.mockResolvedValue({
+            imageUrl: `data:image/png;base64,${opaqueUnseparableSource.toString("base64")}`,
+            provider: "openai",
+            model: "gpt-image-2",
+            parameters: { output_format: "png", background: "opaque" },
+        });
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_pending_prepress",
+            userIdea: "شارة هندسية متعددة الألوان",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي", technique: "رقمي", palette: "متعدد" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result).toMatchObject({
+            sourceAssetId: expect.any(String),
+            sourceAssetUrl: expect.stringContaining("/assets/source/"),
+            sourceChecksum: sha256Hex(opaqueUnseparableSource),
+            masterAssetId: null,
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+            transparencyVerificationStatus: "pending",
+        });
+        expect(result.imageUrl).toBe(result.sourceAssetUrl);
+        expect(rows.washa_design_source_assets).toHaveLength(1);
+        expect(rows.washa_design_requests[0]).toMatchObject({
+            source_asset_id: result.sourceAssetId,
+            master_asset_id: null,
+            front_preview_url: result.sourceAssetUrl,
+            generation_status: "ready",
+            production_readiness_status: "pending_prepress",
+        });
+    });
+
+    it("returns the preserved source when an auxiliary verifier is temporarily unavailable", async () => {
+        mockVerifyArtworkTextPolicy.mockRejectedValueOnce(
+            new ArtworkVerificationUnavailableError({
+                provider: "openai",
+                model: "gpt-4o-mini",
+                sourceProvider: "openai",
+                sourceModel: "gpt-image-1",
+                stage: "text_policy_verification",
+                statusCode: 503,
+                providerCode: "temporarily_unavailable",
+                retryable: true,
+            })
+        );
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_verifier_unavailable",
+            userIdea: "صقر هندسي",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result).toMatchObject({
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+            masterAssetId: null,
+            sourceAssetId: expect.any(String),
+        });
+        expect(result.previewUrl).toBe(result.sourceAssetUrl);
+    });
+
+    it("returns the preserved source when master persistence fails after raw capture", async () => {
+        mockUploadImmutableBuffer.mockImplementation(async (
+            buffer: Buffer,
+            path: string,
+            options: { mimeType: string; accessUrl: string }
+        ) => {
+            if (path.endsWith("/design-master.png")) {
+                return { error: "temporary master storage failure", status: 503 };
+            }
+            storedBuffers.set(path, Buffer.from(buffer));
+            return {
+                bucket: "washa-design-assets",
+                path,
+                url: options.accessUrl,
+                size: buffer.byteLength,
+                mimeType: options.mimeType,
+            };
+        });
+
+        const result = await DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_master_upload_failed",
+            userIdea: "صقر هندسي",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        });
+
+        expect(result).toMatchObject({
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+            sourceChecksum: sha256Hex(master),
+            masterAssetId: null,
+        });
+        expect(rows.washa_design_source_assets).toHaveLength(1);
+        expect(rows.washa_design_master_assets ?? []).toHaveLength(0);
+    });
+
+    it("does not approve a preserved source when semantic text policy rejects it", async () => {
+        const textError = Object.assign(
+            new Error("Generated artwork contains forbidden text."),
+            { code: "ARTWORK_TEXT_POLICY_FAILED" }
+        );
+        mockVerifyArtworkTextPolicy.mockRejectedValueOnce(textError);
+
+        await expect(DesignAssetService.generate({
+            profileId: "profile_1",
+            generationRequestId: "generation_text_policy_failed",
+            userIdea: "صقر هندسي بلا كتابة",
+            referenceImage: null,
+            context: { designMethod: "text", style: "هندسي" },
+            selection: {
+                garmentId: "44444444-4444-4444-8444-444444444444",
+                colorId: "55555555-5555-4555-8555-555555555555",
+                sizeId: null,
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                colorHex: "#111111",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 80,
+                printOffsetX: 0,
+                printOffsetY: 0,
+            },
+        })).rejects.toBe(textError);
+
+        expect(rows.washa_design_source_assets).toHaveLength(1);
+        expect(rows.washa_design_requests ?? []).toHaveLength(0);
+    });
+
     it.each([
         { provider: "genai", model: "gemini-3-pro-image" },
         { provider: "openai", model: "gpt-image-2" },
     ])(
-        "recovers one untrusted $provider background without changing the accepted master lineage",
+        "preserves one untrusted $provider source without a second AI generation",
         async ({ provider, model }) => {
         const generationRequestId = `generation_${provider}_background_recovery`;
         const ambiguousJpeg = await sharp(Buffer.from(`
@@ -530,29 +925,12 @@ describe("DesignAssetService", () => {
             .removeAlpha()
             .jpeg({ quality: 94 })
             .toBuffer();
-        const recoveredJpeg = await sharp(Buffer.from(`
-            <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
-                <rect width="192" height="192" fill="#f2f2f2"/>
-                <circle cx="96" cy="96" r="34" fill="#111111"/>
-                <circle cx="96" cy="96" r="10" fill="#ffffff"/>
-            </svg>
-        `))
-            .removeAlpha()
-            .jpeg({ quality: 94 })
-            .toBuffer();
-        mockGenerateIsolatedArtwork
-            .mockResolvedValueOnce({
-                imageUrl: `data:image/jpeg;base64,${ambiguousJpeg.toString("base64")}`,
-                provider,
-                model,
-                parameters: { responseModalities: ["IMAGE"] },
-            })
-            .mockResolvedValueOnce({
-                imageUrl: `data:image/jpeg;base64,${recoveredJpeg.toString("base64")}`,
-                provider,
-                model,
-                parameters: { responseModalities: ["IMAGE"] },
-            });
+        mockGenerateIsolatedArtwork.mockResolvedValueOnce({
+            imageUrl: `data:image/jpeg;base64,${ambiguousJpeg.toString("base64")}`,
+            provider,
+            model,
+            parameters: { responseModalities: ["IMAGE"] },
+        });
 
         const result = await DesignAssetService.generate({
             profileId: "profile_1",
@@ -580,54 +958,25 @@ describe("DesignAssetService", () => {
             },
         });
 
-        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(2);
-        expect(mockGenerateIsolatedArtwork.mock.calls[1][0]).toMatchObject({
-            prompt: expect.stringMatching(
-                /do not create a new design[\s\S]*perfectly uniform solid/i
-            ),
-            referenceImageDataUrl: expect.stringMatching(/^data:image\/jpeg;base64,/),
-            traceId: generationRequestId,
-            requiredProvider: provider,
-            requiredModel: model,
-            attemptPurpose: "background_recovery",
+        expect(result).toMatchObject({
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+            sourceChecksum: sha256Hex(ambiguousJpeg),
+            masterAssetId: null,
         });
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(1);
         const masterUploads = mockUploadImmutableBuffer.mock.calls.filter(([, path]) =>
             String(path).endsWith("/design-master.png")
         );
-        expect(masterUploads).toHaveLength(1);
-        const recoveredMaster = masterUploads[0][0] as Buffer;
-        expect(sha256Hex(recoveredMaster)).toBe(result.masterChecksum);
-        const recoveredRaw = await sharp(recoveredMaster)
-            .ensureAlpha()
-            .raw()
-            .toBuffer({ resolveWithObject: true });
-        const centerOffset = (
-            Math.floor(recoveredRaw.info.height / 2) * recoveredRaw.info.width
-            + Math.floor(recoveredRaw.info.width / 2)
-        ) * 4;
-        expect(recoveredRaw.data[centerOffset]).toBeGreaterThan(240);
-        expect(recoveredRaw.data[centerOffset + 1]).toBeGreaterThan(240);
-        expect(recoveredRaw.data[centerOffset + 2]).toBeGreaterThan(240);
-        expect(recoveredRaw.data[centerOffset + 3]).toBeGreaterThan(245);
-        expect(rows.washa_design_asset_derivatives[0]).toMatchObject({
-            source_master_asset_id: result.masterAssetId,
-            source_checksum: result.masterChecksum,
-        });
-        expect(mockLogDtfTrace).toHaveBeenCalledWith(
-            "dtf.artwork.normalization",
-            generationRequestId,
-            "artwork_background_recovery_started",
-            expect.objectContaining({
-                attemptedProvider: provider,
-                attemptedModel: model,
-                normalizationAttempt: 1,
-            })
-        );
+        expect(masterUploads).toHaveLength(0);
+        const events = mockLogDtfTrace.mock.calls.map((call) => call[2]);
+        expect(events).not.toContain("artwork_background_recovery_started");
+        expect(events).toContain("artwork_print_validation_failed");
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("base64");
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("data:image");
     });
 
-    it("fails safely after one background recovery when the second Gemini image is still untrusted", async () => {
+    it("keeps the source preview immediately when a Gemini image is still untrusted", async () => {
         const ambiguousJpeg = await sharp(Buffer.from(`
             <svg width="192" height="192" xmlns="http://www.w3.org/2000/svg">
                 <rect x="0" y="0" width="96" height="96" fill="#ff0000"/>
@@ -647,7 +996,7 @@ describe("DesignAssetService", () => {
             parameters: { responseModalities: ["IMAGE"] },
         });
 
-        await expect(DesignAssetService.generate({
+        const result = await DesignAssetService.generate({
             profileId: "profile_1",
             generationRequestId: "generation_gemini_background_recovery_failed",
             userIdea: "شارة دائرية",
@@ -666,15 +1015,24 @@ describe("DesignAssetService", () => {
                 printOffsetX: 0,
                 printOffsetY: 0,
             },
-        })).rejects.toMatchObject({
-            code: "ARTWORK_PRINT_VALIDATION_FAILED",
-            stage: "normalization",
         });
 
-        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(2);
-        expect(mockUploadImmutableBuffer).not.toHaveBeenCalled();
+        expect(result).toMatchObject({
+            previewKind: "source",
+            productionReadinessStatus: "pending_prepress",
+            sourceChecksum: sha256Hex(ambiguousJpeg),
+            masterAssetId: null,
+        });
+
+        expect(mockGenerateIsolatedArtwork).toHaveBeenCalledTimes(1);
+        expect(mockUploadImmutableBuffer).toHaveBeenCalledTimes(1);
+        expect(mockUploadImmutableBuffer).toHaveBeenCalledWith(
+            ambiguousJpeg,
+            expect.stringContaining("/provider-output.jpg"),
+            expect.objectContaining({ mimeType: "image/jpeg" })
+        );
         const events = mockLogDtfTrace.mock.calls.map((call) => call[2]);
-        expect(events).toContain("artwork_background_recovery_started");
+        expect(events).not.toContain("artwork_background_recovery_started");
         expect(events).toContain("artwork_print_validation_failed");
         expect(events).not.toContain("provider_failed");
         expect(JSON.stringify(mockLogDtfTrace.mock.calls)).not.toContain("base64");
@@ -746,7 +1104,7 @@ describe("DesignAssetService", () => {
         const recomposed = await DesignAssetService.recompose({
             profileId: "profile_1",
             designRequestId: initial.designRequestId,
-            masterAssetId: initial.masterAssetId,
+            masterAssetId: initial.masterAssetId!,
             selection: {
                 garmentId: "44444444-4444-4444-8444-444444444444",
                 colorId: "55555555-5555-4555-8555-555555555555",
@@ -776,7 +1134,7 @@ describe("DesignAssetService", () => {
         expect(masterUploads).toHaveLength(1);
     });
 
-    it("resumes preview creation from the persisted master after a derivative failure", async () => {
+    it("returns the preserved source when a derivative fails after the master is ready", async () => {
         let failPreviewOnce = true;
         mockUploadImmutableBuffer.mockImplementation(async (
             buffer: Buffer,
@@ -816,10 +1174,18 @@ describe("DesignAssetService", () => {
             },
         };
 
-        await expect(DesignAssetService.generate(input)).rejects.toThrow("preview unavailable");
+        const fallback = await DesignAssetService.generate(input);
         const resumed = await DesignAssetService.generate(input);
 
+        expect(fallback).toMatchObject({
+            previewKind: "source",
+            productionReadinessStatus: "ready",
+            masterAssetId: expect.any(String),
+            sourceAssetId: expect.any(String),
+        });
+        expect(fallback.previewUrl).toBe(fallback.sourceAssetUrl);
         expect(resumed.productionReadinessStatus).toBe("ready");
+        expect(resumed.previewKind).toBe("source");
         expect(mockGenerateIsolatedArtwork).toHaveBeenCalledOnce();
         expect(rows.washa_design_master_assets).toHaveLength(1);
         expect(rows.washa_design_requests).toHaveLength(1);
