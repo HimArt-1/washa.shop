@@ -37,8 +37,31 @@ const BOARD_PROVIDER_TIMEOUT_MS = readPositiveIntegerEnv(
 const BOARD_REMOTE_IMAGE_TIMEOUT_MS = Math.min(BOARD_PROVIDER_TIMEOUT_MS, 30_000);
 const MAX_BOARD_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_BOARD_IMAGE_BASE64_LENGTH = Math.ceil(MAX_BOARD_IMAGE_BYTES / 3) * 4;
-const BOARD_IMAGE_DATA_URL_PATTERN = /^data:(image\/(?:png|jpeg|webp));base64,([a-z0-9+/=\s]+)$/i;
-const CANONICAL_BASE64_PATTERN = /^(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/i;
+const BOARD_IMAGE_DATA_URL_HEADER_PATTERN = /^data:(image\/(?:png|jpeg|webp));base64$/i;
+
+function isBase64Character(code: number) {
+    return (
+        (code >= 48 && code <= 57)
+        || (code >= 65 && code <= 90)
+        || (code >= 97 && code <= 122)
+        || code === 43
+        || code === 47
+    );
+}
+
+function isCanonicalBase64(value: string) {
+    if (value.length === 0 || value.length % 4 !== 0) return false;
+
+    const paddingLength = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+    const contentLength = value.length - paddingLength;
+    for (let index = 0; index < contentLength; index += 1) {
+        if (!isBase64Character(value.charCodeAt(index))) return false;
+    }
+    for (let index = contentLength; index < value.length; index += 1) {
+        if (value.charCodeAt(index) !== 61) return false;
+    }
+    return true;
+}
 
 function hasExpectedImageSignature(buffer: Buffer, contentType: string) {
     if (contentType === "image/png") {
@@ -60,15 +83,18 @@ function hasExpectedImageSignature(buffer: Buffer, contentType: string) {
 }
 
 export function decodeBoardImageDataUrl(value: string) {
-    const match = value.match(BOARD_IMAGE_DATA_URL_PATTERN);
-    if (!match) throw new Error("Board provider returned an unsupported image payload.");
+    const separatorIndex = value.indexOf(",");
+    if (separatorIndex < 0) throw new Error("Board provider returned an unsupported image payload.");
 
-    const contentType = match[1].toLowerCase();
-    const encoded = match[2].replace(/\s+/g, "");
+    const headerMatch = BOARD_IMAGE_DATA_URL_HEADER_PATTERN.exec(value.slice(0, separatorIndex));
+    if (!headerMatch) throw new Error("Board provider returned an unsupported image payload.");
+
+    const contentType = headerMatch[1].toLowerCase();
+    const encoded = value.slice(separatorIndex + 1).replace(/\s+/g, "");
     if (
         encoded.length === 0
         || encoded.length > MAX_BOARD_IMAGE_BASE64_LENGTH
-        || !CANONICAL_BASE64_PATTERN.test(encoded)
+        || !isCanonicalBase64(encoded)
     ) {
         throw new Error("Board provider returned invalid base64 image data.");
     }
