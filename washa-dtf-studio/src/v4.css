@@ -28,14 +28,13 @@ button:disabled { cursor: not-allowed; }
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.v4-skeleton {
-  background: linear-gradient(100deg, rgba(255,255,255,.05) 20%, rgba(255,255,255,.16) 38%, rgba(255,255,255,.05) 56%);
-  background-size: 220% 100%;
-  animation: v4-shimmer 1.7s infinite;
-}
-
-@keyframes v4-shimmer {
-  to { background-position-x: -220%; }
+.v4-output-grid {
+  background-image:
+    linear-gradient(rgba(151, 170, 156, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(151, 170, 156, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at 50% 48%, #000 22%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 22%, transparent 78%);
 }
 
 @media (prefers-reduced-motion: reduce) {

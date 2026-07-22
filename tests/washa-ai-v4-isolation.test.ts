@@ -17,6 +17,10 @@ describe("WASHA AI v4 architectural isolation", () => {
     it("uses a direct board API with no extraction, background removal, or recomposition", () => {
         const route = readFileSync(path.join(root, "src/app/api/washa-ai-v4/generate/route.ts"), "utf8");
         const client = readFileSync(path.join(root, "washa-dtf-studio/src/components/v4/WashaAiV4.tsx"), "utf8");
+        const outputMonitor = readFileSync(path.join(
+            root,
+            "washa-dtf-studio/src/components/v4/SingleImageOutputMonitor.tsx"
+        ), "utf8");
         const providerAdapter = readFileSync(path.join(
             root,
             "src/app/api/washa-dtf-studio/services/board-image-provider.adapter.ts"
@@ -30,13 +34,17 @@ describe("WASHA AI v4 architectural isolation", () => {
         expect(combined).not.toContain("extract-design");
         expect(combined).not.toContain("recompose-preview");
         expect(combined).not.toContain("generate-mockup");
-        expect(client).toContain("ONE IMAGE");
+        expect(`${client}\n${outputMonitor}`).toContain("ONE IMAGE");
         expect(client).not.toContain("4 SECTIONS");
         expect(client).toContain("الهيرو يسارًا والتفاصيل يمينًا");
         expect(client).not.toContain('<option value="right">يمين</option>');
-        expect(client).toContain("previewGarmentColor");
-        expect(client).toContain("previewBackgroundColor");
-        expect(client).toContain("[0-9a-f]{3}|[0-9a-f]{6}");
+        expect(client).not.toContain("BoardMap");
+        expect(outputMonitor).toContain("NO SIMULATION");
+        expect(outputMonitor).toContain("لا توجد معاينة اصطناعية");
+        expect(outputMonitor).not.toContain("HERO PRODUCT");
+        expect(outputMonitor).not.toContain("FULL DESIGN");
+        expect(outputMonitor).not.toContain("clipPath");
+        expect(outputMonitor).toContain("[0-9a-f]{3}|[0-9a-f]{6}");
     });
 
     it("does not cache an access-controlled shell beyond the admin switch", () => {

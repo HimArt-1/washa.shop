@@ -2,17 +2,14 @@ import { useAuth } from '@clerk/clerk-react';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  CheckIcon,
   Cross2Icon,
-  DimensionsIcon,
   DownloadIcon,
-  ImageIcon,
   MagicWandIcon,
-  MixerHorizontalIcon,
   ReloadIcon,
 } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState, type ReactNode } from 'react';
+import SingleImageOutputMonitor from './SingleImageOutputMonitor';
 
 type Composition = 'horizontal' | 'vertical' | 'diagonal' | 'centered' | 'asymmetrical';
 type Movement = 'lower_left_to_upper_right' | 'left_to_right' | 'bottom_to_top' | 'center_outward';
@@ -148,51 +145,6 @@ function SectionHeading({ index, title, description }: { index: string; title: s
   );
 }
 
-function safePreviewColor(value: string, fallback: string) {
-  return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? value : fallback;
-}
-
-function BoardMap({ state, generating }: { state: V4State; generating: boolean }) {
-  const previewGarmentColor = safePreviewColor(state.garmentColorHex, '#292c2a');
-  const previewBackgroundColor = safePreviewColor(state.brief.backgroundColor, BACKGROUND_HEX[state.brief.background]);
-  return (
-    <div className="relative aspect-[4/5] overflow-hidden border border-[#c8c0b4] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]" style={{ backgroundColor: previewBackgroundColor }}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.72),transparent_38%)]" />
-      {generating ? (
-        <div className="relative grid h-full grid-rows-[62%_38%]" aria-label="جاري إنشاء صورة موحدة" aria-busy="true">
-          <div dir="ltr" className="grid grid-cols-[2.1fr_1fr] border-b-2 border-[#f8f5ee]">
-            <div className="v4-skeleton border-r-2 border-[#f8f5ee]" />
-            <div className="grid grid-rows-2"><div className="v4-skeleton border-b-2 border-[#f8f5ee]" /><div className="v4-skeleton" /></div>
-          </div>
-          <div className="v4-skeleton" />
-        </div>
-      ) : (
-        <div className="relative grid h-full grid-rows-[62%_38%]">
-          <div dir="ltr" className="grid grid-cols-[2.1fr_1fr] border-b-2 border-[#f8f5ee]">
-            <div className="relative overflow-hidden border-r-2 border-[#f8f5ee] bg-[radial-gradient(circle_at_50%_34%,rgba(255,255,255,0.72),transparent_68%)]" style={{ backgroundColor: previewBackgroundColor }}>
-              <div className="absolute inset-x-[16%] bottom-[9%] top-[8%] shadow-[0_12px_22px_rgba(33,35,33,0.18)]" style={{ backgroundColor: previewGarmentColor, clipPath: 'polygon(32% 0, 43% 5%, 57% 5%, 68% 0, 100% 15%, 88% 36%, 77% 29%, 77% 100%, 23% 100%, 23% 29%, 12% 36%, 0 15%)' }}>
-                <div className="absolute inset-x-[28%] top-[24%] h-[46%] rounded-full bg-[radial-gradient(circle_at_55%_38%,rgba(230,222,201,0.68),rgba(117,128,113,0.34)_42%,transparent_69%)]" />
-              </div>
-              <div className="absolute bottom-3 right-3"><p className="font-mono text-[8px] tracking-[0.16em] text-[#62665f]">HERO PRODUCT</p><p className="mt-1 text-[9px] text-[#777970]">{PLACEMENT[state.printPosition].label}</p></div>
-            </div>
-            <div className="grid grid-rows-2" style={{ backgroundColor: previewGarmentColor }}>
-              <div className="relative overflow-hidden border-b-2 border-[#f8f5ee] bg-[radial-gradient(circle_at_62%_48%,rgba(221,213,191,0.46),transparent_32%)] p-3 font-mono text-[8px] tracking-[0.14em] text-white/70"><span className="relative z-10">DETAIL 01</span><div className="absolute -bottom-7 -left-5 h-24 w-24 rounded-full border border-white/20" /></div>
-              <div className="relative overflow-hidden bg-[radial-gradient(circle_at_35%_42%,rgba(145,158,143,0.42),transparent_36%)] p-3 font-mono text-[8px] tracking-[0.14em] text-white/70"><span className="relative z-10">DETAIL 02</span><div className="absolute bottom-5 right-4 h-px w-24 rotate-[-28deg] bg-white/20" /></div>
-            </div>
-          </div>
-          <div className="relative overflow-hidden p-4" style={{ backgroundColor: previewBackgroundColor }}>
-            <div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[8px] tracking-[0.16em] text-[#676b64]">FULL DESIGN</p><p className="mt-1 text-[9px] font-bold text-[#30332f]">التصميم كامل</p></div><div className="text-left"><p className="text-[9px] font-bold text-[#30332f]">مقاسات التصميم</p><p className="mt-1 font-mono text-[8px] text-[#62665f]">العرض: {state.brief.designWidth} سم</p><p className="font-mono text-[8px] text-[#62665f]">الارتفاع: {state.brief.designHeight} سم</p></div></div>
-            <div className="absolute inset-x-[22%] bottom-[16%] top-[25%] bg-[radial-gradient(ellipse_at_54%_45%,rgba(103,121,105,0.56),rgba(164,117,79,0.34)_36%,transparent_68%)]" />
-            <div className="absolute bottom-[10%] left-[20%] right-[20%] h-px bg-[#575b55]/55"><span className="absolute left-1/2 top-1 -translate-x-1/2 font-mono text-[7px] text-[#4e524c]">{state.brief.designWidth} CM</span></div>
-            <div className="absolute bottom-[17%] left-[16%] top-[31%] w-px bg-[#575b55]/55"><span className="absolute -left-1 top-1/2 -translate-x-full -translate-y-1/2 font-mono text-[7px] text-[#4e524c]">{state.brief.designHeight} CM</span></div>
-            <div className="absolute bottom-3 right-4 flex gap-1">{state.artworkColors.filter((color) => color.hex).slice(0, 5).map((color) => <span key={`${color.name}-${color.hex}`} className="h-2.5 w-2.5 border border-black/5" style={{ backgroundColor: color.hex }} />)}</div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function WashaAiV4() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [stage, setStage] = useState(0);
@@ -213,6 +165,13 @@ export default function WashaAiV4() {
     state.brief.detailTwo,
     state.artStyleName,
   ].every((value) => value.trim().length >= 2), [state]);
+  const filledOutputInputs = useMemo(() => [
+    state.brief.designIdea,
+    state.brief.mainSubject,
+    state.brief.detailOne,
+    state.brief.detailTwo,
+    state.artStyleName,
+  ].filter((value) => value.trim().length >= 2).length, [state]);
 
   const placement = PLACEMENT[state.printPosition];
   const productionValid = state.brief.designWidth >= 5
@@ -407,23 +366,35 @@ export default function WashaAiV4() {
         </section>
 
         <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
-          <div className="border border-[#c9c2b7] bg-[#e7e1d6] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] md:p-5">
-            <div className="mb-4 flex items-center justify-between"><div><p className="font-mono text-[10px] font-bold tracking-[0.16em] text-[#657469]">SINGLE IMAGE OUTPUT</p><p className="mt-1 text-sm font-black">صورة اعتماد واحدة</p></div><span className="font-mono text-[10px] text-[#69776d]">3200 × 4000</span></div>
+          <div className="border border-[#bdb6ab] bg-[#ddd7cc]/70 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] md:p-4">
+            <div className="mb-4 flex items-end justify-between gap-4 border-b border-[#bdb6ab] pb-3">
+              <div><p className="font-mono text-[10px] font-bold tracking-[0.18em] text-[#52655a]">SINGLE IMAGE OUTPUT</p><p className="mt-1 text-sm font-black">شاشة الناتج المباشر</p></div>
+              <div dir="ltr" className="flex items-center gap-2 font-mono text-[9px] tracking-[0.12em] text-[#667169]"><span className="h-1.5 w-1.5 rounded-full bg-[#637b6a]" /> 3200 × 4000</div>
+            </div>
             {result && !generating ? (
               <motion.div initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
-                <img src={result.imageUrl} alt="لوحة WASHA AI v4 الناتجة" className="block aspect-[4/5] w-full bg-[#232724] object-cover" />
+                <div className="relative overflow-hidden border border-[#3d4840] bg-[#171b18]">
+                  <img src={result.imageUrl} alt="لوحة WASHA AI v4 الناتجة" className="block aspect-[4/5] w-full object-cover" />
+                  <div dir="ltr" className="absolute left-3 right-3 top-3 flex items-center justify-between bg-[#171b18]/85 px-3 py-2 font-mono text-[8px] tracking-[0.16em] text-[#b8c5bb] backdrop-blur-sm"><span>RENDER COMPLETE</span><span>ONE FRAME</span></div>
+                </div>
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <a href={result.imageUrl} download className="inline-flex min-h-11 items-center justify-center gap-2 bg-[#3f5145] px-4 text-sm font-bold text-white no-underline"><DownloadIcon /> تنزيل</a>
-                  <button type="button" onClick={generate} className="inline-flex min-h-11 items-center justify-center gap-2 border border-[#bbb4aa] bg-[#f4f0e8] px-4 text-sm font-bold"><ReloadIcon /> إعادة التوليد</button>
+                  <a href={result.imageUrl} download className="inline-flex min-h-11 items-center justify-center gap-2 bg-[#3f5145] px-4 text-sm font-bold text-white no-underline transition-transform active:scale-[0.98]"><DownloadIcon /> تنزيل</a>
+                  <button type="button" onClick={generate} className="inline-flex min-h-11 items-center justify-center gap-2 border border-[#bbb4aa] bg-[#f4f0e8] px-4 text-sm font-bold transition-transform active:scale-[0.98]"><ReloadIcon /> إعادة التوليد</button>
                 </div>
                 <div className="mt-3 flex items-center justify-between font-mono text-[9px] tracking-[0.12em] text-[#73766f]"><span>{result.provider} / {result.model}</span><span>{(result.durationMs / 1000).toFixed(1)}s</span></div>
               </motion.div>
-            ) : <BoardMap state={state} generating={generating} />}
-            <div className="mt-4 grid grid-cols-2 gap-px bg-[#c7c0b5]">
-              <div className="bg-[#ece7de] p-3"><DimensionsIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">EXACT SCALE</p></div>
-              <div className="bg-[#ece7de] p-3"><ImageIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">ONE IMAGE</p></div>
-              <div className="bg-[#ece7de] p-3"><MixerHorizontalIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">DIRECT PIPELINE</p></div>
-              <div className="bg-[#ece7de] p-3"><CheckIcon className="h-4 w-4 text-[#5e7062]" /><p className="mt-2 font-mono text-[9px] text-[#777a73]">NO BG REMOVAL</p></div>
+            ) : (
+              <SingleImageOutputMonitor
+                generating={generating}
+                designWidth={state.brief.designWidth}
+                designHeight={state.brief.designHeight}
+                composition={state.brief.composition}
+                filledInputs={filledOutputInputs}
+                artworkColors={state.artworkColors}
+              />
+            )}
+            <div dir="ltr" className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#bdb6ab] pt-3 font-mono text-[8px] font-bold tracking-[0.14em] text-[#657068]">
+              <span>ONE IMAGE</span><span>DIRECT PIPELINE</span><span>NO SIMULATION</span><span>4:5 LOCKED</span>
             </div>
           </div>
         </aside>
