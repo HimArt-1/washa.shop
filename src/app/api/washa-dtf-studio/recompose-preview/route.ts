@@ -8,7 +8,7 @@ import {
 } from "@/app/api/washa-dtf-studio/utils/route-runtime";
 import {
     canUseWashaAiDevSurfaceForGeneration,
-    resolveWashaAiDevGenerationSurface,
+    resolveWashaAiDevGenerationIdentity,
 } from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
@@ -18,7 +18,14 @@ export async function POST(request: NextRequest) {
     const accessResult = await requireDtfRouteAccess();
     if (accessResult.response) return accessResult.response;
     const access = accessResult.access;
-    const devSurface = resolveWashaAiDevGenerationSurface(request);
+    const devIdentity = resolveWashaAiDevGenerationIdentity(request);
+    if (devIdentity.kind === "invalid") {
+        return NextResponse.json(
+            { error: "انتهت صلاحية جلسة النسخة التطويرية. حدّث الصفحة ثم أعد المحاولة." },
+            { status: 409 }
+        );
+    }
+    const devSurface = devIdentity.kind === "dev" ? devIdentity.surface : null;
     if (
         devSurface
         && !await canUseWashaAiDevSurfaceForGeneration(

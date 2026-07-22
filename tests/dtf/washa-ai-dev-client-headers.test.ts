@@ -2,10 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     createWashaAiDevGenerationHeaders,
     createWashaAiDevGenerationMetaTags,
-    WASHA_AI_DEV_SIGNATURE_META_NAME,
-    WASHA_AI_DEV_SURFACE_META_NAME,
 } from "@/lib/washa-ai-dev-access";
-import { getWashaAiDevGenerationHeadersFromDocument } from "../../washa-dtf-studio/src/lib/devGenerationSurface";
+import {
+    WASHA_AI_DEV_SIGNATURE_META_NAME,
+    WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT,
+    WASHA_AI_DEV_SURFACE_META_NAME,
+    WASHA_AI_DEV_SURFACES,
+    WASHA_AI_GENERATE_MOCKUP_ENDPOINT,
+} from "../../shared/washa-ai-dev-protocol";
+import {
+    getWashaAiDevGenerationHeadersFromDocument,
+    getWashaAiGenerateMockupEndpointFromDocument,
+} from "../../washa-dtf-studio/src/lib/devGenerationSurface";
 
 function metaDocument(values: Record<string, string>) {
     return {
@@ -28,7 +36,7 @@ describe("WASHA AI dev client generation identity", () => {
         vi.unstubAllEnvs();
     });
 
-    it.each(["dev", "dev-v2", "dev-v3"] as const)(
+    it.each(WASHA_AI_DEV_SURFACES)(
         "carries the signed %s identity from server meta tags into request headers",
         (surface) => {
             const values = Object.fromEntries(
@@ -41,6 +49,8 @@ describe("WASHA AI dev client generation identity", () => {
 
             expect(getWashaAiDevGenerationHeadersFromDocument(metaDocument(values)))
                 .toEqual(createWashaAiDevGenerationHeaders(surface));
+            expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument(values)))
+                .toBe(`${WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT}/${surface}`);
         }
     );
 
@@ -52,5 +62,13 @@ describe("WASHA AI dev client generation identity", () => {
         expect(getWashaAiDevGenerationHeadersFromDocument(metaDocument({
             [WASHA_AI_DEV_SIGNATURE_META_NAME]: "forged",
         }))).toEqual({});
+    });
+
+    it("uses the isolated endpoint whenever a valid dev surface marker is present", () => {
+        expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument({
+            [WASHA_AI_DEV_SURFACE_META_NAME]: "dev",
+        }))).toBe(`${WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT}/dev`);
+        expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument({})))
+            .toBe(WASHA_AI_GENERATE_MOCKUP_ENDPOINT);
     });
 });

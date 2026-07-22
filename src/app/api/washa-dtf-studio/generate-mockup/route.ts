@@ -48,7 +48,7 @@ import { generateBoard } from "../services/board-generation.service";
 import { notifyBoardRequestReady } from "@/lib/board-request-telegram";
 import {
     canUseWashaAiDevSurfaceForGeneration,
-    resolveWashaAiDevGenerationSurface,
+    resolveWashaAiDevGenerationIdentity,
 } from "@/lib/washa-ai-dev-access";
 import { getPromptNativeReadiness } from "@/lib/washa-prompt-native/readiness";
 
@@ -312,7 +312,21 @@ export async function POST(request: NextRequest) {
             return attachDtfTraceId(accessResult.response, traceId);
         }
         const access = accessResult.access;
-        const devSurface = resolveWashaAiDevGenerationSurface(request);
+        const devIdentity = resolveWashaAiDevGenerationIdentity(request);
+        if (devIdentity.kind === "invalid") {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "dev_surface_identity_invalid", {
+                statusCode: 409,
+                errorCode: "DEV_SURFACE_REFRESH_REQUIRED",
+            });
+            return structuredErrorResponse(
+                traceId,
+                409,
+                "DEV_SURFACE_REFRESH_REQUIRED",
+                "انتهت صلاحية جلسة النسخة التطويرية. حدّث الصفحة ثم أعد المحاولة.",
+                { retryable: false }
+            );
+        }
+        const devSurface = devIdentity.kind === "dev" ? devIdentity.surface : null;
         if (
             devSurface
             && !await canUseWashaAiDevSurfaceForGeneration(
