@@ -18,6 +18,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:unit": "vitest run",
+    "test:board-migration:lifecycle": "node scripts/verify-board-fallback-migration.mjs",
     "qa:env": "node scripts/qa-env.mjs",
     "qa:smoke": "node scripts/qa-smoke.mjs",
     "qa:washa-single-source": "node scripts/qa-washa-single-source-e2e.mjs",

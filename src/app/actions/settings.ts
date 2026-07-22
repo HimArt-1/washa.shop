@@ -14,6 +14,15 @@ import { getInventoryWithSales } from "@/app/actions/erp/inventory";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
 import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import type { WashaAiControls, WashaAiCreditPackage } from "@/types/database";
+import { isJsonValue } from "@/lib/json-value";
+import {
+    DEFAULT_GENERATION_MODE,
+    DEFAULT_QUOTA_CHARGING_CONFIG,
+    normalizeGenerationMode,
+    normalizeQuotaChargingConfig,
+    type GenerationMode,
+    type QuotaChargingConfig,
+} from "@/lib/washa-generation-mode";
 
 const SITE_SETTINGS_CACHE_TAG = "site-settings";
 const PUBLIC_VISIBILITY_CACHE_TAG = "public-visibility";
@@ -21,6 +30,54 @@ const SITE_SETTINGS_QUERY_TIMEOUT_MS = readPositiveIntegerEnv("SITE_SETTINGS_QUE
 const SITE_SETTINGS_CACHE_REVALIDATE_SECONDS = readPositiveIntegerEnv("SITE_SETTINGS_CACHE_REVALIDATE_SECONDS", 120, 10, 3600);
 
 export type WashaAiDevAccessMode = "disabled" | "admin" | "link";
+declare const boardPromptTemplateBrand: unique symbol;
+export type BoardPromptTemplate = string & {
+    readonly [boardPromptTemplateBrand]: true;
+};
+
+const REQUIRED_BOARD_PROMPT_PLACEHOLDERS = [
+    "{{GARMENT_COLOR}}",
+    "{{PLACEMENT}}",
+    "{{WIDTH}}",
+    "{{HEIGHT}}",
+    "{{DESIGN_DESCRIPTION}}",
+    "{{STYLE}}",
+    "{{TEXT_BLOCK}}",
+] as const;
+
+const DEFAULT_BOARD_PROMPT_TEMPLATE = `Create a premium streetwear apparel presentation board. Single image, square 1:1 composition, high resolution.
+
+═══ LAYOUT — one square image split into two stacked zones ═══
+
+TOP ZONE (upper ~55%):
+A realistic premium oversized boxy t-shirt, front view, in color {{GARMENT_COLOR}}.
+The custom design is printed on the {{PLACEMENT}} at an approximate size of {{WIDTH}}cm × {{HEIGHT}}cm.
+The print must look genuinely integrated into the fabric — following folds, preserving cotton texture, clean DTF edges, NO white box, NO sticker effect, NO floating rectangle.
+Studio lighting, soft shadows, neutral background.
+
+BOTTOM ZONE (lower ~45%):
+The SAME design shown flat and complete, isolated on a neutral background, centered, uncropped, no garment, no folds, no perspective.
+This must be visually identical to the print in the top zone.
+
+Below the flat design, show simple indicative measurement guides:
+- horizontal line labeled with the width
+- vertical line labeled with the height
+Keep measurement text minimal and in Latin numerals only (e.g. "40 cm", "27 cm").
+These measurements are INDICATIVE ONLY.
+
+═══ THE DESIGN ═══
+
+{{DESIGN_DESCRIPTION}}
+
+Art style: {{STYLE}}
+{{TEXT_BLOCK}}
+
+═══ HARD RULES ═══
+- The design in both zones must be identical.
+- Do NOT invent extra graphics, logos, badges, or frames.
+- Do NOT generate any text other than what is explicitly requested and the measurement labels.
+- Do NOT write Arabic text as image content unless it is part of the requested design.
+- Keep the whole board clean, minimal, editorial, premium.` as BoardPromptTemplate;
 
 // ─── Admin Supabase Client ──────────────────────────────────
 
@@ -92,6 +149,9 @@ export type SiteSettingsType = {
         credit_packages?: WashaAiCreditPackage[];
         controls?: WashaAiControls;
     };
+    generation_mode: GenerationMode;
+    board_prompt_template: BoardPromptTemplate;
+    quota_charging: QuotaChargingConfig;
     site_info: Record<string, string>;
     shipping: {
         flat_rate?: number;
@@ -171,6 +231,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
             purchase: { subscriber: true, wushsha: true },
         },
     },
+    generation_mode: DEFAULT_GENERATION_MODE,
+    board_prompt_template: DEFAULT_BOARD_PROMPT_TEMPLATE,
+    quota_charging: { ...DEFAULT_QUOTA_CHARGING_CONFIG },
     site_info: { name: "وشّى", description: "منصة الفن العربي الأصيل", email: "", phone: "", instagram: "", twitter: "", tiktok: "" },
     shipping: { flat_rate: 30, free_above: 500, tax_rate: 15, shipping_enabled: true, tax_enabled: true },
     creation_prices: { tshirt: 89, hoodie: 149, pullover: 129 },
@@ -363,6 +426,20 @@ function normalizeWashaAiSettings(value: unknown): Required<NonNullable<SiteSett
     };
 }
 
+function getMissingBoardPromptPlaceholders(value: unknown) {
+    if (typeof value !== "string" || value.trim().length === 0) {
+        return [...REQUIRED_BOARD_PROMPT_PLACEHOLDERS];
+    }
+    return REQUIRED_BOARD_PROMPT_PLACEHOLDERS.filter((placeholder) => !value.includes(placeholder));
+}
+
+function normalizeBoardPromptTemplate(value: unknown): BoardPromptTemplate {
+    if (typeof value !== "string" || getMissingBoardPromptPlaceholders(value).length > 0) {
+        return DEFAULT_BOARD_PROMPT_TEMPLATE;
+    }
+    return value as BoardPromptTemplate;
+}
+
 function coerceBooleanSetting(value: unknown, fallback: boolean) {
     if (typeof value === "boolean") {
         return value;
@@ -464,26 +541,40 @@ function collectChangedRuleKeys(before: OperationalRulesConfig, after: Operation
     return changedKeys;
 }
 
-function buildSiteSettings(settings: Record<string, any>): SiteSettingsType {
+function asSettingsRecord(value: unknown): Record<string, unknown> {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : {};
+}
+
+function buildSiteSettings(settings: Record<string, unknown>): SiteSettingsType {
     const visibility = normalizeVisibilitySettings(settings.visibility);
-    const cp = settings.creation_prices || {};
-    const pi = settings.product_identifiers || {};
-    const aiSim = settings.ai_simulation || {};
+    const shipping = asSettingsRecord(settings.shipping) as SiteSettingsType["shipping"];
+    const cp = asSettingsRecord(settings.creation_prices) as NonNullable<SiteSettingsType["creation_prices"]>;
+    const pi = asSettingsRecord(settings.product_identifiers) as NonNullable<SiteSettingsType["product_identifiers"]>;
+    const aiSim = asSettingsRecord(settings.ai_simulation) as NonNullable<SiteSettingsType["ai_simulation"]>;
+    const brandAssets = asSettingsRecord(settings.brand_assets) as NonNullable<SiteSettingsType["brand_assets"]>;
+    const siteInfo = settings.site_info && typeof settings.site_info === "object" && !Array.isArray(settings.site_info)
+        ? settings.site_info as Record<string, string>
+        : DEFAULT_SITE_SETTINGS.site_info;
 
     return {
         visibility,
         washa_ai: normalizeWashaAiSettings(settings.washa_ai),
-        site_info: settings.site_info || DEFAULT_SITE_SETTINGS.site_info,
+        generation_mode: normalizeGenerationMode(settings.generation_mode),
+        board_prompt_template: normalizeBoardPromptTemplate(settings.board_prompt_template),
+        quota_charging: normalizeQuotaChargingConfig(settings.quota_charging),
+        site_info: siteInfo,
         shipping: {
-            flat_rate: Number(settings.shipping?.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
-            free_above: Number(settings.shipping?.free_above ?? DEFAULT_SITE_SETTINGS.shipping.free_above),
-            tax_rate: Number(settings.shipping?.tax_rate ?? DEFAULT_SITE_SETTINGS.shipping.tax_rate),
+            flat_rate: Number(shipping.flat_rate ?? DEFAULT_SITE_SETTINGS.shipping.flat_rate),
+            free_above: Number(shipping.free_above ?? DEFAULT_SITE_SETTINGS.shipping.free_above),
+            tax_rate: Number(shipping.tax_rate ?? DEFAULT_SITE_SETTINGS.shipping.tax_rate),
             shipping_enabled: coerceBooleanSetting(
-                settings.shipping?.shipping_enabled,
+                shipping.shipping_enabled,
                 DEFAULT_SITE_SETTINGS.shipping.shipping_enabled ?? true
             ),
             tax_enabled: coerceBooleanSetting(
-                settings.shipping?.tax_enabled,
+                shipping.tax_enabled,
                 DEFAULT_SITE_SETTINGS.shipping.tax_enabled ?? true
             ),
         },
@@ -508,29 +599,29 @@ function buildSiteSettings(settings: Record<string, any>): SiteSettingsType {
             step3_final_image: aiSim.step3_final_image ?? DEFAULT_SITE_SETTINGS.ai_simulation?.step3_final_image ?? "",
         },
         brand_assets: {
-            business_card_name: settings.brand_assets?.business_card_name ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_name ?? "",
-            business_card_title: settings.brand_assets?.business_card_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_title ?? "",
-            business_card_phone: settings.brand_assets?.business_card_phone ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_phone ?? "",
-            business_card_email: settings.brand_assets?.business_card_email ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_email ?? "",
-            business_card_website: settings.brand_assets?.business_card_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_website ?? "",
-            thank_you_title: settings.brand_assets?.thank_you_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_title ?? "",
-            thank_you_message: settings.brand_assets?.thank_you_message ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_message ?? "",
-            thank_you_handle: settings.brand_assets?.thank_you_handle ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_handle ?? "",
-            social_instagram: settings.brand_assets?.social_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_instagram ?? "",
-            social_twitter: settings.brand_assets?.social_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_twitter ?? "",
-            social_tiktok: settings.brand_assets?.social_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_tiktok ?? "",
-            social_snapchat: settings.brand_assets?.social_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_snapchat ?? "",
-            social_whatsapp: settings.brand_assets?.social_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_whatsapp ?? "",
-            linktree_title: settings.brand_assets?.linktree_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_title ?? "",
-            linktree_subtitle: settings.brand_assets?.linktree_subtitle ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_subtitle ?? "",
-            show_instagram: settings.brand_assets?.show_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_instagram ?? true,
-            show_twitter: settings.brand_assets?.show_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_twitter ?? true,
-            show_tiktok: settings.brand_assets?.show_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_tiktok ?? true,
-            show_snapchat: settings.brand_assets?.show_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_snapchat ?? true,
-            show_whatsapp: settings.brand_assets?.show_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_whatsapp ?? true,
-            show_website: settings.brand_assets?.show_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_website ?? true,
+            business_card_name: brandAssets.business_card_name ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_name ?? "",
+            business_card_title: brandAssets.business_card_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_title ?? "",
+            business_card_phone: brandAssets.business_card_phone ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_phone ?? "",
+            business_card_email: brandAssets.business_card_email ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_email ?? "",
+            business_card_website: brandAssets.business_card_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.business_card_website ?? "",
+            thank_you_title: brandAssets.thank_you_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_title ?? "",
+            thank_you_message: brandAssets.thank_you_message ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_message ?? "",
+            thank_you_handle: brandAssets.thank_you_handle ?? DEFAULT_SITE_SETTINGS.brand_assets?.thank_you_handle ?? "",
+            social_instagram: brandAssets.social_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_instagram ?? "",
+            social_twitter: brandAssets.social_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_twitter ?? "",
+            social_tiktok: brandAssets.social_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_tiktok ?? "",
+            social_snapchat: brandAssets.social_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_snapchat ?? "",
+            social_whatsapp: brandAssets.social_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.social_whatsapp ?? "",
+            linktree_title: brandAssets.linktree_title ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_title ?? "",
+            linktree_subtitle: brandAssets.linktree_subtitle ?? DEFAULT_SITE_SETTINGS.brand_assets?.linktree_subtitle ?? "",
+            show_instagram: brandAssets.show_instagram ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_instagram ?? true,
+            show_twitter: brandAssets.show_twitter ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_twitter ?? true,
+            show_tiktok: brandAssets.show_tiktok ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_tiktok ?? true,
+            show_snapchat: brandAssets.show_snapchat ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_snapchat ?? true,
+            show_whatsapp: brandAssets.show_whatsapp ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_whatsapp ?? true,
+            show_website: brandAssets.show_website ?? DEFAULT_SITE_SETTINGS.brand_assets?.show_website ?? true,
         },
-        operational_rules: normalizeOperationalRules(settings.operational_rules),
+        operational_rules: normalizeOperationalRules(asSettingsRecord(settings.operational_rules)),
     };
 }
 
@@ -557,7 +648,7 @@ async function getSiteSettingsUncached() {
             return DEFAULT_SITE_SETTINGS;
         }
 
-        const settings: Record<string, any> = {};
+        const settings: Record<string, unknown> = {};
         for (const row of data) {
             settings[row.key] = row.value;
         }
@@ -899,14 +990,41 @@ export async function getPublicVisibility() {
 //  UPDATE A SETTING
 // ═══════════════════════════════════════════════════════════
 
-export async function updateSiteSetting(key: string, value: Record<string, any>) {
+export async function updateSiteSetting(key: string, value: unknown) {
     const { profileId } = await requireAdmin();
     const supabase = getAdminSupabase();
+    const missingBoardPromptPlaceholders = key === "board_prompt_template"
+        ? getMissingBoardPromptPlaceholders(value)
+        : [];
+    if (missingBoardPromptPlaceholders.length > 0) {
+        return {
+            success: false,
+            error: `قالب لوحة المعاينة يفتقد الحقول المطلوبة: ${missingBoardPromptPlaceholders.join(", ")}`,
+        };
+    }
+
     const nextValue = key === "operational_rules"
-        ? normalizeOperationalRules(value)
+        ? normalizeOperationalRules(
+            value && typeof value === "object" && !Array.isArray(value)
+                ? value as Record<string, unknown>
+                : null
+        )
         : key === "washa_ai"
             ? normalizeWashaAiSettings(value)
-            : value;
+            : key === "generation_mode"
+                ? normalizeGenerationMode(value)
+                : key === "quota_charging"
+                    ? normalizeQuotaChargingConfig(value)
+                    : key === "board_prompt_template"
+                        ? normalizeBoardPromptTemplate(value)
+                        : value;
+
+    if (!isJsonValue(nextValue)) {
+        return {
+            success: false,
+            error: "قيمة الإعداد يجب أن تكون JSON صالحة.",
+        };
+    }
 
     let changedRuleKeys: string[] = [];
 
@@ -917,8 +1035,9 @@ export async function updateSiteSetting(key: string, value: Record<string, any>)
             .eq("key", "operational_rules")
             .maybeSingle();
 
-        const previousRules = normalizeOperationalRules((currentSetting?.value as Record<string, unknown> | undefined) ?? null);
-        changedRuleKeys = collectChangedRuleKeys(previousRules, nextValue as OperationalRulesConfig);
+        const previousRules = normalizeOperationalRules(asSettingsRecord(currentSetting?.value));
+        const nextRules = normalizeOperationalRules(asSettingsRecord(nextValue));
+        changedRuleKeys = collectChangedRuleKeys(previousRules, nextRules);
     }
 
     const { error } = await supabase

@@ -17,6 +17,7 @@ import {
 } from "@/lib/announcement-types";
 import { getCurrentUserOrDevAdmin } from "@/lib/admin-access";
 import type { Database } from "@/types/database";
+import { serializeJsonValue } from "@/lib/json-value";
 import { createTimeoutFetch, readPositiveIntegerEnv, withTimeout } from "@/lib/async-timeout";
 import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import { splitStoragePath, uploadFile } from "@/lib/storage/upload-file";
@@ -254,7 +255,7 @@ export async function createAnnouncement(data: Omit<Announcement, "id" | "create
     const { error } = await supabase
         .from("site_settings")
         .upsert(
-            { key: "announcements", value: updated, updated_at: new Date().toISOString() },
+            { key: "announcements", value: serializeJsonValue(updated, "announcements"), updated_at: new Date().toISOString() },
             { onConflict: "key" }
         );
 
@@ -283,7 +284,7 @@ export async function updateAnnouncement(id: string, updates: Partial<Omit<Annou
     const { error } = await supabase
         .from("site_settings")
         .upsert(
-            { key: "announcements", value: existing, updated_at: new Date().toISOString() },
+            { key: "announcements", value: serializeJsonValue(existing, "announcements"), updated_at: new Date().toISOString() },
             { onConflict: "key" }
         );
 
@@ -305,7 +306,7 @@ export async function deleteAnnouncement(id: string) {
     const { error } = await supabase
         .from("site_settings")
         .upsert(
-            { key: "announcements", value: updated, updated_at: new Date().toISOString() },
+            { key: "announcements", value: serializeJsonValue(updated, "announcements"), updated_at: new Date().toISOString() },
             { onConflict: "key" }
         );
 

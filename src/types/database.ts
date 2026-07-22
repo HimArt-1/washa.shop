@@ -35,6 +35,14 @@ export type ApparelSize = "XS" | "S" | "M" | "L" | "XL" | "XXL";
 export type PushSubscriptionScope = "user" | "admin";
 export type StoredPushSubscriptionScope = PushSubscriptionScope | "both";
 export type CreativeCatalogScope = "design_piece" | "dtf_studio" | "shared";
+export type JsonPrimitive =
+    | string
+    | number
+    | boolean
+    | null;
+export type JsonObject = { [key: string]: JsonValue };
+export type JsonArray = JsonValue[];
+export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
 
 // ─── Base Types ──────────────────────────────────────────
 
@@ -611,6 +619,23 @@ export type SalesRecord = Timestamps & {
     notes: string | null;
     created_by: string | null;
 }
+
+export type WashaBoardRequestStatus = "processing" | "ready" | "failed";
+export type WashaBoardManualPrintStatus = "pending" | "in_progress" | "completed";
+export type WashaBoardGenerationContext = JsonObject;
+
+export type WashaBoardRequest = Timestamps & {
+    id: string;
+    profile_id: string | null;
+    generation_request_id: string;
+    prompt: string;
+    generation_context: WashaBoardGenerationContext;
+    board_image_url: string | null;
+    provider: string | null;
+    generation_model: string | null;
+    status: WashaBoardRequestStatus;
+    manual_print_status: WashaBoardManualPrintStatus;
+};
 
 // ─── Database Schema (Supabase-compatible) ───────────────
 
@@ -1226,10 +1251,37 @@ export type Database = {
                 Update: Partial<{ endpoint: string; p256dh: string; auth: string; scope: StoredPushSubscriptionScope; user_id: string | null; user_agent: string | null }>;
                 Relationships: any[];
             };
+            washa_board_requests: {
+                Row: WashaBoardRequest;
+                Insert: {
+                    id?: string;
+                    profile_id?: string | null;
+                    generation_request_id: string;
+                    prompt: string;
+                    generation_context: WashaBoardGenerationContext;
+                    board_image_url?: string | null;
+                    provider?: string | null;
+                    generation_model?: string | null;
+                    status?: WashaBoardRequestStatus;
+                    manual_print_status?: WashaBoardManualPrintStatus;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: Partial<Omit<WashaBoardRequest, "id" | "created_at">>;
+                Relationships: [
+                    {
+                        foreignKeyName: "washa_board_requests_profile_id_fkey";
+                        columns: ["profile_id"];
+                        isOneToOne: false;
+                        referencedRelation: "profiles";
+                        referencedColumns: ["id"];
+                    }
+                ];
+            };
             site_settings: {
-                Row: { id: string; key: string; value: Record<string, unknown> | unknown[]; created_at: string; updated_at: string };
-                Insert: { key: string; value: Record<string, unknown> | unknown[] };
-                Update: Partial<{ key: string; value: Record<string, unknown> | unknown[] }>;
+                Row: { id: string; key: string; value: JsonValue; created_at: string; updated_at: string };
+                Insert: { key: string; value: JsonValue };
+                Update: Partial<{ key: string; value: JsonValue }>;
                 Relationships: any[];
             };
             role_change_audit_log: {
