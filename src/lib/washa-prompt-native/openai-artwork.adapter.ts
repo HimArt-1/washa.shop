@@ -6,8 +6,12 @@ import {
 } from "@/lib/washa-artwork/normalization";
 import { validateArtworkPng } from "@/lib/washa-artwork/validation";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
+import {
+    assertPromptNativeModelCompatibility,
+    PROMPT_NATIVE_MODELS,
+} from "@/lib/washa-prompt-native/readiness";
 
-const DEFAULT_MODEL = "gpt-image-1.5";
+const DEFAULT_MODEL = PROMPT_NATIVE_MODELS.artwork;
 const DEFAULT_SIZE = "1024x1536";
 // Two alpha-validation attempts must fit inside the 300s route budget together
 // with text verification, Gemini composition, persistence, and response work.
@@ -186,6 +190,7 @@ export async function generatePromptNativeArtwork(params: {
     traceId: string;
     referenceImageDataUrl?: string | null;
 }) {
+    assertPromptNativeModelCompatibility(["artwork"]);
     const model = configuredModel();
     const size = configuredSize();
     const timeoutMs = configuredTimeoutMs();

@@ -14,11 +14,15 @@ import {
     placementFitsPrintArea,
 } from "@/lib/washa-artwork/placement";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
+import {
+    assertPromptNativeModelCompatibility,
+    PROMPT_NATIVE_MODELS,
+} from "@/lib/washa-prompt-native/readiness";
 
-const DEFAULT_MODEL = "gemini-3.1-flash-image";
+const DEFAULT_MODEL = PROMPT_NATIVE_MODELS.mockup;
 const DEFAULT_TIMEOUT_MS = 70_000;
 const VERIFICATION_TIMEOUT_MS = 20_000;
-const DEFAULT_VERIFICATION_MODEL = "gemini-2.5-flash";
+const DEFAULT_VERIFICATION_MODEL = PROMPT_NATIVE_MODELS.verification;
 
 type MockupVerification = {
     pass: boolean;
@@ -29,6 +33,32 @@ type MockupVerification = {
     placementPlausible: boolean;
     framingPreserved: boolean;
     issues: string[];
+};
+
+const SUPPORTED_ASPECT_RATIOS = [
+    ["1:1", 1],
+    ["2:3", 2 / 3],
+    ["3:2", 3 / 2],
+    ["3:4", 3 / 4],
+    ["4:3", 4 / 3],
+    ["4:5", 4 / 5],
+    ["5:4", 5 / 4],
+    ["9:16", 9 / 16],
+    ["16:9", 16 / 9],
+    ["21:9", 21 / 9],
+] as const;
+
+type SupportedAspectRatio = typeof SUPPORTED_ASPECT_RATIOS[number][0];
+
+type FramingPlan = {
+    sourceWidth: number;
+    sourceHeight: number;
+    canvasWidth: number;
+    canvasHeight: number;
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
 };
 
 function configuredModel() {
@@ -72,24 +102,92 @@ function mimeTypeForFormat(format: string | undefined) {
 
 export function resolvePromptNativeAspectRatio(width: number, height: number) {
     const ratio = width / Math.max(1, height);
-    const supported = [
-        ["1:1", 1],
-        ["2:3", 2 / 3],
-        ["3:2", 3 / 2],
-        ["3:4", 3 / 4],
-        ["4:3", 4 / 3],
-        ["4:5", 4 / 5],
-        ["5:4", 5 / 4],
-        ["9:16", 9 / 16],
-        ["16:9", 16 / 9],
-        ["21:9", 21 / 9],
-    ] as const;
-    return supported.reduce((nearest, candidate) => (
+    return SUPPORTED_ASPECT_RATIOS.reduce((nearest, candidate) => (
         Math.abs(Math.log(ratio / candidate[1]))
             < Math.abs(Math.log(ratio / nearest[1]))
             ? candidate
             : nearest
-    ), supported[0])[0];
+    ), SUPPORTED_ASPECT_RATIOS[0])[0];
+}
+
+function buildFramingPlan(
+    width: number,
+    height: number,
+    aspectRatio: SupportedAspectRatio
+): FramingPlan {
+    const targetRatio = SUPPORTED_ASPECT_RATIOS.find(([name]) => name === aspectRatio)?.[1] ?? 1;
+    const sourceRatio = width / height;
+    const canvasWidth = sourceRatio < targetRatio
+        ? Math.ceil(height * targetRatio)
+        : width;
+    const canvasHeight = sourceRatio > targetRatio
+        ? Math.ceil(width / targetRatio)
+        : height;
+    const horizontalPadding = Math.max(0, canvasWidth - width);
+    const verticalPadding = Math.max(0, canvasHeight - height);
+    const left = Math.floor(horizontalPadding / 2);
+    const top = Math.floor(verticalPadding / 2);
+    return {
+        sourceWidth: width,
+        sourceHeight: height,
+        canvasWidth,
+        canvasHeight,
+        left,
+        right: horizontalPadding - left,
+        top,
+        bottom: verticalPadding - top,
+    };
+}
+
+async function prepareFramedReference(
+    buffer: Buffer,
+    plan: FramingPlan,
+    sourceMatchesPlan: boolean
+) {
+    const hasPadding = plan.left > 0 || plan.right > 0 || plan.top > 0 || plan.bottom > 0;
+    if (!hasPadding && sourceMatchesPlan) return buffer;
+
+    let image = sharp(buffer).resize(plan.sourceWidth, plan.sourceHeight, { fit: "fill" });
+    if (hasPadding) {
+        image = image.extend({
+            left: plan.left,
+            right: plan.right,
+            top: plan.top,
+            bottom: plan.bottom,
+            extendWith: "mirror",
+        });
+    }
+    return image.png().toBuffer();
+}
+
+async function restoreSourceFraming(
+    generated: Buffer,
+    plan: FramingPlan
+) {
+    const metadata = await sharp(generated).metadata();
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
+    if (!width || !height) throw new Error("Gemini mockup output is unreadable.");
+
+    const left = Math.min(width - 1, Math.max(0, Math.round((plan.left / plan.canvasWidth) * width)));
+    const top = Math.min(height - 1, Math.max(0, Math.round((plan.top / plan.canvasHeight) * height)));
+    const cropWidth = Math.min(
+        width - left,
+        Math.max(1, Math.round((plan.sourceWidth / plan.canvasWidth) * width))
+    );
+    const cropHeight = Math.min(
+        height - top,
+        Math.max(1, Math.round((plan.sourceHeight / plan.canvasHeight) * height))
+    );
+    const buffer = await sharp(generated, { failOn: "error", animated: false })
+        .extract({ left, top, width: cropWidth, height: cropHeight })
+        .resize(plan.sourceWidth, plan.sourceHeight, { fit: "fill", kernel: sharp.kernel.lanczos3 })
+        .webp({ quality: 94, alphaQuality: 100, smartSubsample: true })
+        .toBuffer();
+    return {
+        buffer,
+        pixelCrop: { left, top, width: cropWidth, height: cropHeight },
+    };
 }
 
 export function buildPromptNativeMockupPrompt(params: {
@@ -101,6 +199,7 @@ export function buildPromptNativeMockupPrompt(params: {
         "REFERENCE IMAGE A is the authoritative garment mockup and complete scene.",
         "REFERENCE IMAGE B is the immutable print artwork with native transparency.",
         "REFERENCE IMAGE C is a deterministic placement guide. It is authoritative for artwork location, size, rotation, and framing, but not for final fabric realism.",
+        "Any mirrored padding around A and C is temporary generation context. Preserve the central source frame exactly; the system will remove that padding after generation.",
         "Edit REFERENCE IMAGE A only by applying REFERENCE IMAGE B to the garment.",
         "Preserve the exact garment type, color, silhouette, seams, folds, person or mannequin if present, camera, crop, lighting, shadows, and background from REFERENCE IMAGE A.",
         "Preserve every visible pixel-level design decision from REFERENCE IMAGE B: wording, Arabic glyphs, spelling, illustration, colors, proportions, internal negative space, and outline. Do not redraw, reinterpret, translate, simplify, embellish, repair, or add anything.",
@@ -246,6 +345,7 @@ export async function composePromptNativeMockup(params: {
     placement: PlacementTransform;
     traceId: string;
 }) {
+    assertPromptNativeModelCompatibility(["mockup", "verification"]);
     const [garmentMetadata, artworkMetadata, placementGuideMetadata] = await Promise.all([
         sharp(params.garmentBase).metadata(),
         sharp(params.masterArtwork).metadata(),
@@ -264,7 +364,6 @@ export async function composePromptNativeMockup(params: {
         throw new Error("Prompt Native mockup inputs are unreadable.");
     }
     const garmentMimeType = mimeTypeForFormat(garmentMetadata.format);
-    const placementGuideMimeType = mimeTypeForFormat(placementGuideMetadata.format);
     const artworkAspectRatio = artworkMetadata.width / artworkMetadata.height;
     if (!placementFitsPrintArea(params.placement, artworkAspectRatio)) {
         throw new ArtworkPlacementError({
@@ -280,6 +379,24 @@ export async function composePromptNativeMockup(params: {
     const model = configuredModel();
     const timeoutMs = configuredTimeoutMs();
     const aspectRatio = resolvePromptNativeAspectRatio(garmentWidth, garmentHeight);
+    const framingPlan = buildFramingPlan(garmentWidth, garmentHeight, aspectRatio);
+    const [framedGarment, framedPlacementGuide] = await Promise.all([
+        prepareFramedReference(params.garmentBase, framingPlan, true),
+        prepareFramedReference(
+            params.placementGuide,
+            framingPlan,
+            placementGuideMetadata.width === garmentWidth
+                && placementGuideMetadata.height === garmentHeight
+        ),
+    ]);
+    const framingWasAdded = framingPlan.canvasWidth !== garmentWidth
+        || framingPlan.canvasHeight !== garmentHeight;
+    const framedGarmentMimeType = framingWasAdded ? "image/png" : garmentMimeType;
+    const framedPlacementGuideMimeType = framingWasAdded
+        || placementGuideMetadata.width !== garmentWidth
+        || placementGuideMetadata.height !== garmentHeight
+        ? "image/png"
+        : mimeTypeForFormat(placementGuideMetadata.format);
     const prompt = buildPromptNativeMockupPrompt({
         printArea: params.printArea,
         placement: params.placement,
@@ -300,11 +417,11 @@ export async function composePromptNativeMockup(params: {
                 role: "user",
                 parts: [
                     { text: "REFERENCE IMAGE A — SELECTED GARMENT MOCKUP" },
-                    imagePart(params.garmentBase, garmentMimeType),
+                    imagePart(framedGarment, framedGarmentMimeType),
                     { text: "REFERENCE IMAGE B — IMMUTABLE TRANSPARENT PRINT ARTWORK" },
                     imagePart(params.masterArtwork, "image/png"),
                     { text: "REFERENCE IMAGE C — DETERMINISTIC PLACEMENT GUIDE" },
-                    imagePart(params.placementGuide, placementGuideMimeType),
+                    imagePart(framedPlacementGuide, framedPlacementGuideMimeType),
                     { text: prompt },
                 ],
             },
@@ -324,10 +441,12 @@ export async function composePromptNativeMockup(params: {
         const dataUrl = extractGeneratedImageDataUrl(response);
         if (!dataUrl) throw new Error("Gemini returned no composited mockup image.");
         const decoded = decodeGeneratedDataUrl(dataUrl);
-        const buffer = await sharp(decoded.buffer, { failOn: "error", animated: false })
+        const normalizedGenerated = await sharp(decoded.buffer, { failOn: "error", animated: false })
             .rotate()
-            .webp({ quality: 94, alphaQuality: 100, smartSubsample: true })
+            .webp({ quality: 96, alphaQuality: 100, smartSubsample: true })
             .toBuffer();
+        const restored = await restoreSourceFraming(normalizedGenerated, framingPlan);
+        const buffer = restored.buffer;
         const metadata = await sharp(buffer).metadata();
         const width = metadata.width ?? 0;
         const height = metadata.height ?? 0;
@@ -337,7 +456,7 @@ export async function composePromptNativeMockup(params: {
             garmentMimeType,
             masterArtwork: params.masterArtwork,
             placementGuide: params.placementGuide,
-            placementGuideMimeType,
+            placementGuideMimeType: mimeTypeForFormat(placementGuideMetadata.format),
             generatedMockup: buffer,
         });
 
@@ -363,6 +482,14 @@ export async function composePromptNativeMockup(params: {
                 sourceArtworkMimeType: "image/png",
                 generatedMimeType: decoded.mimeType,
                 placementGuideUsed: true,
+                framing: {
+                    sourceWidth: garmentWidth,
+                    sourceHeight: garmentHeight,
+                    generationCanvasWidth: framingPlan.canvasWidth,
+                    generationCanvasHeight: framingPlan.canvasHeight,
+                    restoredToSourceDimensions: true,
+                    pixelCrop: restored.pixelCrop,
+                },
                 verification,
             },
         };

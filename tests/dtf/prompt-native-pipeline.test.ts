@@ -54,6 +54,17 @@ async function garmentPng() {
     }).png().toBuffer();
 }
 
+async function garmentPngWithSize(width: number, height: number) {
+    return sharp({
+        create: {
+            width,
+            height,
+            channels: 4,
+            background: { r: 34, g: 39, b: 37, alpha: 1 },
+        },
+    }).png().toBuffer();
+}
+
 async function compositedMockupPng(garment: Buffer, artwork: Buffer) {
     const overlay = await sharp(artwork).resize(72, 72, { fit: "contain" }).png().toBuffer();
     return sharp(garment).composite([{ input: overlay, left: 44, top: 64 }]).png().toBuffer();
@@ -298,6 +309,22 @@ describe("WASHA AI Prompt Native pipeline", () => {
         });
     });
 
+    it("rejects model overrides that break the approved transparency contract", async () => {
+        vi.stubEnv("WASHA_PROMPT_NATIVE_OPENAI_MODEL", "gpt-image-2");
+        const { getPromptNativeReadiness } = await import(
+            "@/lib/washa-prompt-native/readiness"
+        );
+        expect(getPromptNativeReadiness()).toMatchObject({
+            ready: false,
+            code: "model_not_supported",
+            incompatibleModels: [{
+                stage: "artwork",
+                configured: "gpt-image-2",
+                required: "gpt-image-1.5",
+            }],
+        });
+    });
+
     it("selects the nearest supported Gemini ratio without forcing portrait mockups to 4:5", async () => {
         const { resolvePromptNativeAspectRatio } = await import(
             "@/lib/washa-prompt-native/gemini-mockup.adapter"
@@ -306,5 +333,50 @@ describe("WASHA AI Prompt Native pipeline", () => {
         expect(resolvePromptNativeAspectRatio(1200, 1800)).toBe("2:3");
         expect(resolvePromptNativeAspectRatio(1080, 1920)).toBe("9:16");
         expect(resolvePromptNativeAspectRatio(1600, 900)).toBe("16:9");
+    });
+
+    it("restores an arbitrary catalog mockup to its exact source crop and dimensions", async () => {
+        const garment = await garmentPngWithSize(137, 200);
+        const artwork = await artworkPng(0);
+        const generatedAtSupportedRatio = await garmentPngWithSize(200, 300);
+        const requests: any[] = [];
+        mockGenerateContent.mockImplementation(async (input: any) => {
+            requests.push(input);
+            if (requests.length === 2) {
+                return { text: JSON.stringify(verifiedMockupResponse()) };
+            }
+            return {
+                candidates: [{ content: { parts: [{ inlineData: {
+                    mimeType: "image/png",
+                    data: generatedAtSupportedRatio.toString("base64"),
+                } }] } }],
+            };
+        });
+
+        const { composePromptNativeMockup } = await import(
+            "@/lib/washa-prompt-native/gemini-mockup.adapter"
+        );
+        const result = await composePromptNativeMockup({
+            garmentBase: garment,
+            masterArtwork: artwork,
+            placementGuide: garment,
+            printArea: { x: 0.28, y: 0.2, width: 0.44, height: 0.5 },
+            placement: {
+                side: "front", x: 0.5, y: 0.5, scale: 0.8, rotation: 0,
+                printWidthCm: 28, printHeightCm: 34, anchorX: 0.5, anchorY: 0.5,
+                referenceMockupId: "mockup-ratio", printAreaId: "front_main", transformVersion: 1,
+            },
+            traceId: "prompt-native-ratio-restore",
+        });
+
+        expect(requests[0].config.imageConfig.aspectRatio).toBe("2:3");
+        expect(result).toMatchObject({ width: 137, height: 200 });
+        expect(result.transformationMetadata.framing).toMatchObject({
+            sourceWidth: 137,
+            sourceHeight: 200,
+            generationCanvasWidth: 137,
+            generationCanvasHeight: 206,
+            restoredToSourceDimensions: true,
+        });
     });
 });
