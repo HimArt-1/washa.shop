@@ -334,6 +334,36 @@ describe("settings visibility normalization", () => {
         );
     });
 
+    it("rejects board fallback setting updates when the caller is not admin or dev", async () => {
+        mockGetCurrentUserOrDevAdmin.mockResolvedValue({ id: "clerk_subscriber" });
+        const upsert = vi.fn();
+        mockCreateClient.mockReturnValue({
+            from: vi.fn((table: string) => {
+                if (table === "profiles") {
+                    return {
+                        select: vi.fn(() => ({
+                            eq: vi.fn(() => ({
+                                single: vi.fn().mockResolvedValue({
+                                    data: { id: "profile_subscriber", role: "subscriber" },
+                                    error: null,
+                                }),
+                            })),
+                        })),
+                    };
+                }
+                return { upsert };
+            }),
+        });
+
+        await expect(updateSiteSetting("generation_mode", "fallback"))
+            .rejects.toThrow("Forbidden");
+        await expect(updateSiteSetting("quota_charging", {
+            auto: false,
+            manual_override: "enabled",
+        })).rejects.toThrow("Forbidden");
+        expect(upsert).not.toHaveBeenCalled();
+    });
+
     it("rejects non-JSON setting values before upsert", async () => {
         mockGetCurrentUserOrDevAdmin.mockResolvedValue({ id: "clerk_admin" });
         const upsert = vi.fn();

@@ -26,6 +26,7 @@ const {
     mockShouldChargeQuota,
     mockGetQuotaStatus,
     mockGenerateBoard,
+    mockNotifyBoardRequestReady,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockClaimDtfGenerationRequest: vi.fn(),
@@ -50,6 +51,7 @@ const {
     mockShouldChargeQuota: vi.fn(),
     mockGetQuotaStatus: vi.fn(),
     mockGenerateBoard: vi.fn(),
+    mockNotifyBoardRequestReady: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", async (importOriginal) => ({
@@ -90,6 +92,10 @@ vi.mock("@/lib/washa-generation-mode", () => ({
 
 vi.mock("@/app/api/washa-dtf-studio/services/board-generation.service", () => ({
     generateBoard: mockGenerateBoard,
+}));
+
+vi.mock("@/lib/board-request-telegram", () => ({
+    notifyBoardRequestReady: mockNotifyBoardRequestReady,
 }));
 
 vi.mock("@/lib/washa-dtf-studio", () => ({
@@ -174,6 +180,7 @@ describe("generate-mockup route", () => {
         mockShouldChargeQuota.mockReset();
         mockGetQuotaStatus.mockReset();
         mockGenerateBoard.mockReset();
+        mockNotifyBoardRequestReady.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -266,6 +273,7 @@ describe("generate-mockup route", () => {
             boardImageUrl: "https://cdn.example/board-preview.webp",
             boardRequestId: "77777777-7777-4777-8777-777777777777",
         });
+        mockNotifyBoardRequestReady.mockResolvedValue({ ok: true });
     });
 
     it("returns an uncharged board preview without touching primary readiness or quota reservation", async () => {
@@ -331,6 +339,110 @@ describe("generate-mockup route", () => {
                 quotaDate: undefined,
             },
         });
+        expect(mockNotifyBoardRequestReady).toHaveBeenCalledWith({
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+            boardImageUrl: "https://cdn.example/board-preview.webp",
+            customerDescription: "تصميم عربي حديث",
+            generationContext: expect.objectContaining({
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                printPosition: "chest",
+                printSize: "large",
+                printScale: 100,
+            }),
+        });
+        expect(mockCompleteDtfGenerationRequest.mock.invocationCallOrder[0]).toBeLessThan(
+            mockNotifyBoardRequestReady.mock.invocationCallOrder[0] ?? 0
+        );
+    });
+
+    it("keeps a successful board response and quota state when Telegram delivery fails", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(true);
+        mockNotifyBoardRequestReady.mockResolvedValue({
+            ok: false,
+            reason: "delivery_failed",
+        });
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-telegram-failure" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            mode: "fallback",
+            quotaCharged: true,
+            remainingPoints: 4,
+        });
+        expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockNotifyBoardRequestReady).toHaveBeenCalledOnce();
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            expect.any(String),
+            "request-board-telegram-failure",
+            "board_telegram_notification_failed",
+            {
+                boardRequestId: "77777777-7777-4777-8777-777777777777",
+                reason: "delivery_failed",
+            }
+        );
+    });
+
+    it("contains an unexpected notification bug after claim completion", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+        mockNotifyBoardRequestReady.mockRejectedValue(new Error("unexpected notifier bug"));
+
+        const response = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-telegram-throw" } }
+        ) as NextRequest);
+
+        expect(response.status).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+            mode: "fallback",
+            quotaCharged: false,
+        });
+        expect(mockReleaseDailyQuota).not.toHaveBeenCalled();
+        expect(mockCompleteDtfGenerationRequest.mock.invocationCallOrder[0]).toBeLessThan(
+            mockNotifyBoardRequestReady.mock.invocationCallOrder[0] ?? 0
+        );
+        expect(mockLogDtfTrace).toHaveBeenCalledWith(
+            expect.any(String),
+            "request-board-telegram-throw",
+            "board_telegram_notification_failed",
+            {
+                boardRequestId: "77777777-7777-4777-8777-777777777777",
+                reason: "unexpected_error",
+            }
+        );
+    });
+
+    it("never sends a board notification for failed board generation or primary mode", async () => {
+        mockGetGenerationMode.mockResolvedValue("fallback");
+        mockShouldChargeQuota.mockResolvedValue(false);
+        mockGenerateBoard.mockResolvedValue({
+            ok: false,
+            code: "IMAGE_PROVIDER_UNAVAILABLE",
+            boardRequestId: "77777777-7777-4777-8777-777777777777",
+        });
+
+        const failedBoardResponse = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-board-no-telegram" } }
+        ) as NextRequest);
+        expect(failedBoardResponse.status).toBe(503);
+        expect(mockNotifyBoardRequestReady).not.toHaveBeenCalled();
+
+        mockGetGenerationMode.mockResolvedValue("primary");
+        mockShouldChargeQuota.mockResolvedValue(true);
+        const primaryResponse = await POST(new Request(
+            "http://localhost/api/dtf/generate",
+            { headers: { "x-request-id": "request-primary-no-board-telegram" } }
+        ) as NextRequest);
+        expect(primaryResponse.status).toBe(200);
+        expect(mockNotifyBoardRequestReady).not.toHaveBeenCalled();
     });
 
     it.each([

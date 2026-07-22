@@ -45,6 +45,7 @@ import {
     type GenerationMode,
 } from "@/lib/washa-generation-mode";
 import { generateBoard } from "../services/board-generation.service";
+import { notifyBoardRequestReady } from "@/lib/board-request-telegram";
 
 export const runtime = "nodejs";
 // gpt-image-2 عند 2048×2048 أبطأ من النماذج الأصغر. الميزانية الزمنية للطلب يجب أن تتّسع
@@ -823,6 +824,42 @@ export async function POST(request: NextRequest) {
                     statusCode: 200,
                     errorCode: "IDEMPOTENCY_COMPLETION_FAILED",
                 });
+            }
+            try {
+                const notificationResult = await notifyBoardRequestReady({
+                    boardRequestId: boardResult.boardRequestId,
+                    boardImageUrl: boardResult.boardImageUrl,
+                    customerDescription: prompt,
+                    generationContext: generationContext!,
+                });
+                if (notificationResult.ok) {
+                    logDtfTrace(
+                        GENERATE_MOCKUP_ROUTE,
+                        traceId,
+                        "board_telegram_notification_sent",
+                        { boardRequestId: boardResult.boardRequestId }
+                    );
+                } else {
+                    logDtfTrace(
+                        GENERATE_MOCKUP_ROUTE,
+                        traceId,
+                        "board_telegram_notification_failed",
+                        {
+                            boardRequestId: boardResult.boardRequestId,
+                            reason: notificationResult.reason,
+                        }
+                    );
+                }
+            } catch {
+                logDtfTrace(
+                    GENERATE_MOCKUP_ROUTE,
+                    traceId,
+                    "board_telegram_notification_failed",
+                    {
+                        boardRequestId: boardResult.boardRequestId,
+                        reason: "unexpected_error",
+                    }
+                );
             }
             return attachDtfTraceId(NextResponse.json({
                 ok: true,

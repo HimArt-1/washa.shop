@@ -3,6 +3,7 @@ import {
     BarChart3,
     Bell,
     Brush,
+    ClipboardList,
     CreditCard,
     ExternalLink,
     FileText,
@@ -71,6 +72,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         items: [
             { icon: Brush, label: "طلبات التصميم", href: "/dashboard/design-orders", description: "طلبات DTF والتسليمات والملفات.", badgeKey: "pendingDesignOrders", roles: ["admin", "dev", "shipping_manager"] },
             { icon: Wand2, label: "رادار DTF", href: "/dashboard/design-orders/dtf-monitor", description: "مراقبة توليد التصميم واستهلاك النظام.", roles: ["admin", "dev", "shipping_manager"] },
+            { icon: ClipboardList, label: "طلبات اللوحات الاحتياطية", href: "/dashboard/board-requests", description: "معاينات fallback الجاهزة والفاشلة للمتابعة اليدوية.", roles: ["admin", "dev"] },
             { icon: Palette, label: "الأعمال الفنية", href: "/dashboard/artworks", description: "إدارة أعمال الفنانين ومحتوى المعرض.", roles: ["admin", "dev"] },
             { icon: Palette, label: "التصاميم الحصرية", href: "/dashboard/exclusive-designs", description: "تصاميم المتجر الحصرية وتنظيم عرضها.", roles: ["admin", "dev"] },
             { icon: Sparkles, label: "المتجر الذكي", href: "/dashboard/smart-store", description: "كتالوج صمّم قطعتك واستوديو DTF.", roles: ["admin", "dev"] },

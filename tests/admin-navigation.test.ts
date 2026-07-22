@@ -18,4 +18,16 @@ describe("admin navigation RBAC", () => {
         expect(boothHrefs).not.toContain("/dashboard/orders");
         expect(boothHrefs).not.toContain("/dashboard/products-inventory");
     });
+
+    it("exposes board requests only to admin and dev roles", () => {
+        expect(canAccessAdminPath("/dashboard/board-requests", "admin")).toBe(true);
+        expect(canAccessAdminPath("/dashboard/board-requests", "dev")).toBe(true);
+        expect(canAccessAdminPath("/dashboard/board-requests", "subscriber")).toBe(false);
+        expect(canAccessAdminPath("/dashboard/board-requests", "shipping_manager")).toBe(false);
+
+        expect(getVisibleAdminCommandItems("admin").map((item) => item.href))
+            .toContain("/dashboard/board-requests");
+        expect(getVisibleAdminCommandItems("subscriber").map((item) => item.href))
+            .not.toContain("/dashboard/board-requests");
+    });
 });

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { purgeTestData, type PurgeScope } from "@/app/actions/data-management";
 import WashaCreditsAdminCard from "@/components/admin/WashaCreditsAdminCard";
+import { BoardFallbackSettingsCard } from "./BoardFallbackSettingsCard";
 import {
     updateSiteSetting,
     uploadExclusiveDesignImage,
@@ -506,7 +507,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         setTimeout(() => setToast(null), 3000);
     };
 
-    const handleSave = async (key: string, value: Record<string, any>) => {
+    const handleSave = async (key: string, value: unknown) => {
         setSaving(key);
         try {
             const result = await updateSiteSetting(key, value);
@@ -873,6 +874,11 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                     حفظ إعدادات Washa AI
                 </button>
             </SettingsCard>
+
+            <BoardFallbackSettingsCard
+                initialGenerationMode={settings.generation_mode}
+                initialQuotaCharging={settings.quota_charging}
+            />
 
             <SettingsCard title="Washa AI — إدارة الرصيد" icon={Wallet}>
                 <WashaCreditsAdminCard />
