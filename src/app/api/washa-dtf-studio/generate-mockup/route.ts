@@ -60,7 +60,7 @@ export const maxDuration = 300;
 const GENERATE_MOCKUP_ROUTE = "/api/washa-dtf-studio/generate-mockup";
 const GENERATE_MOCKUP_OPERATION = "generate-mockup";
 const ARTWORK_PRINT_VALIDATION_PUBLIC_ERROR =
-    "تعذر تجهيز التصميم كملف طباعة شفاف وآمن. عدّل الوصف وجرّب مرة أخرى.";
+    "تعذر اعتماد ملف الطباعة بالدقة والمساحة الآمنة المطلوبة. صغّر مقاس الطباعة أو عدّل الوصف ثم جرّب مرة أخرى.";
 const ARTWORK_PLACEMENT_PUBLIC_ERROR =
     "تعذر وضع التصميم داخل مساحة الطباعة الآمنة. صغّر الحجم أو أعد تمركزه ثم جرّب مرة أخرى.";
 const ARTWORK_TEXT_POLICY_PUBLIC_ERROR =

@@ -144,7 +144,7 @@ export const ERROR_MAP = {
     },
     ARTWORK_PRINT_VALIDATION_FAILED: {
         userMessage:
-            "التصميم لا يستوفي متطلبات الطباعة. أعد المحاولة بوصف مختلف قليلاً.",
+            "تعذر اعتماد ملف الطباعة بالدقة والمساحة الآمنة المطلوبة. صغّر مقاس الطباعة أو عدّل الوصف ثم جرّب مرة أخرى.",
         userAction: "edit_prompt",
         retryAfterMs: null,
     },

@@ -9,6 +9,7 @@ import { buildIsolatedArtworkPrompt } from "@/lib/washa-artwork/prompt";
 import { buildPlacementTransform, getDefaultPrintArea } from "@/lib/washa-artwork/placement";
 import {
     assertMinimumEffectivePrintDpi,
+    getEffectivePrintDpi,
     sha256Hex,
     validateArtworkPng,
 } from "@/lib/washa-artwork/validation";
@@ -132,6 +133,24 @@ describe("WASHA AI single-source artwork", () => {
             height: 1536,
             printWidthCm: back.printWidthCm,
             printHeightCm: back.printHeightCm,
+            minEffectiveDpi: 85,
+        })).not.toThrow();
+    });
+
+    it("measures DPI against the contained artwork size inside a rectangular print box", () => {
+        const effectiveDpi = getEffectivePrintDpi({
+            width: 1047,
+            height: 979,
+            printWidthCm: 30,
+            printHeightCm: 40,
+        });
+
+        expect(effectiveDpi).toBeCloseTo(88.6, 1);
+        expect(() => assertMinimumEffectivePrintDpi({
+            width: 1047,
+            height: 979,
+            printWidthCm: 30,
+            printHeightCm: 40,
             minEffectiveDpi: 85,
         })).not.toThrow();
     });

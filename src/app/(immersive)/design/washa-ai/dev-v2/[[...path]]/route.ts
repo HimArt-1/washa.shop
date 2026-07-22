@@ -103,7 +103,7 @@ function injectDevV2PwaTags(indexHtml: string) {
 
     const pwaTags = [
         ...createWashaAiDevGenerationMetaTags("dev-v2"),
-        '<link rel="manifest" href="/design/washa-ai/dev-v2/manifest.webmanifest" />',
+        '<link rel="manifest" href="/design/washa-ai/dev-v2/manifest.webmanifest" crossorigin="use-credentials" />',
         '<link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
         '<meta name="application-name" content="WASHA AI Dev Studio V2" />',
         '<meta name="apple-mobile-web-app-title" content="WASHA AI V2" />',

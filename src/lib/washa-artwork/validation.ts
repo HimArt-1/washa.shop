@@ -215,7 +215,10 @@ export function getEffectivePrintDpi(params: {
 }) {
     const widthInches = params.printWidthCm / 2.54;
     const heightInches = params.printHeightCm / 2.54;
-    return Math.min(
+    // Production output uses `fit: contain`: the artwork keeps its aspect ratio
+    // inside the requested print box instead of stretching to both edges. The
+    // limiting edge is therefore the one with the larger pixels-per-inch ratio.
+    return Math.max(
         params.width / Math.max(widthInches, Number.EPSILON),
         params.height / Math.max(heightInches, Number.EPSILON)
     );

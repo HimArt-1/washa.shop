@@ -23,7 +23,7 @@ describe("structured public error mapping", () => {
             "ARTWORK_PRINT_VALIDATION_FAILED": {
               "retryAfterMs": null,
               "userAction": "edit_prompt",
-              "userMessage": "التصميم لا يستوفي متطلبات الطباعة. أعد المحاولة بوصف مختلف قليلاً.",
+              "userMessage": "تعذر اعتماد ملف الطباعة بالدقة والمساحة الآمنة المطلوبة. صغّر مقاس الطباعة أو عدّل الوصف ثم جرّب مرة أخرى.",
             },
             "ARTWORK_TEXT_POLICY_FAILED": {
               "nonRetryableMessage": "تعذّر اعتماد التصميم بسبب النص. عدّل الوصف أو تواصل مع الدعم.",

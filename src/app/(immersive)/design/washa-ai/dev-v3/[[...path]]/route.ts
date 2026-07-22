@@ -48,7 +48,7 @@ function injectPromptNativeTags(indexHtml: string) {
 
     const tags = [
         ...createWashaAiDevGenerationMetaTags("dev-v3"),
-        `<link rel="manifest" href="${APP_PATH}/manifest.webmanifest" />`,
+        `<link rel="manifest" href="${APP_PATH}/manifest.webmanifest" crossorigin="use-credentials" />`,
         '<meta name="application-name" content="WASHA AI Prompt Native" />',
         '<meta name="apple-mobile-web-app-title" content="WASHA AI V3" />',
         '<meta name="theme-color" content="#14362F" />',

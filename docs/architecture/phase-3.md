@@ -32,7 +32,7 @@ quota-safety flag remains at its default
 | Code | Public message | User action | Default retry | Effective (flag off) |
 |---|---|---|---:|---|
 | `ARTWORK_PLACEMENT_INVALID` | تعذر وضع التصميم داخل مساحة الطباعة الآمنة. استخدم «تعديل الخيارات» لضبط الحجم والموضع. | `none` | — | `none` |
-| `ARTWORK_PRINT_VALIDATION_FAILED` | التصميم لا يستوفي متطلبات الطباعة. أعد المحاولة بوصف مختلف قليلاً. | `edit_prompt` | — | `edit_prompt` |
+| `ARTWORK_PRINT_VALIDATION_FAILED` | تعذر اعتماد ملف الطباعة بالدقة والمساحة الآمنة المطلوبة. صغّر مقاس الطباعة أو عدّل الوصف ثم جرّب مرة أخرى. | `edit_prompt` | — | `edit_prompt` |
 | `ARTWORK_TEXT_POLICY_FAILED` | التصميم يحتوي نصًا غير مطابق. سنعيد التوليد تلقائيًا. | `auto_retry` | 1 s | `wait_and_retry` |
 | `ARTWORK_VERIFICATION_UNAVAILABLE` | اكتمل التصميم لكن تعذّر التحقق من النص. سنعيد المحاولة تلقائيًا. | `auto_retry` | 2 s | `wait_and_retry` |
 | `AUTH_FORBIDDEN` | لا يملك المستخدم صلاحية إكمال العملية. | `none` | — | `none` |
