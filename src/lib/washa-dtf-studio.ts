@@ -15,9 +15,10 @@ export const WASHA_DTF_MODEL =
         GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     }).model;
 
-export function getWashaDtfGenAiClient() {
+export function getWashaDtfGenAiClient(apiKeyOverride?: string) {
     const apiKey = (
-        process.env.GEMINI_API_KEY
+        apiKeyOverride
+        || process.env.GEMINI_API_KEY
         || process.env.GOOGLE_GENERATIVE_AI_API_KEY
         || ""
     ).trim();

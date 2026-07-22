@@ -19,6 +19,7 @@ const isPublicRoute = createRouteMatcher([
 // Routes that need auth state available but shouldn't redirect unauthenticated users
 const isAuthAwareApiRoute = createRouteMatcher([
     '/api/washa-dtf-studio(.*)',
+    '/api/washa-ai-v4(.*)',
 ]);
 
 // These catch-all routes serve an auth-aware HTML shell as well as PWA files.
@@ -28,6 +29,7 @@ const isAuthAwareWashaAiDevRoute = createRouteMatcher([
     '/design/washa-ai/dev(.*)',
     '/design/washa-ai/dev-v2(.*)',
     '/design/washa-ai/dev-v3(.*)',
+    '/design/washa-ai/dev-v4(.*)',
 ]);
 
 function nextWithPathname(req: NextRequest) {
@@ -85,6 +87,7 @@ export const config = {
         '/design/washa-ai/dev/:path*',
         '/design/washa-ai/dev-v2/:path*',
         '/design/washa-ai/dev-v3/:path*',
+        '/design/washa-ai/dev-v4/:path*',
         // Skip Next.js internals and all static files
         '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
         // Always run for API routes

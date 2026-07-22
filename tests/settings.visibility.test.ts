@@ -73,6 +73,8 @@ describe("settings visibility normalization", () => {
                                 design_piece_generation_public: "true",
                                 hero_washa_ai_v3_button: "1",
                                 washa_ai_dev_v3_access: "link",
+                                hero_washa_ai_v4_button: "1",
+                                washa_ai_dev_v4_access: "link",
                             },
                         },
                     ],
@@ -88,6 +90,8 @@ describe("settings visibility normalization", () => {
         expect(visibility.design_piece_generation_public).toBe(true);
         expect(visibility.hero_washa_ai_v3_button).toBe(true);
         expect(visibility.washa_ai_dev_v3_access).toBe("link");
+        expect(visibility.hero_washa_ai_v4_button).toBe(true);
+        expect(visibility.washa_ai_dev_v4_access).toBe("link");
     });
 
     it("normalizes visibility values in getSiteSettings too", async () => {
@@ -140,6 +144,34 @@ describe("settings visibility normalization", () => {
 
         expect(visibility.hero_washa_ai_v3_button).toBe(false);
         expect(visibility.washa_ai_dev_v3_access).toBe("admin");
+    });
+
+    it("keeps the V4 availability and hero entry independent from older WASHA AI settings", async () => {
+        mockCreateClient.mockReturnValue({
+            from: vi.fn(() => ({
+                select: vi.fn(async () => ({
+                    data: [{
+                        key: "visibility",
+                        value: {
+                            design_piece: false,
+                            design_piece_dtf_studio_switch: false,
+                            hero_washa_ai_v3_button: false,
+                            washa_ai_dev_v3_access: "disabled",
+                            hero_washa_ai_v4_button: true,
+                            washa_ai_dev_v4_access: "link",
+                        },
+                    }],
+                    error: null,
+                })),
+            })),
+        });
+
+        const visibility = await getPublicVisibility();
+
+        expect(visibility.design_piece).toBe(false);
+        expect(visibility.washa_ai_dev_v3_access).toBe("disabled");
+        expect(visibility.hero_washa_ai_v4_button).toBe(true);
+        expect(visibility.washa_ai_dev_v4_access).toBe("link");
     });
 
     it("normalizes Washa AI subscriber, guest, and booth generation limits", async () => {
@@ -206,6 +238,8 @@ describe("settings visibility normalization", () => {
 
         expect(settings.visibility.hero_washa_ai_v3_button).toBe(false);
         expect(settings.visibility.washa_ai_dev_v3_access).toBe("admin");
+        expect(settings.visibility.hero_washa_ai_v4_button).toBe(false);
+        expect(settings.visibility.washa_ai_dev_v4_access).toBe("admin");
         expect(settings.generation_mode).toBe("primary");
         expect(settings.quota_charging).toEqual({
             auto: true,

@@ -34,6 +34,7 @@ type VisibilityState = {
     hero_auth_buttons: boolean;
     hero_washa_ai_button: boolean;
     hero_washa_ai_v3_button: boolean;
+    hero_washa_ai_v4_button: boolean;
     hero_join_artist_button: boolean;
     design_piece: boolean;
     design_piece_dtf_studio_switch: boolean;
@@ -41,6 +42,7 @@ type VisibilityState = {
     washa_ai_dev_access: WashaAiDevAccessMode;
     washa_ai_dev_v2_access: WashaAiDevAccessMode;
     washa_ai_dev_v3_access: WashaAiDevAccessMode;
+    washa_ai_dev_v4_access: WashaAiDevAccessMode;
 };
 
 const WASHA_AI_DEV_ACCESS_OPTIONS: Array<{ value: WashaAiDevAccessMode; label: string; description: string }> = [
@@ -434,6 +436,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
         hero_washa_ai_v3_button: settings.visibility.hero_washa_ai_v3_button ?? false,
+        hero_washa_ai_v4_button: settings.visibility.hero_washa_ai_v4_button ?? false,
         hero_join_artist_button: settings.visibility.hero_join_artist_button ?? false,
         design_piece: settings.visibility.design_piece ?? true,
         design_piece_dtf_studio_switch: settings.visibility.design_piece_dtf_studio_switch ?? true,
@@ -441,6 +444,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         washa_ai_dev_access: settings.visibility.washa_ai_dev_access ?? "admin",
         washa_ai_dev_v2_access: settings.visibility.washa_ai_dev_v2_access ?? "admin",
         washa_ai_dev_v3_access: settings.visibility.washa_ai_dev_v3_access ?? "admin",
+        washa_ai_dev_v4_access: settings.visibility.washa_ai_dev_v4_access ?? "admin",
     });
     const [washaAi, setWashaAi] = useState({
         dtf_daily_quota_limit: settings.washa_ai?.dtf_daily_quota_limit ?? 5,
@@ -674,6 +678,17 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         })}
                     />
                     <Toggle
+                        label="نافذة WASHA AI v4 في هيرو الصفحة الرئيسية"
+                        checked={visibility.hero_washa_ai_v4_button}
+                        onChange={(enabled) => setVisibility({
+                            ...visibility,
+                            hero_washa_ai_v4_button: enabled,
+                            washa_ai_dev_v4_access: enabled && visibility.washa_ai_dev_v4_access !== "link"
+                                ? "link"
+                                : visibility.washa_ai_dev_v4_access,
+                        })}
+                    />
+                    <Toggle
                         label="زر «انضم كفنان» في الهيرو"
                         checked={visibility.hero_join_artist_button ?? false}
                         onChange={(v) => setVisibility({ ...visibility, hero_join_artist_button: v })}
@@ -722,8 +737,19 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                         : false,
                                 })}
                             />
+                            <DevAccessSelect
+                                label="/design/washa-ai/dev-v4"
+                                value={visibility.washa_ai_dev_v4_access}
+                                onChange={(value) => setVisibility({
+                                    ...visibility,
+                                    washa_ai_dev_v4_access: value,
+                                    hero_washa_ai_v4_button: value === "link"
+                                        ? visibility.hero_washa_ai_v4_button
+                                        : false,
+                                })}
+                            />
                             <p className="rounded-xl border border-gold/10 bg-surface/50 px-3 py-2 text-xs leading-5 text-theme-subtle">
-                                إظهار V3 في الهيرو يضبط وصولها تلقائيًا على «متاحة بالرابط». تعطيل المسار أو حصره بالمشرفين يخفي زر الهيرو فورًا.
+                                إظهار V3 أو V4 في الهيرو يضبط وصول النسخة تلقائيًا على «متاحة بالرابط». تعطيل المسار أو حصره بالمشرفين يخفي نافذته فورًا.
                             </p>
                         </div>
                     </div>

@@ -67,6 +67,7 @@ export const premiumDesignBriefSchema = z.object({
     mainText: optionalBriefText(250),
     secondaryText: optionalBriefText(250),
     typographyStyle: typographyStyleSchema,
+    customTypographyStyle: optionalBriefText(160),
     printMethod: printMethodSchema,
     printFinish: printFinishSchema,
     customPrintFinish: optionalBriefText(160),
@@ -88,11 +89,24 @@ export const premiumDesignBriefSchema = z.object({
             message: "اكتب نوع التشطيب المطلوب",
         });
     }
+    if (value.typographyStyle === "custom" && !value.customTypographyStyle) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["customTypographyStyle"],
+            message: "اكتب أسلوب الخط المطلوب",
+        });
+    }
 });
 
 export type PremiumDesignBrief = z.infer<typeof premiumDesignBriefSchema>;
 
-export type PremiumPrintPosition = "chest" | "back" | "shoulder_right" | "shoulder_left";
+export type PremiumPrintPosition =
+    | "front"
+    | "back"
+    | "left_chest"
+    | "right_chest"
+    | "full_back"
+    | "custom";
 
 export const premiumBackgroundHex: Record<PremiumDesignBrief["background"], string> = {
     ice_vanilla: "#F4F0E6",
@@ -102,14 +116,16 @@ export const premiumBackgroundHex: Record<PremiumDesignBrief["background"], stri
 };
 
 export const premiumPrintPlacementConstraints: Record<PremiumPrintPosition, {
-    garmentView: PremiumDesignBrief["garmentView"];
+    garmentView: PremiumDesignBrief["garmentView"] | null;
     maxWidth: number;
     maxHeight: number;
 }> = {
-    chest: { garmentView: "front", maxWidth: 45, maxHeight: 55 },
-    back: { garmentView: "back", maxWidth: 45, maxHeight: 60 },
-    shoulder_right: { garmentView: "front", maxWidth: 15, maxHeight: 15 },
-    shoulder_left: { garmentView: "front", maxWidth: 15, maxHeight: 15 },
+    front: { garmentView: "front", maxWidth: 45, maxHeight: 55 },
+    back: { garmentView: "back", maxWidth: 40, maxHeight: 40 },
+    left_chest: { garmentView: "front", maxWidth: 15, maxHeight: 15 },
+    right_chest: { garmentView: "front", maxWidth: 15, maxHeight: 15 },
+    full_back: { garmentView: "back", maxWidth: 45, maxHeight: 60 },
+    custom: { garmentView: null, maxWidth: 45, maxHeight: 60 },
 };
 
 export function getPremiumDesignBriefPlacementError(
@@ -117,8 +133,8 @@ export function getPremiumDesignBriefPlacementError(
     printPosition: PremiumPrintPosition
 ) {
     const constraint = premiumPrintPlacementConstraints[printPosition];
-    if (brief.garmentView !== constraint.garmentView) {
-        return printPosition === "back"
+    if (constraint.garmentView && brief.garmentView !== constraint.garmentView) {
+        return printPosition === "back" || printPosition === "full_back"
             ? "منظور القطعة يجب أن يكون خلفياً لطباعة الظهر"
             : "منظور القطعة يجب أن يكون أمامياً لهذا الموضع";
     }
@@ -132,10 +148,13 @@ export function createPremiumDesignBriefDefaults(input?: {
     printPosition?: PremiumPrintPosition | null;
     printSize?: "large" | "small" | null;
 }): PremiumDesignBrief {
-    const isShoulder = input?.printPosition === "shoulder_left" || input?.printPosition === "shoulder_right";
+    const isChest = input?.printPosition === "left_chest" || input?.printPosition === "right_chest";
+    const isFullBack = input?.printPosition === "full_back";
     const isSmall = input?.printSize === "small";
-    const dimensions = isShoulder
+    const dimensions = isChest
         ? { width: 10, height: 10 }
+        : isFullBack
+            ? { width: 40, height: 45 }
         : isSmall
             ? { width: 18, height: 18 }
             : { width: 40, height: 27 };
@@ -148,7 +167,7 @@ export function createPremiumDesignBriefDefaults(input?: {
         composition: "centered",
         visualMovement: "center_outward",
         heroPosition: "left",
-        garmentView: input?.printPosition === "back" ? "back" : "front",
+        garmentView: input?.printPosition === "back" || input?.printPosition === "full_back" ? "back" : "front",
         designWidth: dimensions.width,
         designHeight: dimensions.height,
         detailOne: "",
@@ -157,6 +176,7 @@ export function createPremiumDesignBriefDefaults(input?: {
         mainText: "",
         secondaryText: "",
         typographyStyle: "modern_sans_serif",
+        customTypographyStyle: "",
         printMethod: "dtf",
         printFinish: "matte",
         customPrintFinish: "",

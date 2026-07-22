@@ -15,6 +15,7 @@ export type PremiumDesignPromptInput = {
     garmentColorName: string;
     garmentColorHex?: string | null;
     printPosition: PremiumPrintPosition;
+    customPrintPosition?: string | null;
     styleName: string;
     artStyleName: string;
     artworkColors: PremiumArtworkColor[];
@@ -90,11 +91,24 @@ const HERO_POSITION_LABELS: Record<PremiumDesignBrief["heroPosition"], string> =
 };
 
 const PLACEMENT_LABELS: Record<PremiumPrintPosition, string> = {
-    chest: "FRONT CHEST",
-    back: "FULL BACK",
-    shoulder_right: "RIGHT SHOULDER",
-    shoulder_left: "LEFT SHOULDER",
+    front: "FRONT",
+    back: "BACK",
+    left_chest: "LEFT CHEST",
+    right_chest: "RIGHT CHEST",
+    full_back: "FULL BACK",
+    custom: "CUSTOM POSITION",
 };
+
+function resolvePrintPosition(input: PremiumDesignPromptInput) {
+    if (input.printPosition !== "custom") return PLACEMENT_LABELS[input.printPosition];
+    return `${PLACEMENT_LABELS.custom}: ${clean(input.customPrintPosition)}`;
+}
+
+function resolveTypographyStyle(brief: PremiumDesignBrief) {
+    return brief.typographyStyle === "custom"
+        ? `CUSTOM: ${clean(brief.customTypographyStyle)}`
+        : TYPOGRAPHY_LABELS[brief.typographyStyle];
+}
 
 function resolvePrintFinish(brief: PremiumDesignBrief) {
     return brief.printFinish === "custom"
@@ -116,6 +130,9 @@ export function buildPremiumDesignRequestPrompt(input: PremiumDesignPromptInput)
     const brief = premiumDesignBriefSchema.parse(input.brief);
     const placementError = getPremiumDesignBriefPlacementError(brief, input.printPosition);
     if (placementError) throw new Error(placementError);
+    if (input.printPosition === "custom" && !clean(input.customPrintPosition)) {
+        throw new Error("اكتب موضع الطباعة المخصص");
+    }
 
     const width = formatDimension(brief.designWidth);
     const height = formatDimension(brief.designHeight);
@@ -200,7 +217,7 @@ ${visualStyle}
 Typography:
 - Main text: ${exactText(brief.mainText)}
 - Secondary text: ${exactText(brief.secondaryText)}
-- Typography style: ${TYPOGRAPHY_LABELS[brief.typographyStyle]}
+- Typography style: ${resolveTypographyStyle(brief)}
 - Do not create additional wording and do not generate fake text.
 
 # 4. T-SHIRT SPECIFICATIONS
@@ -215,7 +232,7 @@ Fabric:
 
 # 5. PRINT PLACEMENT
 
-- Placement: ${PLACEMENT_LABELS[input.printPosition]}
+- Placement: ${resolvePrintPosition(input)}
 - Design width: ${width} cm
 - Design height: ${height} cm
 - Keep the artwork at the correct proportional scale.
@@ -281,7 +298,7 @@ Design idea: ${clean(brief.designIdea)}
 T-shirt color: ${garmentColor}
 T-shirt view: ${brief.garmentView.toUpperCase()}
 Hero placement: ${HERO_POSITION_LABELS[brief.heroPosition]}
-Print placement: ${PLACEMENT_LABELS[input.printPosition]}
+Print placement: ${resolvePrintPosition(input)}
 Design width: ${width} cm
 Design height: ${height} cm
 Detail 01: ${clean(brief.detailOne)}

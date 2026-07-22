@@ -14,6 +14,7 @@ interface HeroProps {
   showAuthButtons?: boolean;
   showWashaAiButton?: boolean;
   showWashaAiV3Button?: boolean;
+  showWashaAiV4Button?: boolean;
   showJoinArtistButton?: boolean;
 }
 
@@ -55,6 +56,7 @@ export function Hero({
   showAuthButtons = true,
   showWashaAiButton = false,
   showWashaAiV3Button = false,
+  showWashaAiV4Button = false,
   showJoinArtistButton = false,
 }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -475,7 +477,7 @@ export function Hero({
         </motion.div>
 
         {/* CTA Buttons — تظهر فقط عند تفعيلها من الإعدادات */}
-        {(showAuthButtons || showWashaAiButton || showWashaAiV3Button) && (
+        {(showAuthButtons || showWashaAiButton || showWashaAiV3Button || showWashaAiV4Button) && (
           <motion.div
             className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4"
             initial={{ opacity: 0, y: 30 }}
@@ -571,12 +573,33 @@ export function Hero({
                     </span>
                   </motion.button>
                 ) : null}
+                {showWashaAiV4Button ? (
+                  <motion.button
+                    type="button"
+                    className="group relative overflow-hidden rounded-2xl border px-8 py-4 font-bold transition-transform duration-300 active:scale-[0.98]"
+                    style={{
+                      borderColor: "rgba(205, 211, 194, 0.38)",
+                      background: "rgba(45, 55, 48, 0.9)",
+                      color: "rgba(248, 245, 237, 0.97)",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.09)",
+                    }}
+                    whileHover={{ y: -2 }}
+                    onClick={() => router.push("/design/washa-ai/dev-v4")}
+                    suppressHydrationWarning
+                  >
+                    <span className="relative z-10 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      WASHA AI v4
+                      <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>←</motion.span>
+                    </span>
+                  </motion.button>
+                ) : null}
               </div>
             </SignedIn>
             <SignedOut>
               <div className="flex flex-col items-center gap-8">
                 {/* ═══ Outer Radiant Halo ═══ */}
-                {showWashaAiButton || showWashaAiV3Button ? (
+                {showWashaAiButton || showWashaAiV3Button || showWashaAiV4Button ? (
                   <div className="flex w-full flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center">
                 {showWashaAiButton ? (
                   <div className="relative">
@@ -728,6 +751,40 @@ export function Hero({
                         <p className="text-2xl font-black tracking-tight text-[#f8f3e5]">WASHA AI v3</p>
                         <p className="mt-2 text-xs leading-6 text-[#d8d2bf]/75">تصميم شفاف أصلي وموكب واقعي بخط توليد مستقل.</p>
                         <span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#ded3a5]">
+                          افتح النسخة
+                          <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>←</motion.span>
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                ) : null}
+                {showWashaAiV4Button ? (
+                  <motion.button
+                    type="button"
+                    className="group relative min-h-[196px] w-full overflow-hidden rounded-[2.5rem] border px-8 py-8 text-right transition-transform duration-500 active:scale-[0.98] sm:w-[280px]"
+                    style={{
+                      background: "linear-gradient(145deg, rgba(39, 48, 42, 0.97), rgba(76, 88, 76, 0.92))",
+                      borderColor: "rgba(201, 209, 191, 0.34)",
+                      boxShadow: "0 22px 48px rgba(24, 31, 27, 0.22), inset 0 1px 0 rgba(255,255,255,0.09)",
+                    }}
+                    whileHover={{ y: -4 }}
+                    onClick={() => router.push("/design/washa-ai/dev-v4")}
+                    suppressHydrationWarning
+                  >
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(218,223,205,0.13),transparent_44%)]" />
+                    <div className="relative flex h-full flex-col justify-between gap-8">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]">
+                          <Sparkles className="h-4 w-4 text-[#d4dbc9]" />
+                        </span>
+                        <span className="border border-[#d4dbc9]/20 bg-[#d4dbc9]/10 px-3 py-1 font-mono text-[10px] font-bold tracking-[0.18em] text-[#d4dbc9]">
+                          4:5 BOARD ENGINE
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-black tracking-tight text-[#f8f5ed]">WASHA AI v4</p>
+                        <p className="mt-2 text-xs leading-6 text-[#dde0d7]/75">لوحة اعتماد كاملة بتوليد مباشر مستقل وعالي الدقة.</p>
+                        <span className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#d4dbc9]">
                           افتح النسخة
                           <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>←</motion.span>
                         </span>

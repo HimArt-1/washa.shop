@@ -145,10 +145,11 @@ function getOpenAIBoardSize(model: string) {
 async function generateWithResolvedProvider(input: {
     prompt: string;
     configuration: WashaDtfProviderConfiguration;
+    genAiApiKey?: string;
 }) {
     const { configuration } = input;
     if (configuration.provider === "genai") {
-        const response = await getWashaDtfGenAiClient().models.generateContent({
+        const response = await getWashaDtfGenAiClient(input.genAiApiKey).models.generateContent({
             model: configuration.model,
             contents: input.prompt,
             config: {
@@ -192,6 +193,7 @@ export async function generateBoardProviderImage(input: {
     prompt: string;
     configuration: WashaDtfProviderConfiguration;
     traceId: string;
+    genAiApiKey?: string;
 }): Promise<BoardProviderImage> {
     const provider = input.configuration.provider;
     if (

@@ -66,13 +66,6 @@ import {
     getSmartStoreStockStatus,
     isSmartStoreSizeOrderable,
 } from "@/lib/smart-store-inventory";
-import {
-    createPremiumDesignBriefDefaults,
-    getPremiumDesignBriefPlacementError,
-    premiumDesignBriefSchema,
-    type PremiumDesignBrief,
-} from "@/lib/premium-design-request";
-import { PremiumDesignBriefForm } from "./PremiumDesignBriefForm";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -89,7 +82,6 @@ interface WizardState {
     colorPackage: CustomDesignColorPackage | null;
     customColors: string[];
     textPrompt: string;
-    premiumBrief: PremiumDesignBrief;
     imageFile: File | null;
     imagePreview: string | null;
     printPosition: PrintPosition | null;
@@ -113,7 +105,6 @@ const INITIAL_STATE: WizardState = {
     colorPackage: null,
     customColors: [],
     textPrompt: "",
-    premiumBrief: createPremiumDesignBriefDefaults(),
     imageFile: null,
     imagePreview: null,
     printPosition: null,
@@ -289,30 +280,19 @@ export function DesignYourPieceWizard({
         const colorPackage = preset.color_package_id ? colorPackages.find((item) => item.id === preset.color_package_id) ?? null : null;
         const studioItem = preset.studio_item_id ? studioItems.find((item) => item.id === preset.studio_item_id) ?? null : null;
 
-        setState((current) => {
-            const printPosition = preset.print_position ?? current.printPosition;
-            const printSize = preset.print_size ?? current.printSize;
-            const briefDefaults = createPremiumDesignBriefDefaults({ printPosition, printSize });
-            return {
-                ...current,
-                preset,
-                garment: garment ?? current.garment,
-                style: style ?? current.style,
-                artStyle: artStyle ?? current.artStyle,
-                colorPackage: colorPackage ?? current.colorPackage,
-                studioItem: studioItem ?? current.studioItem,
-                method: preset.design_method ?? current.method,
-                printPosition,
-                printSize,
-                premiumBrief: {
-                    ...current.premiumBrief,
-                    garmentView: briefDefaults.garmentView,
-                    designWidth: briefDefaults.designWidth,
-                    designHeight: briefDefaults.designHeight,
-                },
-                submissionError: null,
-            };
-        });
+        setState((current) => ({
+            ...current,
+            preset,
+            garment: garment ?? current.garment,
+            style: style ?? current.style,
+            artStyle: artStyle ?? current.artStyle,
+            colorPackage: colorPackage ?? current.colorPackage,
+            studioItem: studioItem ?? current.studioItem,
+            method: preset.design_method ?? current.method,
+            printPosition: preset.print_position ?? current.printPosition,
+            printSize: preset.print_size ?? current.printSize,
+            submissionError: null,
+        }));
     }, [artStyles, colorPackages, garments, studioItems, styles]);
 
     useEffect(() => {
@@ -527,10 +507,6 @@ export function DesignYourPieceWizard({
                 color_package_id: state.colorPackage?.id ?? undefined,
                 color_package_name: state.colorPackage?.name ?? undefined,
                 custom_colors: state.customColors.length > 0 ? state.customColors : undefined,
-                artwork_colors: state.colorPackage?.colors?.length
-                    ? state.colorPackage.colors.slice(0, 5)
-                    : state.customColors.slice(0, 5).map((hex, index) => ({ name: `Custom ${index + 1}`, hex })),
-                premium_brief: variant === "preorder" ? state.premiumBrief : undefined,
                 print_position: state.printPosition ?? undefined,
                 print_size: state.printSize ?? undefined,
             });
@@ -560,48 +536,48 @@ export function DesignYourPieceWizard({
         const printSizeAr = state.printSize === "large" ? "مقاس كبير" : state.printSize === "small" ? "مقاس صغير" : "—";
 
         const lines = [
-            `مرحباً فريق وشّى،`,
-            `انتهيت من إعداد طلب (صمّم قطعتك) وأرغب بتأكيده.`,
+            `مرحباً فريق وشّى 👋`,
+            `لقد انتهيت للتو من تصميم قطعتي الميزة عبر ميزة (صمم قطعتك) وأرغب بتأكيد الطلب! ✨`,
             orderNumber ? `رقم الطلب المرجعي: #${orderNumber}` : "",
             "",
-            `**تفاصيل القطعة:**`,
-            `**القطعة:** ${state.garment?.name ?? "—"}`,
-            `**اللون:** ${state.color?.name ?? "—"} (${state.color?.hex_code ?? ""})`,
-            `**المقاس:** ${state.size?.name ?? "—"}`,
-            `**مكان وحجم التصميم:** ${printLocation} (${printSizeAr})`,
-            `**طريقة التصميم:** ${state.method === "from_text" ? "من الوصف النصي" : state.method === "from_image" ? "من صورة مرجعية" : "ستيديو وشّى"}`,
+            `📌 **وهذه تفاصيل قطعتي:**`,
+            `📦 **القطعة:** ${state.garment?.name ?? "—"}`,
+            `🎨 **اللون:** ${state.color?.name ?? "—"} (${state.color?.hex_code ?? ""})`,
+            `📏 **المقاس:** ${state.size?.name ?? "—"}`,
+            `📍 **مكان وحجم التصميم:** ${printLocation} (${printSizeAr})`,
+            `✍️ **طريقة التصميم:** ${state.method === "from_text" ? "من الوصف النصي" : state.method === "from_image" ? "من صورة مرجعية" : "ستيديو وشّى"}`,
         ];
 
         if (state.method === "studio" && state.studioItem) {
             lines.push(
-                `**تصميم ستيديو وشّى:** ${state.studioItem.name}`
+                `✨ **تصميم ستيديو وشّى:** ${state.studioItem.name}`
             );
             if (state.studioItem.price > 0) {
-                lines.push(`**السعر الإضافي للتصميم:** +${state.studioItem.price} ر.س`);
+                lines.push(`💰 **السعر الإضافي للتصميم:** +${state.studioItem.price} ر.س`);
             }
         } else {
             lines.push(
-                `**نمط التصميم:** ${state.style?.name ?? "—"}`,
-                `**أسلوب الرسم:** ${state.artStyle?.name ?? "—"}`
+                `🖌️ **نمط التصميم:** ${state.style?.name ?? "—"}`,
+                `🎭 **أسلوب الرسم:** ${state.artStyle?.name ?? "—"}`
             );
 
             if (state.colorPackage) {
-                lines.push(`**الألوان المفضلة:** باقة ${state.colorPackage.name}`);
+                lines.push(`🌈 **الألوان المفضلة:** باقة ${state.colorPackage.name}`);
             } else if (state.customColors.length > 0) {
-                lines.push(`**ألوان مخصصة:** ${state.customColors.join(" - ")}`);
+                lines.push(`🎨 **ألوان مخصصة:** ${state.customColors.join(" - ")}`);
             } else {
-                lines.push(`**الألوان المفضلة:** حسب رؤية المصمم`);
+                lines.push(`🌈 **الألوان المفضلة:** حسب رؤية المصمم`);
             }
 
             if (state.textPrompt) {
-                lines.push("", `**ما أتخيله للتصميم:**`, `"${state.textPrompt}"`);
+                lines.push("", `📝 **ما أتخيله للتصميم:**`, `"${state.textPrompt}"`);
             }
             if (state.imagePreview) {
-                lines.push("", "أرفقت صورة مرجعية توضّح الفكرة المطلوبة.");
+                lines.push("", "📸 لقد قمت بإرفاق صورة توضح الفكرة التي أريدها.");
             }
         }
 
-        lines.push("", "بانتظار تأكيد التفاصيل وتجهيز الطلب، شكرًا لكم.");
+        lines.push("", "بانتظار تواصلكم معي لتأكيد التفاصيل وتجهيز الطلب، شكراً لكم! 🤍");
 
         const summaryText = lines.join("\n");
 
@@ -628,7 +604,7 @@ export function DesignYourPieceWizard({
         }
 
         setState((s) => ({ ...s, isSending: false, sent: true }));
-    }, [state, variant]);
+    }, [state]);
 
     if (checkingOrder) {
         return (
@@ -646,48 +622,42 @@ export function DesignYourPieceWizard({
     return (
         <div className="space-y-8">
             {/* ─── Header ─── */}
-            {variant === "preorder" ? (
-                <motion.div
-                    initial={{ opacity: 0, y: -16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ type: "spring", stiffness: 110, damping: 20 }}
-                    className="grid gap-8 border-y border-theme-soft py-8 text-right md:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.6fr)] md:items-end"
-                >
-                    <div>
-                        <p className="font-mono text-[10px] font-bold tracking-[0.2em] text-gold">CUSTOM DESIGN REQUEST / 02</p>
-                        <h1 className="mt-3 text-3xl font-black tracking-tight text-theme sm:text-4xl">طلب تصميم مبني على مواصفة واضحة</h1>
-                        <p className="mt-4 max-w-2xl text-sm leading-7 text-theme-subtle sm:text-base">
-                            اختر القطعة ثم ابنِ Brief تفصيليًا. نستلمه كلّوحة اعتماد 4:5 تشمل الموكاب، لقطات التفاصيل، التصميم الكامل، والقياسات.
-                        </p>
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center"
+            >
+                <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs font-bold text-gold">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
+                        </span>
+                        نموذج تجريبي قيد التطوير (Beta)
                     </div>
-                    <div className="grid grid-cols-3 divide-x divide-x-reverse divide-theme-soft border border-theme-soft bg-theme-subtle px-2 py-4">
-                        <div className="px-3"><p className="font-mono text-lg font-bold text-gold">4:5</p><p className="mt-1 text-[10px] text-theme-faint">لوحة رأسية</p></div>
-                        <div className="px-3"><p className="font-mono text-lg font-bold text-theme">04</p><p className="mt-1 text-[10px] text-theme-faint">مناطق ثابتة</p></div>
-                        <div className="px-3"><p className="font-mono text-lg font-bold text-theme">4K</p><p className="mt-1 text-[10px] text-theme-faint">دقة الإخراج</p></div>
-                    </div>
-                </motion.div>
-            ) : (
-                <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-                    <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs font-bold text-gold">
-                            <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-75" />
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
-                            </span>
-                            نموذج تجريبي قيد التطوير (Beta)
-                        </div>
-                        {dtfStudioShortcutEnabled ? (
-                            <Link href="/design/washa-ai" className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15">
-                                <Wand2 className="h-3.5 w-3.5" />
-                                افتح WASHA AI
-                                <ArrowLeft className="h-3.5 w-3.5" />
-                            </Link>
-                        ) : null}
-                    </div>
-                    <h1 className="text-3xl font-bold text-gold sm:text-4xl lg:text-5xl">صمّم قطعتك بنفسك</h1>
-                    <p className="mx-auto mt-3 max-w-xl text-sm text-theme-subtle sm:text-base">اختر قطعتك ولونها، حدد نمط التصميم، وأرسل طلبك — ننفذه لك بالضبط</p>
-                </motion.div>
-            )}
+                    {dtfStudioShortcutEnabled ? (
+                        <Link
+                            href="/design/washa-ai"
+                            className="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-bold text-sky-100 transition-colors hover:border-sky-300/35 hover:bg-sky-500/15"
+                        >
+                            <Wand2 className="h-3.5 w-3.5" />
+                            افتح WASHA AI
+                            <ArrowLeft className="h-3.5 w-3.5" />
+                        </Link>
+                    ) : null}
+                </div>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-l from-gold via-gold-light to-gold bg-clip-text text-transparent">
+                    صمّم قطعتك بنفسك
+                </h1>
+                {variant === "preorder" ? (
+                    <p className="text-gold/90 mt-2 text-xs font-bold sm:text-sm">مسار طلب مسبق</p>
+                ) : null}
+                <p className="text-theme-subtle mt-3 text-sm sm:text-base max-w-xl mx-auto">
+                    {variant === "preorder"
+                        ? "اختر القطعة واللون والمقاس والنمط، ثم أرسل طلبك — يراجعه فريق التصميم ويُحدَّث على شاشة التتبع حتى الاعتماد."
+                        : "اختر قطعتك ولونها، حدد نمط التصميم، وأرسل طلبك — ننفذه لك بالضبط"}
+                </p>
+            </motion.div>
 
             {/* ─── Progress Bar ─── */}
             <div className="max-w-2xl mx-auto">
@@ -724,7 +694,7 @@ export function DesignYourPieceWizard({
                 </div>
             </div>
 
-            {state.step === 1 && (featuredPresets.length > 0 || state.preset) && (
+            {(featuredPresets.length > 0 || state.preset) && (
                 <div className="max-w-5xl mx-auto">
                     <div className="rounded-3xl border border-gold/15 bg-[linear-gradient(135deg,rgba(206,174,127,0.10),rgba(255,255,255,0.02))] p-5 sm:p-6">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -825,7 +795,7 @@ export function DesignYourPieceWizard({
             )}
 
             {/* ─── Step Content ─── */}
-            <div className={`${variant === "preorder" ? "max-w-6xl" : "max-w-4xl"} mx-auto`}>
+            <div className="max-w-4xl mx-auto">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={state.step}
@@ -850,31 +820,8 @@ export function DesignYourPieceWizard({
                                 positions={positions}
                                 selectedPosition={state.printPosition}
                                 selectedSize={state.printSize}
-                                onSelectPosition={(p) => setState((s) => {
-                                    const briefDefaults = createPremiumDesignBriefDefaults({ printPosition: p, printSize: s.printSize });
-                                    return {
-                                        ...s,
-                                        printPosition: p,
-                                        premiumBrief: {
-                                            ...s.premiumBrief,
-                                            garmentView: briefDefaults.garmentView,
-                                            designWidth: briefDefaults.designWidth,
-                                            designHeight: briefDefaults.designHeight,
-                                        },
-                                    };
-                                })}
-                                onSelectSize={(sz) => setState((s) => {
-                                    const briefDefaults = createPremiumDesignBriefDefaults({ printPosition: s.printPosition, printSize: sz });
-                                    return {
-                                        ...s,
-                                        printSize: sz,
-                                        premiumBrief: {
-                                            ...s.premiumBrief,
-                                            designWidth: briefDefaults.designWidth,
-                                            designHeight: briefDefaults.designHeight,
-                                        },
-                                    };
-                                })}
+                                onSelectPosition={(p) => setState((s) => ({ ...s, printPosition: p }))}
+                                onSelectSize={(sz) => setState((s) => ({ ...s, printSize: sz }))}
                                 onBack={goBack}
                                 onNext={goNext}
                             />
@@ -885,14 +832,6 @@ export function DesignYourPieceWizard({
                                 onSelect={(m) => setState((s) => ({ ...s, method: m }))}
                                 textPrompt={state.textPrompt}
                                 onTextChange={(t) => setState((s) => ({ ...s, textPrompt: t }))}
-                                premiumBrief={state.premiumBrief}
-                                printPosition={state.printPosition ?? "chest"}
-                                onPremiumBriefChange={(patch) => setState((s) => ({
-                                    ...s,
-                                    premiumBrief: { ...s.premiumBrief, ...patch },
-                                    textPrompt: patch.designIdea ?? s.textPrompt,
-                                }))}
-                                variant={variant}
                                 imagePreview={state.imagePreview}
                                 onImageChange={(file, preview) => setState((s) => {
                                     if (s.imagePreview) URL.revokeObjectURL(s.imagePreview);
@@ -1338,7 +1277,6 @@ function StepSize({ sizes, loading, selected, onSelect, onBack, onNext }: {
 
 function StepMethod({
     selected, onSelect, textPrompt, onTextChange, imagePreview, onImageChange,
-    premiumBrief, printPosition, onPremiumBriefChange, variant,
     studioItems, selectedStudioItem, onSelectStudioItem,
     selectedGarment, garmentStudioMockups,
     onBack, onNext
@@ -1347,10 +1285,6 @@ function StepMethod({
     onSelect: (m: "from_text" | "from_image" | "studio") => void;
     textPrompt: string;
     onTextChange: (t: string) => void;
-    premiumBrief: PremiumDesignBrief;
-    printPosition: PrintPosition;
-    onPremiumBriefChange: (patch: Partial<PremiumDesignBrief>) => void;
-    variant: "default" | "preorder";
     imagePreview: string | null;
     onImageChange: (file: File | null, preview: string | null) => void;
     studioItems: CustomDesignStudioItem[];
@@ -1368,28 +1302,21 @@ function StepMethod({
         }
     };
 
-    const parsedPremiumBrief = premiumDesignBriefSchema.safeParse(premiumBrief);
-    const premiumBriefIsValid = parsedPremiumBrief.success
-        && !getPremiumDesignBriefPlacementError(parsedPremiumBrief.data, printPosition);
     const canProceed = selected && (
-        (selected === "from_text" && (variant === "preorder" ? premiumBriefIsValid : textPrompt.trim().length > 0)) ||
-        (selected === "from_image" && !!imagePreview && (variant !== "preorder" || premiumBriefIsValid)) ||
+        (selected === "from_text" && textPrompt.trim().length > 0) ||
+        (selected === "from_image" && !!imagePreview) ||
         (selected === "studio" && !!selectedStudioItem)
     );
 
     return (
         <>
-            <StepHeader
-                title={variant === "preorder" ? "مصدر الفكرة وBrief التصميم" : "طريقة التصميم"}
-                desc={variant === "preorder" ? "ابدأ بوصف أو صورة مرجعية، ثم ثبّت مواصفات لوحة الاعتماد." : "كيف تبغى تصمم قطعتك؟"}
-            />
+            <StepHeader title="طريقة التصميم" desc="كيف تبغى تصمم قطعتك؟" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {[
-                    { id: "from_text" as const, label: "من وصف", desc: "ابنِ الفكرة من Brief مكتوب ودقيق", icon: Type },
-                    { id: "from_image" as const, label: "من صورة", desc: "أرفق مرجعًا ثم وضّح طريقة استخدامه", icon: ImageIcon },
+                    { id: "from_text" as const, label: "من نص", desc: "صف التصميم اللي تبغاه بالكلمات", icon: Type, emoji: "✍️" },
+                    { id: "from_image" as const, label: "من صورة", desc: "ارفع صورة مرجعية لتصميمك", icon: ImageIcon, emoji: "🖼️" },
                 ].map((m) => {
                     const isActive = selected === m.id;
-                    const MethodIcon = m.icon;
                     return (
                         <motion.button
                             key={m.id}
@@ -1401,9 +1328,7 @@ function StepMethod({
                 ${isActive ? "border-gold bg-gold/5" : "border-theme-soft hover:border-white/20 hover:bg-theme-faint"}
               `}
                         >
-                            <div className={`mb-4 flex h-11 w-11 items-center justify-center border ${isActive ? "border-gold/35 bg-gold/10 text-gold" : "border-theme-soft bg-theme-subtle text-theme-subtle"}`}>
-                                <MethodIcon className="h-5 w-5" />
-                            </div>
+                            <div className="text-4xl mb-4">{m.emoji}</div>
                             <p className={`text-lg font-bold ${isActive ? "text-gold" : "text-theme"}`}>{m.label}</p>
                             <p className="text-xs text-theme-subtle mt-1">{m.desc}</p>
                             {isActive && (
@@ -1418,7 +1343,7 @@ function StepMethod({
 
             {/* Text input */}
             <AnimatePresence>
-                {selected === "from_text" && variant !== "preorder" && (
+                {selected === "from_text" && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                         <textarea
                             value={textPrompt}
@@ -1429,23 +1354,6 @@ function StepMethod({
                         />
                     </motion.div>
                 )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {variant === "preorder" && (selected === "from_text" || selected === "from_image") ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
-                        transition={{ type: "spring", stiffness: 120, damping: 22 }}
-                    >
-                        <PremiumDesignBriefForm
-                            value={premiumBrief}
-                            printPosition={printPosition}
-                            onChange={onPremiumBriefChange}
-                        />
-                    </motion.div>
-                ) : null}
             </AnimatePresence>
 
             {/* Image upload */}
@@ -1524,7 +1432,7 @@ function StepMethod({
                                         );
                                     })}
                                 </div>
-                                <p className="text-xs text-theme-subtle text-center pt-2">اختيار تصميم ستيديو وشّى ينقلك مباشرة إلى تأكيد الطلب.</p>
+                                <p className="text-xs text-theme-subtle text-center pt-2">اختيارك لتصميم ستيديو وشّى سيأخذك مباشرة لتأكيد الطلب 🚀</p>
                             </div>
                         )}
                     </motion.div>
@@ -1950,7 +1858,7 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
                 onClick={() => { setShowCustom(!showCustom); onSelectPackage(null); }}
                 className={`mb-4 text-sm font-medium transition-colors ${showCustom ? "text-gold" : "text-theme-subtle hover:text-theme-soft"}`}
             >
-                تخصيص ألوان يدوياً
+                🎨 تخصيص ألوان يدوياً
             </button>
 
             <AnimatePresence>
@@ -1997,11 +1905,11 @@ function StepColorPalette({ packages, selectedPackage, onSelectPackage, customCo
 //  Step 8: Print Placement & Pricing
 // ═══════════════════════════════════════════════════════════
 
-const PRINT_POSITIONS: { id: PrintPosition; label: string; code: string; desc: string }[] = [
-    { id: "chest", label: "الصدر", code: "01", desc: "تصميم على الجهة الأمامية" },
-    { id: "back", label: "الظهر", code: "02", desc: "تصميم على الجهة الخلفية" },
-    { id: "shoulder_right", label: "الكتف الأيمن", code: "03", desc: "شعار على الكتف الأيمن" },
-    { id: "shoulder_left", label: "الكتف الأيسر", code: "04", desc: "شعار على الكتف الأيسر" },
+const PRINT_POSITIONS: { id: PrintPosition; label: string; emoji: string; desc: string }[] = [
+    { id: "chest", label: "الصدر", emoji: "👕", desc: "تصميم على الجهة الأمامية" },
+    { id: "back", label: "الظهر", emoji: "🔄", desc: "تصميم على الجهة الخلفية" },
+    { id: "shoulder_right", label: "الكتف الأيمن", emoji: "➡️", desc: "شعار على الكتف الأيمن" },
+    { id: "shoulder_left", label: "الكتف الأيسر", emoji: "⬅️", desc: "شعار على الكتف الأيسر" },
 ];
 
 const PRINT_SIZES: { id: PrintSize; label: string; desc: string; icon: any }[] = [
@@ -2145,7 +2053,7 @@ function StepPrintPlacement({ garment, positions, selectedPosition, selectedSize
                                         : "border-theme-soft hover:border-white/20 bg-theme-faint"
                                         }`}
                                 >
-                                    <div className="mb-2 font-mono text-xs font-bold tracking-[0.16em] text-theme-faint">POSITION {pos.code}</div>
+                                    <div className="text-3xl mb-2">{pos.emoji}</div>
                                     <p className={`text-sm font-bold ${isActive ? "text-gold" : "text-theme"}`}>{pos.label}</p>
                                     <p className="text-[10px] text-fg/35 mt-0.5">{pos.desc}</p>
                                     {isActive && (
@@ -2257,8 +2165,6 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
     const [previewIdx, setPreviewIdx] = useState(0);
     const presetOverrideLabels = getPresetOverrideLabels(state);
     const presetIsFullyAligned = presetOverrideLabels.length === 0;
-    const parsedPremiumBrief = premiumDesignBriefSchema.safeParse(state.premiumBrief);
-    const premiumBrief = parsedPremiumBrief.success ? parsedPremiumBrief.data : null;
 
     // Find pre-made mockup for this garment × studio item
     const mockup = (state.method === "studio" && state.garment && state.studioItem)
@@ -2288,7 +2194,7 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
                 >
                     <Check className="w-10 h-10 text-bg" />
                 </motion.div>
-                <h2 className="text-2xl font-bold text-theme mb-2">تمت الإضافة للسلة</h2>
+                <h2 className="text-2xl font-bold text-theme mb-2">تمت الإضافة للسلة! 🛒</h2>
                 <p className="text-theme-subtle max-w-md mx-auto">
                     تم تحويل تصميمك الحصري من وشّى ستيديو إلى السلة بنجاح. يمكنك استكمال الدفع الآن!
                 </p>
@@ -2320,7 +2226,7 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
                 >
                     <Check className="w-10 h-10 text-bg" />
                 </motion.div>
-                <h2 className="text-2xl font-bold text-theme mb-2">تم إرسال طلبك</h2>
+                <h2 className="text-2xl font-bold text-theme mb-2">تم إرسال طلبك! 🎉</h2>
                 <p className="text-theme-subtle max-w-md mx-auto">
                     تم إرسال تفاصيل طلبك لفريقنا. بيتواصل معاك موظفنا في أقرب وقت لتنفيذ التصميم.
                 </p>
@@ -2484,25 +2390,6 @@ function StepSubmit({ state, garmentStudioMockups, onBack, onSend }: {
                             <p className="text-sm text-theme-soft">{state.textPrompt}</p>
                         </div>
                     )}
-                    {premiumBrief ? (
-                        <div className="border-y border-theme-soft py-5">
-                            <div className="mb-4 flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="font-mono text-[10px] font-bold tracking-[0.16em] text-gold">PRODUCTION BRIEF</p>
-                                    <p className="mt-1 text-sm font-bold text-theme">مواصفات لوحة الاعتماد</p>
-                                </div>
-                                <span className="font-mono text-xs text-theme-subtle">{premiumBrief.designWidth} × {premiumBrief.designHeight} CM</span>
-                            </div>
-                            <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-                                <div><dt className="text-xs text-theme-faint">العنصر الرئيسي</dt><dd className="mt-1 text-theme">{premiumBrief.mainSubject}</dd></div>
-                                <div><dt className="text-xs text-theme-faint">التكوين</dt><dd className="mt-1 text-theme">{premiumBrief.composition}</dd></div>
-                                <div><dt className="text-xs text-theme-faint">DETAIL 01</dt><dd className="mt-1 text-theme">{premiumBrief.detailOne}</dd></div>
-                                <div><dt className="text-xs text-theme-faint">DETAIL 02</dt><dd className="mt-1 text-theme">{premiumBrief.detailTwo}</dd></div>
-                                <div><dt className="text-xs text-theme-faint">طريقة الطباعة</dt><dd className="mt-1 uppercase text-theme">{premiumBrief.printMethod.replace("_", " ")}</dd></div>
-                                <div><dt className="text-xs text-theme-faint">منظور القطعة</dt><dd className="mt-1 text-theme">{premiumBrief.garmentView === "front" ? "أمامي" : "خلفي"}</dd></div>
-                            </dl>
-                        </div>
-                    ) : null}
                     {state.imagePreview && (
                         <div className="p-4 rounded-xl bg-theme-subtle border border-theme-subtle">
                             <span className="text-xs text-theme-subtle block mb-2">الصورة المرجعية</span>

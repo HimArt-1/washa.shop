@@ -5,6 +5,7 @@ import path from "node:path";
 
 const distRoot = path.resolve("washa-dtf-studio/dist");
 const indexPath = path.join(distRoot, "index.html");
+const v4Path = path.join(distRoot, "v4.html");
 const publicBase = "/design/washa-ai/app/";
 const productionClerkFrontendApi = "clerk.washa.shop";
 
@@ -121,15 +122,16 @@ async function verifyProductionClerkInstance() {
 async function main() {
   await verifyNoCircularChunkImports();
 
-  const html = await readFile(indexPath, "utf8");
-  const references = [
-    ...html.matchAll(/(?:src|href)=["']([^"']+)["']/g),
-  ]
-    .map((match) => match[1])
-    .filter((reference) => reference.startsWith(publicBase));
+  const shellPaths = [indexPath, v4Path];
+  const shellSources = await Promise.all(shellPaths.map((shellPath) => readFile(shellPath, "utf8")));
+  const references = shellSources.flatMap((html) => [
+      ...html.matchAll(/(?:src|href)=["']([^"']+)["']/g),
+    ]
+      .map((match) => match[1])
+      .filter((reference) => reference.startsWith(publicBase)));
 
   if (references.length === 0) {
-    throw new Error(`No WASHA AI assets were found in ${indexPath}`);
+    throw new Error(`No WASHA AI assets were found in ${shellPaths.join(", ")}`);
   }
 
   const missing = [];

@@ -844,7 +844,7 @@ export function DesignOrderWorkspace({
                     {currentOrder.text_prompt ? (
                         <div className="rounded-2xl border border-theme-subtle bg-theme-faint p-4">
                             <p className="text-xs font-semibold text-theme-faint">وصف العميل</p>
-                            <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-theme">{currentOrder.text_prompt}</p>
+                            <p className="mt-3 text-sm leading-7 text-theme">{currentOrder.text_prompt}</p>
                         </div>
                     ) : null}
 
