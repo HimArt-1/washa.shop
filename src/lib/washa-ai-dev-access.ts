@@ -9,12 +9,13 @@ import {
     WASHA_AI_DEV_SURFACE_HEADER,
     WASHA_AI_DEV_SURFACE_META_NAME,
     type WashaAiDevSurface,
-} from "@/lib/washa-ai-dev-protocol";
+} from "../../shared/washa-ai-dev-protocol";
 
 export {
+    isWashaAiDevSurface,
     WASHA_AI_DEV_SIGNATURE_META_NAME,
     type WashaAiDevSurface,
-} from "@/lib/washa-ai-dev-protocol";
+} from "../../shared/washa-ai-dev-protocol";
 
 const DEV_SURFACE_PATHS: Record<WashaAiDevSurface, string> = {
     dev: "/design/washa-ai/dev",

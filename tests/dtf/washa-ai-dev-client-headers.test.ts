@@ -5,10 +5,15 @@ import {
 } from "@/lib/washa-ai-dev-access";
 import {
     WASHA_AI_DEV_SIGNATURE_META_NAME,
+    WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT,
     WASHA_AI_DEV_SURFACE_META_NAME,
     WASHA_AI_DEV_SURFACES,
-} from "@/lib/washa-ai-dev-protocol";
-import { getWashaAiDevGenerationHeadersFromDocument } from "../../washa-dtf-studio/src/lib/devGenerationSurface";
+    WASHA_AI_GENERATE_MOCKUP_ENDPOINT,
+} from "../../shared/washa-ai-dev-protocol";
+import {
+    getWashaAiDevGenerationHeadersFromDocument,
+    getWashaAiGenerateMockupEndpointFromDocument,
+} from "../../washa-dtf-studio/src/lib/devGenerationSurface";
 
 function metaDocument(values: Record<string, string>) {
     return {
@@ -44,6 +49,8 @@ describe("WASHA AI dev client generation identity", () => {
 
             expect(getWashaAiDevGenerationHeadersFromDocument(metaDocument(values)))
                 .toEqual(createWashaAiDevGenerationHeaders(surface));
+            expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument(values)))
+                .toBe(`${WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT}/${surface}`);
         }
     );
 
@@ -55,5 +62,13 @@ describe("WASHA AI dev client generation identity", () => {
         expect(getWashaAiDevGenerationHeadersFromDocument(metaDocument({
             [WASHA_AI_DEV_SIGNATURE_META_NAME]: "forged",
         }))).toEqual({});
+    });
+
+    it("uses the isolated endpoint whenever a valid dev surface marker is present", () => {
+        expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument({
+            [WASHA_AI_DEV_SURFACE_META_NAME]: "dev",
+        }))).toBe(`${WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT}/dev`);
+        expect(getWashaAiGenerateMockupEndpointFromDocument(metaDocument({})))
+            .toBe(WASHA_AI_GENERATE_MOCKUP_ENDPOINT);
     });
 });

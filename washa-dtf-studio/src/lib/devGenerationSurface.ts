@@ -1,1 +1,4 @@
-export { getWashaAiDevGenerationHeadersFromDocument } from '../../../src/lib/washa-ai-dev-protocol';
+export {
+  getWashaAiDevGenerationHeadersFromDocument,
+  getWashaAiGenerateMockupEndpointFromDocument,
+} from '../../../shared/washa-ai-dev-protocol';

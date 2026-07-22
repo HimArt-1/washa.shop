@@ -5,6 +5,8 @@ export const WASHA_AI_DEV_SURFACE_HEADER = "x-washa-ai-dev-surface";
 export const WASHA_AI_DEV_SIGNATURE_HEADER = "x-washa-ai-dev-signature";
 export const WASHA_AI_DEV_SURFACE_META_NAME = "washa-ai-dev-surface";
 export const WASHA_AI_DEV_SIGNATURE_META_NAME = "washa-ai-dev-signature";
+export const WASHA_AI_GENERATE_MOCKUP_ENDPOINT = "/api/washa-dtf-studio/generate-mockup";
+export const WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT = "/api/washa-dtf-studio/dev-generation";
 
 export function isWashaAiDevSurface(value: string | null): value is WashaAiDevSurface {
     return WASHA_AI_DEV_SURFACES.some((surface) => surface === value);
@@ -35,4 +37,17 @@ export function getWashaAiDevGenerationHeadersFromDocument(
         [WASHA_AI_DEV_SURFACE_HEADER]: surface,
         [WASHA_AI_DEV_SIGNATURE_HEADER]: signature,
     };
+}
+
+export function getWashaAiGenerateMockupEndpointFromDocument(
+    source?: MetaSource
+) {
+    const effectiveSource = source
+        ?? (typeof document === "undefined" ? null : document);
+    if (!effectiveSource) return WASHA_AI_GENERATE_MOCKUP_ENDPOINT;
+
+    const surface = readMetaContent(effectiveSource, WASHA_AI_DEV_SURFACE_META_NAME);
+    return isWashaAiDevSurface(surface)
+        ? `${WASHA_AI_DEV_GENERATE_MOCKUP_ENDPOINT}/${surface}`
+        : WASHA_AI_GENERATE_MOCKUP_ENDPOINT;
 }

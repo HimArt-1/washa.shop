@@ -438,6 +438,30 @@ describe("generate-mockup route", () => {
         }
     );
 
+    it.each([
+        ["missing referer", undefined],
+        ["external referer", "https://attacker.example/design/washa-ai/dev"],
+        ["mismatched referer", "http://localhost/design/washa-ai/dev-v2"],
+    ])("fails before mode and quota for a signed dev request with %s", async (_label, referer) => {
+        const headers: Record<string, string> = {
+            "x-request-id": `request-invalid-navigation-${_label.replaceAll(" ", "-")}`,
+            ...createWashaAiDevGenerationHeaders("dev"),
+        };
+        if (referer) headers.referer = referer;
+
+        const response = await POST(new Request(
+            "http://localhost/api/washa-dtf-studio/generate-mockup",
+            { headers }
+        ) as NextRequest);
+
+        expect(response.status).toBe(409);
+        expect(mockGetGenerationMode).not.toHaveBeenCalled();
+        expect(mockShouldChargeQuota).not.toHaveBeenCalled();
+        expect(mockReserveDailyQuota).not.toHaveBeenCalled();
+        expect(mockGenerateBoard).not.toHaveBeenCalled();
+        expect(mockGenerateMockup).not.toHaveBeenCalled();
+    });
+
     it("completes the shared claim and records board success without primary asset metadata", async () => {
         mockGetGenerationMode.mockResolvedValue("fallback");
         mockShouldChargeQuota.mockResolvedValue(false);

@@ -55,6 +55,23 @@ describe("WASHA AI dev generation isolation", () => {
     });
 
     it.each([
+        ["missing referer", undefined],
+        ["external referer", "https://attacker.example/design/washa-ai/dev"],
+        ["other surface referer", "http://localhost/design/washa-ai/dev-v2"],
+    ])("rejects a correctly signed dev identity with %s", (_label, referer) => {
+        const headers: Record<string, string> = createWashaAiDevGenerationHeaders("dev");
+        if (referer) headers.referer = referer;
+        const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
+            headers,
+        });
+
+        expect(resolveWashaAiDevGenerationIdentity(request)).toEqual({
+            kind: "invalid",
+            surface: null,
+        });
+    });
+
+    it.each([
         [{}, "missing headers"],
         [{ "x-washa-ai-dev-surface": "dev", "x-washa-ai-dev-signature": "forged" }, "forged signature"],
         [{ "x-washa-ai-dev-surface": "app", "x-washa-ai-dev-signature": "forged" }, "public app surface"],
