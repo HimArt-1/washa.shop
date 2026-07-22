@@ -261,7 +261,13 @@ export async function POST(request: NextRequest) {
             return attachDtfTraceId(bodyResult.response, traceId);
         }
 
-        const { prompt, referenceImage, garmentReferenceImage, generationContext } = bodyResult.data;
+        const {
+            prompt,
+            referenceImage,
+            garmentReferenceImage,
+            generationContext,
+            pipeline: requestedPipeline,
+        } = bodyResult.data;
         if (process.env.WASHA_PROMPT_GUARD_ENABLED === "true") {
             const promptGuardStartedAt = Date.now();
             const promptCheck = guardPrompt(prompt);
@@ -320,6 +326,14 @@ export async function POST(request: NextRequest) {
                 "لا يملك المستخدم صلاحية إكمال العملية.",
                 { retryable: false }
             );
+        }
+        const pipeline = devSurface === "dev-v3" ? "prompt_native" : "standard";
+        if (requestedPipeline !== pipeline) {
+            logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "generation_pipeline_overridden", {
+                requestedPipeline,
+                selectedPipeline: pipeline,
+                surface: devSurface,
+            });
         }
 
         const suppliedRequestId = request.headers.get("x-request-id")?.trim();
@@ -936,6 +950,7 @@ export async function POST(request: NextRequest) {
                 printOffsetX: generationContext?.printOffsetX,
                 printOffsetY: generationContext?.printOffsetY,
             },
+            pipeline,
         });
         recordWashaDtfGenerationSuccess();
         logDtfTrace(GENERATE_MOCKUP_ROUTE, traceId, "provider_completed", {

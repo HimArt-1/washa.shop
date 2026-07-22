@@ -22,10 +22,13 @@ import NeuralOrnament from './components/NeuralOrnament';
 import EntryBridge from './components/EntryBridge';
 import AuthGateModal from './components/AuthGateModal';
 
-type StudioMode = 'production' | 'dev' | 'dev-v2';
+type StudioMode = 'production' | 'dev' | 'dev-v2' | 'dev-v3';
 
 function getStudioMode(): StudioMode {
   if (typeof window === 'undefined') return 'production';
+  if (window.location.pathname.includes('/design/washa-ai/dev-v3')) {
+    return 'dev-v3';
+  }
   if (window.location.pathname.includes('/design/washa-ai/dev-v2')) {
     return 'dev-v2';
   }
@@ -100,7 +103,9 @@ function AppContent() {
 
   return (
     <>
-      {studioMode === 'dev-v2' ? (
+      {studioMode === 'dev-v3' ? (
+        <WashaDevStudioV2 onOpenGallery={() => setGalleryOpen(true)} variant="prompt-native" />
+      ) : studioMode === 'dev-v2' ? (
         <WashaDevStudioV2 onOpenGallery={() => setGalleryOpen(true)} />
       ) : studioMode === 'dev' ? (
         <WashaDevStudio onOpenGallery={() => setGalleryOpen(true)} />
@@ -144,11 +149,12 @@ function AppContent() {
 }
 
 export default function App() {
+  const studioMode = getStudioMode();
   return (
     <ErrorBoundary>
       <EntryBridge />
       <CreditsProvider>
-        <DesignProvider>
+        <DesignProvider generationPipeline={studioMode === 'dev-v3' ? 'prompt_native' : 'standard'}>
           <AppContent />
         </DesignProvider>
         <CreditPurchaseModal />

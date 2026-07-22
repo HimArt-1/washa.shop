@@ -40,7 +40,7 @@ describe("WASHA AI dev generation isolation", () => {
         vi.unstubAllEnvs();
     });
 
-    it.each(["dev", "dev-v2"] as const)("recognizes a signed %s surface", (surface) => {
+    it.each(["dev", "dev-v2", "dev-v3"] as const)("recognizes a signed %s surface", (surface) => {
         const request = new Request("http://localhost/api/washa-dtf-studio/generate-mockup", {
             headers: createWashaAiDevGenerationHeaders(surface),
         });
@@ -92,6 +92,13 @@ describe("WASHA AI dev generation isolation", () => {
 
         await expect(canUseWashaAiDevSurfaceForGeneration("dev-v2", true))
             .resolves.toBe(false);
+    });
+
+    it("uses the V2 visibility gate for the prompt-native V3 surface", async () => {
+        mockGetPublicVisibility.mockResolvedValue(visibility({ washa_ai_dev_v2_access: "link" }));
+
+        await expect(canUseWashaAiDevSurfaceForGeneration("dev-v3", false))
+            .resolves.toBe(true);
     });
 
 });

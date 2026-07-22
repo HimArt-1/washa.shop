@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ComponentType, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -43,6 +43,7 @@ import {
 
 interface WashaDevStudioV2Props {
   onOpenGallery: () => void;
+  variant?: 'classic' | 'prompt-native';
 }
 
 type WizardStepId = 'idea' | 'garment' | 'position' | 'style' | 'palette';
@@ -299,7 +300,7 @@ function StepIntro({ eyebrow, title, body }: { eyebrow: string; title: string; b
   );
 }
 
-export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Props) {
+export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }: WashaDevStudioV2Props) {
   const {
     state,
     updateState,
@@ -339,6 +340,8 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [studioView, setStudioView] = useState<StudioView>('wizard');
   const [dragging, setDragging] = useState(false);
+  const [resultAssetView, setResultAssetView] = useState<'mockup' | 'artwork'>('mockup');
+  const isPromptNative = variant === 'prompt-native';
 
   const activeStep = WIZARD_STEPS[activeStepIndex];
   const isLastWizardStep = activeStepIndex === WIZARD_STEPS.length - 1;
@@ -455,12 +458,14 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
 
   const handleGenerateFromWizard = () => {
     if (!canGenerate) return;
+    setResultAssetView('mockup');
     setStudioView('generation');
     void handleGenerate({ promptOverride: getGenerationPromptOverride() });
   };
 
   const handleRetryGenerate = () => {
     if (!canGenerate) return;
+    setResultAssetView('mockup');
     void handleGenerate({ promptOverride: getGenerationPromptOverride() });
   };
 
@@ -471,6 +476,7 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
 
   const handleStartOver = () => {
     resetDesign();
+    setResultAssetView('mockup');
     setActiveStepIndex(0);
     setStudioView('wizard');
   };
@@ -881,7 +887,8 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
 
   const renderGenerationView = () => {
     const hasFinalDesign = Boolean(mockupImage);
-    const displayImage = mockupImage || previewImage;
+    const isArtworkView = isPromptNative && resultAssetView === 'artwork' && Boolean(extractedImage);
+    const displayImage = isArtworkView ? extractedImage : mockupImage || previewImage;
     const resultTitle = isGenerating
       ? 'نجهز التصميم الآن.'
       : hasFinalDesign
@@ -902,20 +909,42 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
         <section className="overflow-hidden rounded-[34px] bg-washa-text p-3 text-washa-bg shadow-[0_28px_90px_rgba(31,25,16,0.22)] sm:p-4">
           <div className="flex items-center justify-between gap-3 px-2 pb-4">
             <div>
-              <p className="text-xs font-black text-washa-gold">واجهة التوليد</p>
-              <p className="mt-1 text-lg font-black">{hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
+              <p className="text-xs font-black text-washa-gold">{isPromptNative ? 'مسار أصل الطباعة' : 'واجهة التوليد'}</p>
+              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : 'الموكب الواقعي' : 'لوحة التكوين'}</p>
             </div>
             <span className="rounded-2xl border border-washa-bg/10 bg-washa-bg/10 px-3 py-2 text-xs font-black text-washa-bg/80">
-              {isGenerating ? 'قيد التوليد' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : 'جاهز للسلة' : 'بانتظار النتيجة'}
+              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : 'GEMINI COMPOSITE' : 'بانتظار النتيجة'}
             </span>
           </div>
 
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[30px] border border-washa-bg/10 bg-[#17130E]">
+          {isPromptNative && hasFinalDesign && extractedImage ? (
+            <div className="mb-3 grid grid-cols-2 gap-1 rounded-[18px] border border-washa-bg/10 bg-washa-bg/10 p-1" aria-label="نوع ملف النتيجة">
+              <button
+                type="button"
+                onClick={() => setResultAssetView('mockup')}
+                className={cn('h-10 rounded-[14px] text-xs font-black transition', resultAssetView === 'mockup' ? 'bg-washa-bg text-washa-text' : 'text-washa-bg/65 hover:text-washa-bg')}
+              >
+                الموكب الواقعي
+              </button>
+              <button
+                type="button"
+                onClick={() => setResultAssetView('artwork')}
+                className={cn('h-10 rounded-[14px] text-xs font-black transition', resultAssetView === 'artwork' ? 'bg-washa-bg text-washa-text' : 'text-washa-bg/65 hover:text-washa-bg')}
+              >
+                أصل الطباعة PNG
+              </button>
+            </div>
+          ) : null}
+
+          <div
+            className={cn('relative aspect-[4/5] overflow-hidden rounded-[30px] border border-washa-bg/10', isArtworkView ? 'bg-[#E8E6DF]' : 'bg-[#13241F]')}
+            style={isArtworkView ? { backgroundImage: 'linear-gradient(45deg, rgba(20,54,47,.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(20,54,47,.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(20,54,47,.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(20,54,47,.08) 75%)', backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px', backgroundSize: '24px 24px' } : undefined}
+          >
             {displayImage ? (
               <img
                 src={displayImage}
-                alt={hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية للوحة التصميم' : 'التصميم النهائي على القطعة' : 'القطعة المختارة قبل التوليد'}
-                className={cn('h-full w-full object-contain', hasFinalDesign ? 'object-cover' : 'p-5')}
+                alt={isArtworkView ? 'أصل الطباعة الشفاف بصيغة PNG' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية للوحة التصميم' : 'التصميم النهائي على القطعة' : 'القطعة المختارة قبل التوليد'}
+                className={cn('h-full w-full object-contain', isArtworkView ? 'p-8 sm:p-12' : hasFinalDesign ? 'object-cover' : 'p-5')}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-washa-bg/60">
@@ -988,7 +1017,7 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
 
               {hasFinalDesign ? (
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                  {!isBoardPreview ? (
+                  {!isBoardPreview && !isPromptNative ? (
                     <Button variant="outline" disabled={isExtracting} onClick={() => void handleExtract()} className="h-12 gap-2 rounded-2xl">
                       {isExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                       استخراج التصميم
@@ -1004,11 +1033,11 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
               {extractedImage && !isBoardPreview ? (
                 <Button
                   variant="outline"
-                  onClick={() => handleDownload(extractedImage, 'washa-ai-print.png')}
+                  onClick={() => handleDownload(extractedImage, isPromptNative ? 'washa-ai-native-print.png' : 'washa-ai-print.png')}
                   className="h-12 w-full gap-2 rounded-2xl"
                 >
                   <Download className="h-4 w-4" />
-                  تحميل ملف الطباعة
+                  {isPromptNative ? 'تحميل أصل الطباعة PNG' : 'تحميل ملف الطباعة'}
                 </Button>
               ) : null}
 
@@ -1052,8 +1081,22 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
     return renderIdeaStep();
   };
 
+  const promptNativeTheme = isPromptNative ? {
+    '--color-washa-bg': '#F2F0E8',
+    '--color-washa-surface': '#E7E3D8',
+    '--color-washa-elevated': '#DAD6C9',
+    '--color-washa-border': 'rgba(20, 54, 47, 0.18)',
+    '--color-washa-gold': '#A56F42',
+    '--color-washa-gold-light': '#C49568',
+    '--color-washa-gold-deep': '#6F422B',
+    '--color-washa-ivory': '#FBFAF5',
+    '--color-washa-text': '#14362F',
+    '--color-washa-text-sec': '#60716A',
+    '--color-washa-text-faint': '#89958F',
+  } as CSSProperties : undefined;
+
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-washa-bg">
+    <div dir="rtl" style={promptNativeTheme} className="min-h-[100dvh] bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-washa-bg">
       <header className="sticky top-0 z-40 border-b border-washa-border/60 bg-washa-bg/92 backdrop-blur-2xl">
         <div className="mx-auto flex min-h-20 w-full max-w-[1380px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -1061,12 +1104,17 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
               <img src={siteAsset(BRAND_MARK_SRC)} alt="وشّى" className="h-full w-full object-contain px-1.5 py-2" />
             </span>
             <div className="min-w-0">
-              <p className="text-xl font-black leading-none text-washa-text sm:text-2xl">وشّى AI</p>
-              <p className="mt-1 text-xs font-bold text-washa-text-sec">صمم قطعتك بخطوات واضحة.</p>
+              <p className="text-xl font-black leading-none text-washa-text sm:text-2xl">{isPromptNative ? 'WASHA AI Atelier' : 'وشّى AI'}</p>
+              <p className="mt-1 text-xs font-bold text-washa-text-sec">{isPromptNative ? 'تصميم شفاف أصلي، ثم موكب واقعي.' : 'صمم قطعتك بخطوات واضحة.'}</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {isPromptNative ? (
+              <span className="inline-flex h-10 items-center rounded-2xl border border-washa-gold/30 bg-washa-gold/10 px-3 text-[11px] font-black tracking-[0.12em] text-washa-gold-deep" dir="ltr">
+                PROMPT NATIVE / DEV V3
+              </span>
+            ) : null}
             <a
               href={CURRENT_APP_PATH}
               className="inline-flex h-10 items-center gap-2 rounded-2xl border border-washa-border bg-washa-ivory px-3 text-sm font-black text-washa-text-sec transition hover:border-washa-gold/50 hover:text-washa-gold active:scale-[0.985]"
@@ -1087,6 +1135,23 @@ export default function WashaDevStudioV2({ onOpenGallery }: WashaDevStudioV2Prop
       </header>
 
       <main className="mx-auto w-full max-w-[1380px] px-4 py-5 sm:px-6">
+        {isPromptNative ? (
+          <div className="mb-5 grid gap-px overflow-hidden rounded-[24px] border border-washa-border bg-washa-border sm:grid-cols-3" aria-label="مسار إنتاج التصميم">
+            {[
+              ['01', 'OpenAI Artwork', 'توليد PNG شفاف أصلي'],
+              ['02', 'Alpha Gate', 'تحقق حقيقي من الشفافية'],
+              ['03', 'Gemini Mockup', 'تركيب واقعي على القطعة'],
+            ].map(([number, title, body]) => (
+              <div key={number} className="flex items-center gap-3 bg-washa-ivory px-4 py-3">
+                <span className="font-mono text-xs font-black text-washa-gold">{number}</span>
+                <div>
+                  <p className="text-xs font-black text-washa-text" dir="ltr">{title}</p>
+                  <p className="mt-0.5 text-[11px] font-bold text-washa-text-sec">{body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {studioView === 'wizard' ? (
           <>
             <nav className="mb-5" aria-label="خطوات التصميم">

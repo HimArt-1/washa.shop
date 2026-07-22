@@ -27,6 +27,7 @@ const isAuthAwareApiRoute = createRouteMatcher([
 const isAuthAwareWashaAiDevRoute = createRouteMatcher([
     '/design/washa-ai/dev(.*)',
     '/design/washa-ai/dev-v2(.*)',
+    '/design/washa-ai/dev-v3(.*)',
 ]);
 
 function nextWithPathname(req: NextRequest) {
@@ -83,6 +84,7 @@ export const config = {
         // extensions would otherwise be excluded by the generic matcher.
         '/design/washa-ai/dev/:path*',
         '/design/washa-ai/dev-v2/:path*',
+        '/design/washa-ai/dev-v3/:path*',
         // Skip Next.js internals and all static files
         '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
         // Always run for API routes

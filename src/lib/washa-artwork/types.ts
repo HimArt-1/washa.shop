@@ -85,4 +85,6 @@ export type GeneratedArtworkResponse = {
     productionReadinessStatus: "ready";
     provider: string;
     model: string;
+    pipeline?: "standard" | "prompt_native";
+    previewProvider?: "sharp" | "gemini";
 };

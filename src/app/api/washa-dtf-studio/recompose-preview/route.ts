@@ -6,6 +6,10 @@ import {
     parseAndValidateDtfJson,
     requireDtfRouteAccess,
 } from "@/app/api/washa-dtf-studio/utils/route-runtime";
+import {
+    canUseWashaAiDevSurfaceForGeneration,
+    resolveWashaAiDevGenerationSurface,
+} from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -14,6 +18,16 @@ export async function POST(request: NextRequest) {
     const accessResult = await requireDtfRouteAccess();
     if (accessResult.response) return accessResult.response;
     const access = accessResult.access;
+    const devSurface = resolveWashaAiDevGenerationSurface(request);
+    if (
+        devSurface
+        && !await canUseWashaAiDevSurfaceForGeneration(
+            devSurface,
+            access.role === "admin" || access.role === "dev"
+        )
+    ) {
+        return NextResponse.json({ error: "لا يملك المستخدم صلاحية إكمال العملية." }, { status: 403 });
+    }
     if (!access.profileId) {
         return NextResponse.json({ error: "تعذر ربط التصميم بحساب المستخدم." }, { status: 401 });
     }
@@ -34,6 +48,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const { designRequestId, masterAssetId, generationContext } = parsed.data;
+        const pipeline = devSurface === "dev-v3" ? "prompt_native" : "standard";
         const result = await DesignAssetService.recompose({
             profileId: access.profileId,
             designRequestId,
@@ -51,6 +66,7 @@ export async function POST(request: NextRequest) {
                 printOffsetX: generationContext.printOffsetX,
                 printOffsetY: generationContext.printOffsetY,
             },
+            pipeline,
         });
         return NextResponse.json({ ok: true, ...result });
     } catch (error) {

@@ -39,6 +39,8 @@ export const generationContextSchema = z.object({
 
 export type GenerationContext = z.infer<typeof generationContextSchema>;
 
+export const generationPipelineSchema = z.enum(["standard", "prompt_native"]);
+
 export const generateMockupSchema = z.object({
     prompt: z.string().trim().min(1, "الوصف مطلوب").max(12_000, "الوصف طويل جداً"),
     referenceImage: aiImageReferenceSchema.optional().nullable(),
@@ -47,12 +49,14 @@ export const generateMockupSchema = z.object({
     // the complete mockup. It is accepted only as a compatibility base image;
     // the artwork is never sent with it to a generative model.
     garmentReferenceImage: aiImageReferenceSchema.optional().nullable(),
+    pipeline: generationPipelineSchema.optional().default("standard"),
 });
 
 export const recomposePreviewSchema = z.object({
     designRequestId: z.string().uuid(),
     masterAssetId: z.string().uuid(),
     generationContext: generationContextSchema,
+    pipeline: generationPipelineSchema.optional().default("standard"),
 });
 
 export const enhanceIdeaSchema = z.object({

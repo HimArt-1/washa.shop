@@ -1021,6 +1021,7 @@ export async function updateSiteSetting(key: string, value: unknown) {
     revalidatePath("/design/washa-ai");
     revalidatePath("/design/washa-ai/dev");
     revalidatePath("/design/washa-ai/dev-v2");
+    revalidatePath("/design/washa-ai/dev-v3");
     revalidatePath("/studio");
     if (key === "operational_rules") {
         revalidatePath("/dashboard/analytics");

@@ -14,6 +14,8 @@ describe("WASHA AI dev PWA proxy coverage", () => {
         "/design/washa-ai/dev/sw.js",
         "/design/washa-ai/dev-v2/manifest.webmanifest",
         "/design/washa-ai/dev-v2/sw.js",
+        "/design/washa-ai/dev-v3/manifest.webmanifest",
+        "/design/washa-ai/dev-v3/sw.js",
     ])("runs Clerk proxy for the auth-aware dev asset %s", async (url) => {
         const { config } = await import("@/proxy");
 

@@ -264,7 +264,13 @@ function buildInitialState(config: DtfStudioConfig): DesignState {
   };
 }
 
-export function DesignProvider({ children }: { children: React.ReactNode }) {
+export function DesignProvider({
+  children,
+  generationPipeline = 'standard',
+}: {
+  children: React.ReactNode;
+  generationPipeline?: 'standard' | 'prompt_native';
+}) {
   const {getToken, isLoaded: authLoaded, isSignedIn} = useAuth();
   const [step, setStep] = useState(1);
   const [state, setState] = useState<DesignState>(EMPTY_STATE);
@@ -749,6 +755,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         referenceImageMode: state.referenceImageMode,
         sessionToken,
         requestId: generationRequestId,
+        pipeline: generationPipeline,
       }
     );
 
@@ -770,6 +777,7 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         referenceImageMode: state.referenceImageMode,
         sessionToken,
         requestId: generationRequestId,
+        pipeline: generationPipeline,
       };
       const generated = canRecompose
         ? await recomposeMockup(

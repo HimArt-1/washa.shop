@@ -3,11 +3,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { getPublicVisibility, type WashaAiDevAccessMode } from "@/app/actions/settings";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 
-export type WashaAiDevSurface = "dev" | "dev-v2";
+export type WashaAiDevSurface = "dev" | "dev-v2" | "dev-v3";
 
 const DEV_SURFACE_PATHS: Record<WashaAiDevSurface, string> = {
     dev: "/design/washa-ai/dev",
     "dev-v2": "/design/washa-ai/dev-v2",
+    "dev-v3": "/design/washa-ai/dev-v3",
 };
 
 export const WASHA_AI_DEV_SURFACE_HEADER = "x-washa-ai-dev-surface";
@@ -80,7 +81,7 @@ function getSurfaceAccessMode(
     visibility: Awaited<ReturnType<typeof getPublicVisibility>>,
     surface: WashaAiDevSurface
 ): WashaAiDevAccessMode {
-    if (surface === "dev-v2") {
+    if (surface === "dev-v2" || surface === "dev-v3") {
         return visibility.washa_ai_dev_v2_access ?? "admin";
     }
 

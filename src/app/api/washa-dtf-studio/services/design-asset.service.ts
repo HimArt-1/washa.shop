@@ -49,6 +49,9 @@ import type {
 } from "@/lib/washa-artwork/types";
 import { StorageService } from "@/app/api/washa-dtf-studio/services/storage.service";
 import { logDtfTrace } from "@/app/api/washa-dtf-studio/utils/trace";
+import { generatePromptNativeArtwork } from "@/lib/washa-prompt-native/openai-artwork.adapter";
+import { composePromptNativeMockup } from "@/lib/washa-prompt-native/gemini-mockup.adapter";
+import type { WashaGenerationPipeline } from "@/lib/washa-prompt-native/types";
 
 const ARTWORK_NORMALIZATION_SCOPE = "dtf.artwork.normalization";
 
@@ -145,6 +148,7 @@ type GenerateDesignAssetInput = {
     legacyGarmentReference?: { base64: string; mimeType: string } | null;
     context: ArtworkGenerationContext;
     selection: GenerationSelection;
+    pipeline?: WashaGenerationPipeline;
 };
 
 type RecomposeDesignAssetInput = {
@@ -152,6 +156,7 @@ type RecomposeDesignAssetInput = {
     designRequestId: string;
     masterAssetId: string;
     selection: GenerationSelection;
+    pipeline?: WashaGenerationPipeline;
 };
 
 type MasterAssetRow = {
@@ -295,6 +300,12 @@ export class DesignAssetService {
             productionReadinessStatus: "ready",
             provider: master.provider,
             model: master.generation_model,
+            pipeline: master.generation_parameters?.pipeline === "prompt_native"
+                ? "prompt_native"
+                : "standard",
+            previewProvider: master.generation_parameters?.pipeline === "prompt_native"
+                ? "gemini"
+                : "sharp",
         };
     }
 
@@ -1061,6 +1072,7 @@ export class DesignAssetService {
         placement: PlacementTransform;
         side: ArtworkSide;
         applyArtwork: boolean;
+        pipeline: WashaGenerationPipeline;
     }) {
         const garmentBase = await DesignAssetService.loadMockupBuffer(params.mockup);
         if (!params.applyArtwork) {
@@ -1085,22 +1097,31 @@ export class DesignAssetService {
             });
         }
 
-        const composite = await compositeArtworkPreview({
-            garmentBase,
-            masterArtwork: params.masterBuffer,
-            printArea: params.mockup.printArea,
-            placement: {
-                ...params.placement,
-                referenceMockupId: params.mockup.id,
-                printAreaId: params.mockup.printAreaId,
-            },
-            effects: {
-                garmentMask: await materializeOptional(params.mockup.garmentMaskUrl),
-                shadingMap: await materializeOptional(params.mockup.shadingMapUrl),
-                displacementMap: await materializeOptional(params.mockup.displacementMapUrl),
-                perspectiveTransform: params.mockup.perspectiveTransform,
-            },
-        });
+        const effectivePlacement = {
+            ...params.placement,
+            referenceMockupId: params.mockup.id,
+            printAreaId: params.mockup.printAreaId,
+        };
+        const composite = params.pipeline === "prompt_native"
+            ? await composePromptNativeMockup({
+                garmentBase,
+                masterArtwork: params.masterBuffer,
+                printArea: params.mockup.printArea,
+                placement: effectivePlacement,
+                traceId: params.requestId,
+            })
+            : await compositeArtworkPreview({
+                garmentBase,
+                masterArtwork: params.masterBuffer,
+                printArea: params.mockup.printArea,
+                placement: effectivePlacement,
+                effects: {
+                    garmentMask: await materializeOptional(params.mockup.garmentMaskUrl),
+                    shadingMap: await materializeOptional(params.mockup.shadingMapUrl),
+                    displacementMap: await materializeOptional(params.mockup.displacementMapUrl),
+                    perspectiveTransform: params.mockup.perspectiveTransform,
+                },
+            });
         return DesignAssetService.recordDerivative({
             master: params.master,
             requestId: params.requestId,
@@ -1125,6 +1146,7 @@ export class DesignAssetService {
         masterBuffer: Buffer;
         selection: GenerationSelection;
         legacyGarmentReference?: { base64: string; mimeType: string } | null;
+        pipeline: WashaGenerationPipeline;
     }): Promise<GeneratedArtworkResponse> {
         const selectedSide: ArtworkSide =
             params.selection.printPosition === "back" ? "back" : "front";
@@ -1175,6 +1197,7 @@ export class DesignAssetService {
             placement,
             side: selectedSide,
             applyArtwork: true,
+            pipeline: params.pipeline,
         });
         const otherSide: ArtworkSide = selectedSide === "front" ? "back" : "front";
         const otherMockup = await DesignAssetService.resolveMockup(
@@ -1191,6 +1214,7 @@ export class DesignAssetService {
                 placement: { ...placement, side: otherSide },
                 side: otherSide,
                 applyArtwork: false,
+                pipeline: params.pipeline,
             })
             : null;
         const frontPreviewUrl = selectedSide === "front"
@@ -1241,6 +1265,8 @@ export class DesignAssetService {
             productionReadinessStatus: "ready",
             provider: params.master.provider,
             model: params.master.model,
+            pipeline: params.pipeline,
+            previewProvider: params.pipeline === "prompt_native" ? "gemini" : "sharp",
         };
     }
 
@@ -1259,6 +1285,7 @@ export class DesignAssetService {
             master: loaded.master,
             masterBuffer: loaded.masterBuffer,
             selection,
+            pipeline: input.pipeline ?? "standard",
         });
     }
 
@@ -1298,13 +1325,30 @@ export class DesignAssetService {
                 const referenceImageDataUrl = input.referenceImage
                     ? `data:${input.referenceImage.mimeType};base64,${input.referenceImage.base64}`
                     : null;
-                let providerResult = await generateIsolatedArtwork({
-                    prompt,
-                    referenceImageDataUrl,
-                    traceId: input.generationRequestId,
-                });
+                const promptNativeArtwork = input.pipeline === "prompt_native"
+                    ? await generatePromptNativeArtwork({
+                        prompt,
+                        referenceImageDataUrl,
+                        traceId: input.generationRequestId,
+                    })
+                    : null;
+                let providerResult = promptNativeArtwork
+                    ? {
+                        imageUrl: `data:image/png;base64,${promptNativeArtwork.buffer.toString("base64")}`,
+                        provider: promptNativeArtwork.provider,
+                        model: promptNativeArtwork.model,
+                        parameters: promptNativeArtwork.parameters,
+                    }
+                    : await generateIsolatedArtwork({
+                        prompt,
+                        referenceImageDataUrl,
+                        traceId: input.generationRequestId,
+                    });
                 const initialProviderResult = providerResult;
-                let materialized = await materializeImageSource(providerResult.imageUrl);
+                let materialized = promptNativeArtwork
+                    ? { buffer: promptNativeArtwork.buffer, mimeType: "image/png" }
+                    : await materializeImageSource(providerResult.imageUrl);
+                const masterPrompt = promptNativeArtwork?.prompt ?? prompt;
                 const normalizationWorkflowStartedAt = Date.now();
                 let normalizationAttempt = 1;
                 let backgroundRecoveryApplied = false;
@@ -1314,6 +1358,39 @@ export class DesignAssetService {
                     ReturnType<typeof normalizeGeneratedArtworkForPrint>
                 >;
                 while (true) {
+                    if (promptNativeArtwork) {
+                        const validation = promptNativeArtwork.validation;
+                        const diagnostics = {
+                            declaredMimeType: "image/png",
+                            magicBytesFormat: "png",
+                            detectedFormat: "png",
+                            format: "png",
+                            width: validation.width,
+                            height: validation.height,
+                            hasAlphaChannel: validation.hasAlphaChannel,
+                            transparentPixelRatio: validation.transparentPixelRatio,
+                        };
+                        normalizedArtwork = {
+                            buffer: promptNativeArtwork.buffer,
+                            input: diagnostics,
+                            output: diagnostics,
+                            normalization: promptNativeArtwork.normalization,
+                            validation,
+                        };
+                        logDtfTrace(
+                            ARTWORK_NORMALIZATION_SCOPE,
+                            input.generationRequestId,
+                            "prompt_native_alpha_accepted",
+                            {
+                                attemptedProvider: providerResult.provider,
+                                attemptedModel: providerResult.model,
+                                normalizationSkipped: true,
+                                backgroundRemovalApplied: false,
+                                validation,
+                            }
+                        );
+                        break;
+                    }
                     const normalizationAttemptStartedAt = Date.now();
                     logDtfTrace(
                         ARTWORK_NORMALIZATION_SCOPE,
@@ -1596,7 +1673,7 @@ export class DesignAssetService {
                         buffer: normalizedArtwork.buffer,
                         provider: providerResult.provider,
                         model: providerResult.model,
-                        prompt,
+                        prompt: masterPrompt,
                         generationParameters: {
                             ...providerResult.parameters,
                             textPolicyVerification,
@@ -1657,7 +1734,7 @@ export class DesignAssetService {
                         selected_side: selectedSide,
                         placement_data: provisionalPlacement,
                         mockup_source_type: null,
-                        prompt,
+                        prompt: masterPrompt,
                         generation_model: master.model,
                         provider: master.provider,
                         transparency_verification_status: master.alphaChannelStatus,
@@ -1676,6 +1753,7 @@ export class DesignAssetService {
                 masterBuffer,
                 selection,
                 legacyGarmentReference: input.legacyGarmentReference,
+                pipeline: input.pipeline ?? "standard",
             });
         } catch (error) {
             if (designRequestId) {

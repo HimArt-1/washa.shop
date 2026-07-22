@@ -696,6 +696,9 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                 value={visibility.washa_ai_dev_v2_access}
                                 onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_v2_access: value })}
                             />
+                            <p className="rounded-xl border border-gold/10 bg-surface/50 px-3 py-2 text-xs leading-5 text-theme-subtle">
+                                المسار <span dir="ltr" className="font-mono font-bold text-theme">/design/washa-ai/dev-v3</span> يستخدم صلاحية V2 نفسها، ويشغّل خط Prompt Native المعزول.
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -33,6 +33,7 @@ interface GenerationPreferences {
   printScale?: number | null;
   printOffsetX?: number | null;
   printOffsetY?: number | null;
+  pipeline?: 'standard' | 'prompt_native';
 }
 
 export type PrimaryGeneratedArtworkResult = {
@@ -61,6 +62,8 @@ export type PrimaryGeneratedArtworkResult = {
   };
   transparencyVerificationStatus: 'verified' | 'fallback_processed';
   productionReadinessStatus: 'ready';
+  pipeline?: 'standard' | 'prompt_native';
+  previewProvider?: 'sharp' | 'gemini';
 };
 
 export type BoardPreviewResult = {
@@ -306,6 +309,7 @@ export async function generateMockup(
         mimeType: string;
       };
       generationContext?: ReturnType<typeof buildGenerationContext>;
+      pipeline?: 'standard' | 'prompt_native';
     } = { prompt };
     if (referenceImageBase64 && referenceImageMimeType) {
       body.referenceImage = {
@@ -323,6 +327,7 @@ export async function generateMockup(
       hasReferenceImage: Boolean(referenceImageBase64),
       preferences,
     });
+    body.pipeline = preferences.pipeline || 'standard';
 
     const sessionToken = preferences.sessionToken?.trim();
     if (!sessionToken) {
@@ -419,6 +424,7 @@ export async function recomposeMockup(
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${sessionToken}`,
+      ...getWashaAiDevGenerationHeadersFromDocument(),
     },
     credentials: 'omit',
     cache: 'no-store',
@@ -434,6 +440,7 @@ export async function recomposeMockup(
         calligraphyText,
         preferences,
       }),
+      pipeline: preferences.pipeline || 'standard',
     }),
   });
   const parsed = await parseApiResponse(response, 'generation');

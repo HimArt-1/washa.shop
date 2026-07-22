@@ -321,7 +321,7 @@ describe("generate-mockup route", () => {
         expect(mockGetArtworkProviderReadiness).not.toHaveBeenCalled();
     });
 
-    it.each(["dev", "dev-v2"] as const)(
+    it.each(["dev", "dev-v2", "dev-v3"] as const)(
         "keeps the %s surface on the primary pipeline when the global mode is fallback",
         async (surface) => {
             mockGetGenerationMode.mockResolvedValue("fallback");
@@ -347,6 +347,9 @@ describe("generate-mockup route", () => {
             expect(mockShouldChargeQuota).not.toHaveBeenCalled();
             expect(mockReserveDailyQuota).toHaveBeenCalledOnce();
             expect(mockGenerateMockup).toHaveBeenCalledOnce();
+            expect(mockGenerateMockup).toHaveBeenCalledWith(expect.objectContaining({
+                pipeline: surface === "dev-v3" ? "prompt_native" : "standard",
+            }));
             expect(mockGenerateBoard).not.toHaveBeenCalled();
             expect(payload).not.toHaveProperty("mode");
             expect(payload).not.toHaveProperty("boardImageUrl");

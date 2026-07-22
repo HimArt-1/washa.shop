@@ -83,6 +83,39 @@ describe('WASHA AI generation placement instructions', () => {
     expect(init?.credentials).toBe('omit');
   });
 
+  it('selects the prompt-native backend contract for DEV V3', async () => {
+    let body: { pipeline?: string } | undefined;
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({
+        ...generationResponse,
+        pipeline: 'prompt_native',
+        previewProvider: 'gemini',
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }));
+
+    await expect(generateMockup(
+      'تيشيرت',
+      'أسود',
+      'صقر هندسي',
+      'DTF',
+      'هندسي',
+      'ذهبي',
+      undefined,
+      undefined,
+      undefined,
+      { pipeline: 'prompt_native', sessionToken: 'session-token' },
+    )).resolves.toMatchObject({
+      pipeline: 'prompt_native',
+      previewProvider: 'gemini',
+    });
+
+    expect(body?.pipeline).toBe('prompt_native');
+  });
+
   it('does not automatically repeat an authentication failure', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
       ok: false,
