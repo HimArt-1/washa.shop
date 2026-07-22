@@ -54,6 +54,8 @@ export async function runWashaDtfGeminiImageVerification<T>(params: {
     imagePng: Buffer;
     prompt: string;
     responseJsonSchema: Record<string, unknown>;
+    apiKeyOverride?: string | null;
+    modelOverride?: string | null;
     sourceProvider?: string | null;
     sourceModel?: string | null;
     stage?: ArtworkVerificationStage;
@@ -62,12 +64,15 @@ export async function runWashaDtfGeminiImageVerification<T>(params: {
         ...process.env,
         WASHA_DTF_IMAGE_PROVIDER: "genai",
     });
+    const model = params.modelOverride?.trim() || configuration.model;
     const timeoutMs = 30_000;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const response = await getWashaDtfGenAiClient().models.generateContent({
-            model: configuration.model,
+        const response = await getWashaDtfGenAiClient(
+            params.apiKeyOverride?.trim() || undefined
+        ).models.generateContent({
+            model,
             contents: {
                 role: "user",
                 parts: [
@@ -97,13 +102,13 @@ export async function runWashaDtfGeminiImageVerification<T>(params: {
         return {
             parsed: JSON.parse(text) as T,
             provider: "genai",
-            model: configuration.model,
+            model,
         };
     } catch (error) {
         throw createArtworkVerificationRuntimeError({
             error,
             provider: "genai",
-            model: configuration.model,
+            model,
             sourceProvider: params.sourceProvider,
             sourceModel: params.sourceModel,
             stage: params.stage ?? "text_policy_verification",

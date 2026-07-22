@@ -28,7 +28,9 @@ describe("WASHA AI v4 architectural isolation", () => {
         const combined = `${route}\n${client}`;
 
         expect(route).toContain("generateBoardProviderImage");
-        expect(route).toContain("genAiApiKey: resolveWashaAiV4ApiKey()");
+        expect(route).toContain("const v4ApiKey = resolveWashaAiV4ApiKey()");
+        expect(route).toContain("genAiApiKey: v4ApiKey");
+        expect(route).toContain("verifyPremiumBoardArtworkTextPolicy");
         expect(providerAdapter).toContain("getWashaDtfGenAiClient(input.genAiApiKey)");
         expect(combined).not.toContain("removeBackground");
         expect(combined).not.toContain("extract-design");

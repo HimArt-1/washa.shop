@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     decodeImage: vi.fn(),
     uploadImage: vi.fn(),
     getSupabase: vi.fn(),
+    verifyBoardText: vi.fn(),
 }));
 
 vi.mock("@/lib/admin-access", () => ({
@@ -40,6 +41,23 @@ vi.mock("@/lib/storage/upload-optimized-image", () => ({
     uploadOptimizedImage: mocks.uploadImage,
 }));
 vi.mock("@/lib/supabase", () => ({ getSupabaseAdminClient: mocks.getSupabase }));
+vi.mock("@/lib/washa-artwork/arabic-text-verification", () => ({
+    isArtworkTextPolicyError: (value: unknown) => (
+        value instanceof Error
+        && "code" in value
+        && value.code === "ARTWORK_TEXT_POLICY_FAILED"
+    ),
+}));
+vi.mock("@/lib/washa-ai-v4-board-text-verification", () => ({
+    verifyPremiumBoardArtworkTextPolicy: mocks.verifyBoardText,
+}));
+vi.mock("@/lib/washa-artwork/verification-error", () => ({
+    isArtworkVerificationUnavailableError: (value: unknown) => (
+        value instanceof Error
+        && "code" in value
+        && value.code === "ARTWORK_VERIFICATION_UNAVAILABLE"
+    ),
+}));
 vi.mock("@/lib/washa-dtf-provider-config", () => ({
     sanitizeWashaDtfProviderMessage: (value: unknown) => String(value),
 }));
@@ -64,6 +82,11 @@ const validPayload = {
     artStyleName: "Technical ink illustration",
     artworkColors: [{ name: "Bone", hex: "#E7DFC9" }],
 };
+
+const VALID_PNG = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    "base64"
+);
 
 function request(body: unknown) {
     return new NextRequest("http://localhost/api/washa-ai-v4/generate", {
@@ -98,8 +121,16 @@ describe("WASHA AI v4 generation route", () => {
             model: "gemini-v4-board",
         });
         mocks.decodeImage.mockReturnValue({
-            buffer: Buffer.from("board"),
-            contentType: "image/webp",
+            buffer: VALID_PNG,
+            contentType: "image/png",
+        });
+        mocks.verifyBoardText.mockResolvedValue({
+            required: true,
+            verified: true,
+            mode: "forbidden",
+            observedArtworkText: null,
+            provider: "genai",
+            model: "gemini-verifier",
         });
         mocks.getSupabase.mockReturnValue({ storage: {} });
         mocks.uploadImage.mockResolvedValue({
@@ -125,6 +156,14 @@ describe("WASHA AI v4 generation route", () => {
         expect(mocks.generateImage).toHaveBeenCalledWith(expect.objectContaining({
             genAiApiKey: "v4-dedicated-key",
         }));
+        expect(mocks.verifyBoardText).toHaveBeenCalledWith({
+            boardPng: expect.any(Buffer),
+            expectedTexts: ["", ""],
+            sourceModel: "gemini-v4-board",
+            apiKey: "v4-dedicated-key",
+        });
+        expect(mocks.verifyBoardText.mock.invocationCallOrder[0])
+            .toBeLessThan(mocks.uploadImage.mock.invocationCallOrder[0]);
         expect(mocks.uploadImage).toHaveBeenCalledWith(expect.objectContaining({
             profile: "board",
             uploadOriginal: false,
@@ -169,5 +208,41 @@ describe("WASHA AI v4 generation route", () => {
         expect(response.status).toBe(502);
         expect(mocks.generateImage).toHaveBeenCalledOnce();
         expect(mocks.releaseRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("rejects a generated board with unrequested artwork text before storage", async () => {
+        mocks.verifyBoardText.mockRejectedValue(Object.assign(
+            new Error("Generated board artwork contains unexpected visible text."),
+            { code: "ARTWORK_TEXT_POLICY_FAILED" }
+        ));
+
+        const response = await POST(request(validPayload));
+        const body = await response.json();
+
+        expect(response.status).toBe(502);
+        expect(body).toMatchObject({
+            ok: false,
+            code: "V4_ARTWORK_TEXT_POLICY_FAILED",
+        });
+        expect(mocks.generateImage).toHaveBeenCalledOnce();
+        expect(mocks.uploadImage).not.toHaveBeenCalled();
+        expect(mocks.releaseRateLimit).not.toHaveBeenCalled();
+    });
+
+    it("fails closed when artwork text verification is unavailable", async () => {
+        mocks.verifyBoardText.mockRejectedValue(Object.assign(
+            new Error("verification unavailable"),
+            { code: "ARTWORK_VERIFICATION_UNAVAILABLE" }
+        ));
+
+        const response = await POST(request(validPayload));
+        const body = await response.json();
+
+        expect(response.status).toBe(503);
+        expect(body).toMatchObject({
+            ok: false,
+            code: "V4_TEXT_VERIFICATION_UNAVAILABLE",
+        });
+        expect(mocks.uploadImage).not.toHaveBeenCalled();
     });
 });

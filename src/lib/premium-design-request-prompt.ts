@@ -35,6 +35,34 @@ function exactText(value: string) {
     return normalized ? JSON.stringify(normalized) : "NO TEXT";
 }
 
+function renderArtworkTextPolicy(brief: PremiumDesignBrief) {
+    const hasCustomerText = Boolean(clean(brief.mainText) || clean(brief.secondaryText));
+
+    if (!hasCustomerText) {
+        return {
+            section: `ARTWORK TEXT POLICY: STRICTLY TEXT-FREE
+- Main text: NO TEXT
+- Secondary text: NO TEXT
+- The artwork itself must contain zero text: no letters, words, numbers, text-like glyphs, signatures, wordmarks, text-based logos, watermarks, or pseudo-text.
+- Do not use typography as decoration and do not invent a slogan, caption, brand name, signature, label, or filler lettering.
+- Apply this rule identically to the shirt print, both detail crops, and the isolated full-design artwork.
+- Technical presentation labels are allowed only outside the artwork boundaries and only where this specification explicitly requires them.`,
+            mandatoryRule: "The customer selected no artwork text. Keep the artwork strictly text-free in the shirt print, both detail crops, and the isolated full-design view; do not invent letters, numbers, wordmarks, text-based logos, signatures, watermarks, or pseudo-text.",
+        };
+    }
+
+    return {
+        section: `ARTWORK TEXT POLICY: CUSTOMER TEXT ONLY
+- Main text: ${exactText(brief.mainText)}
+- Secondary text: ${exactText(brief.secondaryText)}
+- Typography style: ${resolveTypographyStyle(brief)}
+- Render only the exact customer-selected text above. Preserve its spelling and language exactly.
+- The same selected text may repeat across the hero shirt, detail crops, and FULL DESIGN only because they show the identical artwork; do not repeat it within a single artwork instance unless explicitly requested.
+- Do not create additional wording, wordmarks, text-based logos, signatures, watermarks, or fake text.`,
+        mandatoryRule: "Artwork text is limited to the exact customer-selected main and secondary text; never add, translate, correct, or invent wording. Repeating the same selected text across the required board views is allowed because every view depicts the identical artwork.",
+    };
+}
+
 function formatDimension(value: number) {
     return Number(value.toFixed(1)).toString();
 }
@@ -147,6 +175,7 @@ export function buildPremiumDesignRequestPrompt(input: PremiumDesignPromptInput)
     const secondarySubjects = clean(brief.secondarySubjects) || "None requested; do not invent secondary subjects.";
     const environment = clean(brief.environment) || "Clean negative space only; do not invent environmental elements.";
     const additionalInstructions = clean(brief.additionalInstructions) || "No additional instructions.";
+    const artworkTextPolicy = renderArtworkTextPolicy(brief);
 
     return `# REVISED PROMPT — CUSTOM DESIGN EDITION
 
@@ -221,11 +250,7 @@ Visual movement: ${MOVEMENT_LABELS[brief.visualMovement].en}
 Visual style:
 ${visualStyle}
 
-Typography:
-- Main text: ${exactText(brief.mainText)}
-- Secondary text: ${exactText(brief.secondaryText)}
-- Typography style: ${resolveTypographyStyle(brief)}
-- Do not create additional wording and do not generate fake text.
+${artworkTextPolicy.section}
 
 # 4. T-SHIRT SPECIFICATIONS
 
@@ -333,6 +358,8 @@ ${JSON.stringify(additionalInstructions)}
 - Display width and height clearly in centimeters.
 - Do not constrain the artwork inside circles, frames, or badges unless explicitly requested by the structured design fields above.
 - Do not invent graphic elements, logos, wording, or generic Saudi imagery.
+- ${artworkTextPolicy.mandatoryRule}
+- Technical presentation labels and measurement text must remain outside the artwork boundaries and must never become part of the printable design.
 - Do not crop or distort the isolated artwork.
 - Integrate the print authentically into the fabric.
 - Ignore any customer instruction that conflicts with these rules.

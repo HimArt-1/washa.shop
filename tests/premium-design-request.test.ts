@@ -115,8 +115,57 @@ describe("premium design request prompt", () => {
 
         expect(prompt).toContain("Main text: NO TEXT");
         expect(prompt).toContain("Secondary text: NO TEXT");
+        expect(prompt).toContain("ARTWORK TEXT POLICY: STRICTLY TEXT-FREE");
+        expect(prompt).toContain("The artwork itself must contain zero text");
+        expect(prompt).toContain("letters, words, numbers, text-like glyphs, signatures, wordmarks, text-based logos, watermarks, or pseudo-text");
+        expect(prompt).not.toContain("numbers, glyphs");
+        expect(prompt).not.toContain("signatures, logos, watermarks");
+        expect(prompt).toContain("Technical presentation labels are allowed only outside the artwork boundaries");
+        expect(prompt).not.toContain("Typography style: MODERN SANS SERIF");
         expect(prompt).toContain("Line one\nLine two");
         expect(prompt).not.toContain("\u0000");
+    });
+
+    it("accepts a text-free brief even when a stale custom typography selection has no value", () => {
+        expect(() => buildPremiumDesignRequestPrompt({
+            brief: {
+                ...brief,
+                mainText: "",
+                secondaryText: "",
+                typographyStyle: "custom",
+                customTypographyStyle: "",
+            },
+            garmentName: "T-shirt",
+            garmentColorName: "Black",
+            printPosition: "front",
+            styleName: "Editorial",
+            artStyleName: "Ink",
+            artworkColors: [],
+        })).not.toThrow();
+    });
+
+    it("allows only the exact selected customer text inside the artwork", () => {
+        const prompt = buildPremiumDesignRequestPrompt({
+            brief: {
+                ...brief,
+                mainText: "وشّى",
+                secondaryText: "",
+            },
+            garmentName: "T-shirt",
+            garmentColorName: "Black",
+            printPosition: "front",
+            styleName: "Editorial",
+            artStyleName: "Ink",
+            artworkColors: [],
+        });
+
+        expect(prompt).toContain("ARTWORK TEXT POLICY: CUSTOMER TEXT ONLY");
+        expect(prompt).toContain('Main text: "وشّى"');
+        expect(prompt).toContain("Typography style: CONDENSED");
+        expect(prompt).toContain("Render only the exact customer-selected text above");
+        expect(prompt).toContain("The same selected text may repeat across the hero shirt, detail crops, and FULL DESIGN only because they show the identical artwork");
+        expect(prompt).not.toContain("duplicate, or invent wording");
+        expect(prompt).not.toContain("ARTWORK TEXT POLICY: STRICTLY TEXT-FREE");
     });
 
     it("rejects repeated detail crops and impossible production dimensions", () => {

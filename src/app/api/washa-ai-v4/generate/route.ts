@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { getCurrentUserOrDevAdmin, resolveAdminAccess } from "@/lib/admin-access";
 import { checkRateLimit, releaseRateLimit } from "@/lib/rate-limit";
 import { canUseWashaAiV4 } from "@/lib/washa-ai-v4-access";
@@ -16,6 +17,11 @@ import {
 import { uploadOptimizedImage } from "@/lib/storage/upload-optimized-image";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { sanitizeWashaDtfProviderMessage } from "@/lib/washa-dtf-provider-config";
+import {
+    isArtworkTextPolicyError,
+} from "@/lib/washa-artwork/arabic-text-verification";
+import { isArtworkVerificationUnavailableError } from "@/lib/washa-artwork/verification-error";
+import { verifyPremiumBoardArtworkTextPolicy } from "@/lib/washa-ai-v4-board-text-verification";
 
 export const runtime = "nodejs";
 export const maxDuration = 180;
@@ -92,13 +98,30 @@ export async function POST(request: NextRequest) {
             artworkColors: input.artworkColors,
         });
         providerStarted = true;
+        const v4ApiKey = resolveWashaAiV4ApiKey();
         const providerImage = await generateBoardProviderImage({
             prompt,
             configuration,
             traceId: input.requestId,
-            genAiApiKey: resolveWashaAiV4ApiKey(),
+            genAiApiKey: v4ApiKey,
         });
         const decoded = decodeBoardImageDataUrl(providerImage.dataUrl);
+        const verificationPng = await sharp(decoded.buffer)
+            .rotate()
+            .resize({
+                width: 2048,
+                height: 2560,
+                fit: "inside",
+                withoutEnlargement: true,
+            })
+            .png({ compressionLevel: 6 })
+            .toBuffer();
+        await verifyPremiumBoardArtworkTextPolicy({
+            boardPng: verificationPng,
+            expectedTexts: [input.brief.mainText, input.brief.secondaryText],
+            sourceModel: providerImage.model,
+            apiKey: v4ApiKey,
+        });
         const upload = await uploadOptimizedImage({
             supabase: getSupabaseAdminClient(),
             bucket: "smart-store",
@@ -133,6 +156,20 @@ export async function POST(request: NextRequest) {
     } catch (generationError) {
         if (!providerStarted) {
             await releaseRateLimit(rateLimitKey, RATE_LIMIT_WINDOW_MS);
+        }
+        if (isArtworkTextPolicyError(generationError)) {
+            return error(
+                "الناتج احتوى نصًا غير مختار داخل التصميم، لذلك لم يتم اعتماده. أعد التوليد.",
+                502,
+                "V4_ARTWORK_TEXT_POLICY_FAILED"
+            );
+        }
+        if (isArtworkVerificationUnavailableError(generationError)) {
+            return error(
+                "تعذر التحقق من خلو التصميم من النصوص، لذلك لم يتم اعتماد الصورة. أعد المحاولة بعد لحظات.",
+                503,
+                "V4_TEXT_VERIFICATION_UNAVAILABLE"
+            );
         }
         console.error("[washa-ai-v4.generate]", {
             message: sanitizeWashaDtfProviderMessage(generationError),

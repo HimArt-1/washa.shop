@@ -89,7 +89,8 @@ export const premiumDesignBriefSchema = z.object({
             message: "اكتب نوع التشطيب المطلوب",
         });
     }
-    if (value.typographyStyle === "custom" && !value.customTypographyStyle) {
+    const hasArtworkText = Boolean(value.mainText || value.secondaryText);
+    if (hasArtworkText && value.typographyStyle === "custom" && !value.customTypographyStyle) {
         ctx.addIssue({
             code: "custom",
             path: ["customTypographyStyle"],

@@ -172,6 +172,9 @@ export default function WashaAiV4() {
     state.brief.detailTwo,
     state.artStyleName,
   ].filter((value) => value.trim().length >= 2).length, [state]);
+  const hasArtworkText = Boolean(
+    state.brief.mainText.trim() || state.brief.secondaryText.trim(),
+  );
 
   const placement = PLACEMENT[state.printPosition];
   const productionValid = state.brief.designWidth >= 5
@@ -180,7 +183,7 @@ export default function WashaAiV4() {
     && state.brief.designHeight <= placement.maxHeight
     && state.brief.detailOne.trim().toLowerCase() !== state.brief.detailTwo.trim().toLowerCase()
     && (state.printPosition !== 'custom' || state.customPrintPosition.trim().length >= 2)
-    && (state.brief.typographyStyle !== 'custom' || state.brief.customTypographyStyle.trim().length >= 2)
+    && (!hasArtworkText || state.brief.typographyStyle !== 'custom' || state.brief.customTypographyStyle.trim().length >= 2)
     && (state.brief.printFinish !== 'custom' || state.brief.customPrintFinish.trim().length >= 2);
 
   const goToStage = (next: number) => {
@@ -325,8 +328,8 @@ export default function WashaAiV4() {
                     <div className="grid gap-5 md:grid-cols-2">
                       <Field label="النص الرئيسي"><input className={fieldClass} value={state.brief.mainText} onChange={(event) => updateBrief({ mainText: event.target.value })} placeholder="اتركه فارغًا لعدم استخدام نص" /></Field>
                       <Field label="النص الثانوي"><input className={fieldClass} value={state.brief.secondaryText} onChange={(event) => updateBrief({ secondaryText: event.target.value })} placeholder="اختياري" /></Field>
-                      <Field label="أسلوب الخط"><select className={fieldClass} value={state.brief.typographyStyle} onChange={(event) => updateBrief({ typographyStyle: event.target.value as TypographyStyle })}><option value="modern_sans_serif">Modern Sans Serif</option><option value="condensed">Condensed</option><option value="serif">Serif</option><option value="arabic_calligraphy">Arabic Calligraphy</option><option value="monospace">Monospace</option><option value="custom">Custom</option></select></Field>
-                      {state.brief.typographyStyle === 'custom' ? <Field label="أسلوب الخط المخصص"><input className={fieldClass} value={state.brief.customTypographyStyle} onChange={(event) => updateBrief({ customTypographyStyle: event.target.value })} /></Field> : null}
+                      {hasArtworkText ? <Field label="أسلوب الخط"><select className={fieldClass} value={state.brief.typographyStyle} onChange={(event) => updateBrief({ typographyStyle: event.target.value as TypographyStyle })}><option value="modern_sans_serif">Modern Sans Serif</option><option value="condensed">Condensed</option><option value="serif">Serif</option><option value="arabic_calligraphy">Arabic Calligraphy</option><option value="monospace">Monospace</option><option value="custom">Custom</option></select></Field> : <div className="flex min-h-20 items-center border border-[#829184]/35 bg-[#657868]/[0.08] px-4 text-sm font-bold leading-6 text-[#4f6253]">لن يحتوي العمل الفني على كلمات أو حروف ما دامت حقول النص فارغة.</div>}
+                      {hasArtworkText && state.brief.typographyStyle === 'custom' ? <Field label="أسلوب الخط المخصص"><input className={fieldClass} value={state.brief.customTypographyStyle} onChange={(event) => updateBrief({ customTypographyStyle: event.target.value })} /></Field> : null}
                     </div>
                     <div>
                       <p className="mb-3 text-sm font-bold">ألوان العمل الفني</p>
@@ -345,6 +348,7 @@ export default function WashaAiV4() {
                       ['القطعة', `${state.garmentColorName} / ${state.garmentColorHex}`],
                       ['الطباعة', `${PLACEMENT[state.printPosition].label} · ${state.brief.designWidth} × ${state.brief.designHeight} سم`],
                       ['الأسلوب', state.artStyleName],
+                      ['النص داخل التصميم', hasArtworkText ? [state.brief.mainText, state.brief.secondaryText].filter(Boolean).join(' · ') : 'بدون نص — يمنع المحرك الحروف والعبارات'],
                       ['الخلفية', `${state.brief.background} / ${state.brief.backgroundColor}`],
                     ].map(([label, value]) => <div key={label} className="grid gap-2 py-4 md:grid-cols-[140px_1fr]"><span className="font-mono text-[10px] font-bold tracking-[0.14em] text-[#738075]">{label}</span><span className="text-sm leading-6 text-[#424642]">{value}</span></div>)}
                   </div>
