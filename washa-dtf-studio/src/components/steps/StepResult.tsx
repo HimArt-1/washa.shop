@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Wand2, Download, ChevronRight, Loader2, RotateCcw,
-  ZoomIn, Sparkles, ShoppingBag, CheckCircle2, X, FileCheck, CircleAlert, Clock3,
+  ZoomIn, Sparkles, ShoppingBag, CheckCircle2, X, CircleAlert, Clock3,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useDesign } from '../../context/DesignContext';
@@ -13,6 +13,7 @@ import { isCleanOutputEnabled } from '../../lib/outputPreferences';
 import BoardPreviewDisclosure from '../BoardPreviewDisclosure';
 import { resolveGenerationPresentation } from '../../lib/generationPresentation';
 import { isBoardPreviewResult } from '../../services/geminiService';
+import WashaDesignTermsModal from '../WashaDesignTermsModal';
 
 function useGenerationProgress(active: boolean) {
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -59,133 +60,6 @@ function SupportRequestId({
     >
       معرّف الطلب للدعم: <span dir="ltr" className="font-mono">{requestId}</span>
     </button>
-  );
-}
-
-// ── Terms & Conditions Modal ──────────────────────────────────
-function TermsModal({
-  onAccept,
-  onClose,
-  isSubmitting,
-}: {
-  onAccept: () => void;
-  onClose: () => void;
-  isSubmitting: boolean;
-}) {
-  const [agreed, setAgreed] = useState(false);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget && !isSubmitting) onClose(); }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 60, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.96 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="glass-card-strong flex max-h-[90vh] w-full max-w-lg flex-col space-y-5 rounded-2xl p-5 sm:p-6"
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-washa-gold">
-              <FileCheck className="w-5 h-5" />
-              <span className="font-bold text-lg">الشروط والأحكام</span>
-            </div>
-            <p className="text-xs text-washa-text-faint">يرجى القراءة والموافقة قبل إرسال طلبك</p>
-          </div>
-          {!isSubmitting && (
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-washa-text-faint hover:text-washa-text hover:bg-washa-surface/60 transition-colors shrink-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Terms content */}
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1 text-sm leading-relaxed text-washa-text-sec scrollbar-thin">
-          {[
-            {
-              title: 'طبيعة الطلب',
-              body: 'هذا الطلب مبني على تصميم تم توليده بالذكاء الاصطناعي في استوديو وشّى DTF. يُعدّ الموكب المُولَّد مرجعًا تقريبيًا، والمنتج النهائي قد يختلف طفيفًا في الألوان أو التفاصيل.',
-            },
-            {
-              title: 'الطباعة والجودة',
-              body: 'تُطبَع التصاميم بتقنية DTF (طباعة مباشرة على الفيلم) بدقة عالية. الألوان الفعلية قد تتفاوت بين الشاشة والمنتج المطبوع بسبب اختلاف معايير الألوان.',
-            },
-            {
-              title: 'التنفيذ والتسليم',
-              body: 'بعد إضافة التصميم إلى السلة وإتمام الطلب، يتولى فريق وشّى تنفيذ الطباعة والتجهيز. مدة التنفيذ المعتادة 3–7 أيام عمل حسب الضغط ونوع القطعة.',
-            },
-            {
-              title: 'حقوق التصميم',
-              body: 'بإرسال هذا الطلب، تُقرّ بأن التصميم المُولَّد لا يُنتهك حقوق الملكية الفكرية لأطراف ثالثة. وشّى غير مسؤولة عن أي محتوى يتعارض مع حقوق النشر أو العلامات التجارية.',
-            },
-            {
-              title: 'الدفع والإلغاء',
-              body: 'سيُضاف التصميم إلى السلة بسعره المحتسب من إعدادات القطعة والطباعة المعتمدة، ويمكنك مراجعة الطلب في صفحة الدفع قبل الإتمام. لأي تعديل لاحق يُرجى التواصل مع الدعم.',
-            },
-          ].map((item, i) => (
-            <div key={i} className="space-y-1.5 rounded-xl border border-washa-border/20 bg-washa-bg/40 p-3.5">
-              <p className="font-semibold text-washa-text text-sm">{i + 1}. {item.title}</p>
-              <p className="text-washa-text-faint text-xs leading-relaxed">{item.body}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Agreement checkbox */}
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className={cn(
-            'mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200',
-            agreed
-              ? 'bg-washa-gold border-washa-gold'
-              : 'border-washa-border/50 group-hover:border-washa-gold/40'
-          )}>
-            {agreed && <CheckCircle2 className="w-3.5 h-3.5 text-washa-bg" />}
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="sr-only"
-            />
-          </div>
-          <span className="text-sm text-washa-text-sec leading-relaxed">
-            أقرّ بقراءة الشروط والأحكام أعلاه وأوافق عليها بالكامل
-          </span>
-        </label>
-
-        {/* Actions */}
-        <div className="flex gap-3 pt-1">
-          {!isSubmitting && (
-            <Button
-              variant="ghost"
-              onClick={onClose}
-              className="flex-1 rounded-xl"
-            >
-              رجوع
-            </Button>
-          )}
-          <Button
-            variant="gold"
-            onClick={onAccept}
-            disabled={!agreed || isSubmitting}
-            className="flex-1 gap-2 rounded-xl btn-shimmer-effect h-12 font-bold"
-          >
-            {isSubmitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> جاري الإضافة...</>
-            ) : (
-              <><ShoppingBag className="w-4 h-4" /> تأكيد وإضافة للسلة</>
-            )}
-          </Button>
-        </div>
-      </motion.div>
-    </motion.div>
   );
 }
 
@@ -325,7 +199,7 @@ export default function StepResult() {
   const handleConfirmOrder = () => setShowTerms(true);
   const handleEditOptions = () => setStep(5);
   const handleAcceptTerms = async () => {
-    const success = await submitOrder();
+    const success = await submitOrder({ termsAccepted: true });
     if (success) setShowTerms(false);
   };
 
@@ -334,7 +208,7 @@ export default function StepResult() {
       {/* Terms Modal */}
       <AnimatePresence>
         {showTerms && presentation.canSubmitOrder && (
-          <TermsModal
+          <WashaDesignTermsModal
             onAccept={handleAcceptTerms}
             onClose={() => !isSubmittingOrder && setShowTerms(false)}
             isSubmitting={isSubmittingOrder}

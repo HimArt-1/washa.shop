@@ -9,6 +9,8 @@ const {
     mockCurrentUser,
     mockPrepareCartItem,
     mockLogDiagnosticWarning,
+    mockResolveWashaAiDevGenerationIdentity,
+    mockGetSubmissionPolicy,
 } = vi.hoisted(() => ({
     mockRequireDtfRouteAccess: vi.fn(),
     mockEnforceDtfRouteRateLimit: vi.fn(),
@@ -16,6 +18,8 @@ const {
     mockCurrentUser: vi.fn(),
     mockPrepareCartItem: vi.fn(),
     mockLogDiagnosticWarning: vi.fn(),
+    mockResolveWashaAiDevGenerationIdentity: vi.fn(),
+    mockGetSubmissionPolicy: vi.fn(),
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/route-runtime", () => ({
@@ -29,9 +33,20 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/services/dtf-order.service", () => ({
+    WASHA_AI_TERMS_VERSION: "washa-ai-terms-v1",
     DtfOrderService: {
         prepareCartItem: mockPrepareCartItem,
     },
+}));
+
+vi.mock("@/app/api/washa-dtf-studio/services/design-revision.service", () => ({
+    DesignRevisionService: {
+        getSubmissionPolicy: mockGetSubmissionPolicy,
+    },
+}));
+
+vi.mock("@/lib/washa-ai-dev-access", () => ({
+    resolveWashaAiDevGenerationIdentity: mockResolveWashaAiDevGenerationIdentity,
 }));
 
 vi.mock("@/app/api/washa-dtf-studio/utils/api-error", async () => {
@@ -55,6 +70,8 @@ describe("submit-order route", () => {
         mockCurrentUser.mockReset();
         mockPrepareCartItem.mockReset();
         mockLogDiagnosticWarning.mockReset();
+        mockResolveWashaAiDevGenerationIdentity.mockReset();
+        mockGetSubmissionPolicy.mockReset();
 
         mockRequireDtfRouteAccess.mockResolvedValue({
             access: {
@@ -89,6 +106,14 @@ describe("submit-order route", () => {
                     price: 139,
                 },
             },
+        });
+        mockResolveWashaAiDevGenerationIdentity.mockReturnValue({
+            kind: "app",
+            surface: null,
+        });
+        mockGetSubmissionPolicy.mockResolvedValue({
+            pipeline: "standard",
+            termsRequired: false,
         });
     });
 
@@ -170,6 +195,71 @@ describe("submit-order route", () => {
                 price: 139,
             },
         });
+    });
+
+    it("requires explicit terms acceptance for a stored prompt-native design", async () => {
+        mockGetSubmissionPolicy.mockResolvedValue({
+            pipeline: "prompt_native",
+            termsRequired: true,
+        });
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                style: "حديث",
+                technique: "DTF",
+                paletteId: "palette_1",
+                designRequestId: "11111111-1111-4111-8111-111111111111",
+                mockupDataUrl: "data:image/png;base64,AAAA",
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
+
+        expect(response.status).toBe(400);
+        await expect(response.json()).resolves.toEqual({
+            error: "يجب الموافقة على الشروط والأحكام قبل اعتماد التصميم.",
+        });
+        expect(mockPrepareCartItem).not.toHaveBeenCalled();
+        expect(mockResolveWashaAiDevGenerationIdentity).toHaveReturnedWith({
+            kind: "app",
+            surface: null,
+        });
+    });
+
+    it("submits V3 only after terms are accepted", async () => {
+        mockGetSubmissionPolicy.mockResolvedValue({
+            pipeline: "prompt_native",
+            termsRequired: true,
+        });
+        mockParseAndValidateDtfJson.mockResolvedValue({
+            data: {
+                garmentType: "تيشيرت",
+                garmentColor: "أسود",
+                style: "حديث",
+                technique: "DTF",
+                paletteId: "palette_1",
+                designRequestId: "11111111-1111-4111-8111-111111111111",
+                mockupDataUrl: "data:image/png;base64,AAAA",
+                termsAccepted: true,
+            },
+        });
+
+        const response = await POST(new Request("http://localhost/api/dtf/submit") as NextRequest);
+
+        expect(response.status).toBe(200);
+        expect(mockPrepareCartItem).toHaveBeenCalledOnce();
+        expect(mockPrepareCartItem).toHaveBeenCalledWith(
+            expect.objectContaining({ termsAccepted: true }),
+            expect.any(Object),
+            expect.objectContaining({
+                termsAcceptance: expect.objectContaining({
+                    version: "washa-ai-terms-v1",
+                    surface: "dev-v3",
+                    acceptedAt: expect.any(String),
+                }),
+            })
+        );
     });
 
     it("requires a Clerk profile before preparing the cart item", async () => {

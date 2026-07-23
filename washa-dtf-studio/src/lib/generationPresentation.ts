@@ -1,4 +1,5 @@
 import {
+  getGeneratedPreviewUrl,
   isBoardPreviewResult,
   type GeneratedArtworkResult,
 } from '../services/geminiService';
@@ -15,6 +16,21 @@ export interface GenerationPresentation {
   canSubmitOrder: boolean;
   canDownloadPrintFile: boolean;
   previewDownloadName: 'washa-board-preview.webp' | 'washa-mockup.png' | 'washa-source-preview.png';
+}
+
+export function resolveCustomerFacingPreviewUrl(
+  result: GeneratedArtworkResult | null | undefined,
+  pipeline: 'standard' | 'prompt_native',
+) {
+  if (!result) return null;
+  if (
+    pipeline === 'prompt_native'
+    && !isBoardPreviewResult(result)
+    && result.previewKind !== 'mockup'
+  ) {
+    return null;
+  }
+  return getGeneratedPreviewUrl(result);
 }
 
 export function resolveGenerationPresentation(

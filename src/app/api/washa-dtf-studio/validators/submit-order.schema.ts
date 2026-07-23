@@ -45,6 +45,7 @@ export const submitOrderSchema = z.object({
   masterAssetId: z.string().uuid().nullable().optional(),
   masterChecksum: z.string().trim().regex(/^[a-f0-9]{64}$/).nullable().optional(),
   placementData: placementDataSchema.nullable().optional(),
+  termsAccepted: z.boolean().optional().default(false),
   // Legacy compatibility only. The single-source path references stored assets
   // by immutable IDs and never re-uploads browser screenshots or previews.
   mockupDataUrl: z.string().trim().nullable().optional().refine(

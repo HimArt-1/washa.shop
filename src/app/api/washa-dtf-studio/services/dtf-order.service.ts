@@ -38,6 +38,14 @@ import type {
 
 export type SubmitOrderPayload = z.infer<typeof submitOrderSchema>;
 
+export const WASHA_AI_TERMS_VERSION = "washa-ai-terms-v1";
+
+export type WashaAiTermsAcceptance = {
+    version: typeof WASHA_AI_TERMS_VERSION;
+    acceptedAt: string;
+    surface: "dev-v3";
+};
+
 type CustomDesignOrderInsert = Database["public"]["Tables"]["custom_design_orders"]["Insert"];
 
 const DEFAULT_DTF_PRINT_POSITION: PrintPosition = "chest";
@@ -239,7 +247,12 @@ export class DtfOrderService {
     static async prepareCartItem(
         payload: SubmitOrderPayload,
         userProfile: any | null,
-        options?: { traceId?: string; profileId?: string | null }
+        options?: {
+            traceId?: string;
+            profileId?: string | null;
+            termsAcceptance?: WashaAiTermsAcceptance | null;
+            deferSideEffects?: (task: () => Promise<void>) => void;
+        }
     ): Promise<{ error?: string; status?: number; data?: any }> {
         const traceId = options?.traceId ?? crypto.randomUUID();
         const serviceStartedAt = Date.now();
@@ -267,6 +280,7 @@ export class DtfOrderService {
                 design_request_id: designRequestId ?? null,
                 source_asset_id: sourceAssetId ?? null,
                 master_asset_id: masterAssetId ?? null,
+                terms_version: options?.termsAcceptance?.version ?? null,
                 authenticated: Boolean(userProfile),
             });
 
@@ -566,6 +580,15 @@ export class DtfOrderService {
                 ...(approvedRevision?.pipeline === "prompt_native"
                     ? { washa_ai_version: "v3" as const }
                     : {}),
+                ...(options?.termsAcceptance
+                    ? {
+                        terms_acceptance: {
+                            version: options.termsAcceptance.version,
+                            accepted_at: options.termsAcceptance.acceptedAt,
+                            surface: options.termsAcceptance.surface,
+                        },
+                    }
+                    : {}),
             };
             const designOrderInsertPayload: CustomDesignOrderInsert = {
                 user_id: userId,
@@ -643,15 +666,21 @@ export class DtfOrderService {
             }
 
             if (insertedOrder?.id && insertedOrder.order_number) {
-                await DtfOrderService.dispatchDesignOrderCreatedSideEffects({
-                    orderId: insertedOrder.id,
-                    orderNumber: insertedOrder.order_number,
-                    customerName,
-                    customerEmail,
-                    customerPhone,
-                    garmentName: resolvedGarmentName,
-                    colorName: resolvedColorName,
-                });
+                const dispatchSideEffects = () =>
+                    DtfOrderService.dispatchDesignOrderCreatedSideEffects({
+                        orderId: insertedOrder.id,
+                        orderNumber: insertedOrder.order_number,
+                        customerName,
+                        customerEmail,
+                        customerPhone,
+                        garmentName: resolvedGarmentName,
+                        colorName: resolvedColorName,
+                    });
+                if (options?.deferSideEffects) {
+                    options.deferSideEffects(dispatchSideEffects);
+                } else {
+                    await dispatchSideEffects();
+                }
             }
 
             logDtfTrace("dtf.submit-order.service", traceId, "prepare_succeeded", {

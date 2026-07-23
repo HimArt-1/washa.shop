@@ -34,6 +34,11 @@ export type ApprovedRevision = {
     productionReadinessStatus: "ready" | "pending_prepress";
 };
 
+export type DesignSubmissionPolicy = {
+    pipeline: "standard" | "prompt_native";
+    termsRequired: boolean;
+};
+
 function placementsEqual(
     left: PlacementTransform | null | undefined,
     right: PlacementTransform
@@ -58,6 +63,48 @@ function placementsEqual(
 export class DesignRevisionService {
     private static db() {
         return getSupabaseAdminClient() as any;
+    }
+
+    static async getSubmissionPolicy(input: {
+        profileId: string;
+        designRequestId: string;
+    }): Promise<DesignSubmissionPolicy> {
+        const sb = DesignRevisionService.db();
+        const { data: request, error: requestError } = await sb
+            .from("washa_design_requests")
+            .select("id, source_asset_id, master_asset_id")
+            .eq("id", input.designRequestId)
+            .eq("profile_id", input.profileId)
+            .single();
+        if (requestError || !request) {
+            throw new Error("Design request is missing or does not belong to this customer.");
+        }
+
+        const assetTable = request.master_asset_id
+            ? "washa_design_master_assets"
+            : "washa_design_source_assets";
+        const assetId = request.master_asset_id ?? request.source_asset_id;
+        if (!assetId) {
+            throw new Error("Design request has no stored generation asset.");
+        }
+
+        const { data: asset, error: assetError } = await sb
+            .from(assetTable)
+            .select("generation_parameters")
+            .eq("id", assetId)
+            .eq("profile_id", input.profileId)
+            .single();
+        if (assetError || !asset) {
+            throw new Error("Design request generation asset is missing.");
+        }
+
+        const pipeline = normalizeWashaGenerationPipeline(
+            asset.generation_parameters?.pipeline
+        );
+        return {
+            pipeline,
+            termsRequired: pipeline === "prompt_native",
+        };
     }
 
     static async approve(input: ApproveRevisionInput): Promise<ApprovedRevision> {

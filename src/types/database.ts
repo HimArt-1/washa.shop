@@ -1542,6 +1542,12 @@ export type DesignPricingSnapshotDtf = {
     dtf: true;
     /** Server-verified studio origin. Absent on legacy/classic WASHA AI orders. */
     washa_ai_version?: "v3";
+    /** Server-recorded acceptance for prompt-native V3 orders. */
+    terms_acceptance?: {
+        version: "washa-ai-terms-v1";
+        accepted_at: string;
+        surface: "dev-v3";
+    };
 };
 
 export type DesignPricingSnapshot = DesignPricingSnapshotClassic | DesignPricingSnapshotDtf;

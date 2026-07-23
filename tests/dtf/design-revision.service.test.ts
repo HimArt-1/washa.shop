@@ -200,6 +200,16 @@ describe("DesignRevisionService", () => {
         });
     });
 
+    it("derives the submission policy from the stored generation asset", async () => {
+        await expect(DesignRevisionService.getSubmissionPolicy({
+            profileId: "profile_1",
+            designRequestId: "11111111-1111-4111-8111-111111111111",
+        })).resolves.toEqual({
+            pipeline: "prompt_native",
+            termsRequired: true,
+        });
+    });
+
     it("creates an immutable revision and print derivative from the stored master checksum", async () => {
         const sb = mockGetSupabaseAdminClient();
         const result = await DesignRevisionService.approve({

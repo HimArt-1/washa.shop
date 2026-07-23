@@ -172,6 +172,20 @@ describe("DtfOrderService", () => {
     });
 
     it("approves the immutable master revision without re-uploading a browser mockup or extracted image", async () => {
+        const deferSideEffects = vi.fn();
+        mockInsertOrder.mockImplementation((payload) => ({
+            select: () => ({
+                single: async () => ({
+                    data: {
+                        id: "88888888-8888-4888-8888-888888888888",
+                        order_number: 1001,
+                        tracker_token: "tracker-token",
+                    },
+                    error: null,
+                    payload,
+                }),
+            }),
+        }));
         const result = await DtfOrderService.prepareCartItem({
             garmentType: "تيشيرت",
             garmentColor: "أسود",
@@ -204,6 +218,12 @@ describe("DtfOrderService", () => {
         }, null, {
             traceId: "trace_single_source",
             profileId: "profile_1",
+            termsAcceptance: {
+                version: "washa-ai-terms-v1",
+                acceptedAt: "2026-07-23T09:00:00.000Z",
+                surface: "dev-v3",
+            },
+            deferSideEffects,
         });
 
         expect(result.error).toBeUndefined();
@@ -214,6 +234,8 @@ describe("DtfOrderService", () => {
             masterChecksum: "a".repeat(64),
         }));
         expect(mockUploadBase64Image).not.toHaveBeenCalled();
+        expect(deferSideEffects).toHaveBeenCalledOnce();
+        expect(deferSideEffects).toHaveBeenCalledWith(expect.any(Function));
         expect(mockInsertOrder).toHaveBeenCalledWith(expect.objectContaining({
             dtf_mockup_url: "https://cdn.example/mockup-front.webp",
             dtf_extracted_url: "https://cdn.example/print-production.png",
@@ -229,6 +251,11 @@ describe("DtfOrderService", () => {
             pricing_snapshot: expect.objectContaining({
                 dtf: true,
                 washa_ai_version: "v3",
+                terms_acceptance: {
+                    version: "washa-ai-terms-v1",
+                    accepted_at: "2026-07-23T09:00:00.000Z",
+                    surface: "dev-v3",
+                },
             }),
         }));
         expect(result.data).toMatchObject({

@@ -70,6 +70,8 @@ import {
   type GenerationRetryIdentity,
   type StructuredRecoveryState,
 } from '../lib/structuredErrorActions';
+import { getWashaAiDevGenerationHeadersFromDocument } from '../lib/devGenerationSurface';
+import { resolveCustomerFacingPreviewUrl } from '../lib/generationPresentation';
 
 export interface OrderResult {
   itemTitle: string;
@@ -85,6 +87,10 @@ interface GenerateOptions {
 }
 
 type GenerationAttemptOutcome = 'succeeded' | 'preview' | 'failed' | 'not_started';
+
+interface SubmitOrderOptions {
+  termsAccepted?: boolean;
+}
 
 interface DesignContextType {
   step: number;
@@ -110,7 +116,7 @@ interface DesignContextType {
   promptFocusRequestId: number;
   isSubmittingOrder: boolean;
   orderResult: OrderResult | null;
-  submitOrder: () => Promise<boolean>;
+  submitOrder: (options?: SubmitOrderOptions) => Promise<boolean>;
   handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleGenerate: (options?: GenerateOptions) => Promise<GenerationAttemptOutcome>;
   handleExtract: () => Promise<void>;
@@ -810,6 +816,13 @@ export function DesignProvider({
       const generatedPreviewUrl = generated ? getGeneratedPreviewUrl(generated) : null;
       const validation = await validateGeneratedImage(generatedPreviewUrl);
       if (validation.valid && generated) {
+        const customerPreviewUrl = resolveCustomerFacingPreviewUrl(
+          generated,
+          generationPipeline,
+        );
+        const hidePromptNativeSourcePreview = Boolean(
+          generatedPreviewUrl && !customerPreviewUrl
+        );
         if (canRecompose) {
           cancelStructuredRecovery();
         } else {
@@ -817,19 +830,21 @@ export function DesignProvider({
         }
         setPromptFieldError(false);
         setGenerationResult(generated);
-        setMockupImage(generatedPreviewUrl);
-        setMockupState({ ...state });
+        setMockupImage(customerPreviewUrl);
+        setMockupState(customerPreviewUrl ? { ...state } : null);
         setExtractedImage(
           isBoardPreviewResult(generated)
             ? null
             : (generated.masterAssetUrl ?? generated.sourceAssetUrl)
         );
         showToast(
-          !isBoardPreviewResult(generated)
+          hidePromptNativeSourcePreview
+            ? 'تم حفظ أصل التصميم داخلياً؛ أعد المحاولة لإكمال الموكب الواقعي'
+            : !isBoardPreviewResult(generated)
             && generated.productionReadinessStatus === 'pending_prepress'
             ? 'تم حفظ أصل التصميم؛ تجهيز ملف الطباعة مستمر دون تعطيل طلبك'
             : 'تم توليد التصميم بنجاح',
-          'success'
+          hidePromptNativeSourcePreview ? 'info' : 'success'
         );
         return reportOutcome(isBoardPreviewResult(generated) ? 'preview' : 'succeeded');
       } else {
@@ -1077,7 +1092,7 @@ export function DesignProvider({
     showToast('جاري تحميل الملف...', 'success');
   };
 
-  const submitOrder = async (): Promise<boolean> => {
+  const submitOrder = async (options: SubmitOrderOptions = {}): Promise<boolean> => {
     if (!mockupImage || !generationResult || isBoardPreviewResult(generationResult)) {
       return false;
     }
@@ -1107,7 +1122,10 @@ export function DesignProvider({
     try {
       const res = await fetch('/api/washa-dtf-studio/submit-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getWashaAiDevGenerationHeadersFromDocument(),
+        },
         body: JSON.stringify({
           garmentId: state.garmentId,
           garmentType: state.garmentType,
@@ -1136,6 +1154,7 @@ export function DesignProvider({
           masterAssetId: generationResult.masterAssetId,
           masterChecksum: generationResult.masterChecksum,
           placementData: generationResult.placement,
+          termsAccepted: options.termsAccepted === true,
         }),
       });
 
@@ -1171,7 +1190,9 @@ export function DesignProvider({
         localStorage.setItem(cartKey, JSON.stringify(cartState));
         localStorage.setItem('wusha-open-cart', '1');
       } catch {
-        // Non-fatal — the user can still retry and the design itself is preserved locally.
+        throw new Error(
+          'تم حفظ التصميم في طلبات التصميم، لكن تعذر تحديث السلة في هذا المتصفح. لن ننقلك إلى سلة فارغة؛ وفّر مساحة تخزين أو فعّل التخزين المحلي ثم حاول مجدداً.'
+        );
       }
 
       showToast('تمت إضافة التصميم إلى السلة بنجاح', 'success');

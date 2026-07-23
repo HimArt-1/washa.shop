@@ -30,6 +30,7 @@ import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import { siteAsset } from '../../lib/assets';
 import { cn } from '../../lib/utils';
 import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
+import WashaDesignTermsModal from '../WashaDesignTermsModal';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import {
@@ -437,6 +438,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     mockupImage,
     isMockupCurrent,
     extractedImage,
+    generationResult,
     generationAttemptOutcome,
     error,
     orderResult,
@@ -447,7 +449,8 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const [studioView, setStudioView] = useState<StudioView>('wizard');
   const [dragging, setDragging] = useState(false);
-  const [resultAssetView, setResultAssetView] = useState<'mockup' | 'artwork'>('mockup');
+  const [showApprovalTerms, setShowApprovalTerms] = useState(false);
+  const [approvalAttempted, setApprovalAttempted] = useState(false);
   const [creativeDirectionId, setCreativeDirectionId] = useState<CreativeDirection['id']>('signature');
   const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
   const enhancementRequestVersionRef = useRef(0);
@@ -692,14 +695,12 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
 
   const handleGenerateFromWizard = () => {
     if (!canGenerate) return;
-    setResultAssetView('mockup');
     setStudioView('generation');
     void runGenerationAttempt();
   };
 
   const handleRetryGenerate = () => {
     if (!canGenerate) return;
-    setResultAssetView('mockup');
     void runGenerationAttempt();
   };
 
@@ -712,9 +713,23 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     resetDesign();
     setCreativeDirectionId('signature');
     setIdeaEnhancement(null);
-    setResultAssetView('mockup');
+    setShowApprovalTerms(false);
+    setApprovalAttempted(false);
     setActiveStepIndex(0);
     setStudioView('wizard');
+  };
+
+  const handleOpenApprovalTerms = () => {
+    setApprovalAttempted(false);
+    setShowApprovalTerms(true);
+  };
+
+  const handleAcceptApprovalTerms = async () => {
+    setApprovalAttempted(true);
+    const success = await submitOrder({ termsAccepted: true });
+    if (success) {
+      window.location.assign('/cart');
+    }
   };
 
   const renderIdeaStep = () => (
@@ -1254,27 +1269,45 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   );
 
   const renderGenerationView = () => {
-    const hasFinalDesign = Boolean(mockupImage);
+    const hasMockupComposite = Boolean(
+      generationResult
+      && 'previewKind' in generationResult
+      && generationResult.previewKind === 'mockup'
+    );
+    const hasInternalOnlyArtwork = Boolean(
+      isPromptNative
+      && generationResult
+      && 'previewKind' in generationResult
+      && generationResult.previewKind !== 'mockup'
+    );
+    const hasFinalDesign = Boolean(
+      mockupImage
+      && (!isPromptNative || isBoardPreview || hasMockupComposite)
+    );
     const hasCurrentFinalDesign = hasFinalDesign && (!isPromptNative || isMockupCurrent);
-    const isArtworkView = isPromptNative && resultAssetView === 'artwork' && Boolean(extractedImage);
-    const displayImage = isArtworkView ? extractedImage : mockupImage || previewImage;
+    const displayImage = hasInternalOnlyArtwork ? previewImage : mockupImage || previewImage;
     const generationAttemptFailed = isPromptNative && generationAttemptStatus === 'failed';
     const generationAttemptNotStarted = isPromptNative && generationAttemptStatus === 'not_started';
-    const needsCurrentGeneration = !hasFinalDesign || generationAttemptNotStarted || (isPromptNative && !isMockupCurrent);
+    const needsCurrentGeneration = !hasFinalDesign
+      || hasInternalOnlyArtwork
+      || generationAttemptNotStarted
+      || (isPromptNative && !isMockupCurrent);
     const resultTitle = isGenerating
       ? isPromptNative ? 'محرك V3 يبني النتيجة الآن.' : 'نجهز التصميم الآن.'
       : generationAttemptFailed
         ? 'لم تكتمل المحاولة الأخيرة.'
         : generationAttemptNotStarted
           ? 'لم تبدأ محاولة جديدة.'
+        : hasInternalOnlyArtwork
+          ? 'الموكب الواقعي لم يكتمل.'
         : hasCurrentFinalDesign
-          ? isBoardPreview ? 'المعاينة المبدئية جاهزة.' : isPromptNative ? 'اكتمل أصل التصميم والموكب.' : 'التصميم جاهز.'
+          ? isBoardPreview ? 'المعاينة المبدئية جاهزة.' : isPromptNative ? 'اكتمل التصميم والموكب الواقعي.' : 'التصميم جاهز.'
           : hasFinalDesign
             ? 'النتيجة السابقة محفوظة.'
           : 'جاهز لتوليد النتيجة.';
     const resultBody = isGenerating
       ? isPromptNative
-        ? 'ينشئ OpenAI ملف الطباعة الشفاف أولاً، ثم يتحقق النظام من قناة Alpha قبل أن يركّبه Gemini على القطعة المختارة.'
+        ? 'يبني OpenAI أصل التصميم، ثم يتحقق النظام من جاهزيته قبل أن يركّبه Gemini على القطعة التي اخترتها.'
         : 'نرتب الفكرة والقطعة والموضع في نتيجة واحدة قابلة للطلب.'
       : generationAttemptFailed
         ? hasFinalDesign
@@ -1284,11 +1317,13 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
           ? hasFinalDesign
             ? 'لم يبدأ طلب جديد، والنتيجة السابقة ما زالت متاحة للمراجعة. حاول مجدداً عندما تصبح الخدمة جاهزة.'
             : 'لم يبدأ طلب التوليد. راجع التنبيه الظاهر ثم حاول مجدداً.'
+        : hasInternalOnlyArtwork
+          ? 'حفظنا أصل التصميم داخلياً ولن نعرضه منفرداً هنا. أعد المحاولة لإكمال تركيبه على الموكب الذي اخترته.'
         : hasCurrentFinalDesign
           ? isBoardPreview
             ? 'راجع معاينة اللوحة؛ المقاسات والتفاصيل النهائية يؤكدها فريق خدمة العملاء.'
             : isPromptNative
-              ? 'راجع الموكب الواقعي وأصل الطباعة الشفاف، ثم اعتمد التصميم أو عدّل توجيهك.'
+              ? 'راجع التصميم على الموكب الذي اخترته. عند الاعتماد نحفظ ملف الطباعة داخلياً في طلبات التصميم ثم ننقلك إلى السلة.'
               : 'راجع التصميم النهائي، ثم أضفه للسلة أو عدّل الاختيارات قبل الاعتماد.'
           : hasFinalDesign
             ? 'هذه النتيجة تخص اختيارات سابقة. ولّد الاختيارات الحالية قبل اعتماد الطلب.'
@@ -1299,42 +1334,20 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
         <section className="overflow-hidden rounded-[34px] bg-washa-text p-3 text-washa-bg shadow-[0_28px_90px_rgba(31,25,16,0.22)] sm:p-4">
           <div className="flex items-center justify-between gap-3 px-2 pb-4">
             <div>
-              <p className="text-xs font-black text-washa-gold-light">{isPromptNative ? 'مسار أصل الطباعة' : 'واجهة التوليد'}</p>
-              <p className="mt-1 text-lg font-black">{isArtworkView ? 'أصل الطباعة الشفاف' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : isPromptNative ? isMockupCurrent ? 'الموكب الواقعي' : 'الموكب السابق' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
+              <p className="text-xs font-black text-washa-gold-light">{isPromptNative ? 'المعاينة الواقعية' : 'واجهة التوليد'}</p>
+              <p className="mt-1 text-lg font-black">{hasInternalOnlyArtwork ? 'الموكب بانتظار التركيب' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية' : isPromptNative ? isMockupCurrent ? 'التصميم على الموكب المختار' : 'الموكب السابق' : 'النتيجة النهائية' : 'لوحة التكوين'}</p>
             </div>
             <span className="rounded-2xl border border-washa-bg/10 bg-washa-bg/10 px-3 py-2 text-xs font-black text-washa-bg/80">
-              {isGenerating ? 'قيد التوليد' : isArtworkView ? 'PNG · ALPHA VERIFIED' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : isPromptNative ? isMockupCurrent ? 'GEMINI COMPOSITE' : 'نتيجة سابقة' : 'جاهز للسلة' : 'بانتظار النتيجة'}
+              {isGenerating ? 'قيد التوليد' : hasFinalDesign ? isBoardPreview ? 'للمراجعة فقط' : isPromptNative ? isMockupCurrent ? 'GEMINI COMPOSITE' : 'نتيجة سابقة' : 'جاهز للسلة' : 'بانتظار النتيجة'}
             </span>
           </div>
 
-          {isPromptNative && hasFinalDesign && extractedImage ? (
-            <div className="mb-3 grid grid-cols-2 gap-1 rounded-[18px] border border-washa-bg/10 bg-washa-bg/10 p-1" aria-label="نوع ملف النتيجة">
-              <button
-                type="button"
-                onClick={() => setResultAssetView('mockup')}
-                className={cn('h-10 rounded-[14px] text-xs font-black transition', resultAssetView === 'mockup' ? 'bg-washa-bg text-washa-text' : 'text-washa-bg/65 hover:text-washa-bg')}
-              >
-                الموكب الواقعي
-              </button>
-              <button
-                type="button"
-                onClick={() => setResultAssetView('artwork')}
-                className={cn('h-10 rounded-[14px] text-xs font-black transition', resultAssetView === 'artwork' ? 'bg-washa-bg text-washa-text' : 'text-washa-bg/65 hover:text-washa-bg')}
-              >
-                أصل الطباعة PNG
-              </button>
-            </div>
-          ) : null}
-
-          <div
-            className={cn('relative aspect-[4/5] overflow-hidden rounded-[30px] border border-washa-bg/10', isArtworkView ? 'bg-[#E8E6DF]' : 'bg-[#13241F]')}
-            style={isArtworkView ? { backgroundImage: 'linear-gradient(45deg, rgba(20,54,47,.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(20,54,47,.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(20,54,47,.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(20,54,47,.08) 75%)', backgroundPosition: '0 0, 0 12px, 12px -12px, -12px 0px', backgroundSize: '24px 24px' } : undefined}
-          >
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[30px] border border-washa-bg/10 bg-[#13241F]">
             {displayImage ? (
               <img
                 src={displayImage}
-                alt={isArtworkView ? 'أصل الطباعة الشفاف بصيغة PNG' : hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية للوحة التصميم' : 'التصميم النهائي على القطعة' : 'القطعة المختارة قبل التوليد'}
-                className={cn('h-full w-full object-contain', isArtworkView ? 'p-8 sm:p-12' : hasFinalDesign ? 'object-cover' : 'p-5')}
+                alt={hasFinalDesign ? isBoardPreview ? 'معاينة مبدئية للوحة التصميم' : 'التصميم النهائي على القطعة المختارة' : 'القطعة المختارة قبل التوليد'}
+                className={cn('h-full w-full object-contain', hasFinalDesign ? 'object-cover' : 'p-5')}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-washa-bg/60">
@@ -1407,11 +1420,11 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
                 <Button
                   variant="gold"
                   disabled={isSubmittingOrder}
-                  onClick={() => void submitOrder()}
+                  onClick={isPromptNative ? handleOpenApprovalTerms : () => void submitOrder()}
                   className="h-14 w-full gap-2 rounded-2xl bg-washa-text text-washa-bg hover:bg-washa-gold-deep"
                 >
                   {isSubmittingOrder ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingBag className="h-5 w-5" />}
-                  إضافة للسلة وإتمام الطلب
+                  {isPromptNative ? 'اعتماد التصميم' : 'إضافة للسلة وإتمام الطلب'}
                 </Button>
               ) : null}
 
@@ -1430,14 +1443,14 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
                 </div>
               ) : null}
 
-              {extractedImage && !isBoardPreview ? (
+              {extractedImage && !isBoardPreview && !isPromptNative ? (
                 <Button
                   variant="outline"
-                  onClick={() => handleDownload(extractedImage, isPromptNative ? 'washa-ai-native-print.png' : 'washa-ai-print.png')}
+                  onClick={() => handleDownload(extractedImage, 'washa-ai-print.png')}
                   className="h-12 w-full gap-2 rounded-2xl"
                 >
                   <Download className="h-4 w-4" />
-                  {isPromptNative ? 'تحميل أصل الطباعة PNG' : 'تحميل ملف الطباعة'}
+                  تحميل ملف الطباعة
                 </Button>
               ) : null}
 
@@ -1458,7 +1471,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
             </div>
           </div>
 
-          {orderResult ? (
+          {!isPromptNative && orderResult ? (
             <div className="rounded-2xl border border-washa-gold/25 bg-washa-gold/10 px-4 py-3 text-washa-gold-deep">
               <p className="flex items-center gap-2 text-sm font-black">
                 <CheckCircle2 className="h-4 w-4" />
@@ -1531,6 +1544,23 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
         style={promptNativeTheme}
         className="relative min-h-[100dvh] overflow-x-hidden bg-washa-bg text-washa-text selection:bg-washa-gold selection:text-white"
       >
+        <AnimatePresence>
+          {showApprovalTerms ? (
+            <WashaDesignTermsModal
+              variant="prompt-native"
+              onAccept={() => void handleAcceptApprovalTerms()}
+              onClose={() => {
+                if (!isSubmittingOrder) {
+                  setShowApprovalTerms(false);
+                  setApprovalAttempted(false);
+                }
+              }}
+              isSubmitting={isSubmittingOrder}
+              errorMessage={approvalAttempted ? error : null}
+            />
+          ) : null}
+        </AnimatePresence>
+
         <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_84%_4%,rgba(201,168,76,0.14),transparent_26%),radial-gradient(circle_at_8%_82%,rgba(29,27,23,0.06),transparent_32%)]" />
         <div className="pointer-events-none fixed inset-0 opacity-[0.035] [background-image:linear-gradient(rgba(29,27,23,0.45)_1px,transparent_1px),linear-gradient(90deg,rgba(29,27,23,0.45)_1px,transparent_1px)] [background-size:48px_48px]" />
 

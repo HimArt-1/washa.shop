@@ -1,6 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { DtfOrderService } from "../services/dtf-order.service";
+import {
+    DtfOrderService,
+    WASHA_AI_TERMS_VERSION,
+    type WashaAiTermsAcceptance,
+} from "../services/dtf-order.service";
+import { DesignRevisionService } from "../services/design-revision.service";
 import { respondWithError, logDiagnosticWarning } from "../utils/api-error";
 import { submitOrderSchema } from "../validators/submit-order.schema";
 import {
@@ -13,6 +18,7 @@ import {
     logDtfTrace,
     resolveDtfTraceId,
 } from "../utils/trace";
+import { resolveWashaAiDevGenerationIdentity } from "@/lib/washa-ai-dev-access";
 
 export const runtime = "nodejs";
 
@@ -37,6 +43,17 @@ export async function POST(request: NextRequest) {
         return attachDtfTraceId(accessResult.response, traceId);
     }
     const access = accessResult.access;
+    const devIdentity = resolveWashaAiDevGenerationIdentity(request);
+    if (devIdentity.kind === "invalid") {
+        return attachDtfTraceId(
+            respondWithError(
+                "انتهت صلاحية جلسة النسخة التطويرية. حدّث الصفحة ثم أعد المحاولة.",
+                409
+            ),
+            traceId
+        );
+    }
+    const devSurface = devIdentity.kind === "dev" ? devIdentity.surface : null;
 
     const rateLimitStartedAt = Date.now();
     const rateLimitResponse = await enforceDtfRouteRateLimit(request, access, {
@@ -82,6 +99,8 @@ export async function POST(request: NextRequest) {
         print_option_id: bodyResult.data.printOptionId ?? null,
         print_position: bodyResult.data.printPosition ?? null,
         print_size: bodyResult.data.printSize ?? null,
+        surface: devSurface,
+        terms_accepted: bodyResult.data.termsAccepted === true,
     });
 
     let userProfile = null;
@@ -103,10 +122,56 @@ export async function POST(request: NextRequest) {
         );
     }
 
+    let termsAcceptance: WashaAiTermsAcceptance | null = null;
+    if (bodyResult.data.designRequestId) {
+        if (!access.profileId) {
+            return attachDtfTraceId(
+                respondWithError("تعذر ربط اعتماد التصميم بحساب المستخدم.", 401),
+                traceId
+            );
+        }
+
+        try {
+            const policy = await DesignRevisionService.getSubmissionPolicy({
+                profileId: access.profileId,
+                designRequestId: bodyResult.data.designRequestId,
+            });
+            if (policy.termsRequired && bodyResult.data.termsAccepted !== true) {
+                logDtfTrace("dtf.submit-order", traceId, "terms_rejected", {
+                    surface: devSurface,
+                    pipeline: policy.pipeline,
+                    terms_accepted: false,
+                });
+                return attachDtfTraceId(
+                    respondWithError(
+                        "يجب الموافقة على الشروط والأحكام قبل اعتماد التصميم.",
+                        400
+                    ),
+                    traceId
+                );
+            }
+            if (policy.termsRequired) {
+                termsAcceptance = {
+                    version: WASHA_AI_TERMS_VERSION,
+                    acceptedAt: new Date().toISOString(),
+                    surface: "dev-v3",
+                };
+            }
+        } catch (policyError) {
+            logDiagnosticWarning("resolve-design-submission-policy", policyError);
+            return attachDtfTraceId(
+                respondWithError("تعذر التحقق من مسار التصميم قبل اعتماده.", 409),
+                traceId
+            );
+        }
+    }
+
     const serviceStartedAt = Date.now();
     const result = await DtfOrderService.prepareCartItem(bodyResult.data, userProfile, {
         traceId,
         profileId: access.profileId,
+        termsAcceptance,
+        deferSideEffects: (task) => after(task),
     });
     logDtfTrace("dtf.submit-order", traceId, "service_resolved", {
         duration_ms: Date.now() - serviceStartedAt,
