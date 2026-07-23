@@ -109,11 +109,15 @@ export function extractCustomerConceptFromLegacyPrompt(value: string) {
 
 export function buildIsolatedArtworkPrompt(
     userIdea: string,
-    context: ArtworkGenerationContext = {}
+    context: ArtworkGenerationContext = {},
+    options: { includeCalligraphyArtDirection?: boolean } = {}
 ) {
     const suppliedText = compact(context.calligraphyText);
     const calligraphyText = context.designMethod === "calligraphy" ? suppliedText : "";
     const visualIdea = calligraphyText ? "" : extractCustomerConceptFromLegacyPrompt(userIdea);
+    const calligraphyArtDirection = calligraphyText && options.includeCalligraphyArtDirection
+        ? extractCustomerConceptFromLegacyPrompt(userIdea)
+        : "";
     const referenceDirective = context.referenceImageMode === "preserve_subject"
         ? "Use the supplied customer reference to preserve the identity and recognizable structure of its main subject, while producing a clean isolated print artwork."
         : context.referenceImageMode === "style_inspiration"
@@ -129,6 +133,9 @@ export function buildIsolatedArtworkPrompt(
             : null,
         calligraphyText
             ? `Exact customer text — the only text allowed in the image:\n<exact_customer_text>\n${calligraphyText}\n</exact_customer_text>`
+            : null,
+        calligraphyArtDirection
+            ? `Calligraphy art direction — visual treatment only, never text content:\n<visual_brief>\n${calligraphyArtDirection}\n</visual_brief>`
             : null,
         compact(context.style) ? `Selected visual style:\n${compact(context.style)}` : null,
         compact(context.technique) ? `Selected technique:\n${compact(context.technique)}` : null,

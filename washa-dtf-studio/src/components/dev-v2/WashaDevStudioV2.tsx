@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type ComponentType, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   CheckCircle2,
+  Crown,
   Download,
+  Feather,
   FileImage,
   GalleryHorizontalEnd,
   ImageIcon,
@@ -20,12 +22,14 @@ import {
   Sparkles,
   Type,
   Wand2,
+  Zap,
 } from 'lucide-react';
 import { useDesign } from '../../context/DesignContext';
 import BoardPreviewDisclosure from '../BoardPreviewDisclosure';
 import { resolvePrintPlacementFromOption } from '../../lib/placement';
 import { siteAsset } from '../../lib/assets';
 import { cn } from '../../lib/utils';
+import { enhanceDesignIdea } from '../../services/ideaEnhancerService';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import {
@@ -74,10 +78,51 @@ const METHOD_TABS: { id: DesignMethod; label: string; hint: string; icon: Compon
 ];
 
 const PROMPT_STARTERS = [
+  {
+    label: 'هيبة عربية',
+    prompt: 'نمر عربي بأسلوب هندسي فاخر، خطوط حادة، تفاصيل ذهبية، ونظرة واثقة تحمل حضوراً قوياً',
+  },
+  {
+    label: 'حرف شخصي',
+    prompt: 'حرف عربي واحد بتكوين شخصي راقٍ، يوازن بين صرامة الخط الكوفي وملمس فني حديث',
+  },
+  {
+    label: 'تراث معاصر',
+    prompt: 'تكوين مستوحى من التراث النجدي بروح معاصرة، زخرفة نظيفة، ألوان محدودة، وتباين قوي',
+  },
+] as const;
+
+const LEGACY_PROMPT_STARTERS = [
   'نمر عربي بأسلوب هندسي فاخر، خطوط حادة، تفاصيل ذهبية، وحضور قوي على قطعة داكنة',
   'شعار شخصي بسيط بحرف عربي واحد، توازن بين الخط الكوفي والملمس الحديث، واضح على القماش',
   'تصميم مستوحى من التراث النجدي بأسلوب معاصر، زخرفة نظيفة، ألوان محدودة وتباين قوي',
-];
+] as const;
+
+const CREATIVE_DIRECTIONS = [
+  {
+    id: 'signature',
+    label: 'فاخر متزن',
+    hint: 'هدوء بصري وتفاصيل راقية',
+    prompt: 'إحساس فاخر ومتزن، نقطة تركيز واثقة، مساحات سلبية محسوبة، وتفصيل دقيق يكتشفه المشاهد بعد النظرة الأولى',
+    icon: Crown,
+  },
+  {
+    id: 'bold',
+    label: 'جريء نابض',
+    hint: 'حركة قوية وحضور فوري',
+    prompt: 'إحساس جريء ونابض، بطل بصري كبير، حركة قطرية واضحة، وتباين قوي يمنح الفكرة حضوراً فورياً',
+    icon: Zap,
+  },
+  {
+    id: 'poetic',
+    label: 'حالِم شاعري',
+    hint: 'ضوء ناعم ورمز ذو معنى',
+    prompt: 'إحساس حالِم وشاعري، إيقاع انسيابي، ضوء ناعم، وتفصيل رمزي يمنح الفكرة عمقاً عاطفياً خاصاً',
+    icon: Feather,
+  },
+] as const;
+
+type CreativeDirection = (typeof CREATIVE_DIRECTIONS)[number];
 
 function assetUrl(path: string | null | undefined) {
   if (!path) return '';
@@ -222,18 +267,28 @@ function composeCustomerFacingPromptV2({
   state,
   selectedStyle,
   selectedPalette,
+  creativeDirection,
 }: {
   state: DesignState;
   selectedStyle: DtfStudioCreativeOption | null;
   selectedPalette: DtfStudioPaletteOption | null;
+  creativeDirection: CreativeDirection | null;
 }) {
   if (state.designMethod === 'image' && !state.prompt.trim() && state.referenceImage) {
-    return 'حوّل الصورة المرجعية إلى تصميم بصري أنيق وواضح، مع تبسيط التفاصيل المزدحمة وإبراز الفكرة الرئيسية بشكل جذاب ومتوازن.';
+    return creativeDirection
+      ? `حوّل الصورة المرجعية إلى تصميم بصري أنيق وواضح، مع الحفاظ على هوية العنصر الرئيسي وتبسيط التفاصيل المزدحمة، ${creativeDirection.prompt}.`
+      : 'حوّل الصورة المرجعية إلى تصميم بصري أنيق وواضح، مع تبسيط التفاصيل المزدحمة وإبراز الفكرة الرئيسية بشكل جذاب ومتوازن.';
   }
 
   if (state.designMethod === 'calligraphy') {
     const text = normalizeIdeaText(state.calligraphyText);
-    return `مخطوطة عربية لعبارة "${text}" بتكوين متوازن وحروف واضحة، مع حركة انسيابية ولمسة فنية تجعل العبارة تبدو فاخرة وسهلة القراءة.`;
+    if (!creativeDirection) {
+      return `مخطوطة عربية لعبارة "${text}" بتكوين متوازن وحروف واضحة، مع حركة انسيابية ولمسة فنية تجعل العبارة تبدو فاخرة وسهلة القراءة.`;
+    }
+    const enhancedDirection = state.prompt.trim()
+      ? normalizeIdeaText(state.prompt)
+      : `مخطوطة عربية لعبارة "${text}" بتكوين متوازن وحروف واضحة وحركة انسيابية`;
+    return `${enhancedDirection}، ${creativeDirection.prompt}، مع الحفاظ على العبارة كما كُتبت حرفياً ومن دون إضافة نص آخر.`;
   }
 
   const idea = normalizeIdeaText(state.prompt);
@@ -241,7 +296,13 @@ function composeCustomerFacingPromptV2({
   const styleMood = getPublicStyleMood(selectedStyle);
   const paletteMood = getPublicPaletteMood(state, selectedPalette);
 
-  return `${[scene, styleMood, paletteMood].filter(Boolean).join('، ').replace(/\s+/g, ' ').trim()}.`;
+  return `${[
+    scene,
+    styleMood,
+    paletteMood,
+    creativeDirection?.prompt,
+    creativeDirection ? 'بتسلسل بصري واضح وحواف نظيفة وتفاصيل مقصودة تمنح العمل شخصية خاصة من النظرة الأولى' : null,
+  ].filter(Boolean).join('، ').replace(/\s+/g, ' ').trim()}.`;
 }
 
 function stockLabel(size: DtfStudioSizeOption | null) {
@@ -285,6 +346,43 @@ function ChoiceButton({
       ) : null}
       {children}
     </button>
+  );
+}
+
+function CreativeOptionGrid({
+  options,
+  selectedId,
+  onSelect,
+  fallbackDescription,
+  showImages = false,
+}: {
+  options: DtfStudioCreativeOption[];
+  selectedId: string | null;
+  onSelect: (option: DtfStudioCreativeOption) => void;
+  fallbackDescription: string;
+  showImages?: boolean;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+      {options.map((option) => {
+        const active = selectedId === option.id;
+        const image = assetUrl(option.imageUrl);
+        return (
+          <ChoiceButton
+            key={option.id}
+            active={active}
+            onClick={() => onSelect(option)}
+            className={showImages ? 'min-h-[116px]' : 'min-h-[94px]'}
+          >
+            {showImages && image ? <img src={image} alt="" className={cn('mb-3 h-16 w-full rounded-xl border object-cover', active ? 'border-white/20' : 'border-washa-border')} /> : null}
+            <p className="font-black">{cleanOptionName(option.name)}</p>
+            <p className={cn('mt-2 line-clamp-2 text-xs font-bold leading-5', active ? 'text-washa-bg/70' : 'text-washa-text-sec')}>
+              {option.description || fallbackDescription}
+            </p>
+          </ChoiceButton>
+        );
+      })}
+    </div>
   );
 }
 
@@ -350,8 +448,18 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   const [studioView, setStudioView] = useState<StudioView>('wizard');
   const [dragging, setDragging] = useState(false);
   const [resultAssetView, setResultAssetView] = useState<'mockup' | 'artwork'>('mockup');
+  const [creativeDirectionId, setCreativeDirectionId] = useState<CreativeDirection['id']>('signature');
+  const [isEnhancingIdea, setIsEnhancingIdea] = useState(false);
+  const enhancementRequestVersionRef = useRef(0);
+  const [ideaEnhancement, setIdeaEnhancement] = useState<{
+    beforePrompt: string;
+    beforeIdea: string;
+    enhancedPrompt: string;
+    provider: string | null;
+  } | null>(null);
   const isPromptNative = variant === 'prompt-native';
   const generationAttemptStatus: GenerationAttemptStatus = isGenerating ? 'running' : generationAttemptOutcome ?? 'idle';
+  const selectedCreativeDirection = CREATIVE_DIRECTIONS.find((direction) => direction.id === creativeDirectionId) || CREATIVE_DIRECTIONS[0];
 
   const activeStep = WIZARD_STEPS[activeStepIndex];
   const isLastWizardStep = activeStepIndex === WIZARD_STEPS.length - 1;
@@ -365,10 +473,11 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   const hasIdea = state.designMethod === 'calligraphy'
     ? Boolean(state.calligraphyText.trim())
     : Boolean(state.prompt.trim() || state.referenceImage);
-  const promptQuality = useMemo(
+  const basePromptQuality = useMemo(
     () => getPromptQuality(state, selectedSize, selectedPalette),
     [selectedPalette, selectedSize, state]
   );
+  const promptQuality = Math.min(100, basePromptQuality + (ideaEnhancement ? 8 : 0));
   const hasGarment = Boolean(state.garmentId && state.garmentColorId && state.garmentSizeId && selectedSize?.stockStatus !== 'out');
   const hasStyle = Boolean(state.styleId && state.techniqueId);
   const hasPalette = Boolean(state.paletteId && (state.paletteId !== CUSTOM_PALETTE_ID || state.customPalette?.trim()));
@@ -398,6 +507,54 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     if (activeStep.id === 'palette') return hasPalette;
     return false;
   }, [activeStep.id, hasGarment, hasIdea, hasPalette, hasStyle, state.printOptionId]);
+
+  const invalidatePendingEnhancement = () => {
+    enhancementRequestVersionRef.current += 1;
+    if (isEnhancingIdea) setIsEnhancingIdea(false);
+  };
+
+  const handleSelectCreativeDirection = (directionId: CreativeDirection['id']) => {
+    if (directionId === creativeDirectionId) return;
+    invalidatePendingEnhancement();
+    if (ideaEnhancement) {
+      updateState({ prompt: ideaEnhancement.beforePrompt });
+      setIdeaEnhancement(null);
+    }
+    setCreativeDirectionId(directionId);
+  };
+
+  const handleSelectDesignMethod = (designMethod: DesignMethod) => {
+    if (!isPromptNative) {
+      updateState({ designMethod });
+      return;
+    }
+
+    invalidatePendingEnhancement();
+    const restoredPrompt = ideaEnhancement?.beforePrompt ?? state.prompt;
+    updateState({
+      designMethod,
+      prompt: designMethod === 'calligraphy' ? '' : restoredPrompt,
+    });
+    setIdeaEnhancement(null);
+  };
+
+  const handleCalligraphyTextChange = (value: string) => {
+    invalidatePendingEnhancement();
+    updateState({
+      calligraphyText: value,
+      ...(ideaEnhancement ? { prompt: ideaEnhancement.beforePrompt } : {}),
+    });
+    if (ideaEnhancement) setIdeaEnhancement(null);
+  };
+
+  const handleReferenceImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    invalidatePendingEnhancement();
+    if (ideaEnhancement) {
+      updateState({ prompt: ideaEnhancement.beforePrompt });
+      setIdeaEnhancement(null);
+    }
+    handleImageUpload(event);
+  };
 
   const handleSelectGarment = (garment: DtfStudioGarmentOption) => {
     const color = garment.colors[0] || null;
@@ -435,14 +592,75 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     });
   };
 
-  const handleImprovePrompt = () => {
-    const nextPrompt = composeCustomerFacingPromptV2({
-      state,
-      selectedStyle,
-      selectedPalette,
-    });
-    updateState({ prompt: nextPrompt });
-    showToast('تم تحسين الوصف', 'success');
+  const handleImprovePrompt = async () => {
+    const sourceIdea = state.designMethod === 'calligraphy'
+      ? state.calligraphyText.trim()
+      : state.prompt.trim();
+    if (sourceIdea.length < 2 || isEnhancingIdea) {
+      if (state.designMethod === 'image' && state.referenceImage && !sourceIdea) {
+        showToast('أضف وصفاً قصيراً للصورة ليتمكن الذكاء الاصطناعي من تطويرها', 'info');
+      }
+      return;
+    }
+
+    if (!isPromptNative) {
+      const nextPrompt = composeCustomerFacingPromptV2({
+        state,
+        selectedStyle,
+        selectedPalette,
+        creativeDirection: null,
+      });
+      updateState({ prompt: nextPrompt });
+      showToast('تم تحسين الوصف', 'success');
+      return;
+    }
+
+    setIsEnhancingIdea(true);
+    const requestVersion = enhancementRequestVersionRef.current + 1;
+    enhancementRequestVersionRef.current = requestVersion;
+    try {
+      const result = await enhanceDesignIdea({
+        idea: sourceIdea,
+        garmentType: state.garmentType || null,
+        style: selectedStyle?.name || state.style || null,
+        technique: selectedTechnique?.name || state.technique || null,
+        palette: state.paletteId === CUSTOM_PALETTE_ID
+          ? state.customPalette || null
+          : selectedPalette?.name || state.palette || null,
+        surface: 'dev-v3',
+        creativeDirection: selectedCreativeDirection.prompt,
+      }, { allowLocalFallback: false });
+
+      if (!result.enhancedIdea || requestVersion !== enhancementRequestVersionRef.current) return;
+      setIdeaEnhancement({
+        beforePrompt: state.prompt,
+        beforeIdea: sourceIdea,
+        enhancedPrompt: result.enhancedIdea,
+        provider: result.provider || null,
+      });
+      updateState({ prompt: result.enhancedIdea });
+      showToast(
+        result.provider === 'gemini'
+          ? 'تم تحسين الفكرة بالذكاء الاصطناعي عبر المسار الاحتياطي'
+          : 'تمت صياغة رؤية فنية جديدة بواسطة OpenAI',
+        'success'
+      );
+    } catch {
+      if (requestVersion === enhancementRequestVersionRef.current) {
+        showToast('تعذر تحسين الفكرة بالذكاء الاصطناعي الآن. حاول مجدداً.', 'error');
+      }
+    } finally {
+      if (requestVersion === enhancementRequestVersionRef.current) {
+        setIsEnhancingIdea(false);
+      }
+    }
+  };
+
+  const handleRestoreIdea = () => {
+    if (!ideaEnhancement) return;
+    updateState({ prompt: ideaEnhancement.beforePrompt });
+    setIdeaEnhancement(null);
+    showToast('تمت استعادة الوصف السابق', 'info');
   };
 
   const goNext = () => {
@@ -464,6 +682,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     state,
     selectedStyle,
     selectedPalette,
+    creativeDirection: isPromptNative ? selectedCreativeDirection : null,
   });
 
   const runGenerationAttempt = async () => {
@@ -491,6 +710,8 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
 
   const handleStartOver = () => {
     resetDesign();
+    setCreativeDirectionId('signature');
+    setIdeaEnhancement(null);
     setResultAssetView('mockup');
     setActiveStepIndex(0);
     setStudioView('wizard');
@@ -499,10 +720,48 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
   const renderIdeaStep = () => (
     <div className="space-y-7">
       <StepIntro
-        eyebrow="ابدأ من الفكرة"
-        title="اكتب ما تتخيله، وسنحوّله إلى وصف أوضح."
-        body="لا تحتاج لصياغة مثالية. اكتب الفكرة ببساطة، ثم استخدم تحسين الوصف إذا أردت صياغة أغنى وأكثر تصويراً."
+        eyebrow={isPromptNative ? 'ابدأ بالإحساس' : 'ابدأ من الفكرة'}
+        title={isPromptNative ? 'قل لنا الفكرة، واختر كيف تريد أن تُشعَر.' : 'اكتب ما تتخيله، وسنحوّله إلى وصف أوضح.'}
+        body={isPromptNative
+          ? 'اكتبها ببساطة؛ V3 سيحافظ على معناها ثم يحولها إلى توجيه فني غني بالتكوين والضوء والتفصيل الخاص.'
+          : 'لا تحتاج لصياغة مثالية. اكتب الفكرة ببساطة، ثم استخدم تحسين الوصف إذا أردت صياغة أغنى وأكثر تصويراً.'}
       />
+
+      {isPromptNative ? <div className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-black text-washa-text">الإحساس الإبداعي</p>
+            <p className="mt-1 text-xs font-bold text-washa-text-faint">اختيار واحد يضبط شخصية التصميم بالكامل.</p>
+          </div>
+          <span className="rounded-full bg-[#C9A84C]/12 px-3 py-1.5 text-[10px] font-black text-[#715618]">خطوة ذكية</span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {CREATIVE_DIRECTIONS.map((direction) => {
+            const active = direction.id === creativeDirectionId;
+            const Icon = direction.icon;
+            return (
+              <button
+                key={direction.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => handleSelectCreativeDirection(direction.id)}
+                className={cn(
+                  'group min-h-[104px] rounded-[20px] border p-3 text-right transition duration-200 active:scale-[0.985] sm:min-h-[112px] sm:rounded-[22px] sm:p-4',
+                  active
+                    ? 'border-[#C9A84C] bg-[#1A1A1A] text-white shadow-[0_16px_36px_rgba(26,26,26,0.14)]'
+                    : 'border-washa-border/70 bg-white/70 text-washa-text hover:border-[#C9A84C]/60 hover:bg-white'
+                )}
+              >
+                <span className={cn('flex h-9 w-9 items-center justify-center rounded-2xl', active ? 'bg-[#C9A84C] text-[#1A1A1A]' : 'bg-washa-surface text-[#715618]')}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <p className="mt-3 text-xs font-black sm:text-sm">{direction.label}</p>
+                <p className={cn('mt-1 hidden text-[11px] font-bold leading-5 sm:block', active ? 'text-white/62' : 'text-washa-text-faint')}>{direction.hint}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div> : null}
 
       <div className="grid grid-cols-3 gap-2 rounded-[22px] border border-washa-border/60 bg-washa-bg p-2">
         {METHOD_TABS.map(({ id, label, hint, icon: Icon }) => {
@@ -511,7 +770,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
             <button
               key={id}
               type="button"
-              onClick={() => updateState({ designMethod: id })}
+              onClick={() => handleSelectDesignMethod(id)}
               className={cn(
                 'flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl px-2 text-center transition active:scale-[0.985]',
                 active ? 'bg-washa-text text-washa-bg' : 'text-washa-text-sec hover:bg-washa-ivory hover:text-washa-text'
@@ -532,8 +791,12 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
               <label className="block text-sm font-black text-washa-text">وصف الفكرة</label>
               <Textarea
                 value={state.prompt}
-                onChange={(event) => updateState({ prompt: event.target.value })}
-                placeholder="مثال: ديناصور يرقص"
+                onChange={(event) => {
+                  invalidatePendingEnhancement();
+                  updateState({ prompt: event.target.value });
+                  if (ideaEnhancement && event.target.value !== ideaEnhancement.enhancedPrompt) setIdeaEnhancement(null);
+                }}
+                placeholder={isPromptNative ? 'مثال: صقر يحلق فوق جبال العلا عند الغروب' : 'مثال: ديناصور يرقص'}
                 className="min-h-[260px] resize-none rounded-[28px] border-washa-border/70 bg-washa-bg p-6 text-lg leading-9 text-washa-text placeholder:text-washa-text-faint focus-visible:ring-washa-gold/40"
                 maxLength={620}
               />
@@ -543,16 +806,32 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {PROMPT_STARTERS.map((starter) => (
-                <button
-                  key={starter}
-                  type="button"
-                  onClick={() => updateState({ prompt: starter })}
-                  className="rounded-full border border-washa-border bg-washa-ivory px-3 py-2 text-xs font-bold text-washa-text-sec transition hover:border-washa-gold/50 hover:text-washa-gold active:scale-[0.985]"
-                >
-                  {starter.slice(0, 48)}...
-                </button>
-              ))}
+              {isPromptNative
+                ? PROMPT_STARTERS.map((starter) => (
+                    <button
+                      key={starter.label}
+                      type="button"
+                      onClick={() => {
+                        invalidatePendingEnhancement();
+                        updateState({ prompt: starter.prompt });
+                        setIdeaEnhancement(null);
+                      }}
+                      className="group inline-flex items-center gap-2 rounded-full border border-washa-border bg-washa-ivory px-3 py-2 text-xs font-bold text-washa-text-sec transition hover:border-[#C9A84C] hover:text-washa-text active:scale-[0.985]"
+                    >
+                      <Sparkles className="h-3 w-3 text-[#C9A84C]" />
+                      {starter.label}
+                    </button>
+                  ))
+                : LEGACY_PROMPT_STARTERS.map((starter) => (
+                    <button
+                      key={starter}
+                      type="button"
+                      onClick={() => updateState({ prompt: starter })}
+                      className="rounded-full border border-washa-border bg-washa-ivory px-3 py-2 text-xs font-bold text-washa-text-sec transition hover:border-washa-gold/50 hover:text-washa-gold active:scale-[0.985]"
+                    >
+                      {starter.slice(0, 48)}...
+                    </button>
+                  ))}
             </div>
           </motion.div>
         ) : null}
@@ -571,7 +850,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
                 const file = event.dataTransfer.files?.[0];
                 if (!file) return;
                 const syntheticEvent = { target: { files: [file] } } as unknown as ChangeEvent<HTMLInputElement>;
-                handleImageUpload(syntheticEvent);
+                handleReferenceImageUpload(syntheticEvent);
               }}
               className={cn(
                 'flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-4 rounded-[28px] border-2 border-dashed bg-washa-bg p-6 text-center transition',
@@ -589,11 +868,15 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
                 <p className="font-black text-washa-text">اختر صورة مرجعية</p>
                 <p className="mt-1 text-xs font-bold text-washa-text-sec">يمكنك إضافة وصف قصير يساعد على فهم المطلوب.</p>
               </div>
-              <input type="file" accept="image/*" className="sr-only" onChange={handleImageUpload} />
+              <input type="file" accept="image/*" className="sr-only" onChange={handleReferenceImageUpload} />
             </label>
             <Textarea
               value={state.prompt}
-              onChange={(event) => updateState({ prompt: event.target.value })}
+              onChange={(event) => {
+                invalidatePendingEnhancement();
+                updateState({ prompt: event.target.value });
+                if (ideaEnhancement && event.target.value !== ideaEnhancement.enhancedPrompt) setIdeaEnhancement(null);
+              }}
               placeholder="اكتب توجيها اختياريا للصورة"
               className="min-h-[112px] resize-none rounded-[22px] border-washa-border bg-washa-ivory p-4 leading-7"
             />
@@ -606,7 +889,7 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
               <label className="block text-sm font-black text-washa-text">النص أو العبارة</label>
               <Textarea
                 value={state.calligraphyText}
-                onChange={(event) => updateState({ calligraphyText: event.target.value })}
+                onChange={(event) => handleCalligraphyTextChange(event.target.value)}
                 placeholder="اكتب العبارة هنا"
                 className="min-h-[250px] resize-none rounded-[28px] border-washa-border bg-washa-bg p-7 text-center font-arsenica text-3xl leading-[1.7] text-washa-text"
                 maxLength={90}
@@ -623,14 +906,56 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
         ) : null}
       </AnimatePresence>
 
+      {ideaEnhancement ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="overflow-hidden rounded-[26px] border border-[#C9A84C]/35 bg-[linear-gradient(135deg,rgba(201,168,76,0.13),rgba(255,255,255,0.78))]"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#C9A84C]/18 px-4 py-3">
+            <p className="flex items-center gap-2 text-xs font-black text-[#715618]">
+              <CheckCircle2 className="h-4 w-4" />
+              رؤية فنية محسّنة فعلياً
+            </p>
+            <span className="rounded-full bg-white/75 px-2.5 py-1 text-[9px] font-black tracking-[0.12em] text-washa-text-sec" dir="ltr">
+              {ideaEnhancement.provider === 'gemini' ? 'GEMINI FALLBACK' : 'OPENAI'}
+            </span>
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+            <div>
+              <p className="text-[10px] font-black text-washa-text-faint">الفكرة الأصلية</p>
+              <p className="mt-1 line-clamp-2 text-sm font-bold leading-6 text-washa-text-sec">{ideaEnhancement.beforeIdea}</p>
+            </div>
+            <Button variant="ghost" onClick={handleRestoreIdea} className="h-10 gap-2 rounded-xl px-3 text-xs">
+              <RefreshCcw className="h-3.5 w-3.5" />
+              استعادة الأصل
+            </Button>
+          </div>
+        </motion.div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3 rounded-[26px] border border-washa-border/70 bg-washa-bg p-3">
-        <Button variant="gold" onClick={handleImprovePrompt} disabled={!hasIdea} className="h-12 gap-2 rounded-2xl px-5">
-          <Wand2 className="h-4 w-4" />
-          تحسين الوصف
+        <Button
+          variant="gold"
+          onClick={() => void handleImprovePrompt()}
+          disabled={isPromptNative
+            ? isEnhancingIdea || !hasIdea
+            : !hasIdea}
+          className={cn(
+            'h-12 gap-2 rounded-2xl px-5',
+            isPromptNative ? 'min-w-[184px] bg-[#1A1A1A] text-white hover:bg-[#342D25]' : ''
+          )}
+        >
+          {isEnhancingIdea
+            ? <Loader2 className="h-4 w-4 animate-spin text-[#C9A84C]" />
+            : <Wand2 className={cn('h-4 w-4', isPromptNative ? 'text-[#C9A84C]' : '')} />}
+          {isPromptNative
+            ? isEnhancingIdea ? 'يصوغ الرؤية الفنية...' : ideaEnhancement ? 'تحسين مرة أخرى' : 'تحسين بالذكاء الاصطناعي'
+            : 'تحسين الوصف'}
         </Button>
         <div className="min-w-[180px] flex-1">
           <div className="flex items-center justify-between text-xs font-bold text-washa-text-sec">
-            <span>وضوح الفكرة</span>
+            <span>{ideaEnhancement ? 'جاهزية الرؤية الفنية' : 'وضوح الفكرة'}</span>
             <span>{promptQuality}%</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-washa-elevated">
@@ -650,9 +975,26 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     <div className="space-y-8">
       <StepIntro
         eyebrow="اختر القطعة"
-        title="حدد القطعة واللون والمقاس."
-        body="هذه الخيارات مرتبطة بالكتالوج الفعلي، لذلك تظهر النتيجة على قطعة يمكن طلبها لاحقا."
+        title={isPromptNative ? 'ثلاثة اختيارات، في مكان واحد.' : 'حدد القطعة واللون والمقاس.'}
+        body={isPromptNative
+          ? 'اختر القطعة أولاً، وسنرتب لك ألوانها ومقاساتها المتاحة مباشرة من الكتالوج الفعلي.'
+          : 'هذه الخيارات مرتبطة بالكتالوج الفعلي، لذلك تظهر النتيجة على قطعة يمكن طلبها لاحقا.'}
       />
+
+      {isPromptNative && selectedGarment ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-[24px] border border-[#C9A84C]/[0.24] bg-[#C9A84C]/[0.08] px-4 py-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1A1A1A] text-[#C9A84C]"><Check className="h-4 w-4" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black text-[#715618]">اختيارك الحالي</p>
+            <p className="truncate text-sm font-black text-washa-text">
+              {cleanOptionName(selectedGarment.name)}
+              {selectedColor ? ` · ${cleanOptionName(selectedColor.name)}` : ''}
+              {selectedSize ? ` · ${selectedSize.name}` : ''}
+            </p>
+          </div>
+          <span className="rounded-full bg-white/70 px-3 py-1.5 text-[10px] font-black text-washa-text-sec">{stockLabel(selectedSize)}</span>
+        </div>
+      ) : null}
 
       {configLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -768,19 +1110,34 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     <div className="space-y-7">
       <StepIntro
         eyebrow="مكان التصميم"
-        title="اختر مكان ظهور التصميم."
-        body="اختيار الموضع يساعد على ضبط التكوين قبل التوليد حتى تكون النتيجة أقرب لما تتوقعه."
+        title={isPromptNative ? 'أين تريد أن تقع النظرة أولاً؟' : 'اختر مكان ظهور التصميم.'}
+        body={isPromptNative
+          ? 'اختر الموضع بصرياً؛ سنستخدمه لضبط حجم التكوين واتجاهه قبل بناء الموكب.'
+          : 'اختيار الموضع يساعد على ضبط التكوين قبل التوليد حتى تكون النتيجة أقرب لما تتوقعه.'}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {positionOptions.map((position) => {
           const active = state.printOptionId === position.id;
+          const image = assetUrl(position.imageUrl);
           return (
-            <ChoiceButton key={position.id} active={active} onClick={() => handleSelectPosition(position)} className="min-h-[118px]">
+            <ChoiceButton key={position.id} active={active} onClick={() => handleSelectPosition(position)} className={isPromptNative ? 'min-h-[154px]' : 'min-h-[118px]'}>
+              {isPromptNative ? <div className="flex items-center gap-3">
+                <span className={cn('flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border', active ? 'border-white/20 bg-white/10' : 'border-washa-border bg-washa-ivory')}>
+                  {image ? <img src={image} alt="" className="h-full w-full object-contain p-1.5" /> : <Shirt className="h-7 w-7 opacity-55" />}
+                </span>
+                <div>
+                  <p className="text-base font-black">{cleanOptionName(position.name)}</p>
+                  <p className={cn('mt-2 text-xs font-bold leading-6', active ? 'text-washa-bg/75' : 'text-washa-text-sec')}>
+                    {position.description || (position.price > 0 ? `${position.price.toFixed(2)} ر.س` : 'مناسب للتصميم الرئيسي')}
+                  </p>
+                </div>
+              </div> : <>
                 <p className="text-lg font-black">{cleanOptionName(position.name)}</p>
-              <p className={cn('mt-2 text-xs font-bold leading-6', active ? 'text-washa-bg/75' : 'text-washa-text-sec')}>
-                {position.description || (position.price > 0 ? `${position.price.toFixed(2)} ر.س` : 'مناسب للتصميم الرئيسي')}
-              </p>
+                <p className={cn('mt-2 text-xs font-bold leading-6', active ? 'text-washa-bg/75' : 'text-washa-text-sec')}>
+                  {position.description || (position.price > 0 ? `${position.price.toFixed(2)} ر.س` : 'مناسب للتصميم الرئيسي')}
+                </p>
+              </>}
             </ChoiceButton>
           );
         })}
@@ -792,9 +1149,16 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     <div className="space-y-8">
       <StepIntro
         eyebrow="الطابع الفني"
-        title="اختر الأسلوب وطريقة المعالجة."
-        body="هذه الخطوة تحدد شخصية التصميم: هل يبدو كملصق، رسم رقمي، خط بسيط، أو طابع آخر."
+        title={isPromptNative ? 'اختر الشكل، ثم اللمسة.' : 'اختر الأسلوب وطريقة المعالجة.'}
+        body={isPromptNative
+          ? 'الأسلوب يحدد الشخصية العامة، والمعالجة تضبط الخامة والحواف. يكفي اختيار بطاقة واحدة من كل مجموعة.'
+          : 'هذه الخطوة تحدد شخصية التصميم: هل يبدو كملصق، رسم رقمي، خط بسيط، أو طابع آخر.'}
       />
+
+      {isPromptNative ? <div className="rounded-[24px] border border-[#C9A84C]/[0.22] bg-[#1A1A1A] px-4 py-3 text-white">
+        <p className="text-[10px] font-black text-[#C9A84C]">البصمة التي نبني عليها</p>
+        <p className="mt-1 text-sm font-black">{selectedCreativeDirection.label} · {selectedCreativeDirection.hint}</p>
+      </div> : null}
 
       <div className="grid gap-7 lg:grid-cols-2">
         <div className="space-y-3">
@@ -805,21 +1169,13 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
             </p>
             <span className="text-xs font-bold text-washa-text-faint">{styleOptions.length} خيار</span>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {styleOptions.map((style) => (
-              <ChoiceButton
-                key={style.id}
-                active={state.styleId === style.id}
-                onClick={() => updateState({ styleId: style.id, style: style.name })}
-                className="min-h-[94px]"
-              >
-                <p className="font-black">{cleanOptionName(style.name)}</p>
-                <p className={cn('mt-2 line-clamp-2 text-xs font-bold leading-5', state.styleId === style.id ? 'text-washa-bg/70' : 'text-washa-text-sec')}>
-                  {style.description || 'أسلوب بصري يناسب الفكرة'}
-                </p>
-              </ChoiceButton>
-            ))}
-          </div>
+          <CreativeOptionGrid
+            options={styleOptions}
+            selectedId={state.styleId}
+            onSelect={(style) => updateState({ styleId: style.id, style: style.name })}
+            fallbackDescription="أسلوب بصري يناسب الفكرة"
+            showImages={isPromptNative}
+          />
         </div>
 
         <div className="space-y-3">
@@ -830,21 +1186,13 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
             </p>
             <span className="text-xs font-bold text-washa-text-faint">{techniqueOptions.length} خيار</span>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-            {techniqueOptions.map((technique) => (
-              <ChoiceButton
-                key={technique.id}
-                active={state.techniqueId === technique.id}
-                onClick={() => updateState({ techniqueId: technique.id, technique: technique.name })}
-                className="min-h-[94px]"
-              >
-                <p className="font-black">{cleanOptionName(technique.name)}</p>
-                <p className={cn('mt-2 line-clamp-2 text-xs font-bold leading-5', state.techniqueId === technique.id ? 'text-washa-bg/70' : 'text-washa-text-sec')}>
-                  {technique.description || 'معالجة فنية نظيفة وواضحة'}
-                </p>
-              </ChoiceButton>
-            ))}
-          </div>
+          <CreativeOptionGrid
+            options={techniqueOptions}
+            selectedId={state.techniqueId}
+            onSelect={(technique) => updateState({ techniqueId: technique.id, technique: technique.name })}
+            fallbackDescription="معالجة فنية نظيفة وواضحة"
+            showImages={isPromptNative}
+          />
         </div>
       </div>
     </div>
@@ -854,8 +1202,10 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
     <div className="space-y-7">
       <StepIntro
         eyebrow="ألوان التصميم"
-        title="اختر لوحة ألوان تناسب الفكرة."
-        body="يمكنك ترك الألوان تلقائية أو اختيار طابع محدد. إن أردت لوحة خاصة، اكتبها بنفسك."
+        title={isPromptNative ? 'اختر المزاج اللوني، لا كل لون بمفرده.' : 'اختر لوحة ألوان تناسب الفكرة.'}
+        body={isPromptNative
+          ? 'كل لوحة منسقة مسبقاً لتبقى النتيجة متناغمة. اختر تلقائياً إن أردت أن يقرر المحرك بحسب الفكرة ولون القطعة.'
+          : 'يمكنك ترك الألوان تلقائية أو اختيار طابع محدد. إن أردت لوحة خاصة، اكتبها بنفسك.'}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -867,6 +1217,9 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
             className="min-h-[116px]"
           >
             <p className="font-black">{cleanOptionName(palette.name)}</p>
+            {isPromptNative && palette.description ? (
+              <p className={cn('mt-1 line-clamp-1 text-[10px] font-bold', state.paletteId === palette.id ? 'text-washa-bg/65' : 'text-washa-text-faint')}>{palette.description}</p>
+            ) : null}
             <div className="mt-4 flex gap-1.5">
               {palette.colors.slice(0, 6).map((color) => (
                 <span key={`${palette.id}-${color.hex}`} className="h-6 w-6 rounded-full border border-black/10" style={{ backgroundColor: color.hex }} title={color.name} />
@@ -1189,8 +1542,8 @@ export default function WashaDevStudioV2({ onOpenGallery, variant = 'classic' }:
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-lg font-black leading-none text-[#1A1A1A] sm:text-xl" dir="ltr">WASHA AI</p>
-                  <span className="inline-flex h-6 items-center rounded-full border border-[#C9A84C]/35 bg-[#C9A84C]/12 px-2 text-[10px] font-black tracking-[0.14em] text-[#715618]" dir="ltr">V3</span>
+                  <p className="whitespace-nowrap text-sm font-black leading-none text-[#1A1A1A] min-[360px]:text-lg sm:text-xl" dir="ltr">WASHA AI</p>
+                  <span className="inline-flex h-5 items-center rounded-full border border-[#C9A84C]/35 bg-[#C9A84C]/12 px-1.5 text-[9px] font-black tracking-[0.12em] text-[#715618] min-[360px]:h-6 min-[360px]:px-2 min-[360px]:text-[10px]" dir="ltr">V3</span>
                 </div>
                 <p className="mt-1 hidden text-[11px] font-bold text-washa-text-sec sm:block">مختبر التصميم الذكي · من الفكرة إلى أصل طباعة حقيقي</p>
               </div>

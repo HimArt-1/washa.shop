@@ -20,4 +20,24 @@ describe("WASHA AI idea enhancement quality", () => {
 
         expect(sanitizeEnhancedIdea(enhanced, "نخلة عربية هندسية")).toBe(enhanced);
     });
+
+    it("rejects a fluent response that loses the customer's core concept", () => {
+        const unrelated = "سيارة رياضية تنطلق في شارع ليلي لامع، تتقاطع حولها خطوط النيون الحمراء والزرقاء وتنعكس على هيكلها المعدني، بينما يمنحها الضباب الخفيف وحركة العجلات طاقة عصرية قوية وتكويناً سينمائياً واضحاً.";
+
+        expect(() => sanitizeEnhancedIdea(unrelated, "صقر عربي يحلق فوق جبال العلا")).toThrow();
+    });
+
+    it("preserves a one-word customer concept", () => {
+        const unrelated = "سيارة رياضية تنطلق في شارع ليلي لامع، تتقاطع حولها خطوط النيون الحمراء والزرقاء وتنعكس على هيكلها المعدني، بينما يمنحها الضباب الخفيف وحركة العجلات طاقة عصرية قوية وتكويناً سينمائياً واضحاً.";
+
+        expect(() => sanitizeEnhancedIdea(unrelated, "صقر")).toThrow();
+        expect(() => sanitizeEnhancedIdea(unrelated, "فن")).toThrow();
+    });
+
+    it("rejects punctuation-only changes presented as an enhancement", () => {
+        const original = "نخلة عربية شاهقة بتكوين هندسي متوازن تمتد سعفاتها بانسيابية تحت ضوء ذهبي هادئ وتحيط بها زخارف نجدية رقيقة تعبر عن الأصالة والنمو بروح فاخرة وواضحة من النظرة الأولى";
+        const cosmeticEdit = "نخلة عربية شاهقة، بتكوين هندسي متوازن؛ تمتد سعفاتها بانسيابية تحت ضوء ذهبي هادئ، وتحيط بها زخارف نجدية رقيقة تعبر عن الأصالة والنمو، بروح فاخرة وواضحة من النظرة الأولى.";
+
+        expect(() => sanitizeEnhancedIdea(cosmeticEdit, original)).toThrow();
+    });
 });

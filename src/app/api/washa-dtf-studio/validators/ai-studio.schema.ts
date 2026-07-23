@@ -65,6 +65,8 @@ export const enhanceIdeaSchema = z.object({
     style: z.string().trim().max(120).optional().nullable(),
     technique: z.string().trim().max(120).optional().nullable(),
     palette: z.string().trim().max(120).optional().nullable(),
+    surface: z.enum(["classic", "dev-v3"]).optional(),
+    creativeDirection: z.string().trim().max(160).optional().nullable(),
 });
 
 export const extractDesignSchema = z.object({

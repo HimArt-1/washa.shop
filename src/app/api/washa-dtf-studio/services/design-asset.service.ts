@@ -1629,7 +1629,11 @@ export class DesignAssetService {
                 masterBuffer = existingAttempt.masterBuffer;
                 source = existingAttempt.source;
             } else {
-                const prompt = buildIsolatedArtworkPrompt(input.userIdea, input.context);
+                const prompt = buildIsolatedArtworkPrompt(
+                    input.userIdea,
+                    input.context,
+                    { includeCalligraphyArtDirection: input.pipeline === "prompt_native" }
+                );
                 const referenceImageDataUrl = input.referenceImage
                     ? `data:${input.referenceImage.mimeType};base64,${input.referenceImage.base64}`
                     : null;

@@ -1,11 +1,13 @@
 const API_BASE_URL = '/api/washa-dtf-studio';
 
-type EnhanceIdeaInput = {
+export type EnhanceIdeaInput = {
   idea: string;
   garmentType?: string | null;
   style?: string | null;
   technique?: string | null;
   palette?: string | null;
+  surface?: 'classic' | 'dev-v3';
+  creativeDirection?: string | null;
 };
 
 export type EnhanceIdeaSource = 'ai' | 'local';
@@ -13,6 +15,7 @@ export type EnhanceIdeaSource = 'ai' | 'local';
 export type EnhanceIdeaResult = {
   enhancedIdea: string;
   source: EnhanceIdeaSource;
+  provider?: string | null;
 };
 
 const INTERNAL_OUTPUT_PATTERN =
@@ -263,7 +266,10 @@ async function parseEnhanceResponse(response: Response) {
   return { error: await response.text() };
 }
 
-export async function enhanceDesignIdea(input: EnhanceIdeaInput): Promise<EnhanceIdeaResult> {
+export async function enhanceDesignIdea(
+  input: EnhanceIdeaInput,
+  options: { allowLocalFallback?: boolean } = {}
+): Promise<EnhanceIdeaResult> {
   const idea = cleanIdea(input.idea);
   if (!idea) {
     return { enhancedIdea: '', source: 'local' };
@@ -288,8 +294,12 @@ export async function enhanceDesignIdea(input: EnhanceIdeaInput): Promise<Enhanc
     return {
       enhancedIdea: sanitizeEnhancedIdea(data.enhancedIdea, idea),
       source: 'ai',
+      provider: typeof data?.provider === 'string' ? data.provider : null,
     };
   } catch (error) {
+    if (options.allowLocalFallback === false) {
+      throw error;
+    }
     console.warn('Falling back to local idea enhancer:', error);
     return buildLocalEnhancedIdea(input);
   } finally {

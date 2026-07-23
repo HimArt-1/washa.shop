@@ -733,7 +733,7 @@ export function DesignProvider({
     const stylePrompt = selectedStyle?.prompt || FALLBACK_STYLE_PROMPTS[state.style] || state.style;
     const effectivePrintPosition = state.printPosition ?? resolvePrintPositionFromDesignPosition(state.designPosition);
     const effectivePrintSize = state.printSize ?? resolvePrintSizeFromDesignPosition(state.designPosition);
-    const generationPrompt = state.designMethod === 'calligraphy'
+    const generationPrompt = state.designMethod === 'calligraphy' && generationPipeline !== 'prompt_native'
       ? state.prompt
       : (options.promptOverride?.trim() || state.prompt);
 

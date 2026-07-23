@@ -103,6 +103,21 @@ describe('WASHA AI output preferences', () => {
     })).toContain('true transparent background with a real alpha channel');
   });
 
+  it('uses the V3 visual direction to style calligraphy without treating it as extra text', () => {
+    const prompt = buildIsolatedArtworkPrompt(
+      'تكوين فاخر ومتزن مع حركة انسيابية ومساحات سلبية محسوبة',
+      {
+        designMethod: 'calligraphy',
+        calligraphyText: 'وشّى',
+      },
+      { includeCalligraphyArtDirection: true },
+    );
+
+    expect(prompt).toContain('تكوين فاخر ومتزن مع حركة انسيابية ومساحات سلبية محسوبة');
+    expect(prompt).toContain('visual treatment only, never text content');
+    expect(prompt).toContain('<exact_customer_text>\nوشّى\n</exact_customer_text>');
+  });
+
   it('treats an Arabic visual brief as instructions and forbids rendering it when the text field is empty', () => {
     const prompt = buildIsolatedArtworkPrompt(
       'في قلب غابة ساحرة تظهر بطة براقة ترقص تحت أشعة الشمس',
