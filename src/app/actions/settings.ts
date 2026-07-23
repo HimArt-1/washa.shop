@@ -92,6 +92,8 @@ export type SiteSettingsType = {
         ai_section?: boolean;
         hero_auth_buttons?: boolean;
         hero_washa_ai_button?: boolean;
+        hero_washa_ai_v1_button?: boolean;
+        hero_washa_ai_v2_button?: boolean;
         hero_washa_ai_v3_button?: boolean;
         hero_washa_ai_v4_button?: boolean;
         hero_join_artist_button?: boolean;
@@ -169,6 +171,8 @@ const DEFAULT_SITE_SETTINGS: SiteSettingsType = {
         ai_section: true,
         hero_auth_buttons: true,
         hero_washa_ai_button: true,
+        hero_washa_ai_v1_button: false,
+        hero_washa_ai_v2_button: false,
         hero_washa_ai_v3_button: false,
         hero_washa_ai_v4_button: false,
         hero_join_artist_button: false,
@@ -424,6 +428,14 @@ function coerceWashaAiDevAccessMode(value: unknown, fallback: WashaAiDevAccessMo
 function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibility"] {
     const visibility = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
     const fallback = DEFAULT_SITE_SETTINGS.visibility;
+    const washaAiDevV1Access = coerceWashaAiDevAccessMode(
+        visibility.washa_ai_dev_access,
+        fallback.washa_ai_dev_access ?? "admin"
+    );
+    const washaAiDevV2Access = coerceWashaAiDevAccessMode(
+        visibility.washa_ai_dev_v2_access,
+        fallback.washa_ai_dev_v2_access ?? "admin"
+    );
     const washaAiDevV3Access = coerceWashaAiDevAccessMode(
         visibility.washa_ai_dev_v3_access,
         fallback.washa_ai_dev_v3_access ?? "admin"
@@ -442,6 +454,14 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
         ai_section: coerceBooleanSetting(visibility.ai_section, fallback.ai_section ?? true),
         hero_auth_buttons: coerceBooleanSetting(visibility.hero_auth_buttons, fallback.hero_auth_buttons ?? true),
         hero_washa_ai_button: coerceBooleanSetting(visibility.hero_washa_ai_button, fallback.hero_washa_ai_button ?? true),
+        hero_washa_ai_v1_button: coerceBooleanSetting(
+            visibility.hero_washa_ai_v1_button,
+            fallback.hero_washa_ai_v1_button ?? false
+        ) && washaAiDevV1Access === "link",
+        hero_washa_ai_v2_button: coerceBooleanSetting(
+            visibility.hero_washa_ai_v2_button,
+            fallback.hero_washa_ai_v2_button ?? false
+        ) && washaAiDevV2Access === "link",
         hero_washa_ai_v3_button: coerceBooleanSetting(
             visibility.hero_washa_ai_v3_button,
             fallback.hero_washa_ai_v3_button ?? false
@@ -457,14 +477,8 @@ function normalizeVisibilitySettings(value: unknown): SiteSettingsType["visibili
             visibility.design_piece_generation_public,
             fallback.design_piece_generation_public ?? false
         ),
-        washa_ai_dev_access: coerceWashaAiDevAccessMode(
-            visibility.washa_ai_dev_access,
-            fallback.washa_ai_dev_access ?? "admin"
-        ),
-        washa_ai_dev_v2_access: coerceWashaAiDevAccessMode(
-            visibility.washa_ai_dev_v2_access,
-            fallback.washa_ai_dev_v2_access ?? "admin"
-        ),
+        washa_ai_dev_access: washaAiDevV1Access,
+        washa_ai_dev_v2_access: washaAiDevV2Access,
         washa_ai_dev_v3_access: washaAiDevV3Access,
         washa_ai_dev_v4_access: washaAiDevV4Access,
     };

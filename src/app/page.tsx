@@ -16,6 +16,14 @@ export default async function Home() {
     const showWashaAiButton = (v.hero_washa_ai_button ?? true)
         && isWashaAiRouteAvailable(v)
         && generationReadiness.enabled;
+    const showWashaAiV1Button = (v.hero_washa_ai_v1_button ?? false)
+        && v.washa_ai_dev_access === "link"
+        && isWashaAiRouteAvailable(v)
+        && generationReadiness.enabled;
+    const showWashaAiV2Button = (v.hero_washa_ai_v2_button ?? false)
+        && v.washa_ai_dev_v2_access === "link"
+        && isWashaAiRouteAvailable(v)
+        && generationReadiness.enabled;
     const promptNativeReadiness = getPromptNativeReadiness();
     const showWashaAiV3Button = (v.hero_washa_ai_v3_button ?? false)
         && v.washa_ai_dev_v3_access === "link"
@@ -36,6 +44,8 @@ export default async function Home() {
                     backgroundMode={heroBackgroundMode}
                     showAuthButtons={settings.visibility.hero_auth_buttons}
                     showWashaAiButton={showWashaAiButton}
+                    showWashaAiV1Button={showWashaAiV1Button}
+                    showWashaAiV2Button={showWashaAiV2Button}
                     showWashaAiV3Button={showWashaAiV3Button}
                     showWashaAiV4Button={showWashaAiV4Button}
                     showJoinArtistButton={settings.visibility.hero_join_artist_button}

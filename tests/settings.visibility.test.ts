@@ -71,6 +71,10 @@ describe("settings visibility normalization", () => {
                                 gallery: "false",
                                 join: "1",
                                 design_piece_generation_public: "true",
+                                hero_washa_ai_v1_button: "1",
+                                washa_ai_dev_access: "link",
+                                hero_washa_ai_v2_button: "1",
+                                washa_ai_dev_v2_access: "link",
                                 hero_washa_ai_v3_button: "1",
                                 washa_ai_dev_v3_access: "link",
                                 hero_washa_ai_v4_button: "1",
@@ -88,6 +92,10 @@ describe("settings visibility normalization", () => {
         expect(visibility.gallery).toBe(false);
         expect(visibility.join).toBe(true);
         expect(visibility.design_piece_generation_public).toBe(true);
+        expect(visibility.hero_washa_ai_v1_button).toBe(true);
+        expect(visibility.washa_ai_dev_access).toBe("link");
+        expect(visibility.hero_washa_ai_v2_button).toBe(true);
+        expect(visibility.washa_ai_dev_v2_access).toBe("link");
         expect(visibility.hero_washa_ai_v3_button).toBe(true);
         expect(visibility.washa_ai_dev_v3_access).toBe("link");
         expect(visibility.hero_washa_ai_v4_button).toBe(true);
@@ -144,6 +152,32 @@ describe("settings visibility normalization", () => {
 
         expect(visibility.hero_washa_ai_v3_button).toBe(false);
         expect(visibility.washa_ai_dev_v3_access).toBe("admin");
+    });
+
+    it("hides the V1 and V2 hero entries when their routes are not public-by-link", async () => {
+        mockCreateClient.mockReturnValue({
+            from: vi.fn(() => ({
+                select: vi.fn(async () => ({
+                    data: [{
+                        key: "visibility",
+                        value: {
+                            hero_washa_ai_v1_button: true,
+                            washa_ai_dev_access: "admin",
+                            hero_washa_ai_v2_button: true,
+                            washa_ai_dev_v2_access: "disabled",
+                        },
+                    }],
+                    error: null,
+                })),
+            })),
+        });
+
+        const visibility = await getPublicVisibility();
+
+        expect(visibility.hero_washa_ai_v1_button).toBe(false);
+        expect(visibility.washa_ai_dev_access).toBe("admin");
+        expect(visibility.hero_washa_ai_v2_button).toBe(false);
+        expect(visibility.washa_ai_dev_v2_access).toBe("disabled");
     });
 
     it("keeps the V4 availability and hero entry independent from older WASHA AI settings", async () => {
@@ -236,6 +270,10 @@ describe("settings visibility normalization", () => {
 
         const settings = await getSiteSettings();
 
+        expect(settings.visibility.hero_washa_ai_v1_button).toBe(false);
+        expect(settings.visibility.washa_ai_dev_access).toBe("admin");
+        expect(settings.visibility.hero_washa_ai_v2_button).toBe(false);
+        expect(settings.visibility.washa_ai_dev_v2_access).toBe("admin");
         expect(settings.visibility.hero_washa_ai_v3_button).toBe(false);
         expect(settings.visibility.washa_ai_dev_v3_access).toBe("admin");
         expect(settings.visibility.hero_washa_ai_v4_button).toBe(false);

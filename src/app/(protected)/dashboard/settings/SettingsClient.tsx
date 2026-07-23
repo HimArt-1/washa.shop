@@ -33,6 +33,8 @@ type VisibilityState = {
     ai_section: boolean;
     hero_auth_buttons: boolean;
     hero_washa_ai_button: boolean;
+    hero_washa_ai_v1_button: boolean;
+    hero_washa_ai_v2_button: boolean;
     hero_washa_ai_v3_button: boolean;
     hero_washa_ai_v4_button: boolean;
     hero_join_artist_button: boolean;
@@ -59,7 +61,7 @@ const WASHA_AI_DEV_ACCESS_OPTIONS: Array<{ value: WashaAiDevAccessMode; label: s
     {
         value: "link",
         label: "متاحة بالرابط",
-        description: "لا تظهر في الواجهة العامة، لكنها تعمل لمن يملك الرابط للاختبار.",
+        description: "تعمل لمن يملك الرابط، ويمكن إظهار نافذة دخولها في الهيرو من الإعدادات.",
     },
 ];
 
@@ -435,6 +437,8 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
         ai_section: settings.visibility.ai_section ?? true,
         hero_auth_buttons: settings.visibility.hero_auth_buttons ?? true,
         hero_washa_ai_button: settings.visibility.hero_washa_ai_button ?? true,
+        hero_washa_ai_v1_button: settings.visibility.hero_washa_ai_v1_button ?? false,
+        hero_washa_ai_v2_button: settings.visibility.hero_washa_ai_v2_button ?? false,
         hero_washa_ai_v3_button: settings.visibility.hero_washa_ai_v3_button ?? false,
         hero_washa_ai_v4_button: settings.visibility.hero_washa_ai_v4_button ?? false,
         hero_join_artist_button: settings.visibility.hero_join_artist_button ?? false,
@@ -667,7 +671,29 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         onChange={(v) => setVisibility({ ...visibility, hero_washa_ai_button: v })}
                     />
                     <Toggle
-                        label="زر WASHA AI v3 في هيرو الصفحة الرئيسية"
+                        label="نافذة WASHA AI v1 في هيرو الصفحة الرئيسية"
+                        checked={visibility.hero_washa_ai_v1_button}
+                        onChange={(enabled) => setVisibility({
+                            ...visibility,
+                            hero_washa_ai_v1_button: enabled,
+                            washa_ai_dev_access: enabled && visibility.washa_ai_dev_access !== "link"
+                                ? "link"
+                                : visibility.washa_ai_dev_access,
+                        })}
+                    />
+                    <Toggle
+                        label="نافذة WASHA AI v2 في هيرو الصفحة الرئيسية"
+                        checked={visibility.hero_washa_ai_v2_button}
+                        onChange={(enabled) => setVisibility({
+                            ...visibility,
+                            hero_washa_ai_v2_button: enabled,
+                            washa_ai_dev_v2_access: enabled && visibility.washa_ai_dev_v2_access !== "link"
+                                ? "link"
+                                : visibility.washa_ai_dev_v2_access,
+                        })}
+                    />
+                    <Toggle
+                        label="نافذة WASHA AI v3 في هيرو الصفحة الرئيسية"
                         checked={visibility.hero_washa_ai_v3_button}
                         onChange={(enabled) => setVisibility({
                             ...visibility,
@@ -717,17 +743,29 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                         </div>
                         <div className="space-y-3">
                             <DevAccessSelect
-                                label="/design/washa-ai/dev"
+                                label="WASHA AI V1 — /design/washa-ai/dev"
                                 value={visibility.washa_ai_dev_access}
-                                onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_access: value })}
+                                onChange={(value) => setVisibility({
+                                    ...visibility,
+                                    washa_ai_dev_access: value,
+                                    hero_washa_ai_v1_button: value === "link"
+                                        ? visibility.hero_washa_ai_v1_button
+                                        : false,
+                                })}
                             />
                             <DevAccessSelect
-                                label="/design/washa-ai/dev-v2"
+                                label="WASHA AI V2 — /design/washa-ai/dev-v2"
                                 value={visibility.washa_ai_dev_v2_access}
-                                onChange={(value) => setVisibility({ ...visibility, washa_ai_dev_v2_access: value })}
+                                onChange={(value) => setVisibility({
+                                    ...visibility,
+                                    washa_ai_dev_v2_access: value,
+                                    hero_washa_ai_v2_button: value === "link"
+                                        ? visibility.hero_washa_ai_v2_button
+                                        : false,
+                                })}
                             />
                             <DevAccessSelect
-                                label="/design/washa-ai/dev-v3"
+                                label="WASHA AI V3 — /design/washa-ai/dev-v3"
                                 value={visibility.washa_ai_dev_v3_access}
                                 onChange={(value) => setVisibility({
                                     ...visibility,
@@ -738,7 +776,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                 })}
                             />
                             <DevAccessSelect
-                                label="/design/washa-ai/dev-v4"
+                                label="WASHA AI V4 — /design/washa-ai/dev-v4"
                                 value={visibility.washa_ai_dev_v4_access}
                                 onChange={(value) => setVisibility({
                                     ...visibility,
@@ -749,7 +787,7 @@ export function SettingsClient({ settings, diagnostics }: SettingsProps) {
                                 })}
                             />
                             <p className="rounded-xl border border-gold/10 bg-surface/50 px-3 py-2 text-xs leading-5 text-theme-subtle">
-                                إظهار V3 أو V4 في الهيرو يضبط وصول النسخة تلقائيًا على «متاحة بالرابط». تعطيل المسار أو حصره بالمشرفين يخفي نافذته فورًا.
+                                إظهار أي نسخة من V1 إلى V4 في الهيرو يضبط وصولها تلقائيًا على «متاحة بالرابط». تعطيل المسار أو حصره بالمشرفين يخفي نافذته فورًا.
                             </p>
                         </div>
                     </div>
