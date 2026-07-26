@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse } from "next/server";
+import { createContentSecurityPolicy } from "@/lib/content-security-policy";
 import { shouldBypassClerkForDashboardPath } from "@/lib/dev-auth";
 
 const isProtectedRoute = createRouteMatcher([
@@ -32,9 +33,38 @@ const isAuthAwareWashaAiDevRoute = createRouteMatcher([
     '/design/washa-ai/dev-v4(.*)',
 ]);
 
-function nextWithPathname(req: NextRequest) {
+function createRequestSecurity(req: NextRequest, allowInlineScripts = false) {
+    const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+    const contentSecurityPolicy = createContentSecurityPolicy({
+        nonce,
+        isDevelopment: process.env.NODE_ENV === "development",
+        allowInlineScripts,
+    });
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set("x-washa-pathname", req.nextUrl.pathname);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", contentSecurityPolicy);
+
+    return { requestHeaders, contentSecurityPolicy };
+}
+
+function applyDocumentSecurityHeaders(
+    response: NextResponse,
+    contentSecurityPolicy: string
+) {
+    response.headers.set("Content-Security-Policy", contentSecurityPolicy);
+    response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("X-Frame-Options", "DENY");
+    response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    return response;
+}
+
+function nextWithPathname(req: NextRequest, allowInlineScripts = false) {
+    const { requestHeaders, contentSecurityPolicy } = createRequestSecurity(
+        req,
+        allowInlineScripts
+    );
     const response = NextResponse.next({
         request: {
             headers: requestHeaders,
@@ -50,11 +80,20 @@ function nextWithPathname(req: NextRequest) {
         response.headers.set("Pragma", "no-cache");
     }
 
-    return response;
+    return applyDocumentSecurityHeaders(response, contentSecurityPolicy);
+}
+
+function secureRedirect(req: NextRequest, response: NextResponse) {
+    const { contentSecurityPolicy } = createRequestSecurity(req);
+    return applyDocumentSecurityHeaders(response, contentSecurityPolicy);
 }
 
 export const proxy = clerkMiddleware(async (auth, req) => {
-    if (isPublicRoute(req)) return;
+    const isApiRoute = req.nextUrl.pathname.startsWith("/api/");
+
+    if (isPublicRoute(req)) {
+        return isApiRoute ? undefined : nextWithPathname(req);
+    }
     if (isProtectedRoute(req)) {
         if (shouldBypassClerkForDashboardPath(req.nextUrl.pathname)) {
             return nextWithPathname(req);
@@ -67,7 +106,7 @@ export const proxy = clerkMiddleware(async (auth, req) => {
                 "redirect_url",
                 `${req.nextUrl.pathname}${req.nextUrl.search}`
             );
-            return NextResponse.redirect(signInUrl);
+            return secureRedirect(req, NextResponse.redirect(signInUrl));
         }
 
         return nextWithPathname(req);
@@ -77,7 +116,12 @@ export const proxy = clerkMiddleware(async (auth, req) => {
         // for the session to be available downstream. No redirect on unauthenticated;
         // each route handler handles 401/403 itself.
         await auth();
+
+        if (isApiRoute) return;
+        return nextWithPathname(req, true);
     }
+
+    if (!isApiRoute) return nextWithPathname(req);
 });
 
 export const config = {

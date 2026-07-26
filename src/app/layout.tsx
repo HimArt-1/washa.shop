@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { arSA } from "@clerk/localizations";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -461,6 +462,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") || undefined;
+
   return (
     <ClerkProvider
       localization={arSA}
@@ -477,28 +480,33 @@ export default async function RootLayout({
           <meta name="wusha-build" content={BUILD_VERSION} />
           <style
             id="wusha-css-guard-style"
+            nonce={nonce}
             suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: CSS_GUARD_STYLE,
             }}
           />
           <script
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: THEME_INIT_SCRIPT,
             }}
           />
           <script
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: HYDRATION_ATTRIBUTE_GUARD_SCRIPT,
             }}
           />
           <script
+            nonce={nonce}
             dangerouslySetInnerHTML={{
               __html: CSS_GUARD_SCRIPT,
             }}
           />
           {/* JSON-LD Structured Data */}
           <script
+            nonce={nonce}
             type="application/ld+json"
             dangerouslySetInnerHTML={{
               __html: JSON.stringify({
@@ -583,7 +591,7 @@ export default async function RootLayout({
             <CartSyncProvider />
             <ProfileBootstrapper />
             <VisitLogger />
-            <MarketingPixels />
+            <MarketingPixels nonce={nonce} />
             <ClientErrorLogger />
             <main id="main-content" className="min-h-[100svh] min-h-[100dvh]">
               {children}
@@ -597,7 +605,7 @@ export default async function RootLayout({
           <FloatingActions phoneNumber={WHATSAPP_NUMBER} />
 
           {/* Re:amaze — دعم فني */}
-          <ReamazeLoader />
+          <ReamazeLoader nonce={nonce} />
         </body>
       </html>
     </ClerkProvider>

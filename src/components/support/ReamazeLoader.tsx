@@ -34,7 +34,7 @@ function setReamazeVisibility(isSupportPath: boolean) {
     });
 }
 
-export function ReamazeLoader() {
+export function ReamazeLoader({ nonce }: { nonce?: string }) {
     const pathname = usePathname();
     const isSupportPath = SUPPORT_PATH_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
 
@@ -55,7 +55,7 @@ export function ReamazeLoader() {
 
     return (
         <>
-            <Script id="reamaze-config" strategy="afterInteractive">{`
+            <Script id="reamaze-config" nonce={nonce} strategy="afterInteractive">{`
                 var _support = _support || { 'ui': {}, 'user': {} };
                 _support['account'] = 'e0b4e5a7-7c09-4071-882e-2477bd1f3d20';
                 _support['ui']['contactMode'] = 'mixed';
@@ -90,6 +90,7 @@ export function ReamazeLoader() {
                 };
             `}</Script>
             <Script
+                nonce={nonce}
                 src="https://cdn.reamaze.com/assets/reamaze-loader.js"
                 strategy="afterInteractive"
             />
