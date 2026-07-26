@@ -13,6 +13,7 @@ describe("document content security policy", () => {
 
         expect(scriptDirective).toContain("'nonce-request-nonce'");
         expect(scriptDirective).not.toContain("'unsafe-inline'");
+        expect(scriptDirective).toContain("https://clerk.washa.shop");
         expect(policy).toContain("object-src 'none'");
         expect(policy).toContain("frame-ancestors 'none'");
     });

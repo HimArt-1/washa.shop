@@ -18,6 +18,7 @@ export function createContentSecurityPolicy({
         "https://connect.facebook.net",
         "https://cdn.reamaze.com",
         "https://cdn.jsdelivr.net",
+        "https://clerk.washa.shop",
         "https://*.clerk.accounts.dev",
         "https://*.clerk.com",
     ].filter(Boolean);
