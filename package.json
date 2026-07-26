@@ -17,6 +17,7 @@
     "postbuild": "npm run verify:dtf-studio",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit --pretty false",
     "test:unit": "vitest run",
     "test:board-migration:lifecycle": "node scripts/verify-board-fallback-migration.mjs",
     "qa:env": "node scripts/qa-env.mjs",

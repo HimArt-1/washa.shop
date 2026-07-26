@@ -33,11 +33,11 @@ function normalizeColorCode(value?: string | null) {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
     if ((await getPublicVisibility()).store === false) {
-        return { title: "غير موجود — وشّى", robots: { index: false, follow: false } };
+        return { title: "غير موجود", robots: { index: false, follow: false } };
     }
     const { id } = await params;
     const product = await getProductById(id);
-    if (!product) return { title: "غير موجود — وشّى" };
+    if (!product) return { title: "غير موجود" };
 
     const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://washa.shop";
     const canonical = `${siteUrl}/products/${id}`;
@@ -45,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     const imageUrl = sanitizeCommerceImageUrl(product.image_url);
 
     return {
-        title: `${product.title} — وشّى`,
+        title: product.title,
         description: desc,
         alternates: { canonical },
         openGraph: {

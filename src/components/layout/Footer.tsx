@@ -237,7 +237,11 @@ export function Footer({ visibility }: { visibility?: { gallery?: boolean; store
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubscribe}>
+                  <label className="sr-only" htmlFor="footer-newsletter-email">
+                    البريد الإلكتروني للنشرة
+                  </label>
                   <input
+                    id="footer-newsletter-email"
                     name="email"
                     type="email"
                     required

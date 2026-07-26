@@ -63,7 +63,11 @@ export function StoreFilters({
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex w-full items-center gap-2 sm:w-auto">
                     <SlidersHorizontal className="h-3.5 w-3.5 text-theme-subtle" />
+                    <label className="sr-only" htmlFor="store-product-sort">
+                        ترتيب المنتجات
+                    </label>
                     <select
+                        id="store-product-sort"
                         value={currentSort}
                         onChange={(e) => router.push(`/store?${buildParams({ sort: e.target.value })}`)}
                         className="store-select h-11 w-full rounded-xl px-4 text-sm sm:min-w-[220px]"

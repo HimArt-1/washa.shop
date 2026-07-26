@@ -155,6 +155,7 @@ describe("DtfOrderService", () => {
             printPosition: "back",
             printSize: "large",
             mockupDataUrl: "data:image/png;base64,AAAA",
+            termsAccepted: false,
         }, null, { traceId: "trace_custom_palette" });
 
         expect(result.error).toBeUndefined();
@@ -201,6 +202,7 @@ describe("DtfOrderService", () => {
             designRequestId: "11111111-1111-4111-8111-111111111111",
             masterAssetId: "22222222-2222-4222-8222-222222222222",
             masterChecksum: "a".repeat(64),
+            termsAccepted: true,
             placementData: {
                 side: "front",
                 x: 0.5,
@@ -300,6 +302,7 @@ describe("DtfOrderService", () => {
             sourceChecksum: "c".repeat(64),
             masterAssetId: null,
             masterChecksum: null,
+            termsAccepted: false,
             placementData: {
                 side: "front",
                 x: 0.5,

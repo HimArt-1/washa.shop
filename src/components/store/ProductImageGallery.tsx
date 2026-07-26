@@ -95,7 +95,8 @@ export function ProductImageGallery({ mainImage, images, title, type, productId,
                     fill
                     className="object-cover transition-all duration-500"
                     sizes="(max-width: 1024px) 100vw, 50vw"
-                    priority={activeIdx === 0}
+                    loading="eager"
+                    fetchPriority="high"
                 />
                 <span className="absolute top-4 right-4 text-xs bg-[color:rgba(15,15,15,0.42)] backdrop-blur-md text-on-dark px-3 py-1 rounded-full">
                     {type}

@@ -20,6 +20,8 @@ import type { Application } from "@/types/database";
 // - تمنع بوتات الـ spam والإرسال المتكرر
 const APPLICATION_RATE_LIMIT = 5;
 const APPLICATION_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 دقائق
+const NEWSLETTER_RATE_LIMIT = 5;
+const NEWSLETTER_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 دقائق
 
 async function getRequestIp(): Promise<string> {
     try {
@@ -349,6 +351,19 @@ export async function subscribeNewsletter(formData: FormData): Promise<ActionRes
             success: false,
             message: "البريد الإلكتروني غير صالح",
             errors: validated.error.flatten().fieldErrors,
+        };
+    }
+
+    const ip = await getRequestIp();
+    const rateCheck = await checkRateLimit(
+        `newsletter:${ip}`,
+        NEWSLETTER_RATE_LIMIT,
+        NEWSLETTER_RATE_WINDOW_MS
+    );
+    if (!rateCheck.success) {
+        return {
+            success: false,
+            message: "تم تجاوز الحد المسموح به من الاشتراكات. الرجاء الانتظار قليلاً ثم المحاولة مجدداً.",
         };
     }
 

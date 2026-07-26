@@ -77,7 +77,17 @@ export async function createDiscountCoupon(data: {
 }
 
 export async function getAllDiscountCoupons() {
+    const user = await getCurrentUserOrDevAdmin();
+    if (!user) throw new Error("Unauthorized");
+
     const sb = getAdminSb();
+    const { data: profile } = await sb
+        .from("profiles")
+        .select("role")
+        .eq("clerk_id", user.id)
+        .single() as unknown as { data: { role: string } | null };
+    if (profile?.role !== "admin") throw new Error("Forbidden");
+
     const { data, error } = await sb
         .from("discount_coupons")
         .select("*")

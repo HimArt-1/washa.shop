@@ -253,10 +253,15 @@ export function buildItemListSchema(
 // ─── Inject helper ────────────────────────────────────────────
 
 export function JsonLd({ schema }: { schema: Record<string, unknown> | Record<string, unknown>[] }) {
+    const serializedSchema = JSON.stringify(schema, null, 0)
+        .replace(/&/g, "\\u0026")
+        .replace(/</g, "\\u003c")
+        .replace(/>/g, "\\u003e");
+
     return (
         <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(schema, null, 0) }}
+            dangerouslySetInnerHTML={{ __html: serializedSchema }}
         />
     );
 }

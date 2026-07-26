@@ -21,7 +21,11 @@ import { getSupabaseAdminClient } from "@/lib/supabase";
 import { uploadOptimizedImage, StorageUploadError } from "@/lib/storage/upload-optimized-image";
 import type { Database, UserRole, WushshaLevel, OrderStatus, ApplicationStatus, ArtworkStatus } from "@/types/database";
 import { confirmOrderPayment } from "@/app/actions/orders";
-import { authorizeInternalPaymentConfirmation } from "@/lib/internal-payment-authorization";
+import {
+    assertInternalPaymentAuthorization,
+    authorizeInternalPaymentConfirmation,
+    type InternalPaymentAuthorization,
+} from "@/lib/internal-payment-authorization";
 import { getAdminNotifications, getUnreadNotificationsCount } from "@/app/actions/notifications";
 import { createUserNotification } from "@/lib/user-notifications";
 import { runIdempotentDispatch } from "@/lib/idempotent-dispatch";
@@ -2853,8 +2857,13 @@ export async function initiateWarehousePayment(orderId: string): Promise<Warehou
     }
 }
 
-export async function confirmWarehousePayment(paymentIdentifier: string, amount?: number): Promise<WarehousePaymentResult> {
+export async function confirmWarehousePayment(
+    authorization: InternalPaymentAuthorization,
+    paymentIdentifier: string,
+    amount?: number
+): Promise<WarehousePaymentResult> {
     try {
+        assertInternalPaymentAuthorization(authorization);
         const supabase = getSupabaseAdminClient();
         const normalizedIdentifier = paymentIdentifier.trim();
         console.log(`[confirmWarehousePayment] Processing: ${normalizedIdentifier}`);

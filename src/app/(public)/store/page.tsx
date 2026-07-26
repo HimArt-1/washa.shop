@@ -13,7 +13,7 @@ const BRAND_ASSET_VERSION = "20260630";
 const SITE_OG_IMAGE_URL = `${SITE_URL}/og-image.png?v=${BRAND_ASSET_VERSION}`;
 
 export const metadata: Metadata = {
-    title: "المتجر | وشّى WUSHA",
+    title: "المتجر",
     description: "اكتشف مجموعة وشّى الحصرية — تيشرتات وهودي وملابس مطبوعة بتصاميم فنية حصرية. جودة عالية وشحن سريع.",
     keywords: ["تيشرتات", "هودي", "ملابس فنية", "وشّى", "washa", "streetwear", "طباعة عند الطلب", "أزياء عربية"],
     alternates: { canonical: `${SITE_URL}/store` },

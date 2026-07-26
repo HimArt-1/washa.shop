@@ -91,21 +91,19 @@ export async function getArtworks(
     };
 }
 
-export async function getArtworkById(id: string, adminOverride = false) {
+export async function getArtworkById(id: string) {
     noStore();
     const supabase = getSupabaseAdminClient();
 
-    let query = supabase
+    const query = supabase
         .from("artworks")
         .select(`
       *,
       artist:profiles!artworks_artist_id_fkey(id, display_name, username, bio, avatar_url, is_verified),
       category:categories(name_ar, slug)
     `)
-        .eq("id", id);
-
-    // Public access: only show published artworks
-    if (!adminOverride) query = query.eq("status", "published");
+        .eq("id", id)
+        .eq("status", "published");
 
     const { data, error } = await query.maybeSingle();
 

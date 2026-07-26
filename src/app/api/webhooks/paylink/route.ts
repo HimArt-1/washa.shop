@@ -83,7 +83,11 @@ export async function POST(req: NextRequest) {
                 console.error(`[Paylink Webhook] Missing invoice amount for fulfillment payment: ${resolvedOrderNumber}`);
                 return NextResponse.json({ received: true });
             }
-            await confirmWarehousePayment(resolvedOrderNumber, amount);
+            await confirmWarehousePayment(
+                authorizeInternalPaymentConfirmation(),
+                resolvedOrderNumber,
+                amount
+            );
             return NextResponse.json({ received: true });
         }
 
