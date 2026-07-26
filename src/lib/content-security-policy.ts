@@ -11,7 +11,7 @@ export function createContentSecurityPolicy({
 }: ContentSecurityPolicyOptions = {}) {
     const scriptSources = [
         "'self'",
-        nonce ? `'nonce-${nonce}'` : null,
+        nonce && !allowInlineScripts ? `'nonce-${nonce}'` : null,
         allowInlineScripts ? "'unsafe-inline'" : null,
         isDevelopment ? "'unsafe-eval'" : null,
         "https://www.googletagmanager.com",

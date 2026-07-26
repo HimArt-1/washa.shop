@@ -27,5 +27,6 @@ describe("document content security policy", () => {
             .find((directive) => directive.startsWith("script-src"));
 
         expect(scriptDirective).toContain("'unsafe-inline'");
+        expect(scriptDirective).not.toContain("'nonce-request-nonce'");
     });
 });
