@@ -15,6 +15,30 @@ function getAdminSb() {
     return createClient(supabaseUrl, supabaseServiceKey);
 }
 
+type CouponAdminAccess =
+    | { ok: true; sb: ReturnType<typeof getAdminSb> }
+    | { ok: false; code: "Unauthorized" | "Forbidden"; message: string };
+
+async function resolveCouponAdminAccess(): Promise<CouponAdminAccess> {
+    const user = await getCurrentUserOrDevAdmin();
+    if (!user) {
+        return { ok: false, code: "Unauthorized", message: "غير مصرح" };
+    }
+
+    const sb = getAdminSb();
+    const { data: profile } = await sb
+        .from("profiles")
+        .select("role")
+        .eq("clerk_id", user.id)
+        .single() as unknown as { data: { role: string } | null };
+
+    if (profile?.role !== "admin") {
+        return { ok: false, code: "Forbidden", message: "صلاحيات غير كافية" };
+    }
+
+    return { ok: true, sb };
+}
+
 // ─── ADMIN ACTIONS ─────────────────────────────────────────────
 
 export async function createDiscountCoupon(data: {
@@ -26,19 +50,9 @@ export async function createDiscountCoupon(data: {
     details?: string | null;
     is_active?: boolean;
 }) {
-    const user = await getCurrentUserOrDevAdmin();
-    if (!user) return { error: "غير مصرح" };
-
-    const sb = getAdminSb();
-
-    // Verify admin
-    const { data: profile } = await sb
-        .from("profiles")
-        .select("role")
-        .eq("clerk_id", user.id)
-        .single() as unknown as { data: { role: string } | null };
-
-    if (profile?.role !== "admin") return { error: "صلاحيات غير كافية" };
+    const access = await resolveCouponAdminAccess();
+    if (!access.ok) return { error: access.message };
+    const { sb } = access;
 
     // Server-side validation
     const trimmedCode = data.code.toUpperCase().trim();
@@ -77,16 +91,9 @@ export async function createDiscountCoupon(data: {
 }
 
 export async function getAllDiscountCoupons() {
-    const user = await getCurrentUserOrDevAdmin();
-    if (!user) throw new Error("Unauthorized");
-
-    const sb = getAdminSb();
-    const { data: profile } = await sb
-        .from("profiles")
-        .select("role")
-        .eq("clerk_id", user.id)
-        .single() as unknown as { data: { role: string } | null };
-    if (profile?.role !== "admin") throw new Error("Forbidden");
+    const access = await resolveCouponAdminAccess();
+    if (!access.ok) throw new Error(access.code);
+    const { sb } = access;
 
     const { data, error } = await sb
         .from("discount_coupons")
@@ -98,12 +105,9 @@ export async function getAllDiscountCoupons() {
 }
 
 export async function toggleCouponStatus(id: string, currentStatus: boolean) {
-    const user = await getCurrentUserOrDevAdmin();
-    if (!user) return { error: "غير مصرح" };
-
-    const sb = getAdminSb();
-    const { data: profile } = await sb.from("profiles").select("role").eq("clerk_id", user.id).single() as unknown as { data: { role: string } | null };
-    if (profile?.role !== "admin") return { error: "صلاحيات غير كافية" };
+    const access = await resolveCouponAdminAccess();
+    if (!access.ok) return { error: access.message };
+    const { sb } = access;
 
     const { error } = await sb
         .from("discount_coupons")
@@ -117,12 +121,9 @@ export async function toggleCouponStatus(id: string, currentStatus: boolean) {
 }
 
 export async function deleteDiscountCoupon(id: string) {
-    const user = await getCurrentUserOrDevAdmin();
-    if (!user) return { error: "غير مصرح" };
-
-    const sb = getAdminSb();
-    const { data: profile } = await sb.from("profiles").select("role").eq("clerk_id", user.id).single() as unknown as { data: { role: string } | null };
-    if (profile?.role !== "admin") return { error: "صلاحيات غير كافية" };
+    const access = await resolveCouponAdminAccess();
+    if (!access.ok) return { error: access.message };
+    const { sb } = access;
 
     const { error } = await sb
         .from("discount_coupons")

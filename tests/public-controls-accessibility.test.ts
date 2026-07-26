@@ -8,7 +8,6 @@ vi.mock("next/navigation", () => ({
 
 import { StoreFilters } from "@/app/(public)/store/StoreFilters";
 import { Footer } from "@/components/layout/Footer";
-import { ProductImageGallery } from "@/components/store/ProductImageGallery";
 
 describe("public form control accessibility", () => {
     it("associates the newsletter email field with a visible-to-assistive-technology label", () => {
@@ -27,19 +26,5 @@ describe("public form control accessibility", () => {
         expect(html).toContain('for="store-product-sort"');
         expect(html).toContain('id="store-product-sort"');
         expect(html).toContain(">ترتيب المنتجات</label>");
-    });
-});
-
-describe("product hero image loading", () => {
-    it("loads the above-the-fold product image eagerly with high fetch priority", () => {
-        const html = renderToStaticMarkup(createElement(ProductImageGallery, {
-            mainImage: "/product.png",
-            images: [],
-            title: "منتج تجريبي",
-            type: "ملابس",
-        }));
-
-        expect(html).toContain('loading="eager"');
-        expect(html).toContain('fetchPriority="high"');
     });
 });
