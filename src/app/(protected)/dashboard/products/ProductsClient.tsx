@@ -16,6 +16,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Barcode from 'react-barcode';
 import { QRCodeSVG } from 'qrcode.react';
+import { renderAndPrintBarcodeLabels } from "@/lib/barcode-popup";
 
 // ─── Types & Labels ─────────────────────────────────────────
 
@@ -1599,19 +1600,13 @@ function BarcodeModal({ product, skus, onClose, onCreated, onError }: {
         `).join("");
         win.document.write(`
             <!DOCTYPE html><html dir="rtl"><head><title>ملصقات — ${count} قطعة</title>
-            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
             <style>body{margin:0;padding:8px;background:#fff;font-family:Tahoma,sans-serif}@media print{body{padding:0}.label-container{border:none!important}}</style>
-            </head><body>${labelsHtml}
-            <script>
-                document.querySelectorAll('.label-container').forEach(function(el){
-                    var svg=el.querySelector('svg');
-                    var code=el.getAttribute('data-code');
-                    if(svg&&code){JsBarcode(svg,code,{format:"CODE128",width:1.2,height:25,displayValue:true,fontSize:10});}
-                });
-                setTimeout(function(){window.print();},300);
-            <\/script></body></html>
+            </head><body>${labelsHtml}</body></html>
         `);
         win.document.close();
+        renderAndPrintBarcodeLabels(win).catch(() => {
+            onError?.("تعذر تحميل مكتبة الباركود للطباعة");
+        });
     };
 
     if (!product) return null;

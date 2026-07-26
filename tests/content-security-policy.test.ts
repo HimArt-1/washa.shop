@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { createContentSecurityPolicy } from "@/lib/content-security-policy";
@@ -29,5 +31,16 @@ describe("document content security policy", () => {
 
         expect(scriptDirective).toContain("'unsafe-inline'");
         expect(scriptDirective).not.toContain("'nonce-request-nonce'");
+    });
+
+    it("suppresses hydration comparison for browser-hidden nonce attributes", () => {
+        const layoutSource = readFileSync(resolve("src/app/layout.tsx"), "utf8");
+        const nonceScriptTags = (layoutSource.match(/<script[\s\S]*?>/g) ?? [])
+            .filter((tag) => tag.includes("nonce={nonce}"));
+
+        expect(nonceScriptTags).toHaveLength(4);
+        for (const tag of nonceScriptTags) {
+            expect(tag).toContain("suppressHydrationWarning");
+        }
     });
 });

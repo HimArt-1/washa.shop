@@ -488,18 +488,21 @@ export default async function RootLayout({
           />
           <script
             nonce={nonce}
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: THEME_INIT_SCRIPT,
             }}
           />
           <script
             nonce={nonce}
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: HYDRATION_ATTRIBUTE_GUARD_SCRIPT,
             }}
           />
           <script
             nonce={nonce}
+            suppressHydrationWarning
             dangerouslySetInnerHTML={{
               __html: CSS_GUARD_SCRIPT,
             }}
@@ -507,6 +510,7 @@ export default async function RootLayout({
           {/* JSON-LD Structured Data */}
           <script
             nonce={nonce}
+            suppressHydrationWarning
             type="application/ld+json"
             dangerouslySetInnerHTML={{
               __html: JSON.stringify({
