@@ -67,6 +67,10 @@ CLERK_WEBHOOK_SIGNING_SECRET=
 TAP_SECRET_KEY=sk_test_xxxx
 TAP_MERCHANT_ID=merchant_id_from_tap_dashboard
 NEXT_PUBLIC_TAP_PUBLIC_KEY=pk_test_xxxx
+# التفعيل العام (استخدمه فقط مع مفاتيح الإنتاج بعد اعتماد التكامل)
+TAP_CHECKOUT_ENABLED=false
+# يتيح مفاتيح sk_test لحسابات admin وdev فقط
+TAP_TEST_CHECKOUT_ENABLED=true
 
 # Stripe (قديم — لاستقبال العمليات السابقة فقط)
 STRIPE_SECRET_KEY=

@@ -19,6 +19,20 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxxx
 SUPABASE_SERVICE_ROLE_KEY=eyJxxxx
 ```
 
+#### Tap Payments - **الدفع الأساسي**
+```env
+TAP_SECRET_KEY=sk_live_xxxx
+TAP_MERCHANT_ID=merchant_id_from_tap_dashboard
+NEXT_PUBLIC_TAP_PUBLIC_KEY=pk_live_xxxx
+TAP_CHECKOUT_ENABLED=true
+TAP_TEST_CHECKOUT_ENABLED=false
+NEXT_PUBLIC_APP_URL=https://washa.shop
+```
+
+للاختبار الإداري قبل الإطلاق، استخدم مفاتيح `sk_test` و`pk_test`، واترك
+`TAP_CHECKOUT_ENABLED=false` مع `TAP_TEST_CHECKOUT_ENABLED=true`. عندها يظهر
+Tap فقط لحسابات `admin` و`dev`.
+
 #### Stripe (الدفع) - **اختياري**
 ```env
 STRIPE_SECRET_KEY=sk_live_xxxx

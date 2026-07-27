@@ -847,7 +847,7 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                     } disabled:cursor-not-allowed disabled:opacity-55`}
                                 >
                                     <span className="absolute -top-2.5 right-4 rounded-full border border-theme-soft bg-[color:var(--wusha-bg)] px-3 py-1 text-[10px] font-black tracking-wide text-theme-faint">
-                                        {paymentReadiness.tap.enabled ? "متاح الآن" : "غير متاح"}
+                                        {paymentReadiness.tap.mode === "test" ? "وضع اختبار" : paymentReadiness.tap.enabled ? "متاح الآن" : "غير متاح"}
                                     </span>
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="flex items-center gap-3">
@@ -856,7 +856,13 @@ export function CheckoutContent({ shippingConfig, userRole, isLoggedIn, bankTran
                                             </div>
                                             <div>
                                                 <span className="font-bold text-theme-subtle">الدفع الإلكتروني الآمن</span>
-                                                <p className="mt-1 text-xs text-theme-faint">{paymentReadiness.tap.enabled ? "مدى وVisa وMastercard عبر Tap." : paymentReadiness.tap.message}</p>
+                                                <p className="mt-1 text-xs text-theme-faint">
+                                                    {paymentReadiness.tap.mode === "test"
+                                                        ? "اختبار إداري فقط — لن تُخصم مبالغ حقيقية."
+                                                        : paymentReadiness.tap.enabled
+                                                            ? "مدى وVisa وMastercard عبر Tap."
+                                                            : paymentReadiness.tap.message}
+                                                </p>
                                             </div>
                                         </div>
                                         {paymentReadiness.tap.enabled ? <CreditCard className="h-4 w-4 text-gold" /> : <Lock className="h-4 w-4 text-theme-faint" />}

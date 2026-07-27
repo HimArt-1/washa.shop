@@ -9,12 +9,12 @@ import { getPaymentReadiness } from "@/lib/payment-readiness";
 export const dynamic = "force-dynamic"; // لا cache — دائماً حديث
 
 export default async function CheckoutPage() {
-    const paymentReadiness = getPaymentReadiness();
     const [settings, profile, session] = await Promise.all([
         getSiteSettings(),
         getProfile(),
         auth(),
     ]);
+    const paymentReadiness = getPaymentReadiness(profile?.role);
 
     const shippingConfig = {
         flat_rate: settings.shipping.flat_rate ?? 30,

@@ -1066,7 +1066,7 @@ export async function createOrder(
         const bankReadiness = getPaymentReadiness().bankTransfer;
         if (!bankReadiness.enabled) return { success: false, error: bankReadiness.message };
     }
-    if (paymentMethod === "tap" && !getPaymentReadiness().tap.enabled) {
+    if (paymentMethod === "tap" && !getPaymentReadiness(buyerRole).tap.enabled) {
         return { success: false, error: "الدفع الإلكتروني عبر Tap غير متاح حالياً." };
     }
 

@@ -1,9 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase";
-import { createTapCharge, retrieveTapCharge, TAP_CHECKOUT_ENABLED } from "@/lib/tap";
+import { createTapCharge, retrieveTapCharge } from "@/lib/tap";
 import { emitPaymentInvoiceCreatedAlert } from "@/lib/operational-event-alerts";
-import { getRecordedOrderPaymentMethod } from "@/lib/payment-readiness";
+import { getPaymentReadiness, getRecordedOrderPaymentMethod } from "@/lib/payment-readiness";
 
 function appUrl(path: string) {
     const base = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL;
@@ -17,7 +17,6 @@ function asRecord(value: unknown) {
 
 export async function POST(req: NextRequest) {
     try {
-        if (!TAP_CHECKOUT_ENABLED) return NextResponse.json({ error: "الدفع الإلكتروني عبر Tap قيد التطوير حالياً" }, { status: 503 });
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "يجب تسجيل الدخول" }, { status: 401 });
 
@@ -26,12 +25,15 @@ export async function POST(req: NextRequest) {
 
         const supabase = getSupabaseAdminClient();
         const [{ data: profile }, { data: order }] = await Promise.all([
-            supabase.from("profiles").select("id").eq("clerk_id", user.id).single(),
+            supabase.from("profiles").select("id, role").eq("clerk_id", user.id).single(),
             supabase.from("orders").select("id, buyer_id, order_number, total, status, payment_status, metadata, shipping_address").eq("id", body.orderId).single(),
         ]);
 
         if (!profile || !order) return NextResponse.json({ error: "تعذر العثور على الطلب" }, { status: 404 });
         if (order.buyer_id !== profile.id) return NextResponse.json({ error: "غير مصرح لهذا الطلب" }, { status: 403 });
+        if (!getPaymentReadiness(profile.role).tap.enabled) {
+            return NextResponse.json({ error: "الدفع الإلكتروني عبر Tap غير متاح لهذا الحساب حالياً" }, { status: 403 });
+        }
         if (order.payment_status === "paid") return NextResponse.json({ error: "هذا الطلب مدفوع مسبقاً" }, { status: 409 });
         if (order.status !== "pending") return NextResponse.json({ error: "لا يمكن إنشاء عملية دفع لهذا الطلب" }, { status: 409 });
         if (getRecordedOrderPaymentMethod(order.metadata) !== "tap") {

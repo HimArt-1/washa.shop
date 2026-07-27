@@ -2,6 +2,7 @@ export type PaymentMethodReadiness = {
     enabled: boolean;
     code: "ready" | "disabled" | "not_configured" | "invalid_configuration";
     message: string;
+    mode?: "live" | "test";
 };
 
 export type PaymentReadiness = {
@@ -32,7 +33,7 @@ function validPublicAppUrl(environment: PaymentEnvironment) {
     }
 }
 
-export function resolvePaymentReadiness(environment: PaymentEnvironment): PaymentReadiness {
+export function resolvePaymentReadiness(environment: PaymentEnvironment, userRole?: string | null): PaymentReadiness {
     const bankName = clean(environment.BANK_TRANSFER_BANK_NAME);
     const accountName = clean(environment.BANK_TRANSFER_ACCOUNT_NAME);
     const iban = clean(environment.BANK_TRANSFER_IBAN)?.replace(/\s/g, "").toUpperCase();
@@ -57,9 +58,19 @@ export function resolvePaymentReadiness(environment: PaymentEnvironment): Paymen
                 message: "التحويل البنكي متاح.",
             };
 
-    const tapCredentialsConfigured = Boolean(clean(environment.TAP_SECRET_KEY) && clean(environment.TAP_MERCHANT_ID));
+    const tapSecretKey = clean(environment.TAP_SECRET_KEY);
+    const tapPublicKey = clean(environment.NEXT_PUBLIC_TAP_PUBLIC_KEY);
+    const tapCredentialsConfigured = Boolean(tapSecretKey && tapPublicKey && clean(environment.TAP_MERCHANT_ID));
     const tapCallbackConfigured = validPublicAppUrl(environment);
-    const tapExplicitlyEnabled = clean(environment.TAP_CHECKOUT_ENABLED)?.toLowerCase() === "true";
+    const tapPublicSwitchEnabled = clean(environment.TAP_CHECKOUT_ENABLED)?.toLowerCase() === "true";
+    const tapExplicitlyEnabled = tapPublicSwitchEnabled
+        && tapSecretKey?.startsWith("sk_live_") === true
+        && tapPublicKey?.startsWith("pk_live_") === true;
+    const tapSandboxEnabledForStaff = clean(environment.TAP_TEST_CHECKOUT_ENABLED)?.toLowerCase() === "true"
+        && (userRole === "admin" || userRole === "dev")
+        && tapSecretKey?.startsWith("sk_test_") === true
+        && tapPublicKey?.startsWith("pk_test_") === true;
+    const tapCheckoutEnabled = tapExplicitlyEnabled || tapSandboxEnabledForStaff;
     const tap: PaymentMethodReadiness = !tapCredentialsConfigured
         ? {
             enabled: false,
@@ -72,7 +83,7 @@ export function resolvePaymentReadiness(environment: PaymentEnvironment): Paymen
                 code: "invalid_configuration",
                 message: "الدفع الإلكتروني عبر Tap متوقف حتى إعداد رابط الرجوع العام.",
             }
-        : !tapExplicitlyEnabled
+        : !tapCheckoutEnabled
             ? {
                 enabled: false,
                 code: "disabled",
@@ -81,7 +92,10 @@ export function resolvePaymentReadiness(environment: PaymentEnvironment): Paymen
             : {
                 enabled: true,
                 code: "ready",
-                message: "الدفع الإلكتروني عبر Tap متاح.",
+                mode: tapSandboxEnabledForStaff ? "test" : "live",
+                message: tapSandboxEnabledForStaff
+                    ? "وضع اختبار Tap متاح للحسابات الإدارية."
+                    : "الدفع الإلكتروني عبر Tap متاح.",
             };
 
     return {
@@ -91,8 +105,8 @@ export function resolvePaymentReadiness(environment: PaymentEnvironment): Paymen
     };
 }
 
-export function getPaymentReadiness() {
-    return resolvePaymentReadiness(process.env);
+export function getPaymentReadiness(userRole?: string | null) {
+    return resolvePaymentReadiness(process.env, userRole);
 }
 
 export type CheckoutPaymentSelection = "bank_transfer" | "tap" | "pos_cash" | "pos_card";
