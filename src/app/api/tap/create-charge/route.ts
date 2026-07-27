@@ -94,16 +94,32 @@ export async function POST(req: NextRequest) {
         }
 
         const tapAttempt = { charge_id: charge.id, status: charge.status, amount, currency: "SAR", created_at: new Date().toISOString() };
-        const { error: updateError } = await supabase.from("orders").update({
-            metadata: {
-                ...metadata,
-                tap: { ...previousTap, ...tapAttempt, attempts: [...attempts, tapAttempt].slice(-25) },
-                payment_provider: "tap",
-            },
-            updated_at: new Date().toISOString(),
-        }).eq("id", order.id).eq("payment_status", "pending");
+        const { data: updatedOrder, error: updateError } = await supabase
+            .from("orders")
+            .update({
+                metadata: {
+                    ...metadata,
+                    tap: { ...previousTap, ...tapAttempt, attempts: [...attempts, tapAttempt].slice(-25) },
+                    payment_provider: "tap",
+                },
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", order.id)
+            .eq("payment_status", "pending")
+            .eq("status", "pending")
+            .select("id")
+            .maybeSingle();
 
-        if (updateError) return NextResponse.json({ error: "تعذر حفظ عملية الدفع على الطلب" }, { status: 500 });
+        if (updateError) {
+            console.error("[Tap] failed to persist created charge:", updateError);
+            return NextResponse.json({ error: "تعذر حفظ عملية الدفع على الطلب" }, { status: 500 });
+        }
+        if (!updatedOrder) {
+            return NextResponse.json(
+                { error: "تغيّرت حالة الطلب أثناء إنشاء عملية الدفع؛ حدّث الصفحة قبل المحاولة مجددًا" },
+                { status: 409 },
+            );
+        }
 
         await emitPaymentInvoiceCreatedAlert({
             orderId: order.id,

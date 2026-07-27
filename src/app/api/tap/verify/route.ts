@@ -26,9 +26,12 @@ export async function POST(req: NextRequest) {
         if (order.payment_status === "paid") return NextResponse.json({ success: true, orderNumber: order.order_number });
 
         const charge = await retrieveTapCharge(chargeId);
+        const validation = assertTapChargeMatchesOrder(charge, order);
+        if (!validation.ok) return NextResponse.json({ success: false, error: validation.error }, { status: validation.status });
+
         const metadata = asRecord(order.metadata);
         const tapMetadata = asRecord(metadata.tap);
-        await supabase.from("orders").update({
+        const { error: updateError } = await supabase.from("orders").update({
             metadata: {
                 ...metadata,
                 tap: {
@@ -42,9 +45,10 @@ export async function POST(req: NextRequest) {
             },
             updated_at: new Date().toISOString(),
         }).eq("id", order.id);
-
-        const validation = assertTapChargeMatchesOrder(charge, order);
-        if (!validation.ok) return NextResponse.json({ success: false, error: validation.error }, { status: validation.status });
+        if (updateError) {
+            console.error("[Tap] failed to persist verified charge metadata:", updateError);
+            return NextResponse.json({ success: false, error: "تعذر حفظ نتيجة التحقق من الدفع" }, { status: 500 });
+        }
 
         const result = await confirmOrderPayment(authorizeInternalPaymentConfirmation(), order.id, {
             customerEmail: validation.customerEmail || undefined,

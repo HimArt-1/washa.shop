@@ -61,10 +61,19 @@ function splitName(name: string) {
 
 export function normalizeTapPhone(phone: string) {
     const digits = phone.replace(/\D/g, "");
-    if (digits.startsWith("00966")) return { country_code: "966", number: digits.slice(5) };
-    if (digits.startsWith("966")) return { country_code: "966", number: digits.slice(3) };
-    if (digits.startsWith("0")) return { country_code: "966", number: digits.slice(1) };
-    return { country_code: "966", number: digits };
+    const nationalNumber = digits.startsWith("00966")
+        ? digits.slice(5)
+        : digits.startsWith("966")
+            ? digits.slice(3)
+            : digits.startsWith("0")
+                ? digits.slice(1)
+                : digits;
+
+    if (!/^5\d{8}$/.test(nationalNumber)) {
+        throw new Error("رقم الجوال السعودي غير صالح");
+    }
+
+    return { country_code: "966", number: nationalNumber };
 }
 
 async function tapRequest<T>(path: string, init?: RequestInit): Promise<T> {

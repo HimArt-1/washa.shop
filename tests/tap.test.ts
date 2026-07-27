@@ -17,6 +17,12 @@ describe("Tap payment security", () => {
         expect(normalizeTapPhone("0501234567")).toEqual({ country_code: "966", number: "501234567" });
     });
 
+    it("rejects malformed or non-Saudi mobile numbers", () => {
+        expect(() => normalizeTapPhone("1234")).toThrow("رقم الجوال السعودي غير صالح");
+        expect(() => normalizeTapPhone("+1 202 555 0100")).toThrow("رقم الجوال السعودي غير صالح");
+        expect(() => normalizeTapPhone("0112345678")).toThrow("رقم الجوال السعودي غير صالح");
+    });
+
     it("accepts only a captured matching SAR charge", () => {
         expect(assertTapChargeMatchesOrder(charge, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: true });
         expect(assertTapChargeMatchesOrder({ ...charge, amount: 1 }, { id: "order-id", order_number: "WSH-100", total: 125.5 })).toMatchObject({ ok: false });
